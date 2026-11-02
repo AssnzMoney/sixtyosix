@@ -229,24 +229,24 @@ export default function App() {
               </span>
               <svg 
                 className="hands-curve-arrow" 
-                width="42" 
-                height="42" 
-                viewBox="0 0 42 42" 
+                width="34" 
+                height="38" 
+                viewBox="0 0 34 38" 
                 fill="none" 
                 xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true"
                 style={{ overflow: 'visible' }}
               >
                 <path 
-                  d="M18 2 C 28 8, 30 20, 19 32" 
+                  d="M8 3 C 24 9, 21 23, 20 34" 
                   stroke="currentColor" 
-                  strokeWidth="2.6" 
+                  strokeWidth="2.5" 
                   strokeLinecap="round" 
                 />
                 <path 
-                  d="M12 25 L 18.5 33 L 26 27" 
+                  d="M13 26 L 20 34 L 27 26" 
                   stroke="currentColor" 
-                  strokeWidth="2.6" 
+                  strokeWidth="2.5" 
                   strokeLinecap="round" 
                   strokeLinejoin="round" 
                 />
