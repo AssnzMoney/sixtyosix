@@ -1,0 +1,10 @@
+{
+  "description": "Custom website design and creation service based on existing design references, enabling users to build professional web presence with personalized layouts and styling.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
