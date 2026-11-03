@@ -515,119 +515,117 @@ export default function App() {
         </div>
       </section>
 
-      <section className="calc-section-wrapper" id="economia">
-        <div className="shell">
-          <div className="calc-header">
-            <span className="calc-badge">SIMULADOR DE ECONOMIA</span>
-            <h2>
-              Quanto você gastaria<br />
-              pagando direto por token
-            </h2>
-            <p>
-              Escolha o volume e o modelo para comparar o preço de tabela dos provedores em Dólar com a assinatura da Six em Reais. As premissas do cálculo estão à mostra — sem conta mágica.
-            </p>
-          </div>
+      <section className="calc-section shell" id="economia">
+        <div className="calc-header">
+          <span className="eyebrow">por que assinar a six</span>
+          <h2>
+            Economize até <em>6x</em> em tokens.<br />
+            Veja a diferença na prática.
+          </h2>
+          <p>
+            O Claude Code consome milhares de tokens lendo seu repositório a cada comando. Compare o custo imprevisível de pagar por token em Dólar na Anthropic com a assinatura previsível da Six em Reais.
+          </p>
+        </div>
 
-          <div className="calc-card">
-            <div className="calc-grid">
-              {/* Coluna da Esquerda: Controles */}
-              <div className="calc-left">
-                <div className="calc-vol-header">
-                  <span className="calc-field-label">MENSAGENS POR MÊS</span>
-                  <span className="calc-vol-counter">{currentVol.toLocaleString('pt-BR')}</span>
-                </div>
+        <div className="calc-card">
+          <div className="calc-grid">
+            {/* Coluna da Esquerda: Controles */}
+            <div className="calc-left">
+              <div className="calc-vol-header">
+                <span className="calc-field-label">SEU RITMO NO TERMINAL</span>
+                <span className="calc-vol-counter">{currentVol.toLocaleString('pt-BR')} <small>prompts/mês</small></span>
+              </div>
 
-                <div className="calc-pills-row">
-                  {volumeLevels.map((lvl, index) => (
+              <div className="calc-pills-row">
+                {volumeLevels.map((lvl, index) => (
+                  <button
+                    key={lvl.label}
+                    type="button"
+                    className={`calc-pill-btn ${volIdx === index ? 'is-active' : ''}`}
+                    onClick={() => setVolIdx(index)}
+                  >
+                    {lvl.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="calc-slider-wrap">
+                <input
+                  type="range"
+                  min="0"
+                  max={volumeLevels.length - 1}
+                  step="1"
+                  value={volIdx}
+                  onChange={(e) => setVolIdx(Number(e.target.value))}
+                  className="calc-range-slider"
+                  style={{
+                    background: `linear-gradient(to right, #22c55e ${(volIdx / (volumeLevels.length - 1)) * 100}%, rgba(31, 70, 71, 0.12) ${(volIdx / (volumeLevels.length - 1)) * 100}%)`,
+                  }}
+                  aria-label="Volume de mensagens por mês"
+                />
+              </div>
+
+              <div className="calc-model-section">
+                <span className="calc-field-label">MODELO PRINCIPAL UTILIZADO</span>
+                <div className="calc-model-grid">
+                  {calcModels.map((m) => (
                     <button
-                      key={lvl.label}
+                      key={m.id}
                       type="button"
-                      className={`calc-pill-btn ${volIdx === index ? 'is-active' : ''}`}
-                      onClick={() => setVolIdx(index)}
+                      className={`calc-model-card ${activeCalcModel === m.id ? 'is-active' : ''}`}
+                      onClick={() => setActiveCalcModel(m.id)}
                     >
-                      {lvl.label}
+                      <div className="calc-model-icon">
+                        <span>AI</span>
+                      </div>
+                      <div className="calc-model-info">
+                        <strong>{m.name}</strong>
+                        <small>${m.inPrice.toFixed(2)} / ${m.outPrice.toFixed(2)} por 1M</small>
+                      </div>
                     </button>
                   ))}
                 </div>
-
-                <div className="calc-slider-wrap">
-                  <input
-                    type="range"
-                    min="0"
-                    max={volumeLevels.length - 1}
-                    step="1"
-                    value={volIdx}
-                    onChange={(e) => setVolIdx(Number(e.target.value))}
-                    className="calc-range-slider"
-                    style={{
-                      background: `linear-gradient(to right, #3b82f6 ${(volIdx / (volumeLevels.length - 1)) * 100}%, rgba(255, 255, 255, 0.12) ${(volIdx / (volumeLevels.length - 1)) * 100}%)`,
-                    }}
-                    aria-label="Volume de mensagens por mês"
-                  />
-                </div>
-
-                <div className="calc-model-section">
-                  <span className="calc-field-label">MODELO DE REFERÊNCIA</span>
-                  <div className="calc-model-grid">
-                    {calcModels.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`calc-model-card ${activeCalcModel === m.id ? 'is-active' : ''}`}
-                        onClick={() => setActiveCalcModel(m.id)}
-                      >
-                        <div className="calc-model-icon">
-                          <span>AI</span>
-                        </div>
-                        <div className="calc-model-info">
-                          <strong>{m.name}</strong>
-                          <small>${m.inPrice.toFixed(2)} / ${m.outPrice.toFixed(2)}</small>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <p className="calc-premises-note">
-                  Considerando 2.000 tokens de entrada e 800 de saída por mensagem, ao preço de tabela de ${currentModel.inPrice.toFixed(2)}/${currentModel.outPrice.toFixed(2)} por 1M de tokens (dólar a R$ 5,85 + IOF de 5,38%).
-                </p>
               </div>
 
-              {/* Coluna da Direita: Comparativo e Economia */}
-              <div className="calc-right">
-                <div className="calc-bar-block">
-                  <div className="calc-bar-header">
-                    <span className="calc-field-label">PAGANDO POR TOKEN (OFICIAL)</span>
-                    <span className="calc-price-token">R$ {formatBRL(officialTokenCostBrl)}</span>
-                  </div>
-                  <div className="calc-bar-track">
-                    <div className="calc-bar-fill calc-fill-token" style={{ width: '100%' }} />
-                  </div>
-                  <span className="calc-bar-sub">≈ ${rawUsd.toFixed(2)} por mês</span>
-                </div>
+              <p className="calc-premises-note">
+                * Estimativa baseada no uso real de desenvolvimento (~2.000 tokens de contexto/código e 800 de saída por prompt), ao preço de tabela oficial convertido com Dólar PTAX + 5,38% de IOF.
+              </p>
+            </div>
 
-                <div className="calc-bar-block">
-                  <div className="calc-bar-header">
-                    <span className="calc-field-label">NA SIX</span>
-                    <span className="calc-price-six">R$ {formatBRL(sixPlanCost)}</span>
-                  </div>
-                  <div className="calc-bar-track">
-                    <div
-                      className="calc-bar-fill calc-fill-six"
-                      style={{ width: `${sixBarPercentage}%` }}
-                    />
-                  </div>
-                  <span className="calc-bar-sub">{sixPlanSubtitle}</span>
+            {/* Coluna da Direita: Comparativo e Economia */}
+            <div className="calc-right">
+              <div className="calc-bar-block">
+                <div className="calc-bar-header">
+                  <span className="calc-field-label-dark">API OFICIAL (USD + IOF)</span>
+                  <span className="calc-price-token">R$ {formatBRL(officialTokenCostBrl)}</span>
                 </div>
+                <div className="calc-bar-track">
+                  <div className="calc-bar-fill calc-fill-token" style={{ width: '100%' }} />
+                </div>
+                <span className="calc-bar-sub">≈ ${rawUsd.toFixed(2)} /mês na fatura do cartão internacional</span>
+              </div>
 
-                <div className="calc-savings-box">
-                  <span className="calc-savings-tag">VOCÊ ECONOMIZA</span>
-                  <div className="calc-savings-number">R$ {formatBRL(calculatedSavings)}</div>
-                  <span className="calc-savings-mult">{savingsMultiplier}× mais barato · por mês</span>
-                  <a href="#teste" className="calc-cta-button">
-                    Começar agora <Arrow />
-                  </a>
+              <div className="calc-bar-block">
+                <div className="calc-bar-header">
+                  <span className="calc-field-label-dark">COM A SIX (EM REAIS)</span>
+                  <span className="calc-price-six">R$ {formatBRL(sixPlanCost)}</span>
                 </div>
+                <div className="calc-bar-track">
+                  <div
+                    className="calc-bar-fill calc-fill-six"
+                    style={{ width: `${sixBarPercentage}%` }}
+                  />
+                </div>
+                <span className="calc-bar-sub-six">{sixPlanSubtitle} — zero IOF e sem sustos</span>
+              </div>
+
+              <div className="calc-savings-box">
+                <span className="calc-savings-tag">SUA ECONOMIA ESTIMADA</span>
+                <div className="calc-savings-number">R$ {formatBRL(calculatedSavings)}</div>
+                <span className="calc-savings-mult">Até {savingsMultiplier}x mais barato · por mês</span>
+                <a href="#teste" className="calc-cta-button">
+                  Quero economizar com a Six <Arrow />
+                </a>
               </div>
             </div>
           </div>
