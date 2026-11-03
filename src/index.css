@@ -265,6 +265,10 @@ h2 em {
   color: var(--muted);
   text-align: left;
 }
+.hero-highlight-phrase {
+  color: #1f4647;
+  font-weight: 700;
+}
 .hero-actions {
   display: inline-flex;
   align-items: center;

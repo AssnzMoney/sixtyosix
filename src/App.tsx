@@ -25,7 +25,7 @@ const features = [
   ['01', 'Preço Fixo em Reais', 'Sem surpresas de cotação de dólar ou IOF no cartão. Previsibilidade total para você codar sem pesar no bolso.'],
   ['02', 'Pronto pro Terminal', 'Sem burocracia nem enrolação. Uma chave na sua máquina e você já está codando direto no Claude Code.'],
   ['03', 'Poucos Minutos pra Ativar', 'Criou a conta, escolheu o plano e ativou. Suporte direto e rápido de dev para dev.'],
-  ['04', 'API, CLI & +15 Modelos', 'Acesse Claude 3.7 Sonnet, GPT-4o e GLM com a mesma chave e controle total de consumo.'],
+  ['04', 'API, CLI & +15 Modelos', 'Acesse Claude 3.7 Sonnet, Claude Opus, GPT-6 Astra e o3 Pro com a mesma chave e controle total de consumo.'],
 ]
 
 const faqs = [
@@ -95,28 +95,28 @@ const calcModels = [
     outPrice: 15.0,
   },
   {
-    id: 'haiku',
-    name: 'Claude 3.5 Haiku',
-    shortName: 'Claude 3.5',
+    id: 'opus',
+    name: 'Claude Opus 3.7',
+    shortName: 'Claude Opus',
     tag: 'Anthropic',
-    inPrice: 0.8,
-    outPrice: 4.0,
+    inPrice: 5.0,
+    outPrice: 25.0,
   },
   {
-    id: 'gpt4o',
-    name: 'GPT-4o',
-    shortName: 'GPT-4o',
+    id: 'astra',
+    name: 'GPT-6 Astra',
+    shortName: 'Astra 6',
     tag: 'OpenAI',
     inPrice: 2.5,
-    outPrice: 10.0,
+    outPrice: 12.0,
   },
   {
-    id: 'glm',
-    name: 'GLM-4',
-    shortName: 'GLM-4',
-    tag: 'Z.ai',
-    inPrice: 1.0,
-    outPrice: 2.0,
+    id: 'o3',
+    name: 'OpenAI o3 Pro',
+    shortName: 'o3 Pro',
+    tag: 'OpenAI',
+    inPrice: 5.0,
+    outPrice: 20.0,
   },
 ]
 
@@ -260,8 +260,8 @@ export default function App() {
 
         <h1>Seu próximo grande projeto começa com <em><span className="marker-word">6x</span> mais impulso.</em></h1>
         <p>
-          Planos acessíveis para usar Claude Code todos os dias.
-          Crie, teste e entregue mais — pagando menos.
+          Planos acessíveis para usar Claude Code todos os dias.{' '}
+          <strong className="hero-highlight-phrase">Crie, teste e entregue mais — pagando menos.</strong>
         </p>
         <div 
           className="hero-actions"
