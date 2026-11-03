@@ -85,6 +85,47 @@ const partners = [
   },
 ]
 
+const calcModels = [
+  {
+    id: 'sonnet',
+    name: 'Claude 3.7 Sonnet',
+    tag: 'Anthropic',
+    inPrice: 3.0,
+    outPrice: 15.0,
+  },
+  {
+    id: 'haiku',
+    name: 'Claude 3.5 Haiku',
+    tag: 'Anthropic',
+    inPrice: 0.8,
+    outPrice: 4.0,
+  },
+  {
+    id: 'gpt4o',
+    name: 'GPT-4o',
+    tag: 'OpenAI',
+    inPrice: 2.5,
+    outPrice: 10.0,
+  },
+  {
+    id: 'glm',
+    name: 'GLM-4',
+    tag: 'Z.ai',
+    inPrice: 1.0,
+    outPrice: 2.0,
+  },
+]
+
+const volumeLevels = [
+  { label: '250', value: 250 },
+  { label: '500', value: 500 },
+  { label: '1k', value: 1000 },
+  { label: '2k', value: 2000 },
+  { label: '4k', value: 4000 },
+  { label: '8k', value: 8000 },
+  { label: '16k', value: 16000 },
+]
+
 export default function App() {
   const [copied, setCopied] = useState(false)
   const [navTab, setNavTab] = useState<'login' | 'signup'>('signup')
@@ -92,6 +133,43 @@ export default function App() {
   const [handsAction, setHandsAction] = useState<'primary' | 'secondary'>('primary')
   const [integrationAction, setIntegrationAction] = useState<'primary' | 'secondary'>('primary')
   const [finalAction, setFinalAction] = useState<'primary' | 'secondary'>('primary')
+
+  const [volIdx, setVolIdx] = useState(4)
+  const [activeCalcModel, setActiveCalcModel] = useState('sonnet')
+
+  const currentVol = volumeLevels[volIdx].value
+  const currentModel = calcModels.find((m) => m.id === activeCalcModel) || calcModels[0]
+  const totalInputTokens = currentVol * 2000
+  const totalOutputTokens = currentVol * 800
+  const rawUsd = (totalInputTokens / 1_000_000) * currentModel.inPrice + (totalOutputTokens / 1_000_000) * currentModel.outPrice
+  const officialTokenCostBrl = rawUsd * 6.16
+
+  let sixPlanCost = 119
+  let sixPlanSubtitle = 'Plano Pro — uso ilimitado'
+  if (currentVol === 250) {
+    sixPlanCost = 19
+    sixPlanSubtitle = 'Plano Lite'
+  } else if (currentVol === 500) {
+    sixPlanCost = 39
+    sixPlanSubtitle = 'Plano Starter'
+  } else if (currentVol === 1000) {
+    sixPlanCost = 79
+    sixPlanSubtitle = 'Plano Dev'
+  } else {
+    sixPlanCost = 119
+    sixPlanSubtitle = 'Plano Pro — uso ilimitado'
+  }
+
+  const calculatedSavings = Math.max(0, officialTokenCostBrl - sixPlanCost)
+  const savingsMultiplier = officialTokenCostBrl > sixPlanCost 
+    ? (officialTokenCostBrl / sixPlanCost).toFixed(1) 
+    : '1.0'
+
+  const sixBarPercentage = Math.min(100, Math.max(12, Math.round((sixPlanCost / officialTokenCostBrl) * 100)))
+
+  const formatBRL = (val: number) => {
+    return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText('sixtysix.dev/quickstart')
@@ -437,147 +515,121 @@ export default function App() {
         </div>
       </section>
 
-      <section className="savings-section shell" id="economia">
-        <div className="savings-header">
-          <span className="eyebrow">por que assinar a six</span>
-          <h2>
-            Quanto custa codar todo dia?<br />
-            Compare e veja a <em>economia real.</em>
-          </h2>
-          <p>
-            O Claude Code consome muitos tokens em repositórios reais. Pagar em dólar na Anthropic significa IOF, spread cambial e o risco de faturas de mais de R$ 800 no mês. Na Six você tem previsibilidade total em Reais e economiza até 6x.
-          </p>
-        </div>
+      <section className="calc-section-wrapper" id="economia">
+        <div className="shell">
+          <div className="calc-header">
+            <span className="calc-badge">SIMULADOR DE ECONOMIA</span>
+            <h2>
+              Quanto você gastaria<br />
+              pagando direto por token
+            </h2>
+            <p>
+              Escolha o volume e o modelo para comparar o preço de tabela dos provedores em Dólar com a assinatura da Six em Reais. As premissas do cálculo estão à mostra — sem conta mágica.
+            </p>
+          </div>
 
-        <div className="savings-grid">
-          {/* Card 1: Tradicional em Dólar */}
-          <div className="savings-card savings-card-traditional">
-            <div className="savings-card-top">
-              <span className="savings-badge savings-badge-traditional">Assinatura Oficial + API</span>
-              <h3>O jeito tradicional</h3>
-              <div className="savings-price-row">
-                <span className="savings-price-prefix">Estimativa de</span>
-                <span className="savings-price-val savings-price-bad">R$ 550 a R$ 1.200</span>
-                <span className="savings-price-suffix">/mês em Dólar (USD)</span>
+          <div className="calc-card">
+            <div className="calc-grid">
+              {/* Coluna da Esquerda: Controles */}
+              <div className="calc-left">
+                <div className="calc-vol-header">
+                  <span className="calc-field-label">MENSAGENS POR MÊS</span>
+                  <span className="calc-vol-counter">{currentVol.toLocaleString('pt-BR')}</span>
+                </div>
+
+                <div className="calc-pills-row">
+                  {volumeLevels.map((lvl, index) => (
+                    <button
+                      key={lvl.label}
+                      type="button"
+                      className={`calc-pill-btn ${volIdx === index ? 'is-active' : ''}`}
+                      onClick={() => setVolIdx(index)}
+                    >
+                      {lvl.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="calc-slider-wrap">
+                  <input
+                    type="range"
+                    min="0"
+                    max={volumeLevels.length - 1}
+                    step="1"
+                    value={volIdx}
+                    onChange={(e) => setVolIdx(Number(e.target.value))}
+                    className="calc-range-slider"
+                    style={{
+                      background: `linear-gradient(to right, #3b82f6 ${(volIdx / (volumeLevels.length - 1)) * 100}%, rgba(255, 255, 255, 0.12) ${(volIdx / (volumeLevels.length - 1)) * 100}%)`,
+                    }}
+                    aria-label="Volume de mensagens por mês"
+                  />
+                </div>
+
+                <div className="calc-model-section">
+                  <span className="calc-field-label">MODELO DE REFERÊNCIA</span>
+                  <div className="calc-model-grid">
+                    {calcModels.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={`calc-model-card ${activeCalcModel === m.id ? 'is-active' : ''}`}
+                        onClick={() => setActiveCalcModel(m.id)}
+                      >
+                        <div className="calc-model-icon">
+                          <span>AI</span>
+                        </div>
+                        <div className="calc-model-info">
+                          <strong>{m.name}</strong>
+                          <small>${m.inPrice.toFixed(2)} / ${m.outPrice.toFixed(2)}</small>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="calc-premises-note">
+                  Considerando 2.000 tokens de entrada e 800 de saída por mensagem, ao preço de tabela de ${currentModel.inPrice.toFixed(2)}/${currentModel.outPrice.toFixed(2)} por 1M de tokens (dólar a R$ 5,85 + IOF de 5,38%).
+                </p>
               </div>
-              <p className="savings-card-desc">Sujeito a oscilações constantes do câmbio e consumo imprevisível de tokens.</p>
-            </div>
 
-            <ul className="savings-list">
-              <li>
-                <span className="savings-icon savings-icon-cross"><Cross /></span>
-                <div>
-                  <strong>Cobrança em Dólar (USD)</strong>
-                  <p>Cotação oscila todo dia, encarecendo suas sessões de código.</p>
+              {/* Coluna da Direita: Comparativo e Economia */}
+              <div className="calc-right">
+                <div className="calc-bar-block">
+                  <div className="calc-bar-header">
+                    <span className="calc-field-label">PAGANDO POR TOKEN (OFICIAL)</span>
+                    <span className="calc-price-token">R$ {formatBRL(officialTokenCostBrl)}</span>
+                  </div>
+                  <div className="calc-bar-track">
+                    <div className="calc-bar-fill calc-fill-token" style={{ width: '100%' }} />
+                  </div>
+                  <span className="calc-bar-sub">≈ ${rawUsd.toFixed(2)} por mês</span>
                 </div>
-              </li>
-              <li>
-                <span className="savings-icon savings-icon-cross"><Cross /></span>
-                <div>
-                  <strong>5,38% de IOF + Spread bancário</strong>
-                  <p>Taxas extras embutidas em cada centavo cobrado no cartão internacional.</p>
-                </div>
-              </li>
-              <li>
-                <span className="savings-icon savings-icon-cross"><Cross /></span>
-                <div>
-                  <strong>Fatura surpresa no fim do mês</strong>
-                  <p>Sem teto de gastos: loops de depuração podem explodir seu orçamento.</p>
-                </div>
-              </li>
-              <li>
-                <span className="savings-icon savings-icon-cross"><Cross /></span>
-                <div>
-                  <strong>Bloqueios no meio do raciocínio</strong>
-                  <p>O temido "você atingiu o limite de mensagens até às 17h".</p>
-                </div>
-              </li>
-              <li>
-                <span className="savings-icon savings-icon-cross"><Cross /></span>
-                <div>
-                  <strong>Preso a uma única inteligência</strong>
-                  <p>Apenas Claude, sem acesso facilitado a GPT-4o ou GLM na mesma chave.</p>
-                </div>
-              </li>
-            </ul>
-          </div>
 
-          {/* Card 2: Com a Six (Destaque) */}
-          <div className="savings-card savings-card-six">
-            <div className="savings-pill-highlight">
-              <span>Economia de até 83%</span>
-            </div>
+                <div className="calc-bar-block">
+                  <div className="calc-bar-header">
+                    <span className="calc-field-label">NA SIX</span>
+                    <span className="calc-price-six">R$ {formatBRL(sixPlanCost)}</span>
+                  </div>
+                  <div className="calc-bar-track">
+                    <div
+                      className="calc-bar-fill calc-fill-six"
+                      style={{ width: `${sixBarPercentage}%` }}
+                    />
+                  </div>
+                  <span className="calc-bar-sub">{sixPlanSubtitle}</span>
+                </div>
 
-            <div className="savings-card-top">
-              <span className="savings-badge savings-badge-six">Com a Six</span>
-              <h3>Mais código, zero susto</h3>
-              <div className="savings-price-row">
-                <span className="savings-price-prefix">Pague em Reais</span>
-                <span className="savings-price-val savings-price-good">Até 6x mais barato</span>
-                <span className="savings-price-suffix">por token consumido</span>
+                <div className="calc-savings-box">
+                  <span className="calc-savings-tag">VOCÊ ECONOMIZA</span>
+                  <div className="calc-savings-number">R$ {formatBRL(calculatedSavings)}</div>
+                  <span className="calc-savings-mult">{savingsMultiplier}× mais barato · por mês</span>
+                  <a href="#teste" className="calc-cta-button">
+                    Começar agora <Arrow />
+                  </a>
+                </div>
               </div>
-              <p className="savings-card-desc">Preço previsível em Reais, cobrança simplificada e sem burocracia.</p>
             </div>
-
-            <ul className="savings-list">
-              <li>
-                <span className="savings-icon savings-icon-check"><Check /></span>
-                <div>
-                  <strong>Preço Fixo em Reais (BRL)</strong>
-                  <p>Você sabe exatamente quanto vai investir, sem depender da alta do dólar.</p>
-                </div>
-              </li>
-              <li>
-                <span className="savings-icon savings-icon-check"><Check /></span>
-                <div>
-                  <strong>Zero IOF e Zero Spread</strong>
-                  <p>Cobrança nacional transparente via Pix ou cartão sem nenhuma taxa oculta.</p>
-                </div>
-              </li>
-              <li>
-                <span className="savings-icon savings-icon-check"><Check /></span>
-                <div>
-                  <strong>Até 6x mais barato por token</strong>
-                  <p>Roteamento inteligente que barateia drasticamente o custo por linha de código.</p>
-                </div>
-              </li>
-              <li>
-                <span className="savings-icon savings-icon-check"><Check /></span>
-                <div>
-                  <strong>Fluxo contínuo sem travamentos</strong>
-                  <p>Code sem medo de ser interrompido por travas no meio do seu deploy.</p>
-                </div>
-              </li>
-              <li>
-                <span className="savings-icon savings-icon-check"><Check /></span>
-                <div>
-                  <strong>Claude 3.7, GPT-4o e GLM juntos</strong>
-                  <p>Use os modelos líderes de mercado com uma única chave no seu terminal.</p>
-                </div>
-              </li>
-            </ul>
-
-            <div className="savings-card-footer">
-              <a href="#teste" className="savings-cta-btn">
-                Quero economizar com a Six <Arrow />
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* 3 métricas de impacto */}
-        <div className="savings-stats-row">
-          <div className="savings-stat-card">
-            <span className="savings-stat-num">6x</span>
-            <span className="savings-stat-label">Mais código gerado pelo mesmo valor investido</span>
-          </div>
-          <div className="savings-stat-card">
-            <span className="savings-stat-num">~83%</span>
-            <span className="savings-stat-label">De economia comparado a faturas em Dólar na API oficial</span>
-          </div>
-          <div className="savings-stat-card">
-            <span className="savings-stat-num">R$ 0</span>
-            <span className="savings-stat-label">De IOF, spread cambial ou taxas ocultas na fatura</span>
           </div>
         </div>
       </section>
