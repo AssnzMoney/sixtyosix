@@ -97,7 +97,7 @@ export default function App() {
       <header className="nav-wrapper">
         <nav className="nav">
           <a className="brand" href="#top" aria-label="Six, início">
-            <img src="/assets/logo.png" alt="Six" className="brand-logo-img" />
+            <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" />
           </a>
           <div className="nav-links">
             <a href="#recursos">Recursos</a>
@@ -220,7 +220,7 @@ export default function App() {
 
       <section className="hands-section" id="recursos">
         <img className="hand hand-left" src="/assets/sixtysix-hand-reach.webp" alt="" />
-        <img className="hand hand-right" src="/assets/sixtysix-hand-logo.png" alt="" />
+        <img className="hand hand-right" src="/assets/sixtysix-hand-logo.webp" alt="" />
         <div className="hands-content shell">
           <div className="hands-eyebrow-container">
             <div className="hands-eyebrow-box">
@@ -496,7 +496,7 @@ export default function App() {
       <footer className="footer-wrap">
         <div className="shell footer-inner">
           <a className="brand footer-brand" href="#top" aria-label="Six, início">
-            <img src="/assets/logo.png" alt="Six" className="brand-logo-img brand-logo-footer" />
+            <img src="/assets/logo.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
           </a>
           <p>IA para quem constrói o futuro.</p>
           <span>© 2026 Sixtysix</span>

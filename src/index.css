@@ -385,18 +385,20 @@ h2 em { color: var(--green-dark); font-style: normal; }
   letter-spacing: 0.05em;
 }
 @keyframes marquee {
-  0% { transform: translateX(0%); }
-  100% { transform: translateX(-50%); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
 @keyframes marquee-reverse {
-  0% { transform: translateX(-50%); }
-  100% { transform: translateX(0%); }
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 .animate-marquee {
   display: flex !important;
   width: max-content !important;
-  animation: marquee var(--duration, 30s) linear infinite;
+  animation: marquee var(--duration, 35s) linear infinite;
   will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
 }
 .animate-marquee-reverse {
   animation-name: marquee-reverse;
@@ -469,9 +471,7 @@ h2 em { color: var(--green-dark); font-style: normal; }
   position: absolute;
   z-index: 1;
   pointer-events: none;
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
+  user-select: none;
 }
 .hand-left {
   display: block;
@@ -480,8 +480,7 @@ h2 em { color: var(--green-dark); font-style: normal; }
   top: 130px;
   z-index: 3;
   opacity: 1;
-  will-change: transform;
-  animation: float-left 6s ease-in-out infinite;
+  transform: rotate(-4deg);
 }
 .hand-right {
   display: block;
@@ -490,16 +489,7 @@ h2 em { color: var(--green-dark); font-style: normal; }
   top: 110px;
   z-index: 1;
   opacity: 1;
-  will-change: transform;
-  animation: float-right 6s ease-in-out 1s infinite;
-}
-@keyframes float-left {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(-4deg); }
-  50% { transform: translate3d(0, 10px, 0) rotate(-4deg); }
-}
-@keyframes float-right {
-  0%, 100% { transform: translate3d(0, 0, 0) rotate(4deg); }
-  50% { transform: translate3d(0, 10px, 0) rotate(4deg); }
+  transform: rotate(4deg);
 }
 .feature-grid {
   display: grid;
