@@ -14,6 +14,13 @@ const Check = () => (
   </svg>
 )
 
+const Cross = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+)
+
 const features = [
   ['01', 'Preço Fixo em Reais', 'Sem surpresas de cotação de dólar ou IOF no cartão. Previsibilidade total para você codar sem pesar no bolso.'],
   ['02', 'Pronto pro Terminal', 'Sem burocracia nem enrolação. Uma chave na sua máquina e você já está codando direto no Claude Code.'],
@@ -101,6 +108,7 @@ export default function App() {
           </a>
           <div className="nav-links">
             <a href="#recursos">Recursos</a>
+            <a href="#economia">Por que a Six</a>
             <a href="#como-funciona">Como funciona</a>
             <a href="#duvidas">Dúvidas</a>
           </div>
@@ -425,6 +433,151 @@ export default function App() {
                 </span>
               </a>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="savings-section shell" id="economia">
+        <div className="savings-header">
+          <span className="eyebrow">por que assinar a six</span>
+          <h2>
+            Quanto custa codar todo dia?<br />
+            Compare e veja a <em>economia real.</em>
+          </h2>
+          <p>
+            O Claude Code consome muitos tokens em repositórios reais. Pagar em dólar na Anthropic significa IOF, spread cambial e o risco de faturas de mais de R$ 800 no mês. Na Six você tem previsibilidade total em Reais e economiza até 6x.
+          </p>
+        </div>
+
+        <div className="savings-grid">
+          {/* Card 1: Tradicional em Dólar */}
+          <div className="savings-card savings-card-traditional">
+            <div className="savings-card-top">
+              <span className="savings-badge savings-badge-traditional">Assinatura Oficial + API</span>
+              <h3>O jeito tradicional</h3>
+              <div className="savings-price-row">
+                <span className="savings-price-prefix">Estimativa de</span>
+                <span className="savings-price-val savings-price-bad">R$ 550 a R$ 1.200</span>
+                <span className="savings-price-suffix">/mês em Dólar (USD)</span>
+              </div>
+              <p className="savings-card-desc">Sujeito a oscilações constantes do câmbio e consumo imprevisível de tokens.</p>
+            </div>
+
+            <ul className="savings-list">
+              <li>
+                <span className="savings-icon savings-icon-cross"><Cross /></span>
+                <div>
+                  <strong>Cobrança em Dólar (USD)</strong>
+                  <p>Cotação oscila todo dia, encarecendo suas sessões de código.</p>
+                </div>
+              </li>
+              <li>
+                <span className="savings-icon savings-icon-cross"><Cross /></span>
+                <div>
+                  <strong>5,38% de IOF + Spread bancário</strong>
+                  <p>Taxas extras embutidas em cada centavo cobrado no cartão internacional.</p>
+                </div>
+              </li>
+              <li>
+                <span className="savings-icon savings-icon-cross"><Cross /></span>
+                <div>
+                  <strong>Fatura surpresa no fim do mês</strong>
+                  <p>Sem teto de gastos: loops de depuração podem explodir seu orçamento.</p>
+                </div>
+              </li>
+              <li>
+                <span className="savings-icon savings-icon-cross"><Cross /></span>
+                <div>
+                  <strong>Bloqueios no meio do raciocínio</strong>
+                  <p>O temido "você atingiu o limite de mensagens até às 17h".</p>
+                </div>
+              </li>
+              <li>
+                <span className="savings-icon savings-icon-cross"><Cross /></span>
+                <div>
+                  <strong>Preso a uma única inteligência</strong>
+                  <p>Apenas Claude, sem acesso facilitado a GPT-4o ou GLM na mesma chave.</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          {/* Card 2: Com a Six (Destaque) */}
+          <div className="savings-card savings-card-six">
+            <div className="savings-pill-highlight">
+              <span>Economia de até 83%</span>
+            </div>
+
+            <div className="savings-card-top">
+              <span className="savings-badge savings-badge-six">Com a Six</span>
+              <h3>Mais código, zero susto</h3>
+              <div className="savings-price-row">
+                <span className="savings-price-prefix">Pague em Reais</span>
+                <span className="savings-price-val savings-price-good">Até 6x mais barato</span>
+                <span className="savings-price-suffix">por token consumido</span>
+              </div>
+              <p className="savings-card-desc">Preço previsível em Reais, cobrança simplificada e sem burocracia.</p>
+            </div>
+
+            <ul className="savings-list">
+              <li>
+                <span className="savings-icon savings-icon-check"><Check /></span>
+                <div>
+                  <strong>Preço Fixo em Reais (BRL)</strong>
+                  <p>Você sabe exatamente quanto vai investir, sem depender da alta do dólar.</p>
+                </div>
+              </li>
+              <li>
+                <span className="savings-icon savings-icon-check"><Check /></span>
+                <div>
+                  <strong>Zero IOF e Zero Spread</strong>
+                  <p>Cobrança nacional transparente via Pix ou cartão sem nenhuma taxa oculta.</p>
+                </div>
+              </li>
+              <li>
+                <span className="savings-icon savings-icon-check"><Check /></span>
+                <div>
+                  <strong>Até 6x mais barato por token</strong>
+                  <p>Roteamento inteligente que barateia drasticamente o custo por linha de código.</p>
+                </div>
+              </li>
+              <li>
+                <span className="savings-icon savings-icon-check"><Check /></span>
+                <div>
+                  <strong>Fluxo contínuo sem travamentos</strong>
+                  <p>Code sem medo de ser interrompido por travas no meio do seu deploy.</p>
+                </div>
+              </li>
+              <li>
+                <span className="savings-icon savings-icon-check"><Check /></span>
+                <div>
+                  <strong>Claude 3.7, GPT-4o e GLM juntos</strong>
+                  <p>Use os modelos líderes de mercado com uma única chave no seu terminal.</p>
+                </div>
+              </li>
+            </ul>
+
+            <div className="savings-card-footer">
+              <a href="#teste" className="savings-cta-btn">
+                Quero economizar com a Six <Arrow />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 métricas de impacto */}
+        <div className="savings-stats-row">
+          <div className="savings-stat-card">
+            <span className="savings-stat-num">6x</span>
+            <span className="savings-stat-label">Mais código gerado pelo mesmo valor investido</span>
+          </div>
+          <div className="savings-stat-card">
+            <span className="savings-stat-num">~83%</span>
+            <span className="savings-stat-label">De economia comparado a faturas em Dólar na API oficial</span>
+          </div>
+          <div className="savings-stat-card">
+            <span className="savings-stat-num">R$ 0</span>
+            <span className="savings-stat-label">De IOF, spread cambial ou taxas ocultas na fatura</span>
           </div>
         </div>
       </section>
