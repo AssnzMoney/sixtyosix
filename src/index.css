@@ -225,11 +225,16 @@ h1 em {
   font-family: 'Instrument Serif', 'Newsreader', Georgia, serif;
   font-style: italic;
   font-weight: 400;
-  color: #16a34a;
+  color: var(--green-dark);
   letter-spacing: -0.02em;
   font-size: 1.06em;
 }
-h2 em { color: #16a34a; font-style: normal; }
+h2 em {
+  font-family: 'Instrument Serif', 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--green-dark);
+}
 .marker-word {
   position: relative;
   display: inline-block;
@@ -851,11 +856,11 @@ h2 em { color: #16a34a; font-style: normal; }
    SIMULADOR DE ECONOMIA - ESTILO CONVERSACIONAL (ABACATEPAY)
    ========================================================================== */
 .calc-phrase-section {
-  padding: 100px 0 120px;
+  padding: 80px 0 100px;
 }
 
 .calc-phrase-wrap {
-  max-width: 960px;
+  max-width: 920px;
   margin: 0 auto;
   text-align: left;
 }
@@ -868,67 +873,67 @@ h2 em { color: #16a34a; font-style: normal; }
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--green);
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .calc-phrase-heading {
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(34px, 4.5vw, 56px);
+  font-size: clamp(28px, 3.4vw, 44px);
   font-weight: 700;
-  line-height: 1.35;
+  line-height: 1.45;
   letter-spacing: -0.035em;
   color: #1f4647;
-  margin: 0 0 24px;
+  margin: 0 0 20px;
 }
 
 .phrase-dropdown-wrap {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   vertical-align: baseline;
-  margin: 0 4px;
+  margin: 0 3px;
 }
 
 .phrase-pill {
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(26px, 3.8vw, 48px);
+  font-size: inherit;
   font-weight: 700;
+  letter-spacing: inherit;
   border-radius: 9999px;
-  padding: 2px 18px;
+  padding: 2px 14px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all .15s ease;
-  border: 1.5px solid transparent;
+  border: none;
   outline: none;
-  line-height: 1.15;
+  line-height: 1.2;
+  vertical-align: baseline;
 }
 
 .phrase-pill-amber {
   background: #fef3c7;
   color: #78350f;
-  border-color: rgba(245, 158, 11, 0.3);
 }
 
 .phrase-pill-amber:hover {
   background: #fde68a;
-  transform: translateY(-1px);
 }
 
 .phrase-pill-blue {
   background: #eff6ff;
   color: #1e40af;
-  border-color: rgba(59, 130, 246, 0.25);
 }
 
 .phrase-pill-blue:hover {
   background: #dbeafe;
-  transform: translateY(-1px);
 }
 
 .phrase-caret {
   transition: transform .2s ease;
   stroke: currentColor;
+  flex-shrink: 0;
 }
 
 .phrase-caret.is-open {
@@ -936,7 +941,7 @@ h2 em { color: #16a34a; font-style: normal; }
 }
 
 .phrase-price-val {
-  color: #b91c1c;
+  color: var(--green-dark);
   font-weight: 800;
   display: inline-block;
   font-family: 'Fustat', sans-serif;
