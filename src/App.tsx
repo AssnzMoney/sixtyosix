@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 
@@ -136,6 +136,20 @@ export default function App() {
 
   const [volIdx, setVolIdx] = useState(4)
   const [activeCalcModel, setActiveCalcModel] = useState('sonnet')
+  const [volDropdownOpen, setVolDropdownOpen] = useState(false)
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.phrase-dropdown-wrap')) {
+        setModelDropdownOpen(false)
+        setVolDropdownOpen(false)
+      }
+    }
+    document.addEventListener('click', handleOutsideClick)
+    return () => document.removeEventListener('click', handleOutsideClick)
+  }, [])
 
   const currentVol = volumeLevels[volIdx].value
   const currentModel = calcModels.find((m) => m.id === activeCalcModel) || calcModels[0]
@@ -515,120 +529,116 @@ export default function App() {
         </div>
       </section>
 
-      <section className="calc-section shell" id="economia">
-        <div className="calc-header">
-          <span className="eyebrow">por que assinar a six</span>
-          <h2>
-            Economize até <em>6x</em> em tokens.<br />
-            Veja a diferença na prática.
-          </h2>
-          <p>
-            O Claude Code consome milhares de tokens lendo seu repositório a cada comando. Compare o custo imprevisível de pagar por token em Dólar na Anthropic com a assinatura previsível da Six em Reais.
-          </p>
-        </div>
+      <section className="calc-phrase-section shell" id="economia">
+        <div className="calc-phrase-wrap">
+          <span className="eyebrow">simulador de economia</span>
 
-        <div className="calc-card">
-          <div className="calc-grid">
-            {/* Coluna da Esquerda: Controles */}
-            <div className="calc-left">
-              <div className="calc-vol-header">
-                <span className="calc-field-label">SEU RITMO NO TERMINAL</span>
-                <span className="calc-vol-counter">{currentVol.toLocaleString('pt-BR')} <small>prompts/mês</small></span>
-              </div>
+          <h2 className="calc-phrase-heading">
+            Eu quero fazer{' '}
+            <span className="phrase-dropdown-wrap">
+              <button
+                type="button"
+                className="phrase-pill phrase-pill-amber"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setVolDropdownOpen(!volDropdownOpen)
+                  setModelDropdownOpen(false)
+                }}
+                aria-haspopup="listbox"
+                aria-expanded={volDropdownOpen}
+              >
+                <span>{currentVol.toLocaleString('pt-BR')} prompts/mês</span>
+                <svg className={`phrase-caret ${volDropdownOpen ? 'is-open' : ''}`} width="13" height="13" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
 
-              <div className="calc-pills-row">
-                {volumeLevels.map((lvl, index) => (
-                  <button
-                    key={lvl.label}
-                    type="button"
-                    className={`calc-pill-btn ${volIdx === index ? 'is-active' : ''}`}
-                    onClick={() => setVolIdx(index)}
-                  >
-                    {lvl.label}
-                  </button>
-                ))}
-              </div>
+              {volDropdownOpen && (
+                <div className="phrase-menu phrase-menu-amber">
+                  {volumeLevels.map((lvl, index) => (
+                    <button
+                      key={lvl.label}
+                      type="button"
+                      className={`phrase-menu-item ${volIdx === index ? 'is-selected' : ''}`}
+                      onClick={() => {
+                        setVolIdx(index)
+                        setVolDropdownOpen(false)
+                      }}
+                    >
+                      <span>{lvl.value.toLocaleString('pt-BR')} prompts/mês</span>
+                      {volIdx === index && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>{' '}
+            usando{' '}
+            <span className="phrase-dropdown-wrap">
+              <button
+                type="button"
+                className="phrase-pill phrase-pill-blue"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setModelDropdownOpen(!modelDropdownOpen)
+                  setVolDropdownOpen(false)
+                }}
+                aria-haspopup="listbox"
+                aria-expanded={modelDropdownOpen}
+              >
+                <span>{currentModel.name}</span>
+                <svg className={`phrase-caret ${modelDropdownOpen ? 'is-open' : ''}`} width="13" height="13" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
 
-              <div className="calc-slider-wrap">
-                <input
-                  type="range"
-                  min="0"
-                  max={volumeLevels.length - 1}
-                  step="1"
-                  value={volIdx}
-                  onChange={(e) => setVolIdx(Number(e.target.value))}
-                  className="calc-range-slider"
-                  style={{
-                    background: `linear-gradient(to right, #22c55e ${(volIdx / (volumeLevels.length - 1)) * 100}%, rgba(31, 70, 71, 0.12) ${(volIdx / (volumeLevels.length - 1)) * 100}%)`,
-                  }}
-                  aria-label="Volume de mensagens por mês"
-                />
-              </div>
-
-              <div className="calc-model-section">
-                <span className="calc-field-label">MODELO PRINCIPAL UTILIZADO</span>
-                <div className="calc-model-grid">
+              {modelDropdownOpen && (
+                <div className="phrase-menu phrase-menu-blue">
                   {calcModels.map((m) => (
                     <button
                       key={m.id}
                       type="button"
-                      className={`calc-model-card ${activeCalcModel === m.id ? 'is-active' : ''}`}
-                      onClick={() => setActiveCalcModel(m.id)}
+                      className={`phrase-menu-item ${activeCalcModel === m.id ? 'is-selected' : ''}`}
+                      onClick={() => {
+                        setActiveCalcModel(m.id)
+                        setModelDropdownOpen(false)
+                      }}
                     >
-                      <div className="calc-model-icon">
-                        <span>AI</span>
-                      </div>
-                      <div className="calc-model-info">
+                      <div className="phrase-menu-model-info">
                         <strong>{m.name}</strong>
                         <small>${m.inPrice.toFixed(2)} / ${m.outPrice.toFixed(2)} por 1M</small>
                       </div>
+                      {activeCalcModel === m.id && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
                     </button>
                   ))}
                 </div>
-              </div>
+              )}
+            </span>{' '}
+            na Six, então vou pagar apenas{' '}
+            <span className="phrase-price-val">R$ {formatBRL(sixPlanCost)}.</span>
+          </h2>
 
-              <p className="calc-premises-note">
-                * Estimativa baseada no uso real de desenvolvimento (~2.000 tokens de contexto/código e 800 de saída por prompt), ao preço de tabela oficial convertido com Dólar PTAX + 5,38% de IOF.
-              </p>
-            </div>
+          <p className="calc-phrase-sub">
+            Você economiza <strong className="phrase-green-num">R$ {formatBRL(calculatedSavings)}</strong>, cerca de{' '}
+            <strong>{savingsMultiplier}x mais barato</strong> do que na API oficial em Dólar (≈ R$ {formatBRL(officialTokenCostBrl)}).
+          </p>
 
-            {/* Coluna da Direita: Comparativo e Economia */}
-            <div className="calc-right">
-              <div className="calc-bar-block">
-                <div className="calc-bar-header">
-                  <span className="calc-field-label-dark">API OFICIAL (USD + IOF)</span>
-                  <span className="calc-price-token">R$ {formatBRL(officialTokenCostBrl)}</span>
-                </div>
-                <div className="calc-bar-track">
-                  <div className="calc-bar-fill calc-fill-token" style={{ width: '100%' }} />
-                </div>
-                <span className="calc-bar-sub">≈ ${rawUsd.toFixed(2)} /mês na fatura do cartão internacional</span>
-              </div>
-
-              <div className="calc-bar-block">
-                <div className="calc-bar-header">
-                  <span className="calc-field-label-dark">COM A SIX (EM REAIS)</span>
-                  <span className="calc-price-six">R$ {formatBRL(sixPlanCost)}</span>
-                </div>
-                <div className="calc-bar-track">
-                  <div
-                    className="calc-bar-fill calc-fill-six"
-                    style={{ width: `${sixBarPercentage}%` }}
-                  />
-                </div>
-                <span className="calc-bar-sub-six">{sixPlanSubtitle} — zero IOF e sem sustos</span>
-              </div>
-
-              <div className="calc-savings-box">
-                <span className="calc-savings-tag">SUA ECONOMIA ESTIMADA</span>
-                <div className="calc-savings-number">R$ {formatBRL(calculatedSavings)}</div>
-                <span className="calc-savings-mult">Até {savingsMultiplier}x mais barato · por mês</span>
-                <a href="#teste" className="calc-cta-button">
-                  Quero economizar com a Six <Arrow />
-                </a>
-              </div>
-            </div>
+          <div className="calc-phrase-action-wrap">
+            <a href="#teste" className="phrase-cta-btn">
+              Começar a codar agora <Arrow />
+            </a>
           </div>
+
+          <p className="calc-phrase-footnote">
+            Cobrança em Reais via Pix. Sem IOF de 5,38%, sem spread e sem faturas surpresa.
+          </p>
         </div>
       </section>
 

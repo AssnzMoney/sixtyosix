@@ -225,11 +225,11 @@ h1 em {
   font-family: 'Instrument Serif', 'Newsreader', Georgia, serif;
   font-style: italic;
   font-weight: 400;
-  color: var(--green-dark);
+  color: #16a34a;
   letter-spacing: -0.02em;
   font-size: 1.06em;
 }
-h2 em { color: var(--green-dark); font-style: normal; }
+h2 em { color: #16a34a; font-style: normal; }
 .marker-word {
   position: relative;
   display: inline-block;
@@ -848,423 +848,221 @@ h2 em { color: var(--green-dark); font-style: normal; }
 }
 
 /* ==========================================================================
-   SIMULADOR DE ECONOMIA - SIXTYSIX
+   SIMULADOR DE ECONOMIA - ESTILO CONVERSACIONAL (ABACATEPAY)
    ========================================================================== */
-.calc-section {
-  padding: 80px 0 110px;
+.calc-phrase-section {
+  padding: 100px 0 120px;
 }
 
-.calc-header {
-  text-align: center;
-  max-width: 760px;
-  margin: 0 auto 52px;
-}
-
-.calc-header h2 {
-  font-size: clamp(38px, 4.8vw, 60px);
-  line-height: 1.06;
-  letter-spacing: -0.04em;
-  color: #1f4647;
-  margin: 14px 0 18px;
-}
-
-.calc-header h2 em {
-  font-family: 'Instrument Serif', 'Newsreader', Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  color: #16a34a;
-}
-
-.calc-header p {
-  color: var(--muted);
-  font-size: 17px;
-  line-height: 1.6;
+.calc-phrase-wrap {
+  max-width: 960px;
   margin: 0 auto;
-}
-
-/* Card Principal da Calculadora */
-.calc-card {
-  background: #ffffff;
-  border: 1.5px solid rgba(31, 70, 71, 0.12);
-  border-radius: 28px;
-  padding: 40px;
-  box-shadow: 0 20px 60px -15px rgba(31, 70, 71, 0.08), 0 2px 10px rgba(31, 70, 71, 0.03);
-}
-
-.calc-grid {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 40px;
-  align-items: stretch;
-}
-
-/* Coluna Esquerda: Controles */
-.calc-left {
-  display: flex;
-  flex-direction: column;
-}
-
-.calc-field-label {
-  display: block;
-  font-family: 'DM Mono', monospace;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  text-transform: uppercase;
-  margin-bottom: 12px;
-}
-
-.calc-vol-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.calc-vol-counter {
-  font-family: 'Fustat', sans-serif;
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: #1f4647;
-  line-height: 1;
-}
-
-.calc-vol-counter small {
-  font-family: 'Manrope', sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-  margin-left: 6px;
-}
-
-/* Pills row (Cápsulas estilo Six) */
-.calc-pills-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  margin-bottom: 18px;
-}
-
-.calc-pill-btn {
-  background: #f4f6f5;
-  border: 1px solid rgba(31, 70, 71, 0.1);
-  border-radius: 9999px;
-  color: #1f4647;
-  font-family: 'Manrope', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 7px 0;
-  cursor: pointer;
-  transition: all .15s ease;
-  outline: none;
-  text-align: center;
-}
-
-.calc-pill-btn:hover {
-  background: #e9ecea;
-  color: #1f4647;
-}
-
-.calc-pill-btn.is-active {
-  background: var(--green);
-  border-color: var(--green);
-  color: #082417;
-  font-weight: 800;
-  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
-}
-
-/* Range Slider */
-.calc-slider-wrap {
-  position: relative;
-  margin: 4px 0 28px;
-}
-
-.calc-range-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 6px;
-  border-radius: 9999px;
-  outline: none;
-  cursor: pointer;
-  background: rgba(31, 70, 71, 0.12);
-}
-
-.calc-range-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 3px solid var(--green);
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.5), 0 1px 3px rgba(0, 0, 0, 0.1);
-  cursor: grab;
-  transition: transform .15s ease, box-shadow .15s ease;
-}
-
-.calc-range-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 0 14px rgba(34, 197, 94, 0.8);
-}
-
-.calc-range-slider::-webkit-slider-thumb:active {
-  cursor: grabbing;
-}
-
-.calc-range-slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #ffffff;
-  border: 3px solid var(--green);
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.5);
-  cursor: grab;
-}
-
-/* Grade de Modelos */
-.calc-model-section {
-  margin-top: 6px;
-}
-
-.calc-model-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.calc-model-card {
-  background: #f8faf9;
-  border: 1.5px solid rgba(31, 70, 71, 0.1);
-  border-radius: 14px;
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
   text-align: left;
-  transition: all .15s ease;
-  outline: none;
 }
 
-.calc-model-card:hover {
-  background: #eef3f1;
-  border-color: rgba(31, 70, 71, 0.2);
-}
-
-.calc-model-card.is-active {
-  background: var(--mint);
-  border-color: var(--green);
-  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.18);
-}
-
-.calc-model-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
-  background: rgba(31, 70, 71, 0.08);
-  display: grid;
-  place-items: center;
+.calc-phrase-wrap .eyebrow {
+  display: inline-block;
   font-family: 'DM Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--green);
+  margin-bottom: 24px;
+}
+
+.calc-phrase-heading {
+  font-family: 'Fustat', sans-serif;
+  font-size: clamp(34px, 4.5vw, 56px);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.035em;
   color: #1f4647;
-  flex-shrink: 0;
+  margin: 0 0 24px;
+}
+
+.phrase-dropdown-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: baseline;
+  margin: 0 4px;
+}
+
+.phrase-pill {
+  font-family: 'Fustat', sans-serif;
+  font-size: clamp(26px, 3.8vw, 48px);
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 2px 18px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   transition: all .15s ease;
+  border: 1.5px solid transparent;
+  outline: none;
+  line-height: 1.15;
 }
 
-.calc-model-card.is-active .calc-model-icon {
-  background: var(--green);
-  color: #082417;
+.phrase-pill-amber {
+  background: #fef3c7;
+  color: #78350f;
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
-.calc-model-info {
+.phrase-pill-amber:hover {
+  background: #fde68a;
+  transform: translateY(-1px);
+}
+
+.phrase-pill-blue {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.phrase-pill-blue:hover {
+  background: #dbeafe;
+  transform: translateY(-1px);
+}
+
+.phrase-caret {
+  transition: transform .2s ease;
+  stroke: currentColor;
+}
+
+.phrase-caret.is-open {
+  transform: rotate(180deg);
+}
+
+.phrase-price-val {
+  color: #b91c1c;
+  font-weight: 800;
+  display: inline-block;
+  font-family: 'Fustat', sans-serif;
+}
+
+/* Floating Dropdown Menus */
+.phrase-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 260px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 6px;
+  box-shadow: 0 16px 38px -6px rgba(31, 70, 71, 0.18), 0 2px 10px rgba(31, 70, 71, 0.05);
+  border: 1px solid rgba(31, 70, 71, 0.12);
+  z-index: 100;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow: hidden;
 }
 
-.calc-model-info strong {
+.phrase-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
   font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f4647;
+  transition: background .15s ease;
+  width: 100%;
+}
+
+.phrase-menu-item:hover {
+  background: #f4f6f5;
+  color: #1f4647;
+}
+
+.phrase-menu-item.is-selected {
+  background: var(--mint);
+  color: #0b4334;
+  font-weight: 700;
+}
+
+.phrase-menu-model-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.phrase-menu-model-info strong {
   font-size: 13.5px;
   font-weight: 700;
   color: #1f4647;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.calc-model-info small {
+.phrase-menu-model-info small {
   font-family: 'DM Mono', monospace;
   font-size: 11px;
   color: var(--muted);
 }
 
-.calc-premises-note {
-  margin: 22px 0 0;
-  font-size: 12.5px;
-  line-height: 1.55;
+/* Subtitle */
+.calc-phrase-sub {
+  font-size: 17px;
+  line-height: 1.6;
   color: var(--muted);
+  margin: 0 0 32px;
+  max-width: 760px;
 }
 
-/* Coluna Direita: Box Escuro Signature da Six */
-.calc-right {
-  background: var(--green-dark);
-  border-radius: 22px;
-  padding: 32px 28px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 20px;
-  box-shadow: 0 16px 40px -8px rgba(18, 52, 53, 0.4);
-}
-
-.calc-field-label-dark {
-  display: block;
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: #8fa6a3;
-  text-transform: uppercase;
-}
-
-.calc-bar-block {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.calc-bar-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.calc-price-token {
-  font-family: 'DM Mono', monospace;
-  font-size: 20px;
+.phrase-green-num {
+  color: #16a34a;
   font-weight: 800;
-  color: #fb7185;
-  letter-spacing: -0.02em;
 }
 
-.calc-price-six {
-  font-family: 'DM Mono', monospace;
-  font-size: 20px;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: -0.02em;
-}
-
-.calc-bar-track {
-  width: 100%;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 9999px;
-  overflow: hidden;
-  position: relative;
-}
-
-.calc-bar-fill {
-  height: 100%;
-  border-radius: 9999px;
-  transition: width .3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.calc-fill-token {
-  background: #f43f5e;
-  box-shadow: 0 0 10px rgba(244, 63, 94, 0.5);
-}
-
-.calc-fill-six {
-  background: var(--green);
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
-}
-
-.calc-bar-sub {
-  font-size: 11.5px;
-  color: #8fa6a3;
-  font-weight: 500;
-}
-
-.calc-bar-sub-six {
-  font-size: 11.5px;
-  color: #86efac;
-  font-weight: 600;
-}
-
-/* Card de Economia */
-.calc-savings-box {
-  background: rgba(34, 197, 94, 0.12);
-  border: 1.5px solid rgba(34, 197, 94, 0.35);
-  border-radius: 18px;
-  padding: 22px 20px;
-  display: flex;
-  flex-direction: column;
-}
-
-.calc-savings-tag {
-  font-family: 'DM Mono', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #86efac;
-}
-
-.calc-savings-number {
-  font-family: 'Fustat', sans-serif;
-  font-size: clamp(34px, 3.8vw, 44px);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  color: #22c55e;
-  line-height: 1.05;
-  margin: 6px 0 4px;
-}
-
-.calc-savings-mult {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: #d1fae5;
+/* CTA & Footnote */
+.calc-phrase-action-wrap {
   margin-bottom: 18px;
 }
 
-.calc-cta-button {
-  display: flex;
+.phrase-cta-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 48px;
+  gap: 10px;
+  height: 52px;
+  padding: 0 32px;
   background: var(--green);
   color: #082417;
   font-family: 'Fustat', sans-serif;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   border-radius: 9999px;
   text-decoration: none;
   transition: all .2s ease;
-  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35);
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.32);
 }
 
-.calc-cta-button:hover {
+.phrase-cta-btn:hover {
   background: #1eb856;
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(34, 197, 94, 0.45);
+  box-shadow: 0 8px 22px rgba(34, 197, 94, 0.42);
 }
 
-.calc-cta-button svg {
-  width: 16px;
-  height: 16px;
+.phrase-cta-btn svg {
   transition: transform .2s ease;
 }
 
-.calc-cta-button:hover svg {
+.phrase-cta-btn:hover svg {
   transform: translateX(3px);
+}
+
+.calc-phrase-footnote {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+  font-weight: 500;
 }
 
 .faq { display: grid; grid-template-columns: .8fr 1.2fr; gap: 100px; padding: 40px 0 130px; }
@@ -1434,12 +1232,10 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   .integration-copy { order: 1; text-align: center; align-items: center; }
   .snippet-box { width: 100%; }
   .integration-actions { justify-content: center; }
-  .calc-section { padding: 60px 0 70px; }
-  .calc-card { padding: 24px 18px; border-radius: 20px; }
-  .calc-grid { grid-template-columns: 1fr; gap: 32px; }
-  .calc-pills-row { gap: 4px; }
-  .calc-pill-btn { font-size: 11.5px; padding: 6px 0; }
-  .calc-model-grid { grid-template-columns: 1fr; gap: 8px; }
+  .calc-phrase-section { padding: 60px 0 70px; }
+  .calc-phrase-heading { font-size: 32px; line-height: 1.4; }
+  .phrase-pill { font-size: 26px; padding: 2px 14px; }
+  .phrase-menu { min-width: 220px; }
   .faq { grid-template-columns: 1fr; gap: 30px; padding-bottom: 85px; }
   .faq h2 { font-size: 44px; }
   .final-cta { padding: 90px 0 70px; border-radius: 36px 36px 0 0; }
