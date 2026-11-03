@@ -865,17 +865,6 @@ h2 em {
   text-align: left;
 }
 
-.calc-phrase-wrap .eyebrow {
-  display: inline-block;
-  font-family: 'DM Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--green);
-  margin-bottom: 20px;
-}
-
 .calc-phrase-heading {
   font-family: 'Fustat', sans-serif;
   font-size: clamp(28px, 3.4vw, 44px);

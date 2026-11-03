@@ -531,8 +531,6 @@ export default function App() {
 
       <section className="calc-phrase-section shell" id="economia">
         <div className="calc-phrase-wrap">
-          <span className="eyebrow">simulador de economia</span>
-
           <h2 className="calc-phrase-heading">
             Eu quero fazer{' '}
             <span className="phrase-dropdown-wrap">
