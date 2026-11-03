@@ -89,6 +89,7 @@ const calcModels = [
   {
     id: 'sonnet',
     name: 'Claude 3.7 Sonnet',
+    shortName: 'Claude 3.7',
     tag: 'Anthropic',
     inPrice: 3.0,
     outPrice: 15.0,
@@ -96,6 +97,7 @@ const calcModels = [
   {
     id: 'haiku',
     name: 'Claude 3.5 Haiku',
+    shortName: 'Claude 3.5',
     tag: 'Anthropic',
     inPrice: 0.8,
     outPrice: 4.0,
@@ -103,6 +105,7 @@ const calcModels = [
   {
     id: 'gpt4o',
     name: 'GPT-4o',
+    shortName: 'GPT-4o',
     tag: 'OpenAI',
     inPrice: 2.5,
     outPrice: 10.0,
@@ -110,6 +113,7 @@ const calcModels = [
   {
     id: 'glm',
     name: 'GLM-4',
+    shortName: 'GLM-4',
     tag: 'Z.ai',
     inPrice: 1.0,
     outPrice: 2.0,
@@ -117,13 +121,12 @@ const calcModels = [
 ]
 
 const volumeLevels = [
-  { label: '250', value: 250 },
-  { label: '500', value: 500 },
-  { label: '1k', value: 1000 },
-  { label: '2k', value: 2000 },
-  { label: '4k', value: 4000 },
-  { label: '8k', value: 8000 },
-  { label: '16k', value: 16000 },
+  { label: '500 prompts', value: 500 },
+  { label: '1.000 prompts', value: 1000 },
+  { label: '2.000 prompts', value: 2000 },
+  { label: '4.000 prompts', value: 4000 },
+  { label: '8.000 prompts', value: 8000 },
+  { label: '16.000 prompts', value: 16000 },
 ]
 
 export default function App() {
@@ -134,7 +137,7 @@ export default function App() {
   const [integrationAction, setIntegrationAction] = useState<'primary' | 'secondary'>('primary')
   const [finalAction, setFinalAction] = useState<'primary' | 'secondary'>('primary')
 
-  const [volIdx, setVolIdx] = useState(4)
+  const [volIdx, setVolIdx] = useState(3)
   const [activeCalcModel, setActiveCalcModel] = useState('sonnet')
   const [volDropdownOpen, setVolDropdownOpen] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
@@ -545,9 +548,9 @@ export default function App() {
                 aria-haspopup="listbox"
                 aria-expanded={volDropdownOpen}
               >
-                <span>{currentVol.toLocaleString('pt-BR')} prompts/mês</span>
-                <svg className={`phrase-caret ${volDropdownOpen ? 'is-open' : ''}`} width="13" height="13" viewBox="0 0 12 12" fill="none">
-                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <span>{currentVol.toLocaleString('pt-BR')} prompts</span>
+                <svg className={`phrase-caret ${volDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
 
@@ -563,7 +566,7 @@ export default function App() {
                         setVolDropdownOpen(false)
                       }}
                     >
-                      <span>{lvl.value.toLocaleString('pt-BR')} prompts/mês</span>
+                      <span>{lvl.value.toLocaleString('pt-BR')} prompts</span>
                       {volIdx === index && (
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <polyline points="20 6 9 17 4 12" />
@@ -587,9 +590,9 @@ export default function App() {
                 aria-haspopup="listbox"
                 aria-expanded={modelDropdownOpen}
               >
-                <span>{currentModel.name}</span>
-                <svg className={`phrase-caret ${modelDropdownOpen ? 'is-open' : ''}`} width="13" height="13" viewBox="0 0 12 12" fill="none">
-                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <span>{currentModel.shortName}</span>
+                <svg className={`phrase-caret ${modelDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
+                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
 
@@ -619,13 +622,13 @@ export default function App() {
                 </div>
               )}
             </span>{' '}
-            na Six, então vou pagar apenas{' '}
+            na Six, então vou pagar de taxa{' '}
             <span className="phrase-price-val">R$ {formatBRL(sixPlanCost)}.</span>
           </h2>
 
           <p className="calc-phrase-sub">
             Você economiza <strong className="phrase-green-num">R$ {formatBRL(calculatedSavings)}</strong>, cerca de{' '}
-            <strong>{savingsMultiplier}x mais barato</strong> do que na API oficial em Dólar (≈ R$ {formatBRL(officialTokenCostBrl)}).
+            {savingsMultiplier}x mais barato do que na API oficial.
           </p>
 
           <div className="calc-phrase-action-wrap">
@@ -635,7 +638,7 @@ export default function App() {
           </div>
 
           <p className="calc-phrase-footnote">
-            Cobrança em Reais via Pix. Sem IOF de 5,38%, sem spread e sem faturas surpresa.
+            Sem mensalidade surpresa. Cobrança em Reais via Pix.
           </p>
         </div>
       </section>
