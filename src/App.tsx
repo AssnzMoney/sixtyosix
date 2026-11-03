@@ -535,95 +535,100 @@ export default function App() {
       <section className="calc-phrase-section shell" id="economia">
         <div className="calc-phrase-wrap">
           <h2 className="calc-phrase-heading">
-            Eu quero fazer{' '}
-            <span className="phrase-dropdown-wrap">
-              <button
-                type="button"
-                className="phrase-pill phrase-pill-amber"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setVolDropdownOpen(!volDropdownOpen)
-                  setModelDropdownOpen(false)
-                }}
-                aria-haspopup="listbox"
-                aria-expanded={volDropdownOpen}
-              >
-                <span>{currentVol.toLocaleString('pt-BR')} prompts</span>
-                <svg className={`phrase-caret ${volDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
-                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+            <span className="calc-phrase-line">
+              Eu quero fazer{' '}
+              <span className="phrase-dropdown-wrap">
+                <button
+                  type="button"
+                  className="phrase-pill phrase-pill-amber"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setVolDropdownOpen(!volDropdownOpen)
+                    setModelDropdownOpen(false)
+                  }}
+                  aria-haspopup="listbox"
+                  aria-expanded={volDropdownOpen}
+                >
+                  <span>{currentVol.toLocaleString('pt-BR')} prompts</span>
+                  <svg className={`phrase-caret ${volDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
+                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
 
-              {volDropdownOpen && (
-                <div className="phrase-menu phrase-menu-amber">
-                  {volumeLevels.map((lvl, index) => (
-                    <button
-                      key={lvl.label}
-                      type="button"
-                      className={`phrase-menu-item ${volIdx === index ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        setVolIdx(index)
-                        setVolDropdownOpen(false)
-                      }}
-                    >
-                      <span>{lvl.value.toLocaleString('pt-BR')} prompts</span>
-                      {volIdx === index && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </span>{' '}
-            usando{' '}
-            <span className="phrase-dropdown-wrap">
-              <button
-                type="button"
-                className="phrase-pill phrase-pill-blue"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setModelDropdownOpen(!modelDropdownOpen)
-                  setVolDropdownOpen(false)
-                }}
-                aria-haspopup="listbox"
-                aria-expanded={modelDropdownOpen}
-              >
-                <span>{currentModel.shortName}</span>
-                <svg className={`phrase-caret ${modelDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
-                  <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+                {volDropdownOpen && (
+                  <div className="phrase-menu phrase-menu-amber">
+                    {volumeLevels.map((lvl, index) => (
+                      <button
+                        key={lvl.label}
+                        type="button"
+                        className={`phrase-menu-item ${volIdx === index ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          setVolIdx(index)
+                          setVolDropdownOpen(false)
+                        }}
+                      >
+                        <span>{lvl.value.toLocaleString('pt-BR')} prompts</span>
+                        {volIdx === index && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </span>{' '}
+              usando{' '}
+              <span className="phrase-dropdown-wrap">
+                <button
+                  type="button"
+                  className="phrase-pill phrase-pill-blue"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setModelDropdownOpen(!modelDropdownOpen)
+                    setVolDropdownOpen(false)
+                  }}
+                  aria-haspopup="listbox"
+                  aria-expanded={modelDropdownOpen}
+                >
+                  <span>{currentModel.shortName}</span>
+                  <svg className={`phrase-caret ${modelDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
+                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
 
-              {modelDropdownOpen && (
-                <div className="phrase-menu phrase-menu-blue">
-                  {calcModels.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className={`phrase-menu-item ${activeCalcModel === m.id ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        setActiveCalcModel(m.id)
-                        setModelDropdownOpen(false)
-                      }}
-                    >
-                      <div className="phrase-menu-model-info">
-                        <strong>{m.name}</strong>
-                        <small>${m.inPrice.toFixed(2)} / ${m.outPrice.toFixed(2)} por 1M</small>
-                      </div>
-                      {activeCalcModel === m.id && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </span>{' '}
-            na Six, então vou pagar de taxa{' '}
-            <span className="phrase-price-val">R$ {formatBRL(sixPlanCost)}.</span>
+                {modelDropdownOpen && (
+                  <div className="phrase-menu phrase-menu-blue">
+                    {calcModels.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={`phrase-menu-item ${activeCalcModel === m.id ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          setActiveCalcModel(m.id)
+                          setModelDropdownOpen(false)
+                        }}
+                      >
+                        <div className="phrase-menu-model-info">
+                          <strong>{m.name}</strong>
+                          <small>${m.inPrice.toFixed(2)} / ${m.outPrice.toFixed(2)} por 1M</small>
+                        </div>
+                        {activeCalcModel === m.id && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </span>{' '}
+              na
+            </span>
+            <span className="calc-phrase-line">
+              Six, então vou pagar de taxa{' '}
+              <span className="phrase-price-val">R$ {formatBRL(sixPlanCost)}.</span>
+            </span>
           </h2>
 
           <p className="calc-phrase-sub">
