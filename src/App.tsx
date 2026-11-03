@@ -25,7 +25,7 @@ const features = [
   ['01', 'Preço Fixo em Reais', 'Sem surpresas de cotação de dólar ou IOF no cartão. Previsibilidade total para você codar sem pesar no bolso.'],
   ['02', 'Pronto pro Terminal', 'Sem burocracia nem enrolação. Uma chave na sua máquina e você já está codando direto no Claude Code.'],
   ['03', 'Poucos Minutos pra Ativar', 'Criou a conta, escolheu o plano e ativou. Suporte direto e rápido de dev para dev.'],
-  ['04', 'API, CLI & +15 Modelos', 'Acesse Claude 3.7 Sonnet, Claude Opus, GPT-6 Astra e o3 Pro com a mesma chave e controle total de consumo.'],
+  ['04', 'API, CLI & +15 Modelos', 'Acesse Claude Opus 5.5, GPT Astra 6 e GLM-4 Plus com a mesma chave e controle total de consumo.'],
 ]
 
 const faqs = [
@@ -87,36 +87,28 @@ const partners = [
 
 const calcModels = [
   {
-    id: 'sonnet',
-    name: 'Claude 3.7 Sonnet',
-    shortName: 'Claude 3.7',
-    tag: 'Anthropic',
-    inPrice: 3.0,
-    outPrice: 15.0,
-  },
-  {
     id: 'opus',
-    name: 'Claude Opus 3.7',
-    shortName: 'Claude Opus',
+    name: 'Claude Opus 5.5',
+    shortName: 'Claude Opus 5.5',
     tag: 'Anthropic',
     inPrice: 5.0,
     outPrice: 25.0,
   },
   {
     id: 'astra',
-    name: 'GPT-6 Astra',
-    shortName: 'Astra 6',
+    name: 'GPT Astra 6',
+    shortName: 'GPT Astra 6',
     tag: 'OpenAI',
     inPrice: 2.5,
     outPrice: 12.0,
   },
   {
-    id: 'o3',
-    name: 'OpenAI o3 Pro',
-    shortName: 'o3 Pro',
-    tag: 'OpenAI',
-    inPrice: 5.0,
-    outPrice: 20.0,
+    id: 'glm',
+    name: 'GLM-4 Plus',
+    shortName: 'GLM-4 Plus',
+    tag: 'Z.ai',
+    inPrice: 1.5,
+    outPrice: 3.0,
   },
 ]
 
@@ -138,7 +130,7 @@ export default function App() {
   const [finalAction, setFinalAction] = useState<'primary' | 'secondary'>('primary')
 
   const [volIdx, setVolIdx] = useState(3)
-  const [activeCalcModel, setActiveCalcModel] = useState('sonnet')
+  const [activeCalcModel, setActiveCalcModel] = useState('opus')
   const [volDropdownOpen, setVolDropdownOpen] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
 
