@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { Plus, Minus, ChevronDown, ArrowRight } from 'lucide-react'
-import { Awards } from '@/components/ui/award'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1041,19 +1040,6 @@ export default function App() {
               </svg>
             </a>
           </div>
-        </div>
-
-        {/* Selo / Award de IA Discreto abaixo das logos e redes */}
-        <div className="shell footer-award-wrap">
-          <Awards
-            variant="award"
-            level="gold"
-            title="OFFICIAL AI INFRA"
-            subtitle="Conexão direta com Claude Fable 5.1 & GPT Astra 6"
-            recipient="SixtySix Platform"
-            date="Top Dev Choice · 2026"
-            className="footer-award-compact"
-          />
         </div>
 
         {/* Legal Disclaimer */}
