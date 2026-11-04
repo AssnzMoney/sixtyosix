@@ -871,10 +871,14 @@ h2 em {
    SIMULADOR DE ECONOMIA - ESTILO CONVERSACIONAL (ABACATEPAY)
    ========================================================================== */
 .calc-phrase-section {
+  position: relative;
   padding: 80px 0 100px;
+  overflow: hidden;
 }
 
 .calc-phrase-wrap {
+  position: relative;
+  z-index: 2;
   max-width: 960px;
   margin: 0 auto;
   text-align: left;
@@ -886,12 +890,32 @@ h2 em {
 
 .calc-title {
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(34px, 4.4vw, 56px);
+  font-size: clamp(32px, 4vw, 54px);
   font-weight: 700;
-  line-height: 1.08;
+  line-height: 1.12;
   letter-spacing: -0.04em;
   color: #1f4647;
   margin: 0;
+  text-wrap: balance;
+}
+
+.calc-title-br {
+  display: block;
+}
+
+.calc-warrior-img {
+  position: absolute;
+  right: -10px;
+  bottom: 0;
+  width: min(34vw, 390px);
+  max-height: 460px;
+  object-fit: contain;
+  object-position: bottom right;
+  pointer-events: none;
+  user-select: none;
+  mix-blend-mode: multiply;
+  opacity: 0.95;
+  z-index: 1;
 }
 
 .calc-phrase-heading {
@@ -1105,6 +1129,7 @@ h2 em {
   color: var(--muted);
   margin: 0;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .faq { display: grid; grid-template-columns: .8fr 1.2fr; gap: 100px; padding: 40px 0 130px; }
@@ -1282,6 +1307,14 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   color: var(--green);
 }
 
+@media (max-width: 1120px) {
+  .calc-warrior-img {
+    width: 300px;
+    opacity: 0.35;
+    right: -30px;
+  }
+}
+
 @media (max-width: 800px) {
   .shell { width: min(100% - 30px, 1180px); }
   .nav-wrapper { top: 12px; margin-top: 12px; width: calc(100% - 24px); }
@@ -1312,8 +1345,11 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   .calc-phrase-section { padding: 60px 0 70px; }
   .calc-header { margin-bottom: 28px; }
   .calc-title { font-size: 36px; }
+  .calc-title-br { display: none; }
+  .calc-warrior-img { display: none; }
   .calc-phrase-heading { display: block; font-size: 26px; line-height: 1.45; }
   .calc-phrase-line { display: inline; white-space: normal; }
+  .calc-phrase-footnote { white-space: normal; }
   .phrase-pill { font-size: 20px; padding: 2px 10px; }
   .phrase-menu { min-width: 220px; }
   .calc-phrase-action-wrap { flex-direction: column; width: 100%; max-width: 320px; }

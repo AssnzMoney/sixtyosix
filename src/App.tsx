@@ -538,7 +538,7 @@ export default function App() {
         <div className="calc-phrase-wrap">
           <div className="calc-header">
             <h2 className="calc-title">
-              Quanto você gastaria pagando <em>direto por token?</em>
+              Quanto você gastaria<br className="calc-title-br" /> pagando <em>direto por token?</em>
             </h2>
           </div>
 
@@ -689,6 +689,13 @@ export default function App() {
             Sem mensalidade surpresa. Cobrança em Reais via Pix.
           </p>
         </div>
+
+        <img 
+          src="/assets/calc-warrior.jpg" 
+          alt="Guerreiro suplicando" 
+          className="calc-warrior-img" 
+          aria-hidden="true"
+        />
       </section>
 
       <section className="faq shell" id="duvidas">
