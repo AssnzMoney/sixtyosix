@@ -32,6 +32,7 @@ const features = [
 
 const faqs = [
   ['Como começo a usar?', 'Crie sua conta, escolha o plano e receba acesso imediatamente ao painel e às instruções de integração.'],
+  ['Como funciona o teste grátis?', 'No teste grátis você tem direito a absolutamente tudo: acesso ilimitado aos modelos oficiais mais avançados (Claude Fable 5.1, GPT Astra 6, GLM-4 Plus), chave própria sem rateio e integração direta com qualquer editor (Claude Code, Cursor, VS Code). Não pedimos cartão de crédito para começar.'],
   ['Funciona com o Claude Code?', 'Sim. Os planos da Sixtysix são feitos para você usar o Claude Code diretamente no seu fluxo de desenvolvimento.'],
   ['Posso cancelar quando quiser?', 'Sim. Você controla sua assinatura diretamente pelo painel, sem burocracia.'],
 ]
@@ -799,7 +800,32 @@ export default function App() {
           </p>
         </div>
 
+        <span id="teste" style={{ display: 'block', position: 'relative', top: '-110px', visibility: 'hidden' }} />
         <div className="plans-grid">
+          {/* Teste Grátis */}
+          <div className="plan-card plan-card-trial" id="teste-gratis">
+            <div className="plan-card-top">
+              <span className="plan-tag plan-tag-green">7 dias grátis</span>
+              <h3 className="plan-name">Teste Grátis</h3>
+              <div className="plan-price">
+                <span className="plan-curr">R$</span>
+                <span className="plan-val">0</span>
+                <span className="plan-period">/7 dias</span>
+              </div>
+              <p className="plan-desc">Acesso total e irrestrito para testar tudo na prática antes de decidir.</p>
+            </div>
+            <ul className="plan-features">
+              <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
+              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4</strong></span></li>
+              <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
+              <li><Check /> <span>Chave oficial própria (Zero Rateio)</span></li>
+              <li><Check /> <span>Sem cartão de crédito necessário</span></li>
+            </ul>
+            <a href="#duvidas" className="plan-btn">
+              Começar Teste Grátis <Arrow />
+            </a>
+          </div>
+
           {/* Starter */}
           <div className="plan-card">
             <div className="plan-card-top">
@@ -848,7 +874,7 @@ export default function App() {
           </div>
 
           {/* Pro Ilimitado */}
-          <div className="plan-card">
+          <div className="plan-card plan-card-featured">
             <div className="plan-card-top">
               <span className="plan-tag">Mais completo</span>
               <h3 className="plan-name">Pro Ilimitado</h3>
@@ -861,13 +887,13 @@ export default function App() {
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
-              <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias de prompts)</span></li>
-              <li><Check /> <span><strong>Zero Rateio</strong> (chave de API individual e segura)</span></li>
-              <li><Check /> <span><strong>Modelos Oficiais</strong> (máxima fidelidade e 99.9% uptime)</span></li>
+              <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
+              <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
+              <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
               <li><Check /> <span>Claude Code, Cursor, VS Code, Codex</span></li>
               <li><Check /> <span>Cobrança fixa em Reais sem IOF via Pix</span></li>
             </ul>
-            <a href="#duvidas" className="plan-btn">
+            <a href="#duvidas" className="plan-btn plan-btn-featured">
               Garantir Acesso Ilimitado <Arrow />
             </a>
           </div>
