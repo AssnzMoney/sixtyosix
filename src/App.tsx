@@ -818,30 +818,33 @@ export default function App() {
         </div>
       </section>
 
-      <section className="pre-footer-cta shell">
-        <span className="eyebrow">comece agora</span>
-        <h2 className="pre-footer-title">
-          Você leu até aqui. <span className="pre-footer-green">Tá interessado né?</span>
-        </h2>
-        <p className="pre-footer-sub">
-          Cadastro leva 2 minutos, a aprovação não leva semanas, e você começa a codar hoje ainda.
-        </p>
-        <div className="pre-footer-btn-wrap">
-          <a href="#economia" className="pre-footer-btn">
-            Vai, clica logo nesse botão
-          </a>
-        </div>
-        <p className="pre-footer-footnote">
-          Sem mensalidade. Aprovação não leva semanas.
-        </p>
-
-        {/* Ilustração Barroca dos Anjos nas Nuvens estilo AbacatePay */}
-        <div className="pre-footer-art-wrap">
-          <img 
-            src="/assets/pre-footer-cherubs.png" 
-            alt="Anjos nas nuvens" 
-            className="pre-footer-art-img" 
-          />
+      <section className="pre-footer-cta-wrap">
+        <img 
+          src="/assets/cherub-left.png" 
+          alt="Anjo nas nuvens à esquerda" 
+          className="cherub-flank cherub-flank-left" 
+        />
+        <img 
+          src="/assets/cherub-right.png" 
+          alt="Anjo nas nuvens à direita" 
+          className="cherub-flank cherub-flank-right" 
+        />
+        <div className="pre-footer-cta shell">
+          <span className="eyebrow">comece agora</span>
+          <h2 className="pre-footer-title">
+            Você leu até aqui. <span className="pre-footer-green">Tá interessado né?</span>
+          </h2>
+          <p className="pre-footer-sub">
+            Cadastro leva 2 minutos, a aprovação não leva semanas, e você começa a codar hoje ainda.
+          </p>
+          <div className="pre-footer-btn-wrap">
+            <a href="#economia" className="pre-footer-btn">
+              Vai, clica logo nesse botão
+            </a>
+          </div>
+          <p className="pre-footer-footnote">
+            Sem mensalidade. Aprovação não leva semanas.
+          </p>
         </div>
       </section>
 

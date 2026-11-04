@@ -1420,13 +1420,37 @@ summary span { font-size: 23px; font-weight: 400; transition: rotate .2s; }
 details[open] summary span { rotate: 45deg; }
 details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margin: 0; }
 /* ==========================================================================
-   PRE-FOOTER CTA (ABACATEPAY STYLE)
+   PRE-FOOTER CTA (ABACATEPAY STYLE COM ANJOS NAS LATERAIS)
    ========================================================================== */
+.pre-footer-cta-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  padding: 110px 0 110px;
+}
+
 .pre-footer-cta {
   text-align: center;
-  padding: 90px 0 0;
   position: relative;
   z-index: 2;
+}
+
+.cherub-flank {
+  position: absolute;
+  bottom: -35px;
+  pointer-events: none;
+  z-index: 3;
+  width: clamp(340px, 34vw, 560px);
+  height: auto;
+  filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.06));
+}
+
+.cherub-flank-left {
+  left: -20px;
+}
+
+.cherub-flank-right {
+  right: -20px;
 }
 
 .pre-footer-title {
@@ -1486,36 +1510,15 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   font-weight: 500;
 }
 
-.pre-footer-art-wrap {
-  position: relative;
-  width: 100%;
-  max-width: 920px;
-  margin: 20px auto -85px;
-  display: flex;
-  justify-content: center;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.pre-footer-art-img {
-  width: 100%;
-  height: auto;
-  max-height: 350px;
-  object-fit: contain;
-  display: block;
-  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 98%);
-  mask-image: linear-gradient(to bottom, black 70%, transparent 98%);
-  filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.07));
-}
-
 .footer-wrap {
   width: 100%;
   background: var(--green-dark);
   border-radius: 44px 44px 0 0;
   color: #a9c5b7;
-  padding: 95px 0 60px;
+  padding: 85px 0 60px;
   position: relative;
   z-index: 2;
+  margin-top: -30px;
 }
 
 .footer-columns-grid {
@@ -1677,9 +1680,14 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   .plans-grid { grid-template-columns: 1fr; gap: 24px; }
   .faq { grid-template-columns: 1fr; gap: 30px; padding: 60px 0 70px; margin-top: 30px; }
   .faq h2 { font-size: 44px; }
-  .pre-footer-cta { padding: 60px 0 0; }
-  .pre-footer-art-wrap { margin: 20px auto -30px; }
-  .pre-footer-art-img { max-height: 260px; }
+  .pre-footer-cta-wrap { padding: 80px 0 70px; }
+  .cherub-flank {
+    width: clamp(200px, 38vw, 320px);
+    bottom: -20px;
+    opacity: 0.85;
+  }
+  .cherub-flank-left { left: -35px; }
+  .cherub-flank-right { right: -35px; }
   .footer-wrap { padding: 70px 0 50px; }
   .footer-columns-grid { grid-template-columns: repeat(2, 1fr); gap: 36px 20px; }
   .footer-bottom-bar { flex-direction: column; align-items: flex-start; gap: 18px; margin-top: 50px; }
