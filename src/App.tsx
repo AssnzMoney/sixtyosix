@@ -983,7 +983,7 @@ export default function App() {
               <img src="/assets/logo.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
             </a>
             <span className="footer-copyright">
-              © 2026 Sixtysix. Todos os direitos reservados.
+              © 2026 Sixtysix · CNPJ 69.864.497/0001-92 · Todos os direitos reservados.
             </span>
           </div>
 
