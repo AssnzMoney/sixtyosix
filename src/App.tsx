@@ -127,7 +127,6 @@ export default function App() {
   const [heroAction, setHeroAction] = useState<'primary' | 'secondary'>('primary')
   const [handsAction, setHandsAction] = useState<'primary' | 'secondary'>('primary')
   const [integrationAction, setIntegrationAction] = useState<'primary' | 'secondary'>('primary')
-  const [finalAction, setFinalAction] = useState<'primary' | 'secondary'>('primary')
   const [calcAction, setCalcAction] = useState<'primary' | 'secondary'>('primary')
 
   const [volIdx, setVolIdx] = useState(3)
@@ -717,145 +716,59 @@ export default function App() {
         </div>
       </section>
 
-      <section className="final-cta" id="teste">
-        <div className="final-cta-glow" />
-        <div className="shell">
-          <span className="eyebrow">comece agora</span>
-          <h2>Claude Code para construir mais.<br />Um plano para pagar menos.</h2>
-          <div 
-            className="final-cta-actions"
-            onMouseLeave={() => setFinalAction('primary')}
-          >
-            <a
-              href="#teste"
-              className={`final-cta-pill ${finalAction === 'primary' ? 'is-active' : ''}`}
-              onMouseEnter={() => setFinalAction('primary')}
-              onClick={() => setFinalAction('primary')}
-            >
-              {finalAction === 'primary' && (
-                <motion.div
-                  layoutId="final-pill-indicator"
-                  className="final-active-pill-bg"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                />
-              )}
-              <span className="final-pill-content">
-                Teste agora <Arrow />
-              </span>
-            </a>
-
-            <a
-              href="#duvidas"
-              className={`final-cta-pill ${finalAction === 'secondary' ? 'is-active' : ''}`}
-              onMouseEnter={() => setFinalAction('secondary')}
-              onClick={() => setFinalAction('secondary')}
-            >
-              {finalAction === 'secondary' && (
-                <motion.div
-                  layoutId="final-pill-indicator"
-                  className="final-active-pill-bg"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                />
-              )}
-              <span className="final-pill-content">
-                Tirar dúvidas <Arrow />
-              </span>
-            </a>
-          </div>
-          <p>Ativação imediata · Cancele quando quiser</p>
+      <section className="pre-footer-cta shell">
+        <h2 className="pre-footer-title">
+          Você leu até aqui. <span className="pre-footer-green">Tá interessado né?</span>
+        </h2>
+        <p className="pre-footer-sub">
+          Cadastro leva 2 minutos, a aprovação não leva semanas, e você começa a codar hoje ainda.
+        </p>
+        <div className="pre-footer-btn-wrap">
+          <a href="#economia" className="pre-footer-btn">
+            Vai, clica logo nesse botão
+          </a>
         </div>
+        <p className="pre-footer-footnote">
+          Sem mensalidade. Aprovação não leva semanas.
+        </p>
       </section>
 
       <footer className="footer-wrap">
         <div className="shell footer-columns-grid">
-          {/* Top 4 columns */}
           <div className="footer-col">
-            <h4 className="footer-col-title">Receba pagamentos</h4>
+            <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
-              <li><a href="#economia">Pix</a></li>
-              <li><a href="#economia">Cartão</a></li>
-              <li><a href="#economia">Boleto</a></li>
-              <li><a href="#economia">Apple Pay</a></li>
-              <li><a href="#economia">Google Pay</a></li>
+              <li><a href="#economia">Claude Opus 5.5</a></li>
+              <li><a href="#economia">GPT Astra 6</a></li>
+              <li><a href="#economia">GLM-4 Plus</a></li>
             </ul>
           </div>
 
           <div className="footer-col">
-            <h4 className="footer-col-title">Venda do seu jeito</h4>
+            <h4 className="footer-col-title">Produto</h4>
             <ul className="footer-link-list">
-              <li><a href="#como-funciona">Checkout transparente</a></li>
-              <li><a href="#como-funciona">Link de pagamento</a></li>
-              <li><a href="#como-funciona">Assinaturas</a></li>
-              <li><a href="#como-funciona">Order bump</a></li>
-              <li><a href="#como-funciona">Upsell</a></li>
+              <li><a href="#como-funciona">Claude Code CLI</a></li>
+              <li><a href="#como-funciona">Integração no Terminal</a></li>
+              <li><a href="#economia">Calculadora de Tokens</a></li>
+              <li><a href="#recursos">Planos & Preços</a></li>
             </ul>
           </div>
 
           <div className="footer-col">
-            <h4 className="footer-col-title">Cuide do seu negócio</h4>
+            <h4 className="footer-col-title">Suporte</h4>
             <ul className="footer-link-list">
-              <li><a href="#top">Split de pagamento</a></li>
-              <li><a href="#top">Antecipação automática</a></li>
-              <li><a href="#top">Antifraude</a></li>
-              <li><a href="#top">3DS</a></li>
-              <li><a href="#top">Área do cliente</a></li>
+              <li><a href="#duvidas">Dúvidas Frequentes</a></li>
+              <li><a href="mailto:suporte@sixtysix.dev">Falar com Suporte</a></li>
+              <li><a href="mailto:suporte@sixtysix.dev">suporte@sixtysix.dev</a></li>
             </ul>
           </div>
 
           <div className="footer-col">
-            <h4 className="footer-col-title">Website</h4>
+            <h4 className="footer-col-title">Legal</h4>
             <ul className="footer-link-list">
-              <li><a href="#top">Blog</a></li>
-              <li><a href="#como-funciona">Design</a></li>
-              <li><a href="#como-funciona">Documentação</a></li>
-              <li><a href="/llms.txt">LLMs.txt</a></li>
-              <li><a href="#como-funciona">Integrações</a></li>
-              <li><a href="#economia">Preços</a></li>
-              <li><a href="#economia">Calculadora de taxas</a></li>
-              <li><a href="#recursos">Por que a Six?</a></li>
-              <li><a href="#top">Status dos serviços</a></li>
-            </ul>
-          </div>
-
-          {/* Bottom 4 columns */}
-          <div className="footer-col">
-            <h4 className="footer-col-title">Para o seu negócio</h4>
-            <ul className="footer-link-list">
-              <li><a href="#top">E-commerce</a></li>
-              <li><a href="#top">Infoprodutos</a></li>
-              <li><a href="#top">Criadores de conteúdo</a></li>
-              <li><a href="#top">SaaS</a></li>
-              <li><a href="#top">Micro-SaaS</a></li>
-            </ul>
-          </div>
-
-          <div className="footer-col">
-            <h4 className="footer-col-title">Para cada experiência</h4>
-            <ul className="footer-link-list">
-              <li><a href="#como-funciona">Marketplaces</a></li>
-              <li><a href="#como-funciona">Apps</a></li>
-              <li><a href="#como-funciona">Educação</a></li>
-            </ul>
-          </div>
-
-          <div className="footer-col">
-            <h4 className="footer-col-title">Construa o próximo passo</h4>
-            <ul className="footer-link-list">
-              <li><a href="#como-funciona">Pagamentos agênticos</a></li>
-              <li><a href="#como-funciona">Desenvolvedores</a></li>
-              <li><a href="#como-funciona">MCP</a></li>
-              <li><a href="#como-funciona">CLI</a></li>
-              <li><a href="#top">Open source</a></li>
-              <li><a href="#top">Marketplace de agentes</a></li>
-            </ul>
-          </div>
-
-          <div className="footer-col">
-            <h4 className="footer-col-title">Suporte e legal</h4>
-            <ul className="footer-link-list">
-              <li><a href="mailto:ajuda@sixtysix.dev">ajuda@sixtysix.dev</a></li>
-              <li><a href="#duvidas">Falar com suporte</a></li>
-              <li><a href="#termos">Termos de Uso e Política de Privacidade</a></li>
+              <li><a href="#duvidas">Termos de Uso</a></li>
+              <li><a href="#duvidas">Política de Privacidade</a></li>
+              <li><a href="#duvidas">Segurança</a></li>
             </ul>
           </div>
         </div>
@@ -867,7 +780,7 @@ export default function App() {
               <img src="/assets/logo.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
             </a>
             <span className="footer-copyright">
-              Copyright © 2026 Sixtysix LLC - CNPJ: 58.271.413/0001-90
+              © 2026 Sixtysix. Todos os direitos reservados.
             </span>
           </div>
 
@@ -900,7 +813,7 @@ export default function App() {
         {/* Legal Disclaimer */}
         <div className="shell footer-legal-wrap">
           <p className="footer-legal-copy">
-            A Sixtysix é uma plataforma de tecnologia que intermedeia pagamentos e infraestrutura e não é instituição financeira nem de pagamento. O processamento, a liquidação e a custódia dos valores são realizados por instituições parceiras autorizadas pelo Banco Central do Brasil, conforme os <a href="#termos">Termos de Uso e Política de Privacidade</a>.
+            A Sixtysix é uma plataforma de tecnologia que gerencia tokens e provê infraestrutura de modelos de IA de fronteira para desenvolvedores. Cobrança transparente em Reais com previsibilidade total via Pix.
           </p>
         </div>
       </footer>
