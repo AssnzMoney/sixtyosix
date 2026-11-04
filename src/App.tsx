@@ -835,6 +835,15 @@ export default function App() {
         <p className="pre-footer-footnote">
           Sem mensalidade. Aprovação não leva semanas.
         </p>
+
+        {/* Ilustração Barroca dos Anjos nas Nuvens estilo AbacatePay */}
+        <div className="pre-footer-art-wrap">
+          <img 
+            src="/assets/pre-footer-cherubs.png" 
+            alt="Anjos nas nuvens" 
+            className="pre-footer-art-img" 
+          />
+        </div>
       </section>
 
       <footer className="footer-wrap">
