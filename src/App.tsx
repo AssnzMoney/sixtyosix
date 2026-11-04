@@ -128,11 +128,14 @@ export default function App() {
   const [handsAction, setHandsAction] = useState<'primary' | 'secondary'>('primary')
   const [integrationAction, setIntegrationAction] = useState<'primary' | 'secondary'>('primary')
   const [finalAction, setFinalAction] = useState<'primary' | 'secondary'>('primary')
+  const [calcAction, setCalcAction] = useState<'primary' | 'secondary'>('primary')
 
   const [volIdx, setVolIdx] = useState(3)
   const [activeCalcModel, setActiveCalcModel] = useState('opus')
   const [volDropdownOpen, setVolDropdownOpen] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+
+  const [isScrolled, setIsScrolled] = useState(false)
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -142,8 +145,15 @@ export default function App() {
         setVolDropdownOpen(false)
       }
     }
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 15)
+    }
     document.addEventListener('click', handleOutsideClick)
-    return () => document.removeEventListener('click', handleOutsideClick)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      document.removeEventListener('click', handleOutsideClick)
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   const currentVol = volumeLevels[volIdx].value
@@ -188,7 +198,7 @@ export default function App() {
 
   return (
     <main>
-      <header className="nav-wrapper">
+      <header className={`nav-wrapper ${isScrolled ? 'nav-scrolled' : ''}`}>
         <nav className="nav">
           <a className="brand" href="#top" aria-label="Six, início">
             <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" />
@@ -628,9 +638,44 @@ export default function App() {
             {savingsMultiplier}x mais barato do que na API oficial.
           </p>
 
-          <div className="calc-phrase-action-wrap">
-            <a href="#teste" className="phrase-cta-btn">
-              Começar a codar agora <Arrow />
+          <div 
+            className="calc-phrase-action-wrap"
+            onMouseLeave={() => setCalcAction('primary')}
+          >
+            <a
+              href="#teste"
+              className={`hero-action-pill ${calcAction === 'primary' ? 'is-active' : ''}`}
+              onMouseEnter={() => setCalcAction('primary')}
+              onClick={() => setCalcAction('primary')}
+            >
+              {calcAction === 'primary' && (
+                <motion.div
+                  layoutId="calc-pill-indicator"
+                  className="hero-active-pill-bg"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                />
+              )}
+              <span className="hero-pill-content">
+                Começar a codar agora <Arrow />
+              </span>
+            </a>
+
+            <a
+              href="#teste-gratis"
+              className={`hero-action-pill ${calcAction === 'secondary' ? 'is-active' : ''}`}
+              onMouseEnter={() => setCalcAction('secondary')}
+              onClick={() => setCalcAction('secondary')}
+            >
+              {calcAction === 'secondary' && (
+                <motion.div
+                  layoutId="calc-pill-indicator"
+                  className="hero-active-pill-bg"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                />
+              )}
+              <span className="hero-pill-content">
+                Testar 7 dias grátis <Arrow />
+              </span>
             </a>
           </div>
 
@@ -644,6 +689,11 @@ export default function App() {
         <div>
           <span className="eyebrow">direto ao ponto</span>
           <h2>Dúvidas antes<br />de começar?</h2>
+          <div className="faq-action">
+            <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="faq-support-btn">
+              Fale com o suporte <Arrow />
+            </a>
+          </div>
         </div>
         <div className="faq-list">
           {faqs.map(([question, answer], index) => (
