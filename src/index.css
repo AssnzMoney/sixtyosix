@@ -880,6 +880,29 @@ h2 em {
   text-align: left;
 }
 
+.calc-header {
+  margin-bottom: 38px;
+}
+
+.calc-title {
+  font-family: 'Fustat', sans-serif;
+  font-size: clamp(34px, 4.4vw, 56px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  color: #1f4647;
+  margin: 12px 0 14px;
+}
+
+.calc-desc {
+  font-family: 'Manrope', sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 650px;
+  margin: 0;
+}
+
 .calc-phrase-heading {
   font-family: 'Fustat', sans-serif;
   font-size: clamp(24px, 2.8vw, 38px);
@@ -1296,6 +1319,8 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   .snippet-box { width: 100%; }
   .integration-actions { justify-content: center; }
   .calc-phrase-section { padding: 60px 0 70px; }
+  .calc-header { margin-bottom: 28px; }
+  .calc-title { font-size: 36px; }
   .calc-phrase-heading { display: block; font-size: 26px; line-height: 1.45; }
   .calc-phrase-line { display: inline; white-space: normal; }
   .phrase-pill { font-size: 20px; padding: 2px 10px; }

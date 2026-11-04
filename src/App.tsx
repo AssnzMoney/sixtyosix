@@ -536,7 +536,17 @@ export default function App() {
 
       <section className="calc-phrase-section shell" id="economia">
         <div className="calc-phrase-wrap">
-          <h2 className="calc-phrase-heading">
+          <div className="calc-header">
+            <span className="eyebrow">transparência total</span>
+            <h2 className="calc-title">
+              Quanto você gastaria pagando <em>direto por token?</em>
+            </h2>
+            <p className="calc-desc">
+              Compare o preço de tabela oficial dos provedores em Dólar com a assinatura em Reais da Six.
+            </p>
+          </div>
+
+          <div className="calc-phrase-heading">
             <span className="calc-phrase-line">
               Eu quero fazer{' '}
               <span className="phrase-dropdown-wrap">
@@ -631,7 +641,7 @@ export default function App() {
               Six, então vou pagar de taxa{' '}
               <span className="phrase-price-val">R$ {formatBRL(sixPlanCost)}.</span>
             </span>
-          </h2>
+          </div>
 
           <p className="calc-phrase-sub">
             Você economiza <strong className="phrase-green-num">R$ {formatBRL(calculatedSavings)}</strong>, cerca de{' '}
