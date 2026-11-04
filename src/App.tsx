@@ -31,10 +31,30 @@ const features = [
 ]
 
 const faqs = [
-  ['Como começo a usar?', 'Crie sua conta, escolha o plano e receba acesso imediatamente ao painel e às instruções de integração.'],
-  ['Como funciona o teste grátis?', 'No teste grátis você tem direito a absolutamente tudo: acesso ilimitado aos modelos oficiais mais avançados (Claude Fable 5.1, GPT Astra 6, GLM-4 Plus), chave própria sem rateio e integração direta com qualquer editor (Claude Code, Cursor, VS Code). Não pedimos cartão de crédito para começar.'],
-  ['Funciona com o Claude Code?', 'Sim. Os planos da Sixtysix são feitos para você usar o Claude Code diretamente no seu fluxo de desenvolvimento.'],
-  ['Posso cancelar quando quiser?', 'Sim. Você controla sua assinatura diretamente pelo painel, sem burocracia.'],
+  [
+    'Como é tão barato assim comparado à API oficial?',
+    'Compramos grande volume de processamento e tokens diretamente com os provedores e otimizamos a infraestrutura para eliminar o custo de conexões ociosas. Você se conecta aos modelos oficiais com 99.9% de uptime, pagando um valor fixo em Reais via Pix — sem sobretaxa de Dólar, sem IOF e sem margens abusivas de revenda.'
+  ],
+  [
+    'O que vem liberado no Teste Grátis?',
+    'No teste grátis você tem direito a absolutamente tudo: acesso ilimitado aos modelos mais avançados (Claude Fable 5.1, GPT Astra 6, GLM-4 Plus), chave individual exclusiva com zero rateio e integração direta com qualquer editor (Claude Code, Cursor, VS Code). E o melhor: você não precisa cadastrar nenhum cartão de crédito para testar.'
+  ],
+  [
+    'Funciona direto no Claude Code, Cursor e VS Code?',
+    'Sim! A integração é 100% nativa. Basta copiar a chave de API individual gerada no seu painel e configurar no Claude Code CLI (claude), no Cursor, Roo Code, Cline ou terminal. Funciona exatamente como a chave oficial.'
+  ],
+  [
+    'Existe rateio de contas ou limite de prompts?',
+    'Zero rateio. Diferente de soluções que colocam várias pessoas na mesma conta e caem no meio do raciocínio, na SixtySix você recebe sua própria credencial individual de API oficial, sem travas surpresa ou filas de espera.'
+  ],
+  [
+    'Quanto tempo pra minha conta ser aprovada?',
+    'A ativação é instantânea. Em menos de 2 minutos você cria sua conta, inicia o teste grátis ou escolhe um plano e sua chave de API oficial já fica pronta para codar.'
+  ],
+  [
+    'Quais formas de pagamento são aceitas?',
+    'Aceitamos Pix com aprovação imediata em Reais, sem cobrança de IOF ou surpresas cambiais. Você tem controle total e cancela ou altera seu plano a qualquer momento pelo painel em 1 clique.'
+  ],
 ]
 
 const partners = [
@@ -878,13 +898,19 @@ export default function App() {
       </section>
 
       <section className="faq shell" id="duvidas">
-        <div>
-          <span className="eyebrow">direto ao ponto</span>
-          <h2>Dúvidas antes<br />de começar?</h2>
+        <div className="faq-intro">
+          <h2 className="faq-title">
+            <span className="faq-title-green">Tem dúvidas?</span> Relaxa,<br />
+            nós temos as respostas.
+          </h2>
+          <p className="faq-subtitle">
+            Selecionamos algumas dúvidas que recebemos com frequência sobre nossos serviços, elas podem ser úteis para você!
+          </p>
           <div className="faq-action">
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="faq-support-btn">
-              Fale com o suporte <Arrow />
+              Falar conosco
             </a>
+            <span className="faq-footnote">Sem mensalidade. Aprovação não leva semanas.</span>
           </div>
         </div>
         <div className="faq-list">
@@ -895,8 +921,7 @@ export default function App() {
                   <AccordionPrimitive.Trigger className="faq-accordion-trigger">
                     <span>{question}</span>
                     <span className="faq-accordion-icon-wrap" aria-hidden="true">
-                      <Plus className="faq-accordion-plus" size={20} />
-                      <Minus className="faq-accordion-minus" size={20} />
+                      <Plus className="faq-accordion-icon" size={20} strokeWidth={1.8} />
                     </span>
                   </AccordionPrimitive.Trigger>
                 </AccordionPrimitive.Header>
