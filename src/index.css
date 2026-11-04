@@ -588,11 +588,12 @@ h2 em {
   text-align: center;
   color: #1f4647;
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(17px, 1.8vw, 21px);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  margin-bottom: 22px;
+  font-size: clamp(13px, 1.2vw, 14.5px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-bottom: 20px;
   text-transform: none;
+  opacity: 0.9;
 }
 .partners-marquee {
   margin-top: 0;
