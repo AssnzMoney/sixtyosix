@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
+import * as AccordionPrimitive from '@radix-ui/react-accordion'
+import { Plus, Minus } from 'lucide-react'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -23,7 +25,7 @@ const Cross = () => (
 
 const features = [
   ['01', 'Zero Rateio & Chave Própria', 'Nada de contas compartilhadas que caem ou risco de vazar código confidencial. Você recebe sua chave de API individual e segura.'],
-  ['02', 'Método Novo & Alta Estabilidade', 'Cluster inteligente com conexões diretas aos data centers de IA. Latência sub-150ms sem erros 429 ou quedas no meio do código.'],
+  ['02', 'Modelos Oficiais & Alta Estabilidade', 'Acesso direto aos modelos oficiais sem intermediários. Respostas originais na íntegra, latência ultrarrápida e sem erros 429.'],
   ['03', '100% Ilimitado de Verdade', 'Pode codar o dia todo, fazer refatorações pesadas e rodar agentes. Sem limite diário de prompts ou travamentos de cota.'],
   ['04', 'Claude Code, VS Code & Cursor', 'Conecte direto onde você já programa todo dia: Claude Code CLI, Roo Code, Cline, Cursor, Codex e Terminal.'],
 ]
@@ -87,9 +89,9 @@ const partners = [
 
 const calcModels = [
   {
-    id: 'opus',
-    name: 'Claude Opus 5.5',
-    shortName: 'Claude Opus 5.5',
+    id: 'fable',
+    name: 'Claude Fable 5.1',
+    shortName: 'Claude Fable 5.1',
     tag: 'Anthropic',
     inPrice: 5.0,
     outPrice: 25.0,
@@ -130,7 +132,7 @@ export default function App() {
   const [calcAction, setCalcAction] = useState<'primary' | 'secondary'>('primary')
 
   const [volIdx, setVolIdx] = useState(3)
-  const [activeCalcModel, setActiveCalcModel] = useState('opus')
+  const [activeCalcModel, setActiveCalcModel] = useState('fable')
   const [volDropdownOpen, setVolDropdownOpen] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
 
@@ -702,7 +704,7 @@ export default function App() {
       {/* SEÇÃO DE PLANOS & DIFERENCIAIS (TOTALMENTE UNIFICADA NO PADRÃO DO SITE) */}
       <section className="plans-section shell" id="planos">
         <div className="plans-header">
-          <span className="eyebrow">método novo · zero rateio</span>
+          <span className="eyebrow">modelos oficiais · zero rateio</span>
           <h2 className="plans-title">
             Planos com uso <em>100% ilimitado.</em>
           </h2>
@@ -750,8 +752,8 @@ export default function App() {
             <ul className="plan-features">
               <li><Check /> <span>GPT Astra 6 & GLM-4 Plus</span></li>
               <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
-              <li><Check /> <span>Chave própria com Método Novo</span></li>
-              <li><Check /> <span>Roteamento de baixa latência</span></li>
+              <li><Check /> <span>Chave própria para modelos oficiais</span></li>
+              <li><Check /> <span>Conexão direta aos modelos oficiais</span></li>
               <li><Check /> <span>Cobrança fixa em Reais via Pix</span></li>
             </ul>
             <a href="#duvidas" className="plan-btn">
@@ -772,28 +774,16 @@ export default function App() {
               <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias de prompts)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave de API individual e segura)</span></li>
-              <li><Check /> <span><strong>Método Novo</strong> (cluster com failover 99.9%)</span></li>
+              <li><Check /> <span><strong>Modelos Oficiais</strong> (máxima fidelidade e 99.9% uptime)</span></li>
               <li><Check /> <span>Claude Code, Cursor, VS Code, Codex</span></li>
               <li><Check /> <span>Cobrança fixa em Reais sem IOF via Pix</span></li>
             </ul>
             <a href="#duvidas" className="plan-btn">
               Garantir Acesso Ilimitado <Arrow />
             </a>
-          </div>
-        </div>
-
-        {/* Faixa de Ambientes Suportados */}
-        <div className="supported-tools-strip">
-          <span className="tools-strip-label">Usa direto onde você já programa:</span>
-          <div className="tools-strip-badges">
-            <span className="tool-pill"><span className="tool-dot" /> Claude Code CLI</span>
-            <span className="tool-pill"><span className="tool-dot" /> VS Code (Roo, Cline)</span>
-            <span className="tool-pill"><span className="tool-dot" /> Cursor IDE</span>
-            <span className="tool-pill"><span className="tool-dot" /> Codex & Windsurf</span>
-            <span className="tool-pill"><span className="tool-dot" /> Terminal & Scripts</span>
           </div>
         </div>
       </section>
@@ -809,12 +799,24 @@ export default function App() {
           </div>
         </div>
         <div className="faq-list">
-          {faqs.map(([question, answer], index) => (
-            <details key={question} open={index === 0}>
-              <summary>{question}<span>+</span></summary>
-              <p>{answer}</p>
-            </details>
-          ))}
+          <AccordionPrimitive.Root type="single" collapsible defaultValue="item-0" className="faq-accordion-root">
+            {faqs.map(([question, answer], index) => (
+              <AccordionPrimitive.Item key={question} value={`item-${index}`} className="faq-accordion-item">
+                <AccordionPrimitive.Header>
+                  <AccordionPrimitive.Trigger className="faq-accordion-trigger">
+                    <span>{question}</span>
+                    <span className="faq-accordion-icon-wrap" aria-hidden="true">
+                      <Plus className="faq-accordion-plus" size={20} />
+                      <Minus className="faq-accordion-minus" size={20} />
+                    </span>
+                  </AccordionPrimitive.Trigger>
+                </AccordionPrimitive.Header>
+                <AccordionPrimitive.Content className="faq-accordion-content animate-accordion-down data-[state=closed]:animate-accordion-up">
+                  <p>{answer}</p>
+                </AccordionPrimitive.Content>
+              </AccordionPrimitive.Item>
+            ))}
+          </AccordionPrimitive.Root>
         </div>
       </section>
 
@@ -853,7 +855,7 @@ export default function App() {
           <div className="footer-col">
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
-              <li><a href="#economia">Claude Opus 5.5</a></li>
+              <li><a href="#economia">Claude Fable 5.1</a></li>
               <li><a href="#economia">GPT Astra 6</a></li>
               <li><a href="#economia">GLM-4 Plus</a></li>
             </ul>
