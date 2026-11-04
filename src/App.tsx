@@ -1006,19 +1006,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Selo / Award de IA Discreto */}
-        <div className="shell footer-award-wrap">
-          <Awards
-            variant="award"
-            level="gold"
-            title="OFFICIAL AI INFRA"
-            subtitle="Conexão direta com Claude Fable 5.1 & GPT Astra 6"
-            recipient="SixtySix Platform"
-            date="Top Dev Choice · 2026"
-            className="footer-award-compact"
-          />
-        </div>
-
         {/* Footer bottom bar */}
         <div className="shell footer-bottom-bar">
           <div className="footer-brand-meta">
@@ -1054,6 +1041,19 @@ export default function App() {
               </svg>
             </a>
           </div>
+        </div>
+
+        {/* Selo / Award de IA Discreto abaixo das logos e redes */}
+        <div className="shell footer-award-wrap">
+          <Awards
+            variant="award"
+            level="gold"
+            title="OFFICIAL AI INFRA"
+            subtitle="Conexão direta com Claude Fable 5.1 & GPT Astra 6"
+            recipient="SixtySix Platform"
+            date="Top Dev Choice · 2026"
+            className="footer-award-compact"
+          />
         </div>
 
         {/* Legal Disclaimer */}
