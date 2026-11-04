@@ -630,11 +630,10 @@ export default function App() {
                     ))}
                   </div>
                 )}
-              </span>{' '}
-              na
+              </span>
             </span>
             <span className="calc-phrase-line">
-              Six, então vou pagar de taxa{' '}
+              na Six, então vou pagar de taxa{' '}
               <span className="phrase-price-val">R$ {formatBRL(sixPlanCost)}.</span>
             </span>
           </div>
@@ -768,12 +767,141 @@ export default function App() {
       </section>
 
       <footer className="footer-wrap">
-        <div className="shell footer-inner">
-          <a className="brand footer-brand" href="#top" aria-label="Six, início">
-            <img src="/assets/logo.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
-          </a>
-          <p>IA para quem constrói o futuro.</p>
-          <span>© 2026 Sixtysix</span>
+        <div className="shell footer-columns-grid">
+          {/* Top 4 columns */}
+          <div className="footer-col">
+            <h4 className="footer-col-title">Receba pagamentos</h4>
+            <ul className="footer-link-list">
+              <li><a href="#economia">Pix</a></li>
+              <li><a href="#economia">Cartão</a></li>
+              <li><a href="#economia">Boleto</a></li>
+              <li><a href="#economia">Apple Pay</a></li>
+              <li><a href="#economia">Google Pay</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Venda do seu jeito</h4>
+            <ul className="footer-link-list">
+              <li><a href="#como-funciona">Checkout transparente</a></li>
+              <li><a href="#como-funciona">Link de pagamento</a></li>
+              <li><a href="#como-funciona">Assinaturas</a></li>
+              <li><a href="#como-funciona">Order bump</a></li>
+              <li><a href="#como-funciona">Upsell</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Cuide do seu negócio</h4>
+            <ul className="footer-link-list">
+              <li><a href="#top">Split de pagamento</a></li>
+              <li><a href="#top">Antecipação automática</a></li>
+              <li><a href="#top">Antifraude</a></li>
+              <li><a href="#top">3DS</a></li>
+              <li><a href="#top">Área do cliente</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Website</h4>
+            <ul className="footer-link-list">
+              <li><a href="#top">Blog</a></li>
+              <li><a href="#como-funciona">Design</a></li>
+              <li><a href="#como-funciona">Documentação</a></li>
+              <li><a href="/llms.txt">LLMs.txt</a></li>
+              <li><a href="#como-funciona">Integrações</a></li>
+              <li><a href="#economia">Preços</a></li>
+              <li><a href="#economia">Calculadora de taxas</a></li>
+              <li><a href="#recursos">Por que a Six?</a></li>
+              <li><a href="#top">Status dos serviços</a></li>
+            </ul>
+          </div>
+
+          {/* Bottom 4 columns */}
+          <div className="footer-col">
+            <h4 className="footer-col-title">Para o seu negócio</h4>
+            <ul className="footer-link-list">
+              <li><a href="#top">E-commerce</a></li>
+              <li><a href="#top">Infoprodutos</a></li>
+              <li><a href="#top">Criadores de conteúdo</a></li>
+              <li><a href="#top">SaaS</a></li>
+              <li><a href="#top">Micro-SaaS</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Para cada experiência</h4>
+            <ul className="footer-link-list">
+              <li><a href="#como-funciona">Marketplaces</a></li>
+              <li><a href="#como-funciona">Apps</a></li>
+              <li><a href="#como-funciona">Educação</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Construa o próximo passo</h4>
+            <ul className="footer-link-list">
+              <li><a href="#como-funciona">Pagamentos agênticos</a></li>
+              <li><a href="#como-funciona">Desenvolvedores</a></li>
+              <li><a href="#como-funciona">MCP</a></li>
+              <li><a href="#como-funciona">CLI</a></li>
+              <li><a href="#top">Open source</a></li>
+              <li><a href="#top">Marketplace de agentes</a></li>
+            </ul>
+          </div>
+
+          <div className="footer-col">
+            <h4 className="footer-col-title">Suporte e legal</h4>
+            <ul className="footer-link-list">
+              <li><a href="mailto:ajuda@sixtysix.dev">ajuda@sixtysix.dev</a></li>
+              <li><a href="#duvidas">Falar com suporte</a></li>
+              <li><a href="#termos">Termos de Uso e Política de Privacidade</a></li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer bottom bar */}
+        <div className="shell footer-bottom-bar">
+          <div className="footer-brand-meta">
+            <a className="brand footer-brand" href="#top" aria-label="Six, início">
+              <img src="/assets/logo.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
+            </a>
+            <span className="footer-copyright">
+              Copyright © 2026 Sixtysix LLC - CNPJ: 58.271.413/0001-90
+            </span>
+          </div>
+
+          <div className="footer-social-links">
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className="footer-social-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+            </a>
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="footer-social-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76c.92 0 1.66-.74 1.66-1.66s-.74-1.66-1.66-1.66c-.92 0-1.66.74-1.66 1.66s.74 1.66 1.66 1.66m1.39 9.74v-8.37H5.07v8.37h2.78z" />
+              </svg>
+            </a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="footer-social-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+              </svg>
+            </a>
+            <a href="https://discord.com" target="_blank" rel="noopener noreferrer" aria-label="Discord" className="footer-social-icon">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        {/* Legal Disclaimer */}
+        <div className="shell footer-legal-wrap">
+          <p className="footer-legal-copy">
+            A Sixtysix é uma plataforma de tecnologia que intermedeia pagamentos e infraestrutura e não é instituição financeira nem de pagamento. O processamento, a liquidação e a custódia dos valores são realizados por instituições parceiras autorizadas pelo Banco Central do Brasil, conforme os <a href="#termos">Termos de Uso e Política de Privacidade</a>.
+          </p>
         </div>
       </footer>
     </main>
