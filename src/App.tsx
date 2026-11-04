@@ -189,8 +189,8 @@ export default function App() {
   }
 
   const calculatedSavings = Math.max(0, officialTokenCostBrl - sixPlanCost)
-  const savingsMultiplier = officialTokenCostBrl > sixPlanCost 
-    ? (officialTokenCostBrl / sixPlanCost).toFixed(1) 
+  const savingsMultiplier = officialTokenCostBrl > sixPlanCost
+    ? (officialTokenCostBrl / sixPlanCost).toFixed(1)
     : '1.0'
 
   const sixBarPercentage = Math.min(100, Math.max(12, Math.round((sixPlanCost / officialTokenCostBrl) * 100)))
@@ -207,7 +207,7 @@ export default function App() {
 
   return (
     <main>
-      <header 
+      <header
         className={`nav-wrapper ${isScrolled ? 'nav-scrolled' : ''}`}
         onMouseLeave={() => setMegaMenuOpen(false)}
       >
@@ -217,12 +217,12 @@ export default function App() {
               <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" />
             </a>
             <div className="nav-links">
-              <div 
+              <div
                 className="nav-dropdown-trigger"
                 onMouseEnter={() => setMegaMenuOpen(true)}
               >
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className={`nav-link-dropdown ${megaMenuOpen ? 'active' : ''}`}
                   onClick={() => setMegaMenuOpen(!megaMenuOpen)}
                   aria-expanded={megaMenuOpen}
@@ -250,7 +250,7 @@ export default function App() {
 
         {/* Mega Menu Dropdown estilo AbacatePay */}
         {megaMenuOpen && (
-          <div 
+          <div
             className="mega-menu-panel"
             onMouseEnter={() => setMegaMenuOpen(true)}
           >
@@ -354,7 +354,7 @@ export default function App() {
           Planos acessíveis para usar Claude Code todos os dias.{' '}
           <strong className="hero-highlight-phrase">Crie, teste e entregue mais — pagando menos.</strong>
         </p>
-        <div 
+        <div
           className="hero-actions"
           onMouseLeave={() => setHeroAction('primary')}
         >
@@ -421,28 +421,28 @@ export default function App() {
               <span className="hands-eyebrow">
                 mais código. pagando <strong>6x</strong> mais barato.
               </span>
-              <svg 
-                className="hands-curve-arrow" 
-                width="34" 
-                height="38" 
-                viewBox="0 0 34 38" 
-                fill="none" 
+              <svg
+                className="hands-curve-arrow"
+                width="34"
+                height="38"
+                viewBox="0 0 34 38"
+                fill="none"
                 xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true"
                 style={{ overflow: 'visible' }}
               >
-                <path 
-                  d="M8 3 C 24 9, 21 23, 20 34" 
-                  stroke="currentColor" 
-                  strokeWidth="2.5" 
-                  strokeLinecap="round" 
+                <path
+                  d="M8 3 C 24 9, 21 23, 20 34"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
                 />
-                <path 
-                  d="M13 26 L 20 34 L 27 26" 
-                  stroke="currentColor" 
-                  strokeWidth="2.5" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
+                <path
+                  d="M13 26 L 20 34 L 27 26"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               </svg>
             </div>
@@ -458,7 +458,7 @@ export default function App() {
               </article>
             ))}
           </div>
-          <div 
+          <div
             className="hero-actions hands-actions-center"
             onMouseLeave={() => setHandsAction('primary')}
           >
@@ -510,14 +510,14 @@ export default function App() {
                 <span>9:41</span>
                 <div className="phone-notch" />
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                  <svg width="13" height="9" viewBox="0 0 14 10" fill="currentColor"><path d="M1 8h2v2H1V8zm3-3h2v5H4V5zm3-3h2v8H7V2zm3-2h2v10h-2V0z"/></svg>
-                  <svg width="15" height="9" viewBox="0 0 16 9" fill="currentColor"><rect x="0.5" y="0.5" width="13" height="8" rx="2" fill="none" stroke="currentColor"/><rect x="2" y="2" width="9" height="5" rx="1"/><path d="M15 3.5v2" stroke="currentColor"/></svg>
+                  <svg width="13" height="9" viewBox="0 0 14 10" fill="currentColor"><path d="M1 8h2v2H1V8zm3-3h2v5H4V5zm3-3h2v8H7V2zm3-2h2v10h-2V0z" /></svg>
+                  <svg width="15" height="9" viewBox="0 0 16 9" fill="currentColor"><rect x="0.5" y="0.5" width="13" height="8" rx="2" fill="none" stroke="currentColor" /><rect x="2" y="2" width="9" height="5" rx="1" /><path d="M15 3.5v2" stroke="currentColor" /></svg>
                 </div>
               </div>
               <div className="phone-nav-header">
-                <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
                 <span>sixtysix.dev/cli</span>
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="6" r="1.5" /><circle cx="12" cy="18" r="1.5" /></svg>
               </div>
               <div className="phone-chat-body">
                 <div className="chat-msg-user">
@@ -533,7 +533,7 @@ export default function App() {
                 </div>
               </div>
             </div>
-            
+
             <div className="phone-model-badges">
               <div className="badges-row">
                 <div className="badge-circle badge-claude" title="Claude (Anthropic)">
@@ -569,18 +569,18 @@ export default function App() {
             </p>
             <div className="snippet-box">
               <code>sixtysix.dev/quickstart</code>
-              <button 
-                type="button" 
-                className="btn-copy" 
+              <button
+                type="button"
+                className="btn-copy"
                 onClick={handleCopy}
               >
                 {copied ? <Check /> : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                 )}
                 <span>{copied ? 'Copiado!' : 'Copiar'}</span>
               </button>
             </div>
-            <div 
+            <div
               className="hero-actions"
               onMouseLeave={() => setIntegrationAction('primary')}
             >
@@ -650,7 +650,7 @@ export default function App() {
                 >
                   <span>{currentVol.toLocaleString('pt-BR')} prompts</span>
                   <svg className={`phrase-caret ${volDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
 
@@ -692,7 +692,7 @@ export default function App() {
                 >
                   <span>{currentModel.shortName}</span>
                   <svg className={`phrase-caret ${modelDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
 
@@ -734,7 +734,7 @@ export default function App() {
             {savingsMultiplier}x mais barato do que na API oficial.
           </p>
 
-          <div 
+          <div
             className="calc-phrase-action-wrap"
             onMouseLeave={() => setCalcAction('primary')}
           >
@@ -780,10 +780,10 @@ export default function App() {
           </p>
         </div>
 
-        <img 
-          src="/assets/calc-warrior.jpg" 
-          alt="Guerreiro suplicando" 
-          className="calc-warrior-img" 
+        <img
+          src="/assets/calc-warrior.jpg"
+          alt="Guerreiro suplicando"
+          className="calc-warrior-img"
           aria-hidden="true"
         />
       </section>
@@ -823,29 +823,6 @@ export default function App() {
             </ul>
             <a href="#duvidas" className="plan-btn">
               Começar Teste Grátis <Arrow />
-            </a>
-          </div>
-
-          {/* Starter */}
-          <div className="plan-card">
-            <div className="plan-card-top">
-              <span className="plan-tag">Para começar</span>
-              <h3 className="plan-name">Starter</h3>
-              <div className="plan-price">
-                <span className="plan-curr">R$</span>
-                <span className="plan-val">39</span>
-                <span className="plan-period">/mês</span>
-              </div>
-              <p className="plan-desc">Ideal para automações, scripts e projetos pessoais rápidos.</p>
-            </div>
-            <ul className="plan-features">
-              <li><Check /> <span>GLM-4 Plus incluído</span></li>
-              <li><Check /> <span>Claude Code & Terminal</span></li>
-              <li><Check /> <span>Chave própria (Zero Rateio)</span></li>
-              <li><Check /> <span>Cobrança fixa em Reais via Pix</span></li>
-            </ul>
-            <a href="#duvidas" className="plan-btn">
-              Começar no Starter
             </a>
           </div>
 
@@ -933,15 +910,15 @@ export default function App() {
       </section>
 
       <section className="pre-footer-cta-wrap">
-        <img 
-          src="/assets/cherub-left.webp" 
-          alt="Anjo nas nuvens à esquerda" 
-          className="cherub-flank cherub-flank-left" 
+        <img
+          src="/assets/cherub-left.webp"
+          alt="Anjo nas nuvens à esquerda"
+          className="cherub-flank cherub-flank-left"
         />
-        <img 
-          src="/assets/cherub-right.webp" 
-          alt="Anjo nas nuvens à direita" 
-          className="cherub-flank cherub-flank-right" 
+        <img
+          src="/assets/cherub-right.webp"
+          alt="Anjo nas nuvens à direita"
+          className="cherub-flank cherub-flank-right"
         />
         <div className="pre-footer-cta shell">
           <span className="eyebrow">comece agora</span>
@@ -1026,14 +1003,14 @@ export default function App() {
             </a>
             <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="footer-social-icon">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
               </svg>
             </a>
             <a href="https://discord.com" target="_blank" rel="noopener noreferrer" aria-label="Discord" className="footer-social-icon">
               <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
               </svg>
             </a>
           </div>
