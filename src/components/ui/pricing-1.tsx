@@ -179,3 +179,4 @@ function FaqSection({ faqs }: { faqs: FaqItem[] }) {
   );
 }
 export default Pricing;
+

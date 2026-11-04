@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus } from 'lucide-react'
+import { Plus, Minus, ChevronDown, ArrowRight } from 'lucide-react'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -137,6 +137,7 @@ export default function App() {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
 
   const [isScrolled, setIsScrolled] = useState(false)
+  const [megaMenuOpen, setMegaMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -145,9 +146,15 @@ export default function App() {
         setModelDropdownOpen(false)
         setVolDropdownOpen(false)
       }
+      if (!target.closest('.nav-dropdown-trigger') && !target.closest('.mega-menu-panel')) {
+        setMegaMenuOpen(false)
+      }
     }
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 15)
+      if (window.scrollY > 20) {
+        setMegaMenuOpen(false)
+      }
     }
     document.addEventListener('click', handleOutsideClick)
     window.addEventListener('scroll', handleScroll, { passive: true })
@@ -199,56 +206,135 @@ export default function App() {
 
   return (
     <main>
-      <header className={`nav-wrapper ${isScrolled ? 'nav-scrolled' : ''}`}>
+      <header 
+        className={`nav-wrapper ${isScrolled ? 'nav-scrolled' : ''}`}
+        onMouseLeave={() => setMegaMenuOpen(false)}
+      >
         <nav className="nav">
-          <a className="brand" href="#top" aria-label="Six, início">
-            <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" />
-          </a>
-          <div className="nav-links">
-            <a href="#recursos">Diferenciais</a>
-            <a href="#como-funciona">Como funciona</a>
-            <a href="#economia">Calculadora</a>
-            <a href="#planos">Planos</a>
-            <a href="#duvidas">Dúvidas</a>
-          </div>
-          <div 
-            className="nav-pill-group"
-            onMouseLeave={() => setNavTab('signup')}
-          >
-            <a
-              href="#teste"
-              className={`nav-pill-item ${navTab === 'login' ? 'active' : ''}`}
-              onMouseEnter={() => setNavTab('login')}
-              onClick={() => setNavTab('login')}
-            >
-              {navTab === 'login' && (
-                <motion.div
-                  layoutId="nav-pill-indicator"
-                  className="nav-active-pill"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                />
-              )}
-              <span className="relative z-10">Entrar</span>
+          <div className="nav-left">
+            <a className="brand" href="#top" aria-label="Six, início">
+              <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" />
             </a>
-            <a
-              href="#teste"
-              className={`nav-pill-item ${navTab === 'signup' ? 'active' : ''}`}
-              onMouseEnter={() => setNavTab('signup')}
-              onClick={() => setNavTab('signup')}
-            >
-              {navTab === 'signup' && (
-                <motion.div
-                  layoutId="nav-pill-indicator"
-                  className="nav-active-pill"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                />
-              )}
-              <span className="relative z-10 flex items-center gap-2">
-                Criar conta grátis <Arrow />
-              </span>
+            <div className="nav-links">
+              <div 
+                className="nav-dropdown-trigger"
+                onMouseEnter={() => setMegaMenuOpen(true)}
+              >
+                <button 
+                  type="button" 
+                  className={`nav-link-dropdown ${megaMenuOpen ? 'active' : ''}`}
+                  onClick={() => setMegaMenuOpen(!megaMenuOpen)}
+                  aria-expanded={megaMenuOpen}
+                >
+                  Produtos
+                  <ChevronDown className={`nav-chevron ${megaMenuOpen ? 'rotate' : ''}`} size={13} />
+                </button>
+              </div>
+              <a href="#como-funciona">Como funciona</a>
+              <a href="#economia">Calculadora</a>
+              <a href="#planos">Preço</a>
+              <a href="#duvidas">Dúvidas</a>
+            </div>
+          </div>
+
+          <div className="nav-right">
+            <a href="#login" className="nav-login-link">
+              Entrar
+            </a>
+            <a href="#planos" className="nav-cta-btn">
+              Criar conta grátis
             </a>
           </div>
         </nav>
+
+        {/* Mega Menu Dropdown estilo AbacatePay */}
+        {megaMenuOpen && (
+          <div 
+            className="mega-menu-panel"
+            onMouseEnter={() => setMegaMenuOpen(true)}
+          >
+            <div className="mega-menu-grid">
+              {/* Coluna 1: Modelos Oficiais */}
+              <div className="mega-menu-col">
+                <span className="mega-menu-col-title">Modelos Oficiais de IA</span>
+                <div className="mega-menu-items">
+                  <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Claude Fable 5.1</strong>
+                    <span>Raciocínio profundo e código de alta complexidade.</span>
+                  </a>
+                  <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>GPT Astra 6</strong>
+                    <span>Velocidade ultra-rápida e inteligência multimodal.</span>
+                  </a>
+                  <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>GLM-4 Plus</strong>
+                    <span>Excelente em refatoração, documentação e testes.</span>
+                  </a>
+                  <a href="#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Conexão Direta Oficial</strong>
+                    <span>Sem intermediários, sem compressão e sem erros 429.</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Coluna 2: Onde Você Codifica */}
+              <div className="mega-menu-col">
+                <span className="mega-menu-col-title">Onde Você Já Codifica</span>
+                <div className="mega-menu-items">
+                  <a href="#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Claude Code CLI</strong>
+                    <span>Agentes autônomos no seu terminal sem travas de cotas.</span>
+                  </a>
+                  <a href="#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Cursor IDE</strong>
+                    <span>Substitua sua chave de API e programe sem interrupção.</span>
+                  </a>
+                  <a href="#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>VS Code (Cline & Roo)</strong>
+                    <span>Suporte nativo aos melhores assistentes do mercado.</span>
+                  </a>
+                  <a href="#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Codex & Terminal</strong>
+                    <span>Ambientes de desenvolvimento com contexto estendido.</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Coluna 3: Diferenciais */}
+              <div className="mega-menu-col">
+                <span className="mega-menu-col-title">Diferenciais SixtySix</span>
+                <div className="mega-menu-items">
+                  <a href="#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Uso 100% Ilimitado</strong>
+                    <span>Sem limites diários de prompts ou cortes de velocidade.</span>
+                  </a>
+                  <a href="#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Zero Rateio & Chave Própria</strong>
+                    <span>Sua chave individual, garantindo sigilo e estabilidade.</span>
+                  </a>
+                  <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Preço Fixo em Reais (Pix)</strong>
+                    <span>Esqueça IOF e variações do Dólar na fatura do cartão.</span>
+                  </a>
+                  <a href="#economia" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Alta Estabilidade 99.9%</strong>
+                    <span>Respostas rápidas sem travamentos no meio do deploy.</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Barra Inferior com Call-to-action */}
+            <div className="mega-menu-bottom">
+              <a href="#planos" className="mega-menu-bottom-link" onClick={() => setMegaMenuOpen(false)}>
+                Ver todos os planos a partir de R$ 39/mês <ArrowRight size={15} />
+              </a>
+              <a href="#economia" className="mega-menu-bottom-link-secondary" onClick={() => setMegaMenuOpen(false)}>
+                Simular economia na calculadora de tokens →
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       <header className="hero shell" id="top">
