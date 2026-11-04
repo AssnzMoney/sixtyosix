@@ -12,6 +12,8 @@
   --mint: #e4f9ee;
   --paper: #fbf9f4;
   --cream: #f3efe6;
+  --primary: #9eea6c;
+  --primary-foreground: #0b3824;
   --card-bg: #ffffff;
   --line: rgba(31, 70, 71, 0.1);
   color: var(--ink);
@@ -1548,23 +1550,23 @@ h2 em {
 .faq {
   display: grid;
   grid-template-columns: 0.9fr 1.1fr;
-  gap: 70px;
-  padding: 100px 0 90px;
-  margin-top: 50px;
+  gap: 60px;
+  padding: 85px 0 75px;
+  margin-top: 40px;
   align-items: flex-start;
 }
 
 .faq-intro {
   position: sticky;
-  top: 110px;
+  top: 100px;
 }
 
 .faq-title {
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(38px, 4.2vw, 52px);
-  line-height: 1.12;
-  letter-spacing: -0.045em;
+  font-size: clamp(32px, 3.2vw, 42px);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
   color: #1f4647;
   font-weight: 800;
 }
@@ -1576,44 +1578,44 @@ h2 em {
 .faq-subtitle {
   color: #4e6b68;
   font-family: 'Manrope', sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.55;
-  margin: 0 0 30px;
-  max-width: 440px;
+  margin: 0 0 26px;
+  max-width: 400px;
 }
 
 .faq-action {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px;
 }
 
 .faq-support-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 50px;
-  padding: 0 36px;
+  height: 48px;
+  padding: 0 32px;
   background: #9eea6c;
   color: #0b3824;
   border-radius: 9999px;
   font-family: 'Fustat', sans-serif;
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(158, 234, 108, 0.4);
+  box-shadow: 0 4px 12px rgba(158, 234, 108, 0.4);
   transition: all .2s ease;
 }
 
 .faq-support-btn:hover {
   background: #8ee257;
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(158, 234, 108, 0.55);
+  box-shadow: 0 8px 20px rgba(158, 234, 108, 0.5);
 }
 
 .faq-footnote {
-  font-size: 12.5px;
+  font-size: 12px;
   color: #4e6b68;
   font-weight: 500;
 }
@@ -1880,9 +1882,9 @@ h2 em {
   .phrase-menu { min-width: 220px; }
   .calc-phrase-action-wrap { flex-direction: column; width: 100%; max-width: 320px; }
   .plans-grid { grid-template-columns: 1fr; gap: 24px; }
-  .faq { grid-template-columns: 1fr; gap: 36px; padding: 60px 0 70px; margin-top: 30px; }
+  .faq { grid-template-columns: 1fr; gap: 28px; padding: 50px 0 50px; margin-top: 20px; }
   .faq-intro { position: static; }
-  .faq-title { font-size: 38px; }
+  .faq-title { font-size: 26px; }
   .pre-footer-cta-wrap { padding: 80px 0 70px; }
   .cherub-flank {
     width: clamp(240px, 44vw, 380px);
@@ -1948,8 +1950,8 @@ h2 em {
 .faq-accordion-item {
   background: #ffffff;
   border: 1px solid rgba(31, 70, 71, 0.12);
-  border-radius: 20px;
-  padding: 0 26px;
+  border-radius: 16px;
+  padding: 0 24px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   overflow: hidden;
 }
@@ -1960,7 +1962,7 @@ h2 em {
 
 .faq-accordion-item[data-state=open] {
   border-color: #22c55e;
-  box-shadow: 0 8px 26px -6px rgba(34, 197, 94, 0.16);
+  box-shadow: 0 6px 22px -4px rgba(34, 197, 94, 0.14);
 }
 
 .faq-accordion-trigger {
@@ -1969,9 +1971,9 @@ h2 em {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 22px 0;
+  padding: 19px 0;
   font-family: 'Fustat', sans-serif;
-  font-size: 17.5px;
+  font-size: 16.5px;
   font-weight: 600;
   color: #1f4647;
   background: transparent;
@@ -1987,8 +1989,8 @@ h2 em {
 
 .faq-accordion-icon-wrap {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1996,25 +1998,91 @@ h2 em {
   flex-shrink: 0;
 }
 
-.faq-accordion-icon {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
-  color: #4e6b68;
+.faq-accordion-plus,
+.faq-accordion-minus {
+  position: absolute;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.faq-accordion-item[data-state=open] .faq-accordion-icon {
-  transform: rotate(45deg);
-  color: #16a34a;
+[data-state=closed] .faq-accordion-plus {
+  opacity: 1;
+  transform: scale(1);
+}
+
+[data-state=closed] .faq-accordion-minus {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+[data-state=open] .faq-accordion-plus {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+[data-state=open] .faq-accordion-minus {
+  opacity: 1;
+  transform: scale(1);
+  color: #1f4647;
 }
 
 .faq-accordion-content {
   overflow: hidden;
   color: #4e6b68;
   font-family: 'Manrope', sans-serif;
-  font-size: 14.5px;
-  line-height: 1.65;
-  padding-bottom: 22px;
+  font-size: 14px;
+  line-height: 1.6;
+  padding-bottom: 20px;
 }
 
 .faq-accordion-content p {
   margin: 0;
+}
+
+/* ==========================================================================
+   FOOTER AI AWARD BADGE (DISCRETO & ELEGANTE)
+   ========================================================================== */
+.footer-award-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 40px auto 10px;
+  padding-top: 30px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.footer-award-compact {
+  max-width: 360px;
+  width: 100%;
+  transform: scale(0.72);
+  transform-origin: center;
+  margin: -35px auto;
+  opacity: 0.88;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  color: #ffffff;
+}
+
+.footer-award-compact:hover {
+  opacity: 1;
+  transform: scale(0.75);
+}
+
+.footer-award-compact svg {
+  opacity: 0.22;
+}
+
+.footer-award-compact h1 {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.footer-award-compact h2 {
+  font-size: 14px;
+  color: #a9c5b7;
+  max-width: 280px;
+  margin: 0 auto 12px;
+}
+
+.footer-award-compact div {
+  color: #a9c5b7;
 }
