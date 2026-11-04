@@ -537,13 +537,9 @@ export default function App() {
       <section className="calc-phrase-section shell" id="economia">
         <div className="calc-phrase-wrap">
           <div className="calc-header">
-            <span className="eyebrow">transparência total</span>
             <h2 className="calc-title">
               Quanto você gastaria pagando <em>direto por token?</em>
             </h2>
-            <p className="calc-desc">
-              Compare o preço de tabela oficial dos provedores em Dólar com a assinatura em Reais da Six.
-            </p>
           </div>
 
           <div className="calc-phrase-heading">
