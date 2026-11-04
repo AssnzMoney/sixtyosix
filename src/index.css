@@ -906,7 +906,7 @@ h2 em {
 .calc-warrior-img {
   position: absolute;
   right: -10px;
-  bottom: -48px;
+  bottom: -142px;
   width: min(34vw, 390px);
   max-height: 480px;
   object-fit: contain;
@@ -1409,6 +1409,7 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
     width: 300px;
     opacity: 0.35;
     right: -30px;
+    bottom: -110px;
   }
 }
 
