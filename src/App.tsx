@@ -464,6 +464,7 @@ export default function App() {
           </div>
 
           <div className="integration-copy">
+            <span className="eyebrow">integração nativa</span>
             <h2 className="integration-title">
               <span className="text-emerald">Integre do jeito que</span>
               <br />
@@ -536,8 +537,9 @@ export default function App() {
       <section className="calc-phrase-section shell" id="economia">
         <div className="calc-phrase-wrap">
           <div className="calc-header">
+            <span className="eyebrow">simulador de custos</span>
             <h2 className="calc-title">
-              Quanto você gastaria na API oficial<br className="calc-title-br" /> pagando <em>direto por token?</em>
+              Calcule sua <em>economia.</em>
             </h2>
           </div>
 
@@ -909,6 +911,7 @@ export default function App() {
       </section>
 
       <section className="pre-footer-cta shell">
+        <span className="eyebrow">comece agora</span>
         <h2 className="pre-footer-title">
           Você leu até aqui. <span className="pre-footer-green">Tá interessado né?</span>
         </h2>
