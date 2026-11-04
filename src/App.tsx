@@ -820,12 +820,12 @@ export default function App() {
 
       <section className="pre-footer-cta-wrap">
         <img 
-          src="/assets/cherub-left.png" 
+          src="/assets/cherub-left.webp" 
           alt="Anjo nas nuvens à esquerda" 
           className="cherub-flank cherub-flank-left" 
         />
         <img 
-          src="/assets/cherub-right.png" 
+          src="/assets/cherub-right.webp" 
           alt="Anjo nas nuvens à direita" 
           className="cherub-flank cherub-flank-right" 
         />

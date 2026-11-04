@@ -1439,18 +1439,19 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   position: absolute;
   bottom: -35px;
   pointer-events: none;
-  z-index: 3;
+  z-index: 1;
   width: clamp(340px, 34vw, 560px);
   height: auto;
-  filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.06));
+  filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.05));
+  user-select: none;
 }
 
 .cherub-flank-left {
-  left: -20px;
+  left: clamp(24px, 4vw, 75px);
 }
 
 .cherub-flank-right {
-  right: -20px;
+  right: clamp(-10px, 1.5vw, 25px);
 }
 
 .pre-footer-title {
@@ -1684,10 +1685,11 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   .cherub-flank {
     width: clamp(200px, 38vw, 320px);
     bottom: -20px;
-    opacity: 0.85;
+    opacity: 0.8;
+    z-index: 1;
   }
-  .cherub-flank-left { left: -35px; }
-  .cherub-flank-right { right: -35px; }
+  .cherub-flank-left { left: 10px; }
+  .cherub-flank-right { right: -10px; }
   .footer-wrap { padding: 70px 0 50px; }
   .footer-columns-grid { grid-template-columns: repeat(2, 1fr); gap: 36px 20px; }
   .footer-bottom-bar { flex-direction: column; align-items: flex-start; gap: 18px; margin-top: 50px; }
