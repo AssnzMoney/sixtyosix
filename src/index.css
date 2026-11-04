@@ -1195,34 +1195,6 @@ h2 em {
   box-shadow: 0 14px 30px -4px rgba(31, 70, 71, 0.1);
 }
 
-.plan-card.is-featured {
-  border: 2px solid #16a34a;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fdf9 100%);
-  box-shadow: 0 12px 34px -4px rgba(22, 163, 74, 0.16);
-}
-
-.plan-card.is-featured:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 18px 40px -4px rgba(22, 163, 74, 0.24);
-}
-
-.plan-featured-badge {
-  position: absolute;
-  top: -13px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #16a34a;
-  color: #ffffff;
-  font-family: 'Fustat', sans-serif;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  padding: 4px 14px;
-  border-radius: 100px;
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
-}
-
 .plan-tag {
   display: inline-block;
   font-family: 'Fustat', sans-serif;
@@ -1298,8 +1270,8 @@ h2 em {
   line-height: 1.5;
   color: #1f4647;
   display: flex;
-  align-items: center;
-  gap: 9px;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .plan-features li strong {
@@ -1307,9 +1279,14 @@ h2 em {
   font-weight: 700;
 }
 
+.plan-features li span {
+  flex: 1;
+}
+
 .plan-features li svg {
   flex-shrink: 0;
   color: #16a34a;
+  margin-top: 3px;
 }
 
 .plan-btn {
@@ -1512,8 +1489,8 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
 .pre-footer-art-wrap {
   position: relative;
   width: 100%;
-  max-width: 1060px;
-  margin: 25px auto -55px;
+  max-width: 920px;
+  margin: 20px auto -85px;
   display: flex;
   justify-content: center;
   z-index: 3;
@@ -1523,9 +1500,11 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
 .pre-footer-art-img {
   width: 100%;
   height: auto;
-  max-height: 480px;
+  max-height: 350px;
   object-fit: contain;
   display: block;
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 98%);
+  mask-image: linear-gradient(to bottom, black 70%, transparent 98%);
   filter: drop-shadow(0 14px 34px rgba(0, 0, 0, 0.07));
 }
 
@@ -1534,7 +1513,7 @@ details p { color: var(--muted); line-height: 1.7; padding: 0 40px 24px 0; margi
   background: var(--green-dark);
   border-radius: 44px 44px 0 0;
   color: #a9c5b7;
-  padding: 100px 0 60px;
+  padding: 95px 0 60px;
   position: relative;
   z-index: 2;
 }

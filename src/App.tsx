@@ -725,10 +725,10 @@ export default function App() {
               <p className="plan-desc">Ideal para automações, scripts e projetos pessoais rápidos.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> GLM-4 Plus incluído</li>
-              <li><Check /> Claude Code & Terminal</li>
-              <li><Check /> Chave própria (Zero Rateio)</li>
-              <li><Check /> Cobrança fixa em Reais via Pix</li>
+              <li><Check /> <span>GLM-4 Plus incluído</span></li>
+              <li><Check /> <span>Claude Code & Terminal</span></li>
+              <li><Check /> <span>Chave própria (Zero Rateio)</span></li>
+              <li><Check /> <span>Cobrança fixa em Reais via Pix</span></li>
             </ul>
             <a href="#duvidas" className="plan-btn">
               Começar no Starter
@@ -748,22 +748,21 @@ export default function App() {
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> GPT Astra 6 & GLM-4 Plus</li>
-              <li><Check /> Claude Code, Cursor & VS Code</li>
-              <li><Check /> Chave própria com Método Novo</li>
-              <li><Check /> Roteamento de baixa latência</li>
-              <li><Check /> Cobrança fixa em Reais via Pix</li>
+              <li><Check /> <span>GPT Astra 6 & GLM-4 Plus</span></li>
+              <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
+              <li><Check /> <span>Chave própria com Método Novo</span></li>
+              <li><Check /> <span>Roteamento de baixa latência</span></li>
+              <li><Check /> <span>Cobrança fixa em Reais via Pix</span></li>
             </ul>
             <a href="#duvidas" className="plan-btn">
               Começar no Dev
             </a>
           </div>
 
-          {/* Pro Ilimitado - DESTAQUE */}
-          <div className="plan-card is-featured">
-            <div className="plan-featured-badge">100% ILIMITADO · MAIS ESCOLHIDO</div>
+          {/* Pro Ilimitado */}
+          <div className="plan-card">
             <div className="plan-card-top">
-              <span className="plan-tag plan-tag-green">Acesso total</span>
+              <span className="plan-tag">Mais completo</span>
               <h3 className="plan-name">Pro Ilimitado</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
@@ -773,14 +772,14 @@ export default function App() {
               <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> <strong>Claude Opus 5.5</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></li>
-              <li><Check /> <strong>Uso 100% Ilimitado</strong> (sem travas de prompts diários)</li>
-              <li><Check /> <strong>Zero Rateio</strong> (chave de API individual e segura)</li>
-              <li><Check /> <strong>Método Novo</strong> (cluster com failover 99.9%)</li>
-              <li><Check /> Claude Code, Cursor, VS Code, Codex</li>
-              <li><Check /> Cobrança fixa em Reais sem IOF via Pix</li>
+              <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias de prompts)</span></li>
+              <li><Check /> <span><strong>Zero Rateio</strong> (chave de API individual e segura)</span></li>
+              <li><Check /> <span><strong>Método Novo</strong> (cluster com failover 99.9%)</span></li>
+              <li><Check /> <span>Claude Code, Cursor, VS Code, Codex</span></li>
+              <li><Check /> <span>Cobrança fixa em Reais sem IOF via Pix</span></li>
             </ul>
-            <a href="#duvidas" className="plan-btn plan-btn-featured">
+            <a href="#duvidas" className="plan-btn">
               Garantir Acesso Ilimitado <Arrow />
             </a>
           </div>
