@@ -537,7 +537,7 @@ export default function App() {
         <div className="calc-phrase-wrap">
           <div className="calc-header">
             <h2 className="calc-title">
-              Quanto você gastaria<br className="calc-title-br" /> pagando <em>direto por token?</em>
+              Quanto você gastaria na API oficial<br className="calc-title-br" /> pagando <em>direto por token?</em>
             </h2>
           </div>
 
@@ -694,6 +694,198 @@ export default function App() {
           className="calc-warrior-img" 
           aria-hidden="true"
         />
+      </section>
+
+      {/* SEÇÃO DIFERENCIAIS DA SIX VS CONCORRENTES & PLANOS */}
+      <section className="differentiation-section shell" id="diferenciais">
+        <div className="diff-header">
+          <span className="eyebrow">método novo · zero rateio</span>
+          <h2 className="diff-title">
+            Não é rateio. É método novo com uso <em>100% ilimitado.</em>
+          </h2>
+          <p className="diff-subtitle">
+            Esqueça contas compartilhadas que caem no meio do raciocínio ou faturas surpresa em Dólar. Conecte sua chave no <strong>Claude Code</strong>, <strong>VS Code</strong>, <strong>Cursor</strong> ou <strong>Codex</strong> e code sem limites.
+          </p>
+        </div>
+
+        {/* 3 Cards dos Diferenciais */}
+        <div className="diff-cards-grid">
+          <div className="diff-card">
+            <div className="diff-card-badge">Zero Rateio</div>
+            <h3>Chave de API própria e segura</h3>
+            <p>
+              Nada de contas compartilhadas, cookies que expiram, extensões esquisitas ou risco de vazar o código confidencial do seu cliente. Você recebe uma chave de API própria, segura e individual para sua máquina.
+            </p>
+          </div>
+
+          <div className="diff-card">
+            <div className="diff-card-badge">Método Novo</div>
+            <h3>Roteamento inteligente de alta disponibilidade</h3>
+            <p>
+              Operamos um cluster inteligente que orquestra conexões dedicadas direto com os data centers de IA. Se uma rota congestionar, o failover é instantâneo: você tem latência sub-150ms sem quedas ou erro 429.
+            </p>
+          </div>
+
+          <div className="diff-card">
+            <div className="diff-card-badge">100% Ilimitado</div>
+            <h3>Pode codar o dia inteiro sem travas</h3>
+            <p>
+              Programe o dia todo, faça refatorações pesadas e rode agentes autônomos. Sem limite diário de prompts, sem bloqueios de cota bem na hora do deploy e com valor fixo e previsível em Reais via Pix.
+            </p>
+          </div>
+        </div>
+
+        {/* Faixa de Ambientes Suportados */}
+        <div className="supported-tools-strip">
+          <span className="tools-strip-label">Usa direto onde você já programa:</span>
+          <div className="tools-strip-badges">
+            <span className="tool-pill"><span className="tool-dot" /> Claude Code CLI</span>
+            <span className="tool-pill"><span className="tool-dot" /> VS Code (Roo Code, Cline, Continue)</span>
+            <span className="tool-pill"><span className="tool-dot" /> Cursor IDE</span>
+            <span className="tool-pill"><span className="tool-dot" /> Codex & Windsurf</span>
+            <span className="tool-pill"><span className="tool-dot" /> Terminal & Scripts</span>
+          </div>
+        </div>
+
+        {/* Grid de Planos e Preços */}
+        <div className="plans-wrapper">
+          <div className="plans-header">
+            <h3 className="plans-title">Nossos Planos em Reais</h3>
+            <p className="plans-desc">Preço fixo no Pix, sem surpresas de cotação de dólar ou IOF no cartão de crédito.</p>
+          </div>
+
+          <div className="plans-grid">
+            {/* Starter */}
+            <div className="plan-card">
+              <div className="plan-card-top">
+                <span className="plan-tag">Para começar</span>
+                <h4 className="plan-name">Starter</h4>
+                <div className="plan-price">
+                  <span className="plan-curr">R$</span>
+                  <span className="plan-val">39</span>
+                  <span className="plan-period">/mês</span>
+                </div>
+                <p className="plan-desc">Ideal para acelerar projetos pessoais e automações rápidas.</p>
+              </div>
+              <ul className="plan-features">
+                <li><Check /> GLM-4 Plus incluído</li>
+                <li><Check /> Claude Code & Terminal</li>
+                <li><Check /> Chave API dedicada e segura</li>
+                <li><Check /> Cobrança fixa em Reais via Pix</li>
+              </ul>
+              <a href="#duvidas" className="plan-btn">
+                Começar no Starter
+              </a>
+            </div>
+
+            {/* Dev */}
+            <div className="plan-card">
+              <div className="plan-card-top">
+                <span className="plan-tag">Mais versátil</span>
+                <h4 className="plan-name">Dev</h4>
+                <div className="plan-price">
+                  <span className="plan-curr">R$</span>
+                  <span className="plan-val">79</span>
+                  <span className="plan-period">/mês</span>
+                </div>
+                <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
+              </div>
+              <ul className="plan-features">
+                <li><Check /> GPT Astra 6 & GLM-4 Plus</li>
+                <li><Check /> Claude Code, Cursor & VS Code</li>
+                <li><Check /> Roteamento de baixa latência</li>
+                <li><Check /> Suporte direto de dev pra dev</li>
+              </ul>
+              <a href="#duvidas" className="plan-btn">
+                Começar no Dev
+              </a>
+            </div>
+
+            {/* Pro Ilimitado - DESTAQUE */}
+            <div className="plan-card is-featured">
+              <div className="plan-featured-badge">100% ILIMITADO · MAIS ESCOLHIDO</div>
+              <div className="plan-card-top">
+                <span className="plan-tag plan-tag-green">Acesso total</span>
+                <h4 className="plan-name">Pro Ilimitado</h4>
+                <div className="plan-price">
+                  <span className="plan-curr">R$</span>
+                  <span className="plan-val">119</span>
+                  <span className="plan-period">/mês</span>
+                </div>
+                <p className="plan-desc">Acesso irrestrito a todos os modelos de fronteira para quem não pode parar.</p>
+              </div>
+              <ul className="plan-features">
+                <li><Check /> <strong>Claude Opus 5.5</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></li>
+                <li><Check /> <strong>Uso 100% Ilimitado</strong> (sem limites de prompts diários)</li>
+                <li><Check /> Claude Code, Cursor, VS Code, Codex</li>
+                <li><Check /> Chave de API dedicada (zero rateio)</li>
+                <li><Check /> Uptime 99.9% com failover automático</li>
+                <li><Check /> Cobrança em Reais sem IOF ou surpresas</li>
+              </ul>
+              <a href="#duvidas" className="plan-btn plan-btn-featured">
+                Garantir Acesso Ilimitado <Arrow />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabela Comparativa Resumida */}
+        <div className="comparison-table-wrap">
+          <div className="comparison-table-header">
+            <h3>Por que a Six é a melhor escolha?</h3>
+            <p>Veja a diferença real entre a Six, os rateios do mercado e as APIs oficiais em Dólar:</p>
+          </div>
+          <div className="comparison-table-scroll">
+            <table className="comparison-table">
+              <thead>
+                <tr>
+                  <th>Critério</th>
+                  <th className="th-highlight">Six (Método Novo)</th>
+                  <th>Rateios de Grupo</th>
+                  <th>API Oficial em Dólar</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Tipo de Acesso</strong></td>
+                  <td className="td-highlight">Chave de API dedicada e segura</td>
+                  <td>Conta compartilhada / cookies</td>
+                  <td>Chave de API oficial</td>
+                </tr>
+                <tr>
+                  <td><strong>Limite de Uso</strong></td>
+                  <td className="td-highlight"><span className="badge-ilimitado">100% Ilimitado</span></td>
+                  <td>Trava por limite de cota</td>
+                  <td>Paga a cada token consumido</td>
+                </tr>
+                <tr>
+                  <td><strong>Cobrança</strong></td>
+                  <td className="td-highlight">Fixo em Reais via Pix (a partir de R$ 39)</td>
+                  <td>Pix/Cripto sem nota ou garantia</td>
+                  <td>Dólar + 4.38% de IOF no cartão</td>
+                </tr>
+                <tr>
+                  <td><strong>Ambientes</strong></td>
+                  <td className="td-highlight">Claude Code, Cursor, VS Code, Codex</td>
+                  <td>Geralmente só navegador web</td>
+                  <td>Terminal e editores</td>
+                </tr>
+                <tr>
+                  <td><strong>Segurança do Código</strong></td>
+                  <td className="td-highlight">Privacidade total (canal criptografado)</td>
+                  <td>Outros usuários veem prompts</td>
+                  <td>Seguro</td>
+                </tr>
+                <tr>
+                  <td><strong>Estabilidade</strong></td>
+                  <td className="td-highlight">99.9% (Cluster com failover)</td>
+                  <td>Quedas frequentes e erros 429</td>
+                  <td>Alta mas caríssima</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <section className="faq shell" id="duvidas">
