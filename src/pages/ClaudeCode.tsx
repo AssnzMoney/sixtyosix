@@ -135,7 +135,8 @@ export default function ClaudeCodePage() {
               Entrar
             </Link>
             <a href="#planos-claude" className="nav-cta-btn">
-              Testar Claude Code
+              <span className="nav-cta-desktop">Testar Claude Code</span>
+              <span className="nav-cta-mobile">Testar grátis</span>
             </a>
           </div>
         </nav>
