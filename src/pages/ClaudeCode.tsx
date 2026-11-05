@@ -13,31 +13,31 @@ const Arrow = () => (
 const claudeFaqs = [
   [
     'Como funciona o acesso ao Claude Code pela SixtySix?',
-    'Você utiliza o Claude Code CLI oficial da Anthropic no seu terminal conectado ao nosso cluster dedicado. Você programa sem cortes de cotas de 5 horas, sem surpresas de IOF ou oscilação do Dólar na fatura, pagando valor fixo e previsível em Reais via Pix.',
+    'Você utiliza o Claude Code CLI oficial da Anthropic no seu terminal conectado ao nosso cluster dedicado com Claude Fable 5.1. Você programa sem cortes de cotas de 5 horas, sem surpresas de IOF ou oscilação do Dólar na fatura, pagando valor fixo e previsível em Reais via Pix.',
   ],
   [
     'Como funciona o teste de 7 dias grátis?',
-    'Você pode testar a conexão no seu terminal sem compromisso. Crie sua conta, solicite sua chave individual com nosso suporte e comece a rodar o Claude Code hoje mesmo, sem precisar cadastrar cartão de crédito.',
+    'Você pode testar o Claude Code no seu terminal sem compromisso. Crie sua conta, solicite sua chave individual com nosso suporte e comece a rodar o agente hoje mesmo, sem precisar cadastrar cartão de crédito.',
   ],
   [
-    'Onde consigo minha chave individual de acesso?',
-    'Sua chave individual é gerada com exclusividade e entregue diretamente pelo administrador. Cada usuário possui sua própria chave isolada, garantindo total privacidade, zero rateio e alta estabilidade.',
+    'Onde consigo minha chave individual de acesso para o Claude?',
+    'Sua chave individual é gerada com exclusividade e entregue diretamente pelo administrador. Cada usuário possui sua própria chave isolada, garantindo total privacidade, zero rateio e alta estabilidade de conexão.',
   ],
   [
-    'Posso usar no terminal, no VS Code e no Codex?',
-    'Sim! O serviço foi projetado com suporte nativo ao Claude Code CLI no seu terminal (Prompt de Comando, PowerShell ou WSL), além de extensões no VS Code (Cline, Roo Code) e na Responses API do Codex.',
+    'Em quais terminais e ambientes posso rodar o Claude Code?',
+    'Você pode rodar o Claude Code CLI nativamente no Prompt de Comando (CMD), PowerShell, WSL ou no terminal integrado do VS Code e Cursor. Basta configurar as variáveis de ambiente com a sua chave e executar o comando claude.',
   ],
   [
     'Posso usar no Claude direto pelo navegador (Claude.ai)?',
     'Não no site padrão claude.ai, pois a interface web da Anthropic não permite alterar o endpoint de API. Você pode usar no aplicativo Claude Desktop (quando a versão permitir gateway personalizado) ou no Claude Code diretamente no seu terminal.',
   ],
   [
-    'Qual endereço (URL do gateway) e modelo devo configurar?',
-    'O endereço base oficial é https://66cloud.vercel.app com o modelo claude-fable-5-1 (para Claude Code e Claude Desktop). Para o Codex, a configuração aponta para https://66cloud.vercel.app/v1 com o modelo gpt-6-astra. Você encontra os comandos prontos para copiar na seção de tutorial passo a passo acima.',
+    'Qual endereço (URL do gateway) e modelo devo configurar para o Claude?',
+    'O endereço base oficial é https://66cloud.vercel.app e o identificador do modelo é claude-fable-5-1. O passo a passo completo com os comandos prontos para colar no seu Prompt de Comando está disponível na seção de tutorial passo a passo acima.',
   ],
   [
-    'A chave não funcionou ou deu erro. O que devo verificar?',
-    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://66cloud.vercel.app; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate nosso suporte.',
+    'A chave não funcionou no Claude Code. O que devo verificar?',
+    'Verifique 5 pontos simples: 1) Se o endereço base é exatamente https://66cloud.vercel.app; 2) Se o modelo foi digitado como claude-fable-5-1; 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis foram aplicadas na mesma janela aberta do CMD; 5) Se a sua chave continua ativa com o administrador. Se precisar de ajuda, nosso suporte está disponível via WhatsApp.',
   ],
 ]
 
@@ -882,7 +882,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
         <div className="pre-footer-cta shell">
           <span className="eyebrow">comece agora</span>
           <h2 className="pre-footer-title">
-            Pronto para codificar com Claude Code <span className="pre-footer-green">sem limites?</span>
+            Pronto para codar com Claude Code <span className="pre-footer-green">sem limites?</span>
           </h2>
           <p className="pre-footer-sub">
             Crie sua conta em 1 minuto, receba sua chave oficial e teste no seu terminal hoje mesmo.
