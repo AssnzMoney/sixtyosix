@@ -927,7 +927,7 @@ export default function App() {
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="faq-support-btn">
               Falar conosco
             </a>
-            <span className="faq-footnote">Sem mensalidade. Aprovação não leva semanas.</span>
+            <span className="faq-footnote">Sem burocracia. Chave individual com ativação imediata.</span>
           </div>
         </div>
         <div className="faq-list">
@@ -969,7 +969,7 @@ export default function App() {
             Você leu até aqui. <span className="pre-footer-green">Tá interessado né?</span>
           </h2>
           <p className="pre-footer-sub">
-            Cadastro leva 2 minutos, a aprovação não leva semanas, e você começa a codar hoje ainda.
+            Cadastro leva 2 minutos, sem cartão internacional, e você começa a codar hoje ainda.
           </p>
           <div className="pre-footer-btn-wrap">
             <a href="#economia" className="pre-footer-btn">
@@ -977,7 +977,7 @@ export default function App() {
             </a>
           </div>
           <p className="pre-footer-footnote">
-            Sem mensalidade. Aprovação não leva semanas.
+            Preço fixo no Pix. Chave individual com Zero Rateio.
           </p>
         </div>
       </section>
