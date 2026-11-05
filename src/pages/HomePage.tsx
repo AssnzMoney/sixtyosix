@@ -560,7 +560,8 @@ export default function App() {
               </div>
               <div className="phone-chat-body">
                 <div className="chat-msg-user">
-                  set ANTHROPIC_BASE_URL=https://66cloud.vercel.app
+                  <span className="chat-cmd-line">set ANTHROPIC_BASE_URL=</span>
+                  <span className="chat-cmd-url">https://66cloud.vercel.app</span>
                 </div>
                 <div className="chat-msg-bot">
                   <div className="chat-bot-icon">

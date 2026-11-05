@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { Plus, Minus, ChevronDown, Check, Terminal, ShieldCheck, Zap, DollarSign } from 'lucide-react'
+import NumberFlow from '@number-flow/react'
+import { Slider } from '@/components/ui/slider-number-flow'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -633,9 +635,75 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
         )}
       </section>
 
-      {/* Calculadora Interativa Estilo AbacatePay - Caixa Verde Escuro */}
+      {/* Seção de Introdução ao Preço & Custos estilo AbacatePay */}
       <section className="claude-calc-dark-section shell" id="calculadora-dolar">
+        <div className="claude-price-intro-split">
+          <div className="claude-price-intro-col-left">
+            <span className="eyebrow">Preço</span>
+            <h2 className="claude-price-intro-title">
+              Quanto custa usar o <br />
+              <span className="highlight-green-text">Claude Code?</span>
+            </h2>
+            <p className="claude-price-intro-sub">
+              A partir de R$ 39,00 fixos no Pix, sem mensalidade surpresa e sem limites de cota a cada 5 horas.
+              Diferente da Anthropic que cobra em Dólar com IOF de 4,38% e taxa de câmbio abusiva no cartão, aqui o valor é previsível em Reais.
+              Veja os <a href="#planos-claude">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
+            </p>
+          </div>
+
+          <div className="claude-price-intro-col-right">
+            <div className="claude-philosophers-card">
+              <img
+                src="/philosophers-glasses.png"
+                alt="Platão e Aristóteles calculando a economia"
+                className="claude-philosophers-img"
+              />
+              <div className="claude-philosophers-bubble">
+                <span>"Até a filosofia concorda: pagar em Dólar é loucura."</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bloco Verde #1f4647 Preenchido com a Calculadora e Linhas Onduladas */}
         <div className="claude-calc-dark-wrap">
+          {/* Linhas onduladas fluidas em branco estilo AbacatePay - Absolute para não ocupar espaço no fluxo */}
+          <svg
+            className="claude-calc-waves-bg"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+            viewBox="0 0 1200 600"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M-40 480 C 220 380, 420 560, 720 440 C 960 340, 1100 420, 1240 370"
+              stroke="rgba(255, 255, 255, 0.12)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 515 C 240 410, 450 585, 760 465 C 1000 365, 1140 440, 1240 395"
+              stroke="rgba(255, 255, 255, 0.09)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 550 C 260 440, 480 610, 800 490 C 1040 390, 1170 460, 1240 420"
+              stroke="rgba(255, 255, 255, 0.07)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 440 C 190 350, 390 520, 680 410 C 920 310, 1060 390, 1240 340"
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 400 C 160 320, 360 480, 640 380 C 880 280, 1020 360, 1240 310"
+              stroke="rgba(255, 255, 255, 0.05)"
+              strokeWidth="1.5"
+            />
+          </svg>
+
           {/* Header dentro da caixa verde */}
           <div className="claude-calc-dark-header">
             <h2 className="claude-calc-dark-title">
@@ -666,18 +734,22 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <div className="claude-glass-card">
               <span className="claude-glass-card-label">Quanto você consome na Anthropic por mês?</span>
               <div className="claude-glass-big-val">
-                US$ {calcUsd},00
+                <NumberFlow
+                  value={calcUsd}
+                  format={{ style: 'currency', currency: 'USD', minimumFractionDigits: 2 }}
+                  locales="pt-BR"
+                  continuous
+                  willChange
+                />
               </div>
 
               <div className="claude-glass-slider-wrap">
-                <input
-                  type="range"
-                  min="20"
-                  max="400"
-                  step="10"
-                  value={calcUsd}
-                  onChange={(e) => setCalcUsd(Number(e.target.value))}
-                  className="claude-glass-slider"
+                <Slider
+                  value={[calcUsd]}
+                  onValueChange={(val) => setCalcUsd(val[0])}
+                  min={20}
+                  max={400}
+                  step={10}
                   aria-label="Consumo estimado em Dólar"
                 />
               </div>
@@ -694,7 +766,13 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <div className="claude-glass-card">
               <span className="claude-glass-card-label">Você paga no Pix na SixtySix</span>
               <div className="claude-glass-big-val highlight-green">
-                R$ {sixtySixCost},00
+                <NumberFlow
+                  value={sixtySixCost}
+                  format={{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }}
+                  locales="pt-BR"
+                  continuous
+                  willChange
+                />
               </div>
               <span className="claude-glass-card-sub">
                 Preço fixo no Pix ({sixtySixPlanName}) sem surpresas cambiais
@@ -705,12 +783,34 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               <div className="claude-glass-rows">
                 <div className="claude-glass-row">
                   <span className="glass-row-label">Fatura direta em Dólar (Cartão + IOF + Spread)</span>
-                  <span className="glass-row-val text-red">R$ {formatBRL(totalAnthropicBRL)} / mês</span>
+                  <span className="glass-row-val text-red">
+                    <NumberFlow
+                      value={totalAnthropicBRL}
+                      format={{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }}
+                      locales="pt-BR"
+                      continuous
+                      willChange
+                    />
+                    {' / mês'}
+                  </span>
                 </div>
                 <div className="claude-glass-row">
                   <span className="glass-row-label">Economia líquida no seu bolso</span>
                   <span className="glass-row-val highlight-green">
-                    R$ {formatBRL(savingsBRL)} / mês (-{savingsPercent}%)
+                    <NumberFlow
+                      value={savingsBRL}
+                      format={{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }}
+                      locales="pt-BR"
+                      continuous
+                      willChange
+                    />
+                    {' / mês (-'}
+                    <NumberFlow
+                      value={savingsPercent}
+                      continuous
+                      willChange
+                    />
+                    {'%)'}
                   </span>
                 </div>
               </div>
@@ -723,7 +823,18 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               Garantir Preço Fixo no Pix <Arrow />
             </a>
             <p className="claude-calc-dark-footnote">
-              Você economiza cerca de <strong>R$ {formatBRL(savingsBRL * 12)} por ano</strong> ({savingsMultiplier}x mais barato do que na fatura em Dólar).
+              Você economiza cerca de{' '}
+              <strong>
+                <NumberFlow
+                  value={savingsBRL * 12}
+                  format={{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }}
+                  locales="pt-BR"
+                  continuous
+                  willChange
+                />{' '}
+                por ano
+              </strong>{' '}
+              ({savingsMultiplier}x mais barato do que na fatura em Dólar).
             </p>
           </div>
         </div>
