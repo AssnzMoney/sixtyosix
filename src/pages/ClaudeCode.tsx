@@ -310,28 +310,28 @@ export default function ClaudeCodePage() {
           {/* Coluna da Arte & Badges Flutuantes (Estilo AbacatePay) */}
           <div className="hero-abacate-art-col">
             <div className="hero-art-stage">
-              {/* Anotação estilo manuscrito com seta apontando bem pertinho da nuvem de pensamento */}
+              {/* Anotação estilo manuscrito com seta curvada apontando diretamente para a nuvem */}
               <div className="hero-handwritten-wrap">
                 <span className="hero-handwritten-text">já dizia napoleão:</span>
                 <svg
                   className="hero-handwritten-arrow"
-                  width="40"
-                  height="26"
-                  viewBox="0 0 40 26"
+                  width="36"
+                  height="46"
+                  viewBox="0 0 36 46"
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                   aria-hidden="true"
                 >
                   <path
-                    d="M2 13 C 14 5, 26 7, 36 15"
+                    d="M12 2 C 5 14, 7 28, 28 38"
                     stroke="currentColor"
-                    strokeWidth="2.2"
+                    strokeWidth="2.6"
                     strokeLinecap="round"
                   />
                   <path
-                    d="M27 11 L 36 15 L 29 23"
+                    d="M19 38 L 29 38 L 28 27"
                     stroke="currentColor"
-                    strokeWidth="2.2"
+                    strokeWidth="2.6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
@@ -633,29 +633,43 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
         )}
       </section>
 
-      {/* Calculadora Interativa Dólar vs Real (Pix) */}
-      <section className="claude-compare-section shell" id="calculadora-dolar">
-        <div className="claude-section-header">
-          <span className="eyebrow">simulador de custos · dólar vs real</span>
-          <h2 className="claude-section-title">
-            Converta sua fatura em Dólar e veja a economia na <em>SixtySix.</em>
-          </h2>
-          <p className="claude-section-subtitle">
-            O Claude Code é incrível, mas a fatura em Dólar com IOF de 4,38% e spread bancário assusta no fim do mês. Compare seu consumo na Anthropic com o valor fixo no Pix.
-          </p>
-        </div>
+      {/* Calculadora Interativa Estilo AbacatePay - Caixa Verde Escuro */}
+      <section className="claude-calc-dark-section shell" id="calculadora-dolar">
+        <div className="claude-calc-dark-wrap">
+          {/* Header dentro da caixa verde */}
+          <div className="claude-calc-dark-header">
+            <h2 className="claude-calc-dark-title">
+              Simule e veja quanto <br />
+              você <span className="highlight-green">economiza de verdade.</span>
+            </h2>
+            <p className="claude-calc-dark-subtitle">
+              Esqueça IOF de 4,38%, cotação oscilando e faturas surpresa no cartão de crédito. Compare os valores com a SixtySix no Pix.
+            </p>
 
-        {/* Calculadora Interativa Dólar vs Real */}
-        <div className="claude-calc-card">
-          <div className="claude-calc-grid">
-            {/* Coluna 1: Controles de Dólar */}
-            <div className="claude-calc-controls">
-              <div className="claude-calc-control-top">
-                <span className="claude-calc-label">Consumo estimado em Dólar</span>
-                <span className="claude-calc-usd-val">US$ {calcUsd}</span>
+            {/* Presets no estilo AbacatePay da Foto 2 */}
+            <div className="claude-calc-dark-tabs">
+              {presetLevels.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  className={`claude-calc-dark-tab ${calcUsd === preset.value ? 'is-active' : ''}`}
+                  onClick={() => setCalcUsd(preset.value)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="claude-calc-dark-cards">
+            {/* Card 1: Quanto você gasta em Dólar (Foto 2) */}
+            <div className="claude-glass-card">
+              <span className="claude-glass-card-label">Quanto você consome na Anthropic por mês?</span>
+              <div className="claude-glass-big-val">
+                US$ {calcUsd},00
               </div>
 
-              <div className="claude-calc-slider-wrap">
+              <div className="claude-glass-slider-wrap">
                 <input
                   type="range"
                   min="20"
@@ -663,25 +677,12 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
                   step="10"
                   value={calcUsd}
                   onChange={(e) => setCalcUsd(Number(e.target.value))}
-                  className="claude-calc-slider"
-                  aria-label="Gasto mensal em Dólar"
+                  className="claude-glass-slider"
+                  aria-label="Consumo estimado em Dólar"
                 />
               </div>
 
-              <div className="claude-calc-presets">
-                {presetLevels.map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    className={`claude-calc-chip ${calcUsd === preset.value ? 'is-active' : ''}`}
-                    onClick={() => setCalcUsd(preset.value)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="claude-calc-exchange-info">
+              <div className="claude-glass-card-meta">
                 <span>Câmbio base: R$ {commercialDollar.toFixed(2)}</span>
                 <span>IOF: 4,38%</span>
                 <span>Spread cartão: ~4,5%</span>
@@ -689,53 +690,41 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               </div>
             </div>
 
-            {/* Coluna 2: Resultado Comparado & Economia */}
-            <div className="claude-calc-results">
-              <div className="claude-calc-comparison-bars">
-                {/* Linha Anthropic */}
-                <div className="claude-calc-bar-item">
-                  <div className="claude-calc-bar-meta">
-                    <span className="claude-calc-bar-name">Direto na Anthropic (Cartão + IOF)</span>
-                    <span className="claude-calc-bar-price price-anthropic">R$ {formatBRL(totalAnthropicBRL)} / mês</span>
-                  </div>
-                  <div className="claude-calc-track">
-                    <div className="claude-calc-fill-anthropic" />
-                  </div>
-                </div>
+            {/* Card 2: Você paga na SixtySix & Economia (Foto 3) */}
+            <div className="claude-glass-card">
+              <span className="claude-glass-card-label">Você paga no Pix na SixtySix</span>
+              <div className="claude-glass-big-val highlight-green">
+                R$ {sixtySixCost},00
+              </div>
+              <span className="claude-glass-card-sub">
+                Preço fixo no Pix ({sixtySixPlanName}) sem surpresas cambiais
+              </span>
 
-                {/* Linha SixtySix */}
-                <div className="claude-calc-bar-item">
-                  <div className="claude-calc-bar-meta">
-                    <span className="claude-calc-bar-name">Na SixtySix (Plano {sixtySixPlanName})</span>
-                    <span className="claude-calc-bar-price price-sixtysix">R$ {sixtySixCost},00 / mês</span>
-                  </div>
-                  <div className="claude-calc-track">
-                    <div
-                      className="claude-calc-fill-sixtysix"
-                      style={{ width: `${sixBarPercentage}%` }}
-                    />
-                  </div>
+              <div className="claude-glass-card-divider" />
+
+              <div className="claude-glass-rows">
+                <div className="claude-glass-row">
+                  <span className="glass-row-label">Fatura direta em Dólar (Cartão + IOF + Spread)</span>
+                  <span className="glass-row-val text-red">R$ {formatBRL(totalAnthropicBRL)} / mês</span>
+                </div>
+                <div className="claude-glass-row">
+                  <span className="glass-row-label">Economia líquida no seu bolso</span>
+                  <span className="glass-row-val highlight-green">
+                    R$ {formatBRL(savingsBRL)} / mês (-{savingsPercent}%)
+                  </span>
                 </div>
               </div>
-
-              {/* Caixa de Economia em Destaque */}
-              <div className="claude-calc-savings-box">
-                <div className="claude-calc-savings-top">
-                  <span className="claude-calc-savings-label">Economia líquida no seu bolso</span>
-                  <span className="claude-calc-savings-badge">-{savingsPercent}% no custo</span>
-                </div>
-                <div className="claude-calc-savings-val">
-                  R$ {formatBRL(savingsBRL)} <span style={{ fontSize: '15px', fontWeight: 600 }}>/ mês</span>
-                </div>
-                <p className="claude-calc-savings-desc">
-                  Você economiza <strong>R$ {formatBRL(savingsBRL * 12)} por ano</strong>. Isso é cerca de <strong>{savingsMultiplier}x mais barato</strong> do que continuar pagando na fatura em Dólar.
-                </p>
-              </div>
-
-              <a href="#planos-claude" className="claude-calc-cta">
-                Garantir Preço Fixo no Pix <Arrow />
-              </a>
             </div>
+          </div>
+
+          {/* Botão de Ação Verde Vibrante (Foto 3) */}
+          <div className="claude-calc-dark-action">
+            <a href="#planos-claude" className="claude-calc-dark-btn">
+              Garantir Preço Fixo no Pix <Arrow />
+            </a>
+            <p className="claude-calc-dark-footnote">
+              Você economiza cerca de <strong>R$ {formatBRL(savingsBRL * 12)} por ano</strong> ({savingsMultiplier}x mais barato do que na fatura em Dólar).
+            </p>
           </div>
         </div>
       </section>

@@ -2056,10 +2056,10 @@ h2 em {
 
 .claude-hero-grid {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
-  gap: 28px;
-  max-width: 1180px;
+  gap: 32px;
+  max-width: 1220px;
   margin: 0 auto;
 }
 
@@ -2215,7 +2215,7 @@ h2 em {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 480px;
+  min-height: 560px;
   width: 100%;
 }
 
@@ -2226,13 +2226,13 @@ h2 em {
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 440px;
+  max-width: 560px;
 }
 
 .hero-handwritten-wrap {
   position: absolute;
-  top: 24px;
-  right: calc(100% - 46%);
+  top: 10px;
+  right: calc(100% - 47%);
   transform: translateX(-4px);
   display: flex;
   align-items: center;
@@ -2243,26 +2243,26 @@ h2 em {
 
 .hero-handwritten-text {
   font-family: 'Caveat', cursive;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: #4e6b68;
-  transform: rotate(-4deg);
+  transform: rotate(-5deg);
   white-space: nowrap;
 }
 
 .hero-handwritten-arrow {
   color: #4e6b68;
-  opacity: 0.9;
+  opacity: 0.95;
   flex-shrink: 0;
 }
 
 .hero-abacate-artwork {
   width: 100%;
-  max-width: 440px;
+  max-width: 560px;
   height: auto;
-  max-height: 480px;
+  max-height: 580px;
   object-fit: contain;
-  filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.08));
+  filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.1));
   user-select: none;
   pointer-events: none;
   transition: transform 0.3s ease;
@@ -2866,316 +2866,308 @@ h2 em {
   }
 }
 
-/* Calculadora Dólar para Real estilo AbacatePay */
-.claude-calc-card {
-  margin-top: 36px;
-  background: #ffffff;
-  border: 1px solid #edf2f7;
-  border-radius: 28px;
-  padding: 36px 40px;
-  box-shadow: 0 14px 40px -10px rgba(18, 52, 53, 0.06), 0 2px 10px rgba(18, 52, 53, 0.02);
+/* ==========================================================================
+   SIMULADOR DE ECONOMIA ESTILO ABACATEPAY (DARK GREEN BOX)
+   ========================================================================== */
+.claude-calc-dark-section {
+  padding: 60px 0 50px;
 }
 
-.claude-calc-header {
+.claude-calc-dark-wrap {
+  background: #0d2823;
+  background: linear-gradient(180deg, #11342d 0%, #0a211d 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 40px;
+  padding: 64px 32px 56px;
   text-align: center;
-  max-width: 640px;
-  margin: 0 auto 32px;
+  color: #ffffff;
+  box-shadow: 0 24px 60px -15px rgba(10, 33, 29, 0.4);
+  position: relative;
+  overflow: hidden;
 }
 
-.claude-calc-badge {
+.claude-calc-dark-wrap::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(158, 234, 108, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.claude-calc-dark-header {
+  position: relative;
+  z-index: 2;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.claude-calc-dark-title {
+  font-family: 'Fustat', sans-serif;
+  font-size: clamp(30px, 3.6vw, 44px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+  margin: 0 0 14px;
+}
+
+.claude-calc-dark-title .highlight-green {
+  color: #9eea6c;
+}
+
+.claude-calc-dark-subtitle {
+  font-family: 'Manrope', sans-serif;
+  font-size: 15px;
+  color: #a4c4bb;
+  line-height: 1.5;
+  margin: 0 auto 30px;
+  max-width: 560px;
+}
+
+/* Tabs / Presets estilo AbacatePay (Foto 2) */
+.claude-calc-dark-tabs {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(34, 197, 94, 0.1);
-  color: #16a34a;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 11.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 5px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 100px;
-  margin-bottom: 12px;
+  padding: 5px;
+  margin-bottom: 34px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-.claude-calc-title {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: clamp(22px, 2.4vw, 30px);
-  font-weight: 700;
-  color: #1f4647;
-  letter-spacing: -0.025em;
-  margin: 0 0 8px;
+.claude-calc-dark-tab {
+  background: transparent;
+  border: none;
+  border-radius: 100px;
+  padding: 8px 20px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #a4c4bb;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.claude-calc-subtitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 14.5px;
-  color: #718096;
-  margin: 0;
-  line-height: 1.5;
+.claude-calc-dark-tab:hover {
+  color: #ffffff;
 }
 
-.claude-calc-grid {
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  gap: 36px;
-  align-items: center;
+.claude-calc-dark-tab.is-active {
+  background: #ffffff;
+  color: #0d2823;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
 }
 
-.claude-calc-controls {
-  background: #fbfbfd;
-  border: 1px solid #edf2f7;
-  border-radius: 20px;
-  padding: 28px;
+/* Cards centrais empilhados */
+.claude-calc-dark-cards {
+  position: relative;
+  z-index: 2;
+  max-width: 620px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+  text-align: left;
 }
 
-.claude-calc-control-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+/* Card translúcido estilo AbacatePay */
+.claude-glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: 26px 30px;
+  backdrop-filter: blur(8px);
 }
 
-.claude-calc-label {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+.claude-glass-card-label {
+  display: block;
+  font-family: 'Manrope', sans-serif;
   font-size: 13.5px;
   font-weight: 600;
-  color: #4e6b68;
+  color: #a4c4bb;
+  text-align: center;
+  margin-bottom: 8px;
 }
 
-.claude-calc-usd-val {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 32px;
+.claude-glass-big-val {
+  font-family: 'Fustat', sans-serif;
+  font-size: clamp(34px, 4vw, 42px);
   font-weight: 800;
-  color: #1f4647;
+  color: #ffffff;
+  text-align: center;
   letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 
-.claude-calc-slider-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.claude-glass-big-val.highlight-green {
+  color: #9eea6c;
 }
 
-.claude-calc-slider {
+.claude-glass-card-sub {
+  display: block;
+  font-family: 'Manrope', sans-serif;
+  font-size: 13px;
+  color: #8dafa4;
+  text-align: center;
+  margin-top: 6px;
+}
+
+.claude-glass-slider-wrap {
+  margin: 18px 0 14px;
+}
+
+.claude-glass-slider {
   width: 100%;
   height: 8px;
   border-radius: 6px;
-  background: #e2e8f0;
+  background: rgba(255, 255, 255, 0.15);
   outline: none;
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
 }
 
-.claude-calc-slider::-webkit-slider-thumb {
+.claude-glass-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #22c55e;
-  border: 3px solid #ffffff;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+  background: #9eea6c;
+  border: 3px solid #0d2823;
+  box-shadow: 0 0 12px rgba(158, 234, 108, 0.6);
   cursor: pointer;
   transition: transform 0.15s ease;
 }
 
-.claude-calc-slider::-webkit-slider-thumb:hover {
+.claude-glass-slider::-webkit-slider-thumb:hover {
   transform: scale(1.15);
 }
 
-.claude-calc-presets {
+.claude-glass-card-meta {
   display: flex;
+  justify-content: space-between;
   gap: 8px;
+  font-size: 11.5px;
+  color: #8dafa4;
+  font-family: 'Manrope', sans-serif;
+  margin-top: 6px;
   flex-wrap: wrap;
 }
 
-.claude-calc-chip {
-  flex: 1;
-  min-width: 65px;
-  padding: 8px 10px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 12.5px;
-  font-weight: 600;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #ffffff;
-  color: #4e6b68;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.claude-glass-card-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 20px 0 16px;
+}
+
+.claude-glass-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.claude-glass-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Manrope', sans-serif;
+  font-size: 14.5px;
+}
+
+.glass-row-label {
+  color: #b7d5cc;
+  font-weight: 500;
+}
+
+.glass-row-val {
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.glass-row-val.text-red {
+  color: #fca5a5;
+}
+
+.glass-row-val.highlight-green {
+  color: #9eea6c;
+}
+
+/* Botão de Ação Verde Vibrante (Foto 3) */
+.claude-calc-dark-action {
+  position: relative;
+  z-index: 2;
+  margin-top: 26px;
   text-align: center;
 }
 
-.claude-calc-chip:hover {
-  border-color: #22c55e;
-  color: #1f4647;
-}
-
-.claude-calc-chip.is-active {
-  background: #1f4647;
-  color: #ffffff;
-  border-color: #1f4647;
-  box-shadow: 0 4px 12px rgba(31, 70, 71, 0.2);
-}
-
-.claude-calc-exchange-info {
-  display: flex;
-  justify-content: space-between;
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
-  border-radius: 12px;
-  padding: 10px 14px;
-  font-size: 11.5px;
-  color: #64748b;
-  font-family: 'Inter', sans-serif;
-}
-
-/* Coluna de Resultado */
-.claude-calc-results {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.claude-calc-comparison-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.claude-calc-bar-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.claude-calc-bar-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-}
-
-.claude-calc-bar-name {
-  font-weight: 600;
-  color: #1f4647;
-}
-
-.claude-calc-bar-price {
-  font-weight: 700;
-}
-
-.price-anthropic {
-  color: #dc2626;
-}
-
-.price-sixtysix {
-  color: #16a34a;
-}
-
-.claude-calc-track {
-  height: 12px;
-  border-radius: 8px;
-  background: #f1f5f9;
-  overflow: hidden;
-  position: relative;
-}
-
-.claude-calc-fill-anthropic {
-  height: 100%;
-  width: 100%;
-  border-radius: 8px;
-  background: linear-gradient(90deg, #f87171, #ef4444);
-}
-
-.claude-calc-fill-sixtysix {
-  height: 100%;
-  border-radius: 8px;
-  background: linear-gradient(90deg, #86efac, #22c55e);
-  transition: width 0.3s ease;
-}
-
-.claude-calc-savings-box {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(158, 234, 108, 0.15));
-  border: 1.5px solid rgba(34, 197, 94, 0.3);
-  border-radius: 20px;
-  padding: 22px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.claude-calc-savings-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.claude-calc-savings-label {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: #166534;
-}
-
-.claude-calc-savings-badge {
-  background: #22c55e;
-  color: #ffffff;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 11.5px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 100px;
-}
-
-.claude-calc-savings-val {
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: clamp(26px, 2.6vw, 36px);
-  font-weight: 800;
-  color: #14532d;
-  letter-spacing: -0.02em;
-  margin: 0;
-}
-
-.claude-calc-savings-desc {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  color: #166534;
-  margin: 0;
-  line-height: 1.45;
-}
-
-.claude-calc-cta {
+.claude-calc-dark-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   background: #9eea6c;
-  color: #0b3824;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 14.5px;
-  font-weight: 700;
-  padding: 13px 24px;
+  color: #0b2e25;
+  font-family: 'Fustat', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  padding: 15px 36px;
   border-radius: 100px;
   text-decoration: none;
+  box-shadow: 0 8px 24px rgba(158, 234, 108, 0.4);
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(158, 234, 108, 0.35);
 }
 
-.claude-calc-cta:hover {
+.claude-calc-dark-btn:hover {
+  background: #8ee257;
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(158, 234, 108, 0.5);
+  box-shadow: 0 12px 32px rgba(158, 234, 108, 0.55);
 }
 
-@media (max-width: 860px) {
-  .claude-calc-grid {
-    grid-template-columns: 1fr;
+.claude-calc-dark-btn svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.2s ease;
+}
+
+.claude-calc-dark-btn:hover svg {
+  transform: translateX(3px);
+}
+
+.claude-calc-dark-footnote {
+  font-family: 'Manrope', sans-serif;
+  font-size: 13px;
+  color: #8dafa4;
+  margin: 14px 0 0;
+}
+
+.claude-calc-dark-footnote strong {
+  color: #ffffff;
+}
+
+@media (max-width: 680px) {
+  .claude-calc-dark-wrap {
+    padding: 40px 20px 36px;
+    border-radius: 28px;
   }
-  .claude-calc-card {
-    padding: 24px 20px;
+  .claude-glass-card {
+    padding: 20px 18px;
+  }
+  .claude-calc-dark-tabs {
+    gap: 4px;
+    padding: 4px;
+  }
+  .claude-calc-dark-tab {
+    padding: 6px 12px;
+    font-size: 13px;
   }
 }
 
