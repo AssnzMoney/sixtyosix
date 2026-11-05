@@ -145,7 +145,7 @@ export default function ClaudeCodePage() {
                 <div className="mega-menu-items">
                   <Link
                     to="/claude-code"
-                    className="mega-menu-item mega-menu-item-active"
+                    className="mega-menu-item"
                     onClick={() => {
                       setMegaMenuOpen(false)
                       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -174,7 +174,7 @@ export default function ClaudeCodePage() {
                 <div className="mega-menu-items">
                   <Link
                     to="/claude-code"
-                    className="mega-menu-item mega-menu-item-active"
+                    className="mega-menu-item"
                     onClick={() => {
                       setMegaMenuOpen(false)
                       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -244,17 +244,13 @@ export default function ClaudeCodePage() {
             </div>
 
             <h1 className="hero-abacate-title">
-              <span className="hero-title-line">
-                O poder do <em>Claude Code.</em>
-              </span>
-              <span className="hero-title-line">
-                Sem sustos na fatura em Dólar.
-              </span>
+              Claude Code no seu terminal:
+              <br />
+              <em>programe sem travas,</em> com preço fixo.
             </h1>
 
             <p className="hero-abacate-subtitle">
-              Programe com o agente autônomo mais avançado do mundo direto no seu terminal.
-              Conecte sua chave própria da SixtySix, esqueça limites diários de cotas e codifique com preço fixo no Pix.
+              Agente autônomo oficial sem cortes de 5 horas e sem surpresas na fatura em Dólar. Conecte sua chave própria e codifique com valor previsível no Pix.
             </p>
 
             <div className="hero-abacate-actions">
@@ -608,18 +604,6 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
 
         {/* Calculadora Interativa Dólar vs Real */}
         <div className="claude-calc-card">
-          <div className="claude-calc-header">
-            <span className="claude-calc-badge">
-              <DollarSign size={13} /> Calculadora Dólar vs Real (Pix)
-            </span>
-            <h3 className="claude-calc-title">
-              Converta sua fatura em Dólar e veja a economia na ponta do lápis
-            </h3>
-            <p className="claude-calc-subtitle">
-              Selecione ou deslize o valor médio que você gasta por mês na API da Anthropic para ver o custo real convertido com IOF e spread bancário vs o valor fixo na SixtySix.
-            </p>
-          </div>
-
           <div className="claude-calc-grid">
             {/* Coluna 1: Controles de Dólar */}
             <div className="claude-calc-controls">

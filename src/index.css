@@ -2093,22 +2093,12 @@ h2 em {
 /* Título estilo AbacatePay */
 .hero-abacate-title {
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(30px, 3.2vw, 48px);
+  font-size: clamp(32px, 3.5vw, 50px);
   font-weight: 800;
-  line-height: 1.08;
+  line-height: 1.12;
   letter-spacing: -0.035em;
   color: #1f4647;
   margin: 0 0 16px;
-}
-
-.hero-title-line {
-  display: block;
-}
-
-@media (min-width: 900px) {
-  .hero-title-line {
-    white-space: nowrap;
-  }
 }
 
 .hero-abacate-title em {
@@ -2798,11 +2788,6 @@ h2 em {
   color: #16a34a;
   flex-shrink: 0;
   margin-top: 3px;
-}
-
-.mega-menu-item-active {
-  background: rgba(158, 234, 108, 0.18) !important;
-  border-left: 3px solid #22c55e;
 }
 
 @media (max-width: 960px) {
