@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
@@ -302,10 +303,10 @@ export default function App() {
               <div className="mega-menu-col">
                 <span className="mega-menu-col-title">Onde Você Já Codifica</span>
                 <div className="mega-menu-items">
-                  <a href="/claude-code" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link to="/claude-code" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Claude Code CLI</strong>
                     <span>Agentes autônomos no seu terminal sem travas de cotas.</span>
-                  </a>
+                  </Link>
                   <a href="#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Cursor IDE</strong>
                     <span>Substitua sua chave de API e programe sem interrupção.</span>
@@ -979,7 +980,7 @@ export default function App() {
           <div className="footer-col">
             <h4 className="footer-col-title">Produto</h4>
             <ul className="footer-link-list">
-              <li><a href="#como-funciona">Claude Code CLI</a></li>
+              <li><Link to="/claude-code">Claude Code CLI</Link></li>
               <li><a href="#como-funciona">Integração no Terminal</a></li>
               <li><a href="#economia">Calculadora de Tokens</a></li>
               <li><a href="#recursos">Planos & Preços</a></li>
