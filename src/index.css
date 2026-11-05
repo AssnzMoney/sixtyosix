@@ -2056,9 +2056,9 @@ h2 em {
 
 .claude-hero-grid {
   display: grid;
-  grid-template-columns: 1.25fr 0.75fr;
+  grid-template-columns: 1.1fr 0.9fr;
   align-items: center;
-  gap: 24px;
+  gap: 28px;
   max-width: 1180px;
   margin: 0 auto;
 }
@@ -2216,12 +2216,24 @@ h2 em {
   align-items: center;
   justify-content: center;
   min-height: 480px;
+  width: 100%;
+}
+
+.hero-art-stage {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 440px;
 }
 
 .hero-handwritten-wrap {
   position: absolute;
-  top: 8px;
-  left: 20px;
+  top: 24px;
+  right: calc(100% - 46%);
+  transform: translateX(-4px);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2232,23 +2244,23 @@ h2 em {
 .hero-handwritten-text {
   font-family: 'Caveat', cursive;
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
   color: #4e6b68;
-  transform: rotate(-5deg);
+  transform: rotate(-4deg);
   white-space: nowrap;
 }
 
 .hero-handwritten-arrow {
   color: #4e6b68;
-  opacity: 0.8;
-  transform: rotate(10deg);
+  opacity: 0.9;
+  flex-shrink: 0;
 }
 
 .hero-abacate-artwork {
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   height: auto;
-  max-height: 520px;
+  max-height: 480px;
   object-fit: contain;
   filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.08));
   user-select: none;

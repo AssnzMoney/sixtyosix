@@ -33,28 +33,32 @@ const features = [
 
 const faqs = [
   [
-    'Qual endereço (URL do gateway) devo usar?',
-    'O endereço base oficial do gateway é https://66cloud.vercel.app. Para conexões via Claude Code e Claude Desktop, utilize essa URL base. Para o Codex, a configuração aponta para https://66cloud.vercel.app/v1.',
+    'Como funciona o acesso da SixtySix?',
+    'A SixtySix fornece uma conexão dedicada e de alta velocidade para desenvolvedores utilizarem os modelos líderes (Claude Fable 5.1 e GPT Astra 6) no terminal (Claude Code), no VS Code e no Codex, com preço fixo em Reais pago via Pix, sem IOF e sem rateio.',
+  ],
+  [
+    'Como funciona o teste de 7 dias grátis?',
+    'Você pode testar a conexão no seu ambiente sem compromisso. Crie sua conta, solicite sua chave individual com nosso suporte e comece a rodar o Claude Code hoje mesmo, sem precisar cadastrar cartão de crédito.',
   ],
   [
     'Onde consigo minha chave individual de acesso?',
-    'No processo atual, a chave individual de API é criada e entregue diretamente pelo administrador. Guarde a sua chave em local seguro. Nunca utilize, solicite ou compartilhe chaves administrativas nem envie sua chave em canais públicos.',
+    'Sua chave individual é criada com exclusividade e entregue diretamente pelo administrador. Cada usuário possui sua chave própria e isolada, garantindo privacidade absoluta e 99.9% de estabilidade.',
+  ],
+  [
+    'Posso usar no terminal, no VS Code e no Codex?',
+    'Sim! O serviço possui suporte nativo ao Claude Code CLI no terminal (Prompt de Comando, PowerShell ou WSL), além de extensões no VS Code (Cline, Roo Code) e no Codex.',
   ],
   [
     'Posso usar no Claude direto pelo navegador (Claude.ai)?',
-    'Não no site tradicional claude.ai, pois a interface web da Anthropic não permite alterar o endpoint de API. Você pode usar no aplicativo Claude Desktop (quando a versão permitir gateway personalizado de terceiros) ou no Claude Code diretamente no terminal.',
+    'Não no site padrão claude.ai, pois a interface web da Anthropic não permite alterar o endpoint de API. Você pode usar no aplicativo Claude Desktop (quando a versão permitir gateway personalizado) ou no Claude Code diretamente no terminal.',
   ],
   [
-    'Posso usar no terminal com Claude Code?',
-    'Sim! No Windows, abra o Prompt de Comando (CMD) e configure as variáveis de ambiente com o comando set apontando para https://66cloud.vercel.app, sua chave individual e o modelo claude-fable-5-1, iniciando em seguida com claude --model claude-fable-5-1.',
-  ],
-  [
-    'Posso usar no Codex?',
-    'Sim! O gateway possui suporte nativo à Responses API do Codex. Configure a variável de ambiente SIXTYSIX_GATEWAY_API_KEY no Windows, mescle o bloco do provedor sixtysix no arquivo config.toml com o modelo gpt-6-astra e reinicie o aplicativo.',
+    'Qual endereço (URL do gateway) e modelo devo configurar?',
+    'O endereço base oficial do gateway é https://66cloud.vercel.app para Claude Code e Claude Desktop (com modelo claude-fable-5-1). Para o Codex, a configuração aponta para https://66cloud.vercel.app/v1 (com modelo gpt-6-astra).',
   ],
   [
     'A chave não funcionou ou deu erro. O que devo verificar?',
-    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://66cloud.vercel.app; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate o suporte sem enviar sua chave em canais públicos.',
+    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://66cloud.vercel.app; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate nosso suporte.',
   ],
 ]
 
@@ -927,7 +931,7 @@ export default function App() {
           </div>
         </div>
         <div className="faq-list">
-          <AccordionPrimitive.Root type="single" collapsible defaultValue="item-0" className="faq-accordion-root">
+          <AccordionPrimitive.Root type="single" collapsible className="faq-accordion-root">
             {faqs.map(([question, answer], index) => (
               <AccordionPrimitive.Item key={question} value={`item-${index}`} className="faq-accordion-item">
                 <AccordionPrimitive.Header>

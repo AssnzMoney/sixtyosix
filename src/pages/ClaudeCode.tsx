@@ -12,28 +12,32 @@ const Arrow = () => (
 
 const claudeFaqs = [
   [
-    'Qual endereço (URL do gateway) devo usar?',
-    'O endereço base oficial do gateway é https://66cloud.vercel.app. Para conexões via Claude Code e Claude Desktop, utilize essa URL base. Para o Codex, o arquivo de configuração aponta para https://66cloud.vercel.app/v1.',
+    'Como funciona o acesso ao Claude Code pela SixtySix?',
+    'Você utiliza o Claude Code CLI oficial da Anthropic no seu terminal conectado ao nosso cluster dedicado. Você programa sem cortes de cotas de 5 horas, sem surpresas de IOF ou oscilação do Dólar na fatura, pagando valor fixo e previsível em Reais via Pix.',
+  ],
+  [
+    'Como funciona o teste de 7 dias grátis?',
+    'Você pode testar a conexão no seu terminal sem compromisso. Crie sua conta, solicite sua chave individual com nosso suporte e comece a rodar o Claude Code hoje mesmo, sem precisar cadastrar cartão de crédito.',
   ],
   [
     'Onde consigo minha chave individual de acesso?',
-    'No processo atual, a chave individual de API é criada e entregue diretamente pelo administrador. Guarde a sua chave em local seguro. Nunca utilize, solicite ou compartilhe chaves administrativas nem envie sua chave em canais públicos.',
+    'Sua chave individual é gerada com exclusividade e entregue diretamente pelo administrador. Cada usuário possui sua própria chave isolada, garantindo total privacidade, zero rateio e alta estabilidade.',
+  ],
+  [
+    'Posso usar no terminal, no VS Code e no Codex?',
+    'Sim! O serviço foi projetado com suporte nativo ao Claude Code CLI no seu terminal (Prompt de Comando, PowerShell ou WSL), além de extensões no VS Code (Cline, Roo Code) e na Responses API do Codex.',
   ],
   [
     'Posso usar no Claude direto pelo navegador (Claude.ai)?',
-    'Não no site padrão claude.ai, pois a interface web da Anthropic não permite alterar o endpoint de API. Você pode usar no aplicativo Claude Desktop (quando a versão permitir gateway personalizado de terceiros) ou no Claude Code diretamente no terminal.',
+    'Não no site padrão claude.ai, pois a interface web da Anthropic não permite alterar o endpoint de API. Você pode usar no aplicativo Claude Desktop (quando a versão permitir gateway personalizado) ou no Claude Code diretamente no seu terminal.',
   ],
   [
-    'Posso usar no terminal com Claude Code?',
-    'Sim! No Windows, abra o Prompt de Comando (CMD) e configure as variáveis de ambiente com o comando set apontando para https://66cloud.vercel.app, sua chave individual e o modelo claude-fable-5-1, iniciando em seguida com claude --model claude-fable-5-1.',
-  ],
-  [
-    'Posso usar no Codex?',
-    'Sim! O gateway possui suporte nativo à Responses API do Codex. Configure a variável de ambiente SIXTYSIX_GATEWAY_API_KEY no Windows, mescle o bloco do provedor sixtysix no arquivo config.toml com o modelo gpt-6-astra e reinicie o aplicativo.',
+    'Qual endereço (URL do gateway) e modelo devo configurar?',
+    'O endereço base oficial é https://66cloud.vercel.app com o modelo claude-fable-5-1 (para Claude Code e Claude Desktop). Para o Codex, a configuração aponta para https://66cloud.vercel.app/v1 com o modelo gpt-6-astra. Você encontra os comandos prontos para copiar na seção de tutorial passo a passo acima.',
   ],
   [
     'A chave não funcionou ou deu erro. O que devo verificar?',
-    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://66cloud.vercel.app; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate o suporte sem enviar sua chave em canais públicos.',
+    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://66cloud.vercel.app; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate nosso suporte.',
   ],
 ]
 
@@ -257,12 +261,44 @@ export default function ClaudeCodePage() {
               Conecte sua chave própria da SixtySix, esqueça limites diários de cotas e codifique com preço fixo no Pix.
             </p>
 
-            <div className="hero-abacate-actions">
-              <a href="#planos-claude" className="btn-abacate-primary">
-                Testar 7 dias grátis <Arrow />
+            <div
+              className="hero-actions"
+              onMouseLeave={() => setHeroAction('primary')}
+            >
+              <a
+                href="#planos-claude"
+                className={`hero-action-pill ${heroAction === 'primary' ? 'is-active' : ''}`}
+                onMouseEnter={() => setHeroAction('primary')}
+                onClick={() => setHeroAction('primary')}
+              >
+                {heroAction === 'primary' && (
+                  <motion.div
+                    layoutId="claude-hero-pill-indicator"
+                    className="hero-active-pill-bg"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                <span className="hero-pill-content">
+                  Testar 7 dias grátis <Arrow />
+                </span>
               </a>
-              <a href="#passo-a-passo" className="btn-abacate-secondary">
-                Ver comandos <Arrow />
+
+              <a
+                href="#passo-a-passo"
+                className={`hero-action-pill ${heroAction === 'secondary' ? 'is-active' : ''}`}
+                onMouseEnter={() => setHeroAction('secondary')}
+                onClick={() => setHeroAction('secondary')}
+              >
+                {heroAction === 'secondary' && (
+                  <motion.div
+                    layoutId="claude-hero-pill-indicator"
+                    className="hero-active-pill-bg"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                <span className="hero-pill-content">
+                  Ver comandos <Arrow />
+                </span>
               </a>
             </div>
 
@@ -273,64 +309,67 @@ export default function ClaudeCodePage() {
 
           {/* Coluna da Arte & Badges Flutuantes (Estilo AbacatePay) */}
           <div className="hero-abacate-art-col">
-            {/* Anotação estilo manuscrito com seta curvada apontando pro Napoleão */}
-            <div className="hero-handwritten-wrap">
-              <span className="hero-handwritten-text">já dizia napoleão:</span>
-              <svg
-                className="hero-handwritten-arrow"
-                width="34"
-                height="38"
-                viewBox="0 0 34 38"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M6 6 C 22 10, 24 22, 22 34"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M14 26 L 22 34 L 29 26"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-
-            {/* Imagem do Napoleão recortada transparente */}
-            <img
-              src="/assets/claude-code-ou-morte.webp"
-              alt="Napoleão: claude code ou morte"
-              className="hero-abacate-artwork"
-            />
-
-            {/* Badge Flutuante Esquerda */}
-            <div className="floating-badge floating-badge-left">
-              <div className="floating-badge-icon badge-icon-check">
-                <Check size={18} strokeWidth={2.5} />
+            <div className="hero-art-stage">
+              {/* Anotação estilo manuscrito com seta apontando bem pertinho da nuvem de pensamento */}
+              <div className="hero-handwritten-wrap">
+                <span className="hero-handwritten-text">já dizia napoleão:</span>
+                <svg
+                  className="hero-handwritten-arrow"
+                  width="40"
+                  height="26"
+                  viewBox="0 0 40 26"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M2 13 C 14 5, 26 7, 36 15"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M27 11 L 36 15 L 29 23"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </div>
-              <div className="floating-badge-copy">
-                <span className="floating-badge-label">Claude Code CLI · agora</span>
-                <span className="floating-badge-val">
-                  <strong>100% Ilimitado</strong>
-                  <span className="badge-pill-green">Ativo</span>
-                </span>
-              </div>
-            </div>
 
-            {/* Badge Flutuante Direita */}
-            <div className="floating-badge floating-badge-right">
-              <div className="floating-badge-icon badge-icon-pix">
-                <DollarSign size={18} strokeWidth={2.4} />
+              {/* Imagem do Napoleão recortada transparente */}
+              <img
+                src="/assets/claude-code-ou-morte.webp"
+                alt="Napoleão: claude code ou morte"
+                className="hero-abacate-artwork"
+              />
+
+              {/* Badge Flutuante Esquerda */}
+              <div className="floating-badge floating-badge-left">
+                <div className="floating-badge-icon badge-icon-check">
+                  <Check size={18} strokeWidth={2.5} />
+                </div>
+                <div className="floating-badge-copy">
+                  <span className="floating-badge-label">Claude Code CLI · agora</span>
+                  <span className="floating-badge-val">
+                    <strong>100% Ilimitado</strong>
+                    <span className="badge-pill-green">Ativo</span>
+                  </span>
+                </div>
               </div>
-              <div className="floating-badge-copy">
-                <span className="floating-badge-label">Preço fixo no Pix</span>
-                <span className="floating-badge-val">
-                  <strong>Sem IOF cambial</strong>
-                </span>
+
+              {/* Badge Flutuante Direita */}
+              <div className="floating-badge floating-badge-right">
+                <div className="floating-badge-icon badge-icon-pix">
+                  <DollarSign size={18} strokeWidth={2.4} />
+                </div>
+                <div className="floating-badge-copy">
+                  <span className="floating-badge-label">Preço fixo no Pix</span>
+                  <span className="floating-badge-val">
+                    <strong>Sem IOF cambial</strong>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -807,7 +846,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
           </div>
         </div>
         <div className="faq-list">
-          <AccordionPrimitive.Root type="single" collapsible defaultValue="item-0" className="faq-accordion-root">
+          <AccordionPrimitive.Root type="single" collapsible className="faq-accordion-root">
             {claudeFaqs.map(([question, answer], index) => (
               <AccordionPrimitive.Item key={question} value={`item-${index}`} className="faq-accordion-item">
                 <AccordionPrimitive.Header>
