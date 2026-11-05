@@ -1,6 +1,6 @@
-import NumberFlow from '@number-flow/react'
 import * as RadixSlider from '@radix-ui/react-slider'
 import clsx from 'clsx'
+import NumberRoller from './number-roller'
 
 export interface SliderProps extends RadixSlider.SliderProps {
   formatPrefix?: string
@@ -14,14 +14,16 @@ export interface SliderProps extends RadixSlider.SliderProps {
 export default function Slider({
   value,
   className,
-  formatPrefix = '',
+  formatPrefix = 'US$ ',
   formatSuffix = '',
-  showFloatingNumber = false,
+  showFloatingNumber = true,
   trackClassName,
   rangeClassName,
   thumbClassName,
   ...props
 }: SliderProps) {
+  const currentVal = value?.[0] ?? 0
+
   return (
     <RadixSlider.Root
       {...props}
@@ -51,24 +53,15 @@ export default function Slider({
         )}
         aria-label="Slider de Consumo"
       >
-        {showFloatingNumber && value?.[0] != null && (
+        {showFloatingNumber && (
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-[#163637] text-[#9eea6c] border border-white/20 shadow-lg text-xs font-bold pointer-events-none whitespace-nowrap">
-            {formatPrefix}
-            <NumberFlow
-              willChange
-              value={value[0]}
-              isolate
-              continuous
-              opacityTiming={{
-                duration: 250,
-                easing: 'ease-out',
-              }}
-              transformTiming={{
-                easing: `linear(0, 0.0033 0.8%, 0.0263 2.39%, 0.0896 4.77%, 0.4676 15.12%, 0.5688, 0.6553, 0.7274, 0.7862, 0.8336 31.04%, 0.8793, 0.9132 38.99%, 0.9421 43.77%, 0.9642 49.34%, 0.9796 55.71%, 0.9893 62.87%, 0.9952 71.62%, 0.9983 82.76%, 0.9996 99.47%)`,
-                duration: 500,
-              }}
+            <NumberRoller
+              value={currentVal}
+              prefix={formatPrefix}
+              suffix={formatSuffix}
+              decimals={0}
+              duration={0.35}
             />
-            {formatSuffix}
           </div>
         )}
       </RadixSlider.Thumb>

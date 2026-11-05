@@ -5,6 +5,7 @@ import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { Plus, Minus, ChevronDown, Check, Terminal, ShieldCheck, Zap, DollarSign } from 'lucide-react'
 import NumberFlow from '@number-flow/react'
 import { Slider } from '@/components/ui/slider-number-flow'
+import NumberRoller from '@/components/ui/number-roller'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -731,13 +732,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <div className="claude-glass-card">
               <span className="claude-glass-card-label">Quanto você consome na Anthropic por mês?</span>
               <div className="claude-glass-big-val">
-                <NumberFlow
-                  value={calcUsd}
-                  format={{ style: 'currency', currency: 'USD', minimumFractionDigits: 2 }}
-                  locales="pt-BR"
-                  continuous
-                  willChange
-                />
+                <NumberRoller value={calcUsd} prefix="US$ " decimals={2} duration={0.45} />
               </div>
 
               <div className="claude-glass-slider-wrap">
@@ -763,13 +758,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <div className="claude-glass-card">
               <span className="claude-glass-card-label">Você paga no Pix na SixtySix</span>
               <div className="claude-glass-big-val highlight-green">
-                <NumberFlow
-                  value={sixtySixCost}
-                  format={{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }}
-                  locales="pt-BR"
-                  continuous
-                  willChange
-                />
+                <NumberRoller value={sixtySixCost} prefix="R$ " decimals={2} duration={0.45} />
               </div>
               <span className="claude-glass-card-sub">
                 Preço fixo no Pix ({sixtySixPlanName}) sem surpresas cambiais
@@ -781,33 +770,19 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
                 <div className="claude-glass-row">
                   <span className="glass-row-label">Fatura direta em Dólar (Cartão + IOF + Spread)</span>
                   <span className="glass-row-val text-red">
-                    <NumberFlow
-                      value={totalAnthropicBRL}
-                      format={{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }}
-                      locales="pt-BR"
-                      continuous
-                      willChange
-                    />
-                    {' / mês'}
+                    <NumberRoller value={totalAnthropicBRL} prefix="R$ " suffix=" / mês" decimals={2} duration={0.45} />
                   </span>
                 </div>
                 <div className="claude-glass-row">
                   <span className="glass-row-label">Economia líquida no seu bolso</span>
                   <span className="glass-row-val highlight-green">
-                    <NumberFlow
+                    <NumberRoller
                       value={savingsBRL}
-                      format={{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }}
-                      locales="pt-BR"
-                      continuous
-                      willChange
+                      prefix="R$ "
+                      suffix={` / mês (-${savingsPercent}%)`}
+                      decimals={2}
+                      duration={0.45}
                     />
-                    {' / mês (-'}
-                    <NumberFlow
-                      value={savingsPercent}
-                      continuous
-                      willChange
-                    />
-                    {'%)'}
                   </span>
                 </div>
               </div>
@@ -822,14 +797,13 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <p className="claude-calc-dark-footnote">
               Você economiza cerca de{' '}
               <strong>
-                <NumberFlow
+                <NumberRoller
                   value={savingsBRL * 12}
-                  format={{ style: 'currency', currency: 'BRL', minimumFractionDigits: 2 }}
-                  locales="pt-BR"
-                  continuous
-                  willChange
-                />{' '}
-                por ano
+                  prefix="R$ "
+                  suffix=" por ano"
+                  decimals={2}
+                  duration={0.45}
+                />
               </strong>{' '}
               ({savingsMultiplier}x mais barato do que na fatura em Dólar).
             </p>
