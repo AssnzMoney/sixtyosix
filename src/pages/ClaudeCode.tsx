@@ -186,101 +186,101 @@ export default function ClaudeCodePage() {
         )}
       </header>
 
-      {/* Hero Section com Napoleão Flutuando Limpo */}
+      {/* Hero Section no Estilo Exato da AbacatePay */}
       <section className="claude-hero-section shell">
         <div className="claude-hero-grid">
           {/* Coluna de Texto & Ações */}
           <div className="claude-hero-content">
-            <div className="claude-hero-pill-badge">
-              <span className="claude-hero-pill-dot" />
-              <span>AGENTE DE TERMINAL OFICIAL · ZERO COTAS DIÁRIAS</span>
+            <div className="hero-abacate-badge">
+              <span className="hero-abacate-dot" />
+              <span>Claude Code CLI SixtySix</span>
             </div>
 
-            <h1 className="claude-hero-title">
-              O poder total do <em>Claude Code.</em><br />
-              Sem sustos na fatura em Dólar.
+            <h1 className="hero-abacate-title">
+              Claude Code CLI: programe sem travas, por R$ 0.
             </h1>
 
-            <p className="claude-hero-subtitle">
-              Programe com o agente autônomo mais avançado do mundo direto no seu terminal.
-              Conecte sua chave própria da SixtySix, esqueça limites diários de cotas e codifique com preço fixo no Pix.
+            <p className="hero-abacate-subtitle">
+              Agente autônomo no seu terminal com IA oficial sem limites diários de cotas:
+              refatore, teste e suba deploys em segundos. Sem mensalidade surpresa.
             </p>
 
-            <div
-              className="hero-actions"
-              onMouseLeave={() => setHeroAction('primary')}
-            >
-              <a
-                href="#planos-claude"
-                className={`hero-action-pill ${heroAction === 'primary' ? 'is-active' : ''}`}
-                onMouseEnter={() => setHeroAction('primary')}
-                onClick={() => setHeroAction('primary')}
-              >
-                {heroAction === 'primary' && (
-                  <motion.div
-                    layoutId="claude-hero-pill"
-                    className="hero-active-pill-bg"
-                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  />
-                )}
-                <span className="hero-pill-content">
-                  Começar Teste de 7 Dias <Arrow />
-                </span>
+            <div className="hero-abacate-actions">
+              <a href="#planos-claude" className="btn-abacate-primary">
+                Criar conta grátis <Arrow />
               </a>
-
-              <a
-                href="#passo-a-passo"
-                className={`hero-action-pill ${heroAction === 'secondary' ? 'is-active' : ''}`}
-                onMouseEnter={() => setHeroAction('secondary')}
-                onClick={() => setHeroAction('secondary')}
-              >
-                {heroAction === 'secondary' && (
-                  <motion.div
-                    layoutId="claude-hero-pill"
-                    className="hero-active-pill-bg"
-                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                  />
-                )}
-                <span className="hero-pill-content">
-                  Como Configurar <Terminal size={15} />
-                </span>
+              <a href="#passo-a-passo" className="btn-abacate-secondary">
+                Ver comandos <Arrow />
               </a>
             </div>
 
-            {/* Snippet de Instalação Rápida */}
-            <div className="claude-hero-snippet-wrap">
-              <span className="claude-snippet-label">Instalação oficial Anthropic:</span>
-              <div className="snippet-box">
-                <code>npm i -g @anthropic-ai/claude-code</code>
-                <button
-                  type="button"
-                  className="btn-copy"
-                  onClick={() => copyText('npm i -g @anthropic-ai/claude-code')}
-                >
-                  {copiedSnippet === 'npm i -g @anthropic-ai/claude-code' ? <Check /> : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                  )}
-                  <span>{copiedSnippet === 'npm i -g @anthropic-ai/claude-code' ? 'Copiado!' : 'Copiar'}</span>
-                </button>
+            <p className="hero-abacate-footnote">
+              Sem mensalidade. Aprovação não leva semanas.
+            </p>
+          </div>
+
+          {/* Coluna da Arte & Badges Flutuantes (Estilo AbacatePay) */}
+          <div className="hero-abacate-art-col">
+            {/* Anotação estilo manuscrito com seta curvada apontando pro Napoleão */}
+            <div className="hero-handwritten-wrap">
+              <span className="hero-handwritten-text">mais rápido que mensageiro</span>
+              <svg
+                className="hero-handwritten-arrow"
+                width="34"
+                height="38"
+                viewBox="0 0 34 38"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M8 3 C 24 9, 21 23, 20 34"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M13 26 L 20 34 L 27 26"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+
+            {/* Imagem do Napoleão recortada transparente */}
+            <img
+              src="/assets/claude-code-ou-morte.webp"
+              alt="Napoleão: claude code ou morte"
+              className="hero-abacate-artwork"
+            />
+
+            {/* Badge Flutuante Esquerda */}
+            <div className="floating-badge floating-badge-left">
+              <div className="floating-badge-icon badge-icon-check">
+                <Check size={18} strokeWidth={2.5} />
+              </div>
+              <div className="floating-badge-copy">
+                <span className="floating-badge-label">Claude Code CLI · agora</span>
+                <span className="floating-badge-val">
+                  <strong>100% Ilimitado</strong>
+                  <span className="badge-pill-green">Ativo</span>
+                </span>
               </div>
             </div>
 
-            <div className="claude-trust-row">
-              <span className="claude-trust-item"><ShieldCheck size={16} /> Chave Individual (Zero Rateio)</span>
-              <span className="claude-trust-sep">·</span>
-              <span className="claude-trust-item"><Zap size={16} /> Resposta Instantânea</span>
-              <span className="claude-trust-sep">·</span>
-              <span className="claude-trust-item"><DollarSign size={16} /> Cobrança Fixa em Reais</span>
+            {/* Badge Flutuante Direita */}
+            <div className="floating-badge floating-badge-right">
+              <div className="floating-badge-icon badge-icon-pix">
+                <DollarSign size={18} strokeWidth={2.4} />
+              </div>
+              <div className="floating-badge-copy">
+                <span className="floating-badge-label">Custo nos primeiros 7 dias</span>
+                <span className="floating-badge-val">
+                  <strong>R$ 0,00</strong>
+                </span>
+              </div>
             </div>
-          </div>
-
-          {/* Coluna da Arte: Napoleão recortado transparente, sem caixa preta */}
-          <div className="claude-hero-art-col">
-            <img
-              src="/assets/claude-code-ou-morte.webp"
-              alt="Napoleão — claude code ou morte"
-              className="claude-napoleon-img"
-            />
           </div>
         </div>
       </section>

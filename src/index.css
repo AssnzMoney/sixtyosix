@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fustat:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=DM+Mono:wght@400;500&family=Fustat:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 :root {
@@ -2048,16 +2048,19 @@ h2 em {
   overflow-x: hidden;
 }
 
+/* Hero Section estilo AbacatePay */
 .claude-hero-section {
-  padding-top: 140px;
-  padding-bottom: 70px;
+  padding-top: 28px;
+  padding-bottom: 50px;
 }
 
 .claude-hero-grid {
   display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
-  gap: 40px;
+  gap: 16px;
+  max-width: 1180px;
+  margin: 0 auto;
 }
 
 .claude-hero-content {
@@ -2067,113 +2070,165 @@ h2 em {
   text-align: left;
 }
 
-.claude-hero-pill-badge {
+/* Badge estilo AbacatePay (bolinha verde + texto) */
+.hero-abacate-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
-  border-radius: 100px;
-  background: rgba(31, 70, 71, 0.08);
-  border: 1px solid rgba(31, 70, 71, 0.14);
-  font-family: 'Fustat', sans-serif;
-  font-size: 11.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: #1f4647;
-  text-transform: uppercase;
-  margin-bottom: 20px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #4e6b68;
+  margin-bottom: 16px;
 }
 
-.claude-hero-pill-dot {
-  width: 7px;
-  height: 7px;
+.hero-abacate-dot {
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: #22c55e;
-  box-shadow: 0 0 10px #22c55e;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.6);
 }
 
-.claude-hero-title {
+/* Título estilo AbacatePay */
+.hero-abacate-title {
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(34px, 4.2vw, 54px);
+  font-size: clamp(38px, 4.4vw, 62px);
   font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: -0.035em;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
   color: #1f4647;
-  margin: 0 0 18px;
+  margin: 0 0 16px;
 }
 
-.claude-hero-title em {
-  font-style: italic;
-  font-weight: 400;
-  color: #16a34a;
-}
-
-.claude-hero-subtitle {
+.hero-abacate-subtitle {
   font-family: 'Manrope', sans-serif;
   font-size: clamp(15px, 1.35vw, 17px);
-  line-height: 1.65;
+  line-height: 1.6;
   color: #4e6b68;
-  max-width: 580px;
+  max-width: 500px;
   margin: 0 0 28px;
 }
 
-.claude-hero-snippet-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 26px 0 10px;
-  width: 100%;
-  max-width: 440px;
-}
-
-.claude-snippet-label {
-  font-family: 'Manrope', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #4e6b68;
-}
-
-.claude-trust-row {
+/* Botões estilo AbacatePay */
+.hero-abacate-actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 12px;
-  margin-top: 20px;
-  font-family: 'Manrope', sans-serif;
-  font-size: 13px;
-  color: #4e6b68;
-  font-weight: 600;
+  flex-wrap: wrap;
 }
 
-.claude-trust-item {
+.btn-abacate-primary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  background: #9eea6c;
+  color: #0b3824;
+  font-family: 'Fustat', sans-serif;
+  font-size: 15.5px;
+  font-weight: 800;
+  padding: 13px 26px;
+  border-radius: 100px;
+  box-shadow: 0 6px 20px rgba(158, 234, 108, 0.4);
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-abacate-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(158, 234, 108, 0.55);
+}
+
+.btn-abacate-primary svg {
+  width: 17px;
+  height: 17px;
+  transition: transform 0.2s ease;
+}
+
+.btn-abacate-primary:hover svg {
+  transform: translateX(3px);
+}
+
+.btn-abacate-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
   color: #1f4647;
+  font-family: 'Manrope', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 13px 24px;
+  border-radius: 100px;
+  border: 1px solid rgba(13, 33, 24, 0.12);
+  box-shadow: 0 2px 8px -2px rgba(13, 33, 24, 0.04);
+  transition: all 0.2s ease;
+  text-decoration: none;
 }
 
-.claude-trust-item svg {
-  color: #16a34a;
+.btn-abacate-secondary:hover {
+  transform: translateY(-2px);
+  border-color: rgba(13, 33, 24, 0.24);
+  box-shadow: 0 6px 16px -2px rgba(13, 33, 24, 0.08);
 }
 
-.claude-trust-sep {
-  color: rgba(31, 70, 71, 0.3);
+.btn-abacate-secondary svg {
+  width: 17px;
+  height: 17px;
+  transition: transform 0.2s ease;
 }
 
-/* Coluna da Obra de Arte "Claude Code ou Morte" recortada */
-.claude-hero-art-col {
+.btn-abacate-secondary:hover svg {
+  transform: translateX(3px);
+}
+
+.hero-abacate-footnote {
+  font-family: 'Manrope', sans-serif;
+  font-size: 12.5px;
+  color: #718884;
+  margin-top: 14px;
+}
+
+/* Coluna Visual AbacatePay */
+.hero-abacate-art-col {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  min-height: 480px;
 }
 
-.claude-napoleon-img {
+.hero-handwritten-wrap {
+  position: absolute;
+  top: 8px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hero-handwritten-text {
+  font-family: 'Caveat', cursive;
+  font-size: 22px;
+  font-weight: 600;
+  color: #4e6b68;
+  transform: rotate(-5deg);
+  white-space: nowrap;
+}
+
+.hero-handwritten-arrow {
+  color: #4e6b68;
+  opacity: 0.8;
+  transform: rotate(10deg);
+}
+
+.hero-abacate-artwork {
   width: 100%;
   max-width: 480px;
   height: auto;
+  max-height: 520px;
   object-fit: contain;
   filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.08));
   user-select: none;
@@ -2181,8 +2236,89 @@ h2 em {
   transition: transform 0.3s ease;
 }
 
-.claude-napoleon-img:hover {
-  transform: scale(1.02);
+/* Badges Flutuantes */
+.floating-badge {
+  position: absolute;
+  background: #ffffff;
+  border: 1px solid rgba(13, 33, 24, 0.08);
+  border-radius: 16px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 16px 36px -8px rgba(18, 52, 53, 0.12), 0 2px 8px -2px rgba(18, 52, 53, 0.04);
+  z-index: 6;
+  white-space: nowrap;
+  animation: floatSubtle 4s ease-in-out infinite alternate;
+}
+
+.floating-badge-left {
+  bottom: 24px;
+  left: -20px;
+}
+
+.floating-badge-right {
+  bottom: 10px;
+  right: -25px;
+  animation-delay: -2s;
+}
+
+@keyframes floatSubtle {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-6px); }
+}
+
+.floating-badge-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.badge-icon-check {
+  background: #9eea6c;
+  color: #0b3824;
+}
+
+.badge-icon-pix {
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+}
+
+.floating-badge-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.floating-badge-label {
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #718884;
+}
+
+.floating-badge-val {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Fustat', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: #1f4647;
+}
+
+.badge-pill-green {
+  font-family: 'Manrope', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #16a34a;
+  background: #e8f8ec;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 /* Features Section */
@@ -2387,9 +2523,14 @@ h2 em {
 }
 
 @media (max-width: 960px) {
+  .claude-hero-section {
+    padding-top: 16px;
+    padding-bottom: 36px;
+  }
+
   .claude-hero-grid {
     grid-template-columns: 1fr;
-    gap: 36px;
+    gap: 28px;
     text-align: center;
   }
 
@@ -2398,12 +2539,32 @@ h2 em {
     text-align: center;
   }
 
-  .claude-hero-art-col {
-    order: 2;
+  .hero-abacate-subtitle {
+    margin-inline: auto;
   }
 
-  .claude-napoleon-img {
-    max-width: 360px;
+  .hero-abacate-actions {
+    justify-content: center;
+  }
+
+  .hero-abacate-art-col {
+    order: 2;
+    min-height: 360px;
+    width: 100%;
+  }
+
+  .hero-abacate-artwork {
+    max-width: 320px;
+  }
+
+  .floating-badge-left {
+    left: 4px;
+    bottom: 8px;
+  }
+
+  .floating-badge-right {
+    right: 4px;
+    bottom: -12px;
   }
 
   .claude-steps-grid {
