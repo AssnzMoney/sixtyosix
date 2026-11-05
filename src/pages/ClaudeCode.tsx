@@ -197,17 +197,17 @@ export default function ClaudeCodePage() {
             </div>
 
             <h1 className="hero-abacate-title">
-              Claude Code CLI: programe sem travas, por R$ 0.
+              Claude Code CLI: programe sem travas, no Pix.
             </h1>
 
             <p className="hero-abacate-subtitle">
               Agente autônomo no seu terminal com IA oficial sem limites diários de cotas:
-              refatore, teste e suba deploys em segundos. Sem mensalidade surpresa.
+              refatore, teste e suba deploys em segundos. Preço fixo em Reais.
             </p>
 
             <div className="hero-abacate-actions">
               <a href="#planos-claude" className="btn-abacate-primary">
-                Criar conta grátis <Arrow />
+                Testar 7 dias grátis <Arrow />
               </a>
               <a href="#passo-a-passo" className="btn-abacate-secondary">
                 Ver comandos <Arrow />
@@ -215,7 +215,7 @@ export default function ClaudeCodePage() {
             </div>
 
             <p className="hero-abacate-footnote">
-              Sem mensalidade. Aprovação não leva semanas.
+              Sem mensalidade surpresa. Chave própria com Zero Rateio.
             </p>
           </div>
 
@@ -223,7 +223,7 @@ export default function ClaudeCodePage() {
           <div className="hero-abacate-art-col">
             {/* Anotação estilo manuscrito com seta curvada apontando pro Napoleão */}
             <div className="hero-handwritten-wrap">
-              <span className="hero-handwritten-text">mais rápido que mensageiro</span>
+              <span className="hero-handwritten-text">o terror das faturas em dólar</span>
               <svg
                 className="hero-handwritten-arrow"
                 width="34"
@@ -275,9 +275,9 @@ export default function ClaudeCodePage() {
                 <DollarSign size={18} strokeWidth={2.4} />
               </div>
               <div className="floating-badge-copy">
-                <span className="floating-badge-label">Custo nos primeiros 7 dias</span>
+                <span className="floating-badge-label">Preço fixo no Pix</span>
                 <span className="floating-badge-val">
-                  <strong>R$ 0,00</strong>
+                  <strong>Sem IOF cambial</strong>
                 </span>
               </div>
             </div>
