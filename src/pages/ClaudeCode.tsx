@@ -63,8 +63,8 @@ export default function ClaudeCodePage() {
   const effectiveDollarRate = commercialDollar * (1 + iofRate + cardSpread) // ~R$ 6.37
 
   const totalAnthropicBRL = calcUsd * effectiveDollarRate
-  const sixtySixCost = calcUsd <= 35 ? 39 : calcUsd <= 65 ? 79 : 119
-  const sixtySixPlanName = calcUsd <= 35 ? 'Starter' : calcUsd <= 65 ? 'Dev' : 'Pro Ilimitado'
+  const sixtySixCost = calcUsd <= 60 ? 79 : 119
+  const sixtySixPlanName = calcUsd <= 60 ? 'Dev' : 'Pro Ilimitado'
 
   const savingsBRL = Math.max(0, totalAnthropicBRL - sixtySixCost)
   const savingsPercent = Math.round((savingsBRL / totalAnthropicBRL) * 100)
@@ -746,7 +746,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               <span className="highlight-green-text">Claude Code?</span>
             </h2>
             <p className="claude-price-intro-sub">
-              A partir de R$ 39,00 fixos no Pix, sem mensalidade surpresa e sem limites de cota a cada 5 horas.
+              A partir de R$ 79,00 fixos no Pix (ou teste 7 dias grátis), sem mensalidade surpresa e sem limites de cota a cada 5 horas.
               Diferente da Anthropic que cobra em Dólar com IOF de 4,38% e taxa de câmbio abusiva no cartão, aqui o valor é previsível em Reais.
               Veja os <a href="#planos-claude">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>

@@ -198,19 +198,13 @@ export default function App() {
   const officialTokenCostBrl = rawUsd * 6.16
 
   let sixPlanCost = 119
-  let sixPlanSubtitle = 'Plano Pro — uso ilimitado'
-  if (currentVol === 250) {
-    sixPlanCost = 19
-    sixPlanSubtitle = 'Plano Lite'
-  } else if (currentVol === 500) {
-    sixPlanCost = 39
-    sixPlanSubtitle = 'Plano Starter'
-  } else if (currentVol === 1000) {
+  let sixPlanSubtitle = 'Plano Pro Ilimitado'
+  if (activeCalcModel !== 'fable' && currentVol <= 1000) {
     sixPlanCost = 79
     sixPlanSubtitle = 'Plano Dev'
   } else {
     sixPlanCost = 119
-    sixPlanSubtitle = 'Plano Pro — uso ilimitado'
+    sixPlanSubtitle = 'Plano Pro Ilimitado'
   }
 
   const calculatedSavings = Math.max(0, officialTokenCostBrl - sixPlanCost)
