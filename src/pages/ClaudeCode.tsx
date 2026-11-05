@@ -244,13 +244,13 @@ export default function ClaudeCodePage() {
             </div>
 
             <h1 className="hero-abacate-title">
-              Claude Code no seu terminal:
+              Claude Code no terminal:
               <br />
-              <em>programe sem travas,</em> com preço fixo.
+              <em>programe sem travas.</em>
             </h1>
 
             <p className="hero-abacate-subtitle">
-              Agente autônomo oficial sem cortes de 5 horas e sem surpresas na fatura em Dólar. Conecte sua chave própria e codifique com valor previsível no Pix.
+              Agente autônomo oficial sem cortes de 5 horas e sem surpresas na fatura em Dólar. Preço fixo no Pix.
             </p>
 
             <div className="hero-abacate-actions">
@@ -269,33 +269,6 @@ export default function ClaudeCodePage() {
 
           {/* Coluna da Arte & Badges Flutuantes (Estilo AbacatePay) */}
           <div className="hero-abacate-art-col">
-            {/* Anotação estilo manuscrito com seta curvada apontando pro Napoleão */}
-            <div className="hero-handwritten-wrap">
-              <span className="hero-handwritten-text">o terror das faturas em dólar</span>
-              <svg
-                className="hero-handwritten-arrow"
-                width="34"
-                height="38"
-                viewBox="0 0 34 38"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-              >
-                <path
-                  d="M8 3 C 24 9, 21 23, 20 34"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M13 26 L 20 34 L 27 26"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-
             {/* Imagem do Napoleão recortada transparente */}
             <img
               src="/assets/claude-code-ou-morte.webp"
