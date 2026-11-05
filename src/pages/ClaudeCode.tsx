@@ -12,24 +12,28 @@ const Arrow = () => (
 
 const claudeFaqs = [
   [
-    'É o Claude Code CLI oficial da Anthropic?',
-    'Sim! O Claude Code é o agente de terminal oficial lançado pela Anthropic. Você instala o pacote oficial via npm (@anthropic-ai/claude-code) e apenas conecta a sua chave de API exclusiva da SixtySix. Funciona de forma 100% nativa sem nenhuma modificação no código.',
+    'Qual endereço (URL do gateway) devo usar?',
+    'O endereço base oficial do gateway é https://66cloud.vercel.app. Para conexões via Claude Code e Claude Desktop, utilize essa URL base. Para o Codex, o arquivo de configuração aponta para https://66cloud.vercel.app/v1.',
   ],
   [
-    'Por que usar na SixtySix em vez de pagar direto na Anthropic?',
-    'Na API oficial da Anthropic, o Claude Code consome tokens rapidamente, resultando em faturas em Dólar no cartão de crédito, cobrança de IOF (4,38%) e travamentos frequentes por limite de cota diária ou limite de 5 horas. Na SixtySix você tem uso liberado com preço fixo em Reais no Pix.',
+    'Onde consigo minha chave individual de acesso?',
+    'No processo atual, a chave individual de API é criada e entregue diretamente pelo administrador. Guarde a sua chave em local seguro. Nunca utilize, solicite ou compartilhe chaves administrativas nem envie sua chave em canais públicos.',
   ],
   [
-    'Funciona em quais sistemas operacionais?',
-    'Funciona nativamente em macOS (Apple Silicon e Intel), Linux (qualquer distribuição moderna) e Windows via WSL2 (Windows Subsystem for Linux) ou terminal PowerShell/Node.js.',
+    'Posso usar no Claude direto pelo navegador (Claude.ai)?',
+    'Não no site padrão claude.ai, pois a interface web da Anthropic não permite alterar o endpoint de API. Você pode usar no aplicativo Claude Desktop (quando a versão permitir gateway personalizado de terceiros) ou no Claude Code diretamente no terminal.',
   ],
   [
-    'Como funciona o Teste Grátis de 7 dias?',
-    'Você cria sua conta em menos de 1 minuto, recebe sua chave individual exclusiva e já começa a rodar o Claude Code no seu terminal. Não pedimos cartão de crédito nem fidelidade.',
+    'Posso usar no terminal com Claude Code?',
+    'Sim! No Windows, abra o Prompt de Comando (CMD) e configure as variáveis de ambiente com o comando set apontando para https://66cloud.vercel.app, sua chave individual e o modelo claude-fable-5-1, iniciando em seguida com claude --model claude-fable-5-1.',
   ],
   [
-    'Meus códigos e dados de repositório estão seguros?',
-    'Absolutamente. Zero rateio. A sua chave é individual e a comunicação é criptografada de ponta a ponta. Nenhum dado de código ou prompt é retido ou utilizado para treinamento de inteligência artificial.',
+    'Posso usar no Codex?',
+    'Sim! O gateway possui suporte nativo à Responses API do Codex. Configure a variável de ambiente SIXTYSIX_GATEWAY_API_KEY no Windows, mescle o bloco do provedor sixtysix no arquivo config.toml com o modelo gpt-6-astra e reinicie o aplicativo.',
+  ],
+  [
+    'A chave não funcionou ou deu erro. O que devo verificar?',
+    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://66cloud.vercel.app; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate o suporte sem enviar sua chave em canais públicos.',
   ],
 ]
 
@@ -38,6 +42,7 @@ export default function ClaudeCodePage() {
   const [megaMenuOpen, setMegaMenuOpen] = useState(false)
   const [heroAction, setHeroAction] = useState<'primary' | 'secondary'>('primary')
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
+  const [selectedApp, setSelectedApp] = useState<'claude-code' | 'claude-desktop' | 'codex'>('claude-code')
 
   useEffect(() => {
     const handleScroll = () => {
@@ -110,10 +115,17 @@ export default function ClaudeCodePage() {
               <div className="mega-menu-col">
                 <span className="mega-menu-col-title">Modelos Oficiais de IA</span>
                 <div className="mega-menu-items">
-                  <a href="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link
+                    to="/claude-code"
+                    className="mega-menu-item mega-menu-item-active"
+                    onClick={() => {
+                      setMegaMenuOpen(false)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  >
                     <strong>Claude Fable 5.1</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
-                  </a>
+                  </Link>
                   <a href="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GPT Astra 6</strong>
                     <span>Velocidade ultra-rápida e inteligência multimodal.</span>
@@ -132,7 +144,14 @@ export default function ClaudeCodePage() {
               <div className="mega-menu-col">
                 <span className="mega-menu-col-title">Onde Você Já Codifica</span>
                 <div className="mega-menu-items">
-                  <Link to="/claude-code" className="mega-menu-item mega-menu-item-active" onClick={() => setMegaMenuOpen(false)}>
+                  <Link
+                    to="/claude-code"
+                    className="mega-menu-item mega-menu-item-active"
+                    onClick={() => {
+                      setMegaMenuOpen(false)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  >
                     <strong>Claude Code CLI</strong>
                     <span>Agentes autônomos no seu terminal sem travas de cotas.</span>
                   </Link>
@@ -285,120 +304,261 @@ export default function ClaudeCodePage() {
         </div>
       </section>
 
-      {/* 4 Feature Cards (Padrão SixtySix 01, 02, 03, 04) */}
-      <section className="claude-features-section shell">
-        <div className="feature-grid">
-          <div className="feature-card">
-            <span className="feature-card-number">01</span>
-            <h3>Zero Rateio & Chave Própria</h3>
-            <p>
-              Você recebe sua própria chave de API individual para o Claude Code.
-              Sem contas compartilhadas, sem riscos de bloqueio e com total privacidade de código.
-            </p>
+      {/* Faixa de Métricas / Diferenciais estilo AbacatePay */}
+      <section className="abacate-stats-section shell">
+        <div className="abacate-stats-strip">
+          <div className="abacate-stat-col">
+            <h3 className="abacate-stat-val">Zero Rateio</h3>
+            <p className="abacate-stat-desc">chave própria e individual</p>
           </div>
-          <div className="feature-card">
-            <span className="feature-card-number">02</span>
-            <h3>Uso 100% Ilimitado</h3>
-            <p>
-              Esqueça a mensagem de limite de cotas a cada 5 horas.
-              Deixe o agente autônomo escanear seu repositório, refatorar e rodar testes sem cortes.
-            </p>
+          <div className="abacate-stat-col">
+            <h3 className="abacate-stat-val">Segundos</h3>
+            <p className="abacate-stat-desc">do comando à execução no terminal</p>
           </div>
-          <div className="feature-card">
-            <span className="feature-card-number">03</span>
-            <h3>Preço Fixo em Reais (Pix)</h3>
-            <p>
-              Adeus faturas em Dólar com spread cambial e IOF de 4,38% no cartão.
-              Você paga uma assinatura fixa em Reais por mês, sem sustos.
-            </p>
+          <div className="abacate-stat-col">
+            <h3 className="abacate-stat-val">24 × 7</h3>
+            <p className="abacate-stat-desc">sem travas por limites de 5 horas</p>
           </div>
-          <div className="feature-card">
-            <span className="feature-card-number">04</span>
-            <h3>Instalação Oficial em 30s</h3>
-            <p>
-              Compatibilidade 100% nativa com o pacote oficial da Anthropic.
-              Basta instalar via npm, exportar o endpoint da SixtySix e começar a programar.
-            </p>
+          <div className="abacate-stat-col">
+            <h3 className="abacate-stat-val">No Pix</h3>
+            <p className="abacate-stat-desc">preço fixo sem sustos em Dólar</p>
           </div>
         </div>
       </section>
 
-      {/* Como rodar no terminal em 3 passos limpos */}
+      {/* Guia Oficial de Conexão e Tutoriais */}
       <section className="claude-steps-section shell" id="passo-a-passo">
         <div className="claude-section-header">
-          <span className="eyebrow">configuração em 1 minuto</span>
+          <span className="eyebrow">instruções de conexão</span>
           <h2 className="claude-section-title">
-            Como rodar o Claude Code com a <em>SixtySix.</em>
+            Como conectar suas ferramentas ao gateway <em>SixTySix.</em>
           </h2>
           <p className="claude-section-subtitle">
-            Você instala o pacote oficial da Anthropic e apenas aponta o endpoint para a SixtySix. Simples, rápido e nativo.
+            Instruções oficiais e passo a passo simples para configurar Claude Code, Claude Desktop e Codex no Windows.
           </p>
         </div>
 
-        <div className="claude-steps-grid">
-          <div className="claude-step-card">
-            <div className="claude-step-top">
-              <span className="claude-step-badge">Passo 01</span>
-              <h4>Instale o CLI Oficial</h4>
-            </div>
-            <p>Execute o comando oficial da Anthropic no seu terminal para instalar o agente globalmente:</p>
-            <div className="snippet-box">
-              <code>npm i -g @anthropic-ai/claude-code</code>
-              <button
-                type="button"
-                className="btn-copy"
-                onClick={() => copyText('npm i -g @anthropic-ai/claude-code')}
-              >
-                {copiedSnippet === 'npm i -g @anthropic-ai/claude-code' ? <Check /> : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                )}
-                <span>{copiedSnippet === 'npm i -g @anthropic-ai/claude-code' ? 'Copiado!' : 'Copiar'}</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="claude-step-card">
-            <div className="claude-step-top">
-              <span className="claude-step-badge">Passo 02</span>
-              <h4>Conecte sua Chave SixtySix</h4>
-            </div>
-            <p>Exporte a URL da SixtySix e a sua chave exclusiva de alta velocidade gerada no painel:</p>
-            <div className="snippet-box">
-              <code>export ANTHROPIC_BASE_URL="https://api.sixtysix.dev/v1"</code>
-              <button
-                type="button"
-                className="btn-copy"
-                onClick={() => copyText('export ANTHROPIC_BASE_URL="https://api.sixtysix.dev/v1"')}
-              >
-                {copiedSnippet === 'export ANTHROPIC_BASE_URL="https://api.sixtysix.dev/v1"' ? <Check /> : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                )}
-                <span>{copiedSnippet === 'export ANTHROPIC_BASE_URL="https://api.sixtysix.dev/v1"' ? 'Copiado!' : 'Copiar'}</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="claude-step-card">
-            <div className="claude-step-top">
-              <span className="claude-step-badge">Passo 03</span>
-              <h4>Inicie o Agente e Construa</h4>
-            </div>
-            <p>Navegue até a pasta do seu repositório e execute o Claude Code para trabalhar:</p>
-            <div className="snippet-box">
-              <code>claude</code>
-              <button
-                type="button"
-                className="btn-copy"
-                onClick={() => copyText('claude')}
-              >
-                {copiedSnippet === 'claude' ? <Check /> : (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                )}
-                <span>{copiedSnippet === 'claude' ? 'Copiado!' : 'Copiar'}</span>
-              </button>
-            </div>
+        {/* Seletor de Aplicativo estilo Pílula */}
+        <div className="tutorial-tabs-wrap">
+          <div className="tutorial-tabs">
+            <button
+              type="button"
+              className={`tutorial-tab-btn ${selectedApp === 'claude-code' ? 'active' : ''}`}
+              onClick={() => setSelectedApp('claude-code')}
+            >
+              <Terminal size={15} />
+              <span>Claude Code (Terminal CMD)</span>
+            </button>
+            <button
+              type="button"
+              className={`tutorial-tab-btn ${selectedApp === 'claude-desktop' ? 'active' : ''}`}
+              onClick={() => setSelectedApp('claude-desktop')}
+            >
+              <span>Claude Desktop</span>
+            </button>
+            <button
+              type="button"
+              className={`tutorial-tab-btn ${selectedApp === 'codex' ? 'active' : ''}`}
+              onClick={() => setSelectedApp('codex')}
+            >
+              <span>Codex (Windows)</span>
+            </button>
           </div>
         </div>
+
+        {/* Aba 1: Claude Code no terminal do Windows (CMD) */}
+        {selectedApp === 'claude-code' && (
+          <div className="tutorial-pane">
+            <div className="tutorial-intro-card">
+              <p>
+                No Windows, abra a janela do <strong>Prompt de Comando (CMD)</strong> e configure as variáveis de ambiente antes de rodar o agente.
+                As variáveis definidas com o comando <code>set</code> valem especificamente para aquela janela do CMD aberta.
+                Substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua chave individual fornecida pelo administrador.
+              </p>
+            </div>
+
+            <div className="tutorial-steps-grid">
+              <div className="claude-step-card">
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 01</span>
+                  <h4>Instale o CLI Oficial</h4>
+                </div>
+                <p>Se ainda não tiver instalado, instale o pacote oficial da Anthropic globalmente pelo npm:</p>
+                <div className="snippet-box">
+                  <code>npm install -g @anthropic-ai/claude-code</code>
+                  <button
+                    type="button"
+                    className="btn-copy"
+                    onClick={() => copyText('npm install -g @anthropic-ai/claude-code')}
+                  >
+                    {copiedSnippet === 'npm install -g @anthropic-ai/claude-code' ? <Check /> : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                    )}
+                    <span>{copiedSnippet === 'npm install -g @anthropic-ai/claude-code' ? 'Copiado!' : 'Copiar'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="claude-step-card tutorial-step-large">
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 02</span>
+                  <h4>Defina as Variáveis no CMD e Inicie</h4>
+                </div>
+                <p>Execute exatamente o bloco de comandos abaixo na sua janela do Prompt de Comando (CMD):</p>
+                <div className="code-block-box">
+                  <pre>
+{`set ANTHROPIC_BASE_URL=https://66cloud.vercel.app
+set ANTHROPIC_API_KEY=SUA_CHAVE_INDIVIDUAL
+set ANTHROPIC_MODEL=claude-fable-5-1
+claude --model claude-fable-5-1`}
+                  </pre>
+                  <button
+                    type="button"
+                    className="code-block-copy-btn"
+                    onClick={() => copyText(`set ANTHROPIC_BASE_URL=https://66cloud.vercel.app\nset ANTHROPIC_API_KEY=SUA_CHAVE_INDIVIDUAL\nset ANTHROPIC_MODEL=claude-fable-5-1\nclaude --model claude-fable-5-1`)}
+                  >
+                    {copiedSnippet?.includes('set ANTHROPIC_BASE_URL') ? (
+                      <>
+                        <Check size={14} />
+                        <span>Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        <span>Copiar Comandos CMD</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <span className="tutorial-footnote">
+                  Importante: substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua própria chave. As variáveis definidas com <code>set</code> valem para aquela janela do CMD. Se abrir outra janela, repita os comandos.
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Aba 2: Claude Desktop */}
+        {selectedApp === 'claude-desktop' && (
+          <div className="tutorial-pane">
+            <div className="tutorial-intro-card">
+              <p>
+                O aplicativo <strong>Claude Desktop</strong> pode utilizar a opção de inferência por gateway de terceiros quando ela estiver disponível naquela versão instalada. Caso a opção de inferência personalizada esteja disponível na sua versão (ela pode aparecer com outro nome conforme a versão instalada), preencha os parâmetros abaixo:
+              </p>
+            </div>
+
+            <div className="tutorial-desktop-grid">
+              <div className="desktop-param-card">
+                <span className="desktop-param-label">Endereço Base (Base URL)</span>
+                <code className="desktop-param-val">https://66cloud.vercel.app</code>
+              </div>
+              <div className="desktop-param-card">
+                <span className="desktop-param-label">Autenticação</span>
+                <code className="desktop-param-val">Cabeçalho x-api-key</code>
+              </div>
+              <div className="desktop-param-card">
+                <span className="desktop-param-label">Chave de API Individual</span>
+                <code className="desktop-param-val">SUA_CHAVE_INDIVIDUAL</code>
+              </div>
+              <div className="desktop-param-card">
+                <span className="desktop-param-label">Identificador do Modelo</span>
+                <code className="desktop-param-val">claude-fable-5-1</code>
+              </div>
+            </div>
+
+            <div className="tutorial-notice-box">
+              <strong>Atenção:</strong> Essa configuração é exclusiva para o aplicativo Claude Desktop. No site claude.ai tradicional via navegador comum não é possível alterar o endpoint da API.
+            </div>
+          </div>
+        )}
+
+        {/* Aba 3: Codex para Windows */}
+        {selectedApp === 'codex' && (
+          <div className="tutorial-pane">
+            <div className="tutorial-intro-card">
+              <p>
+                O <strong>Codex para Windows</strong> conecta ao gateway SixTySix através da Responses API e cabeçalho <code>x-api-key</code>. Siga os 3 passos simples abaixo:
+              </p>
+            </div>
+
+            <div className="tutorial-codex-grid">
+              <div className="claude-step-card">
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 01</span>
+                  <h4>Configure a Variável de Ambiente</h4>
+                </div>
+                <p>
+                  No Windows, configure a sua chave individual em uma variável de ambiente chamada <code>SIXTYSIX_GATEWAY_API_KEY</code> (substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua chave):
+                </p>
+                <div className="snippet-box">
+                  <code>setx SIXTYSIX_GATEWAY_API_KEY "SUA_CHAVE_INDIVIDUAL"</code>
+                  <button
+                    type="button"
+                    className="btn-copy"
+                    onClick={() => copyText('setx SIXTYSIX_GATEWAY_API_KEY "SUA_CHAVE_INDIVIDUAL"')}
+                  >
+                    {copiedSnippet === 'setx SIXTYSIX_GATEWAY_API_KEY "SUA_CHAVE_INDIVIDUAL"' ? <Check /> : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                    )}
+                    <span>{copiedSnippet === 'setx SIXTYSIX_GATEWAY_API_KEY "SUA_CHAVE_INDIVIDUAL"' ? 'Copiado!' : 'Copiar'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="claude-step-card tutorial-step-large">
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 02</span>
+                  <h4>Mescle no arquivo config.toml</h4>
+                </div>
+                <p>
+                  Abra o arquivo <code>%USERPROFILE%\.codex\config.toml</code> e acrescente estas opções, mesclando com o conteúdo existente sem apagar outras configurações nem duplicar tabelas:
+                </p>
+                <div className="code-block-box">
+                  <pre>
+{`model = "gpt-6-astra"
+model_provider = "sixtysix"
+web_search = "disabled"
+
+[model_providers.sixtysix]
+name = "Gateway"
+base_url = "https://66cloud.vercel.app/v1"
+wire_api = "responses"
+requires_openai_auth = false
+env_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }
+model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
+                  </pre>
+                  <button
+                    type="button"
+                    className="code-block-copy-btn"
+                    onClick={() => copyText(`model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://66cloud.vercel.app/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://66cloud.vercel.app/api/codex/models"`)}
+                  >
+                    {copiedSnippet?.includes('model = "gpt-6-astra"') ? (
+                      <>
+                        <Check size={14} />
+                        <span>Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        <span>Copiar Bloco TOML</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="claude-step-card">
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 03</span>
+                  <h4>Salve e Reinicie o Codex</h4>
+                </div>
+                <p>
+                  Salve as alterações no arquivo <code>config.toml</code> e reinicie o aplicativo Codex para que a conexão com o gateway e o modelo <strong>GPT-6 Astra</strong> sejam ativados.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Comparativo de Dores vs Solução SixtySix */}
@@ -602,7 +762,7 @@ export default function ClaudeCodePage() {
           <div className="footer-col">
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
-              <li><a href="/#economia">Claude Fable 5.1</a></li>
+              <li><Link to="/claude-code" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Claude Fable 5.1</Link></li>
               <li><a href="/#economia">GPT Astra 6</a></li>
               <li><a href="/#economia">GLM-4 Plus</a></li>
             </ul>

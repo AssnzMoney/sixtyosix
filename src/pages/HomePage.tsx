@@ -33,28 +33,28 @@ const features = [
 
 const faqs = [
   [
-    'Como é tão barato assim comparado à API oficial?',
-    'Compramos grande volume de processamento e tokens diretamente com os provedores e otimizamos a infraestrutura para eliminar o custo de conexões ociosas. Você se conecta aos modelos oficiais com 99.9% de uptime, pagando um valor fixo em Reais via Pix — sem sobretaxa de Dólar, sem IOF e sem margens abusivas de revenda.'
+    'Qual endereço (URL do gateway) devo usar?',
+    'O endereço base oficial do gateway é https://66cloud.vercel.app. Para conexões via Claude Code e Claude Desktop, utilize essa URL base. Para o Codex, a configuração aponta para https://66cloud.vercel.app/v1.',
   ],
   [
-    'O que vem liberado no Teste Grátis?',
-    'No teste grátis você tem direito a absolutamente tudo: acesso ilimitado aos modelos mais avançados (Claude Fable 5.1, GPT Astra 6, GLM-4 Plus), chave individual exclusiva com zero rateio e integração direta com qualquer editor (Claude Code, Cursor, VS Code). E o melhor: você não precisa cadastrar nenhum cartão de crédito para testar.'
+    'Onde consigo minha chave individual de acesso?',
+    'No processo atual, a chave individual de API é criada e entregue diretamente pelo administrador. Guarde a sua chave em local seguro. Nunca utilize, solicite ou compartilhe chaves administrativas nem envie sua chave em canais públicos.',
   ],
   [
-    'Funciona direto no Claude Code, Cursor e VS Code?',
-    'Sim! A integração é 100% nativa. Basta copiar a chave de API individual gerada no seu painel e configurar no Claude Code CLI (claude), no Cursor, Roo Code, Cline ou terminal. Funciona exatamente como a chave oficial.'
+    'Posso usar no Claude direto pelo navegador (Claude.ai)?',
+    'Não no site tradicional claude.ai, pois a interface web da Anthropic não permite alterar o endpoint de API. Você pode usar no aplicativo Claude Desktop (quando a versão permitir gateway personalizado de terceiros) ou no Claude Code diretamente no terminal.',
   ],
   [
-    'Existe rateio de contas ou limite de prompts?',
-    'Zero rateio. Diferente de soluções que colocam várias pessoas na mesma conta e caem no meio do raciocínio, na SixtySix você recebe sua própria credencial individual de API oficial, sem travas surpresa ou filas de espera.'
+    'Posso usar no terminal com Claude Code?',
+    'Sim! No Windows, abra o Prompt de Comando (CMD) e configure as variáveis de ambiente com o comando set apontando para https://66cloud.vercel.app, sua chave individual e o modelo claude-fable-5-1, iniciando em seguida com claude --model claude-fable-5-1.',
   ],
   [
-    'Quanto tempo pra minha conta ser aprovada?',
-    'A ativação é instantânea. Em menos de 2 minutos você cria sua conta, inicia o teste grátis ou escolhe um plano e sua chave de API oficial já fica pronta para codar.'
+    'Posso usar no Codex?',
+    'Sim! O gateway possui suporte nativo à Responses API do Codex. Configure a variável de ambiente SIXTYSIX_GATEWAY_API_KEY no Windows, mescle o bloco do provedor sixtysix no arquivo config.toml com o modelo gpt-6-astra e reinicie o aplicativo.',
   ],
   [
-    'Quais formas de pagamento são aceitas?',
-    'Aceitamos Pix com aprovação imediata em Reais, sem cobrança de IOF ou surpresas cambiais. Você tem controle total e cancela ou altera seu plano a qualquer momento pelo painel em 1 clique.'
+    'A chave não funcionou ou deu erro. O que devo verificar?',
+    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://66cloud.vercel.app; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate o suporte sem enviar sua chave em canais públicos.',
   ],
 ]
 
@@ -221,7 +221,7 @@ export default function App() {
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText('sixtysix.dev/quickstart')
+    navigator.clipboard.writeText('set ANTHROPIC_BASE_URL=https://66cloud.vercel.app')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -280,10 +280,17 @@ export default function App() {
               <div className="mega-menu-col">
                 <span className="mega-menu-col-title">Modelos Oficiais de IA</span>
                 <div className="mega-menu-items">
-                  <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link
+                    to="/claude-code"
+                    className="mega-menu-item"
+                    onClick={() => {
+                      setMegaMenuOpen(false)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  >
                     <strong>Claude Fable 5.1</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
-                  </a>
+                  </Link>
                   <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GPT Astra 6</strong>
                     <span>Velocidade ultra-rápida e inteligência multimodal.</span>
@@ -303,7 +310,14 @@ export default function App() {
               <div className="mega-menu-col">
                 <span className="mega-menu-col-title">Onde Você Já Codifica</span>
                 <div className="mega-menu-items">
-                  <Link to="/claude-code" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link
+                    to="/claude-code"
+                    className="mega-menu-item"
+                    onClick={() => {
+                      setMegaMenuOpen(false)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
+                    }}
+                  >
                     <strong>Claude Code CLI</strong>
                     <span>Agentes autônomos no seu terminal sem travas de cotas.</span>
                   </Link>
@@ -537,19 +551,19 @@ export default function App() {
               </div>
               <div className="phone-nav-header">
                 <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-                <span>sixtysix.dev/cli</span>
+                <span>66cloud.vercel.app</span>
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="6" r="1.5" /><circle cx="12" cy="18" r="1.5" /></svg>
               </div>
               <div className="phone-chat-body">
                 <div className="chat-msg-user">
-                  sixtysix.dev/quickstart
+                  set ANTHROPIC_BASE_URL=https://66cloud.vercel.app
                 </div>
                 <div className="chat-msg-bot">
                   <div className="chat-bot-icon">
                     <img src="/assets/brands/claude.svg" alt="Claude" />
                   </div>
                   <p>
-                    Ok, vamos fazer a integração à Sixtysix. Já vi toda a documentação!
+                    Conexão ao SixtySix pronta! Modelo ativo: <strong>claude-fable-5-1</strong>.
                   </p>
                 </div>
               </div>
@@ -583,13 +597,11 @@ export default function App() {
             </h2>
             <p>
               Code, vibe-code ou no-code dá no mesmo. Se você programa, tem
-              SDK em Python, JavaScript, TypeScript e suporte nativo ao Claude
-              Code e Cursor. Se travar, o suporte responde antes do teu café
-              esfriar. Se você constrói com IA, copia o comando abaixo, cola no
-              terminal e deixa ela programar por você.
+              suporte direto ao Claude Code CLI, Cursor e Codex no Windows via Prompt de Comando (CMD).
+              Conecte sua chave individual, aponte a URL base oficial e codifique sem interrupções.
             </p>
             <div className="snippet-box">
-              <code>sixtysix.dev/quickstart</code>
+              <code>set ANTHROPIC_BASE_URL=https://66cloud.vercel.app</code>
               <button
                 type="button"
                 className="btn-copy"
@@ -605,8 +617,8 @@ export default function App() {
               className="hero-actions"
               onMouseLeave={() => setIntegrationAction('primary')}
             >
-              <a
-                href="#teste"
+              <Link
+                to="/claude-code"
                 className={`hero-action-pill ${integrationAction === 'primary' ? 'is-active' : ''}`}
                 onMouseEnter={() => setIntegrationAction('primary')}
                 onClick={() => setIntegrationAction('primary')}
@@ -619,12 +631,12 @@ export default function App() {
                   />
                 )}
                 <span className="hero-pill-content">
-                  Integrar com AI <Arrow />
+                  Integrar com Claude <Arrow />
                 </span>
-              </a>
+              </Link>
 
-              <a
-                href="#duvidas"
+              <Link
+                to="/claude-code#passo-a-passo"
                 className={`hero-action-pill ${integrationAction === 'secondary' ? 'is-active' : ''}`}
                 onMouseEnter={() => setIntegrationAction('secondary')}
                 onClick={() => setIntegrationAction('secondary')}
@@ -639,7 +651,7 @@ export default function App() {
                 <span className="hero-pill-content">
                   Ver documentação <Arrow />
                 </span>
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -971,7 +983,7 @@ export default function App() {
           <div className="footer-col">
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
-              <li><a href="#economia">Claude Fable 5.1</a></li>
+              <li><Link to="/claude-code">Claude Fable 5.1</Link></li>
               <li><a href="#economia">GPT Astra 6</a></li>
               <li><a href="#economia">GLM-4 Plus</a></li>
             </ul>

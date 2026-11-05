@@ -2321,14 +2321,248 @@ h2 em {
   border-radius: 4px;
 }
 
-/* Features Section */
-.claude-features-section {
-  padding: 30px 0 70px;
+/* Faixa de Métricas / Diferenciais estilo AbacatePay */
+.abacate-stats-section {
+  padding: 30px 0 60px;
 }
 
-/* Quickstart 3 Passos */
+.abacate-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid rgba(31, 70, 71, 0.12);
+  border-bottom: 1px solid rgba(31, 70, 71, 0.12);
+  background: transparent;
+}
+
+.abacate-stat-col {
+  padding: 36px 30px;
+  border-right: 1px solid rgba(31, 70, 71, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+}
+
+.abacate-stat-col:last-child {
+  border-right: none;
+}
+
+.abacate-stat-val {
+  font-family: 'Fustat', sans-serif;
+  font-size: clamp(32px, 3.4vw, 46px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: #1f4647;
+  margin: 0 0 8px;
+}
+
+.abacate-stat-desc {
+  font-family: 'Manrope', sans-serif;
+  font-size: 14.5px;
+  color: #4e6b68;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Guia de Tutoriais e Abas de Conexão */
 .claude-steps-section {
   padding: 70px 0 80px;
+}
+
+.tutorial-tabs-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+.tutorial-tabs {
+  display: inline-flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 5px;
+  gap: 6px;
+  box-shadow: 0 2px 8px -2px rgba(13, 33, 24, 0.04);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tutorial-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border-radius: 100px;
+  border: none;
+  background: transparent;
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4e6b68;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tutorial-tab-btn:hover {
+  color: #1f4647;
+}
+
+.tutorial-tab-btn.active {
+  background: #9eea6c;
+  color: #0b3824;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(158, 234, 108, 0.4);
+}
+
+.tutorial-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tutorial-intro-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 24px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #1f4647;
+  box-shadow: 0 2px 8px -2px rgba(13, 33, 24, 0.04);
+}
+
+.tutorial-intro-card code {
+  background: rgba(31, 70, 71, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13.5px;
+  color: #123435;
+  font-weight: 600;
+}
+
+.tutorial-steps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 24px;
+}
+
+.tutorial-codex-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.tutorial-step-large {
+  grid-column: span 1;
+}
+
+.tutorial-desktop-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.desktop-param-card {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 8px -2px rgba(13, 33, 24, 0.04);
+}
+
+.desktop-param-label {
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #718884;
+  letter-spacing: 0.05em;
+}
+
+.desktop-param-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #1f4647;
+  word-break: break-all;
+}
+
+.tutorial-notice-box {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 14px;
+  padding: 16px 20px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  color: #1f4647;
+  line-height: 1.55;
+}
+
+.code-block-box {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin: 12px 0 8px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.code-block-box pre {
+  margin: 0;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #1f4647;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.code-block-copy-btn {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(31, 70, 71, 0.06);
+  border: 1px solid rgba(31, 70, 71, 0.12);
+  color: #1f4647;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.code-block-copy-btn:hover {
+  background: #9eea6c;
+  border-color: #9eea6c;
+  color: #0b3824;
+}
+
+.tutorial-footnote {
+  font-family: 'Manrope', sans-serif;
+  font-size: 12.5px;
+  color: #718884;
+  line-height: 1.5;
+  margin-top: 6px;
+  display: block;
+}
+
+.tutorial-footnote code {
+  font-family: 'DM Mono', monospace;
+  background: rgba(31, 70, 71, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 12px;
 }
 
 .claude-steps-grid {
