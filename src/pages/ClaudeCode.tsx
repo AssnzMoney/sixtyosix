@@ -246,31 +246,54 @@ export default function ClaudeCodePage() {
           {/* Coluna de Texto & Ações */}
           <motion.div
             className="claude-hero-content"
-            initial={{ opacity: 0, x: -45 }}
+            initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="hero-abacate-badge">
+            <motion.div
+              className="hero-abacate-badge"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+            >
               <span className="hero-abacate-dot" />
               <span>Claude Code CLI SixtySix</span>
-            </div>
+            </motion.div>
 
             <h1 className="hero-abacate-title">
-              <span className="hero-title-block">
+              <motion.span
+                className="hero-title-block"
+                initial={{ opacity: 0, y: 22 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.0, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+              >
                 O poder total do <em>Claude Code.</em>
-              </span>
-              <span className="hero-title-block">
+              </motion.span>
+              <motion.span
+                className="hero-title-block"
+                initial={{ opacity: 0, y: 22 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.0, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              >
                 Sem sustos na fatura em Dólar.
-              </span>
+              </motion.span>
             </h1>
 
-            <p className="hero-abacate-subtitle">
+            <motion.p
+              className="hero-abacate-subtitle"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.0, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            >
               Programe com o agente autônomo mais avançado do mundo direto no seu terminal.
               Conecte sua chave própria da SixtySix, esqueça limites diários de cotas e codifique com preço fixo no Pix.
-            </p>
+            </motion.p>
 
-            <div
+            <motion.div
               className="hero-actions"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.95, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
               onMouseLeave={() => setHeroAction('primary')}
             >
               <a
@@ -308,27 +331,32 @@ export default function ClaudeCodePage() {
                   Ver comandos <Arrow />
                 </span>
               </a>
-            </div>
+            </motion.div>
 
-            <p className="hero-abacate-footnote">
+            <motion.p
+              className="hero-abacate-footnote"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1.0, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            >
               Sem mensalidade surpresa. Chave própria com Zero Rateio.
-            </p>
+            </motion.p>
           </motion.div>
 
           {/* Coluna da Arte & Badges Flutuantes (Estilo AbacatePay) */}
           <motion.div
             className="hero-abacate-art-col"
-            initial={{ opacity: 0, x: 65, scale: 0.95 }}
+            initial={{ opacity: 0, x: 80, scale: 0.93 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
-            transition={{ duration: 0.85, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.2, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="hero-art-stage">
               {/* Anotação estilo manuscrito com seta curvada apontando diretamente para a nuvem */}
               <motion.div
                 className="hero-handwritten-wrap"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                initial={{ opacity: 0, scale: 0.8, rotate: -4 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
               >
                 <span className="hero-handwritten-text">já dizia napoleão:</span>
                 <svg
@@ -357,18 +385,21 @@ export default function ClaudeCodePage() {
               </motion.div>
 
               {/* Imagem do Napoleão recortada transparente */}
-              <img
+              <motion.img
                 src="/assets/claude-code-ou-morte.webp"
                 alt="Napoleão: claude code ou morte"
                 className="hero-abacate-artwork"
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1.15, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
               />
 
               {/* Badge Flutuante Esquerda */}
               <motion.div
                 className="floating-badge floating-badge-left"
-                initial={{ opacity: 0, y: 25, scale: 0.88 }}
+                initial={{ opacity: 0, y: 30, scale: 0.85 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.55, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.85, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div className="floating-badge-icon badge-icon-check">
                   <Check size={18} strokeWidth={2.5} />
@@ -385,9 +416,9 @@ export default function ClaudeCodePage() {
               {/* Badge Flutuante Direita */}
               <motion.div
                 className="floating-badge floating-badge-right"
-                initial={{ opacity: 0, y: 25, scale: 0.88 }}
+                initial={{ opacity: 0, y: 30, scale: 0.85 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.55, delay: 0.65, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.85, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div className="floating-badge-icon badge-icon-pix">
                   <DollarSign size={18} strokeWidth={2.4} />
@@ -408,10 +439,10 @@ export default function ClaudeCodePage() {
       <section className="abacate-stats-section shell">
         <motion.div
           className="abacate-stats-strip"
-          initial={{ opacity: 0, y: 35, filter: 'blur(4px)' }}
+          initial={{ opacity: 0, y: 40, filter: 'blur(6px)' }}
           whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
         >
           {[
             { val: 'Zero Rateio', desc: 'chave própria e individual' },
@@ -422,10 +453,10 @@ export default function ClaudeCodePage() {
             <motion.div
               key={stat.val}
               className="abacate-stat-col"
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 25 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.85, delay: i * 0.15, ease: [0.22, 1, 0.36, 1] }}
             >
               <h3 className="abacate-stat-val">{stat.val}</h3>
               <p className="abacate-stat-desc">{stat.desc}</p>
@@ -438,10 +469,10 @@ export default function ClaudeCodePage() {
       <section className="claude-steps-section shell" id="passo-a-passo">
         <motion.div
           className="claude-section-header"
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 35 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
         >
           <span className="eyebrow">instruções de conexão</span>
           <h2 className="claude-section-title">
@@ -458,7 +489,7 @@ export default function ClaudeCodePage() {
           initial={{ opacity: 0, scale: 0.94 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.55, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.9, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="tutorial-tabs">
             <button
@@ -491,10 +522,10 @@ export default function ClaudeCodePage() {
           <div className="tutorial-pane">
             <motion.div
               className="tutorial-intro-card"
-              initial={{ opacity: 0, y: 25 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
             >
               <p>
                 No Windows, abra a janela do <strong>Prompt de Comando (CMD)</strong> e configure as variáveis de ambiente antes de rodar o agente.
@@ -506,10 +537,10 @@ export default function ClaudeCodePage() {
             <div className="tutorial-steps-grid">
               <motion.div
                 className="claude-step-card"
-                initial={{ opacity: 0, x: -35 }}
+                initial={{ opacity: 0, x: -50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div className="claude-step-top">
                   <span className="claude-step-badge">Passo 01</span>
@@ -533,10 +564,10 @@ export default function ClaudeCodePage() {
 
               <motion.div
                 className="claude-step-card tutorial-step-large"
-                initial={{ opacity: 0, x: 35 }}
+                initial={{ opacity: 0, x: 50 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 0.65, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 1.15, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
               >
                 <div className="claude-step-top">
                   <span className="claude-step-badge">Passo 02</span>
@@ -704,10 +735,10 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
         <div className="claude-price-intro-split">
           <motion.div
             className="claude-price-intro-col-left"
-            initial={{ opacity: 0, x: -50 }}
+            initial={{ opacity: 0, x: -60 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="eyebrow">Preço</span>
             <h2 className="claude-price-intro-title">
@@ -723,10 +754,10 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
 
           <motion.div
             className="claude-price-intro-col-right"
-            initial={{ opacity: 0, x: 65, scale: 0.94 }}
+            initial={{ opacity: 0, x: 75, scale: 0.94 }}
             whileInView={{ opacity: 1, x: 0, scale: 1 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.85, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.25, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="claude-philosophers-card">
               <img
@@ -744,7 +775,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
           initial={{ opacity: 0, y: 40, scale: 0.97 }}
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: '-70px' }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* Linhas onduladas fluidas em branco estilo AbacatePay - Absolute para não ocupar espaço no fluxo */}
           <svg
@@ -896,10 +927,10 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
       <section className="plans-section shell" id="planos-claude">
         <motion.div
           className="plans-header"
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 35 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
         >
           <span className="eyebrow">acesso imediato</span>
           <h2 className="plans-title">
@@ -914,10 +945,10 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
           {/* Teste Grátis */}
           <motion.div
             className="plan-card plan-card-trial"
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            initial={{ opacity: 0, y: 45, scale: 0.95 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="plan-card-top">
               <span className="plan-tag plan-tag-green">7 dias grátis</span>
@@ -944,10 +975,10 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
           {/* Dev */}
           <motion.div
             className="plan-card"
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            initial={{ opacity: 0, y: 45, scale: 0.95 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.65, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.15, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="plan-card-top">
               <span className="plan-tag">Mais versátil</span>
@@ -977,7 +1008,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             initial={{ opacity: 0, y: 45, scale: 0.93 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.7, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.2, delay: 0.28, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="plan-card-top">
               <span className="plan-tag">Mais completo</span>
@@ -1008,10 +1039,10 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
       <section className="faq shell" id="duvidas-claude">
         <motion.div
           className="faq-intro"
-          initial={{ opacity: 0, x: -45 }}
+          initial={{ opacity: 0, x: -60 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
         >
           <h2 className="faq-title">
             <span className="faq-title-green">Dúvidas sobre</span><br />
@@ -1029,19 +1060,19 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
         </motion.div>
         <motion.div
           className="faq-list"
-          initial={{ opacity: 0, x: 45 }}
+          initial={{ opacity: 0, x: 60 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.75, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.2, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
         >
           <AccordionPrimitive.Root type="single" collapsible className="faq-accordion-root">
             {claudeFaqs.map(([question, answer], index) => (
               <motion.div
                 key={question}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.45, delay: index * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.85, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
               >
                 <AccordionPrimitive.Item value={`item-${index}`} className="faq-accordion-item">
                   <AccordionPrimitive.Header>
@@ -1069,26 +1100,26 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
           src="/assets/cherub-left.webp"
           alt="Anjo nas nuvens à esquerda"
           className="cherub-flank cherub-flank-left"
-          initial={{ opacity: 0, x: -90, rotate: -6 }}
+          initial={{ opacity: 0, x: -110, rotate: -6 }}
           whileInView={{ opacity: 1, x: 0, rotate: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
         />
         <motion.img
           src="/assets/cherub-right.webp"
           alt="Anjo nas nuvens à direita"
           className="cherub-flank cherub-flank-right"
-          initial={{ opacity: 0, x: 90, rotate: 6 }}
+          initial={{ opacity: 0, x: 110, rotate: 6 }}
           whileInView={{ opacity: 1, x: 0, rotate: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
         />
         <motion.div
           className="pre-footer-cta shell"
           initial={{ opacity: 0, y: 40, scale: 0.94 }}
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
         >
           <span className="eyebrow">comece agora</span>
           <h2 className="pre-footer-title">

@@ -456,61 +456,76 @@ export default function App() {
           className="hand hand-left"
           src="/assets/sixtysix-hand-reach.webp"
           alt=""
-          initial={{ opacity: 0, x: -110 }}
+          initial={{ opacity: 0, x: -140 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: '-70px' }}
-          transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.25, ease: [0.22, 1, 0.36, 1] }}
         />
         <motion.img
           className="hand hand-right"
           src="/assets/sixtysix-hand-logo.webp"
           alt=""
-          initial={{ opacity: 0, x: 110 }}
+          initial={{ opacity: 0, x: 140 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: '-70px' }}
-          transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.25, ease: [0.22, 1, 0.36, 1] }}
         />
         <div className="hands-content shell">
-          <div className="hands-eyebrow-container">
-            <div className="hands-eyebrow-box">
-              <span className="hands-eyebrow">
-                mais código. pagando <strong>6x</strong> mais barato.
-              </span>
-              <svg
-                className="hands-curve-arrow"
-                width="34"
-                height="38"
-                viewBox="0 0 34 38"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                aria-hidden="true"
-                style={{ overflow: 'visible' }}
-              >
-                <path
-                  d="M8 3 C 24 9, 21 23, 20 34"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                />
-                <path
-                  d="M13 26 L 20 34 L 27 26"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+          <motion.div
+            initial={{ opacity: 0, y: 35 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-70px' }}
+            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="hands-eyebrow-container">
+              <div className="hands-eyebrow-box">
+                <span className="hands-eyebrow">
+                  mais código. pagando <strong>6x</strong> mais barato.
+                </span>
+                <svg
+                  className="hands-curve-arrow"
+                  width="34"
+                  height="38"
+                  viewBox="0 0 34 38"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                  style={{ overflow: 'visible' }}
+                >
+                  <path
+                    d="M8 3 C 24 9, 21 23, 20 34"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M13 26 L 20 34 L 27 26"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
             </div>
-          </div>
-          <h2>Claude Code todos os dias, sempre <em>na sua mão.</em></h2>
-          <p>Da primeira linha ao deploy. A Sixtysix oferece planos acessíveis para você usar Claude Code com simplicidade e cobrança previsível.</p>
+            <h2>Claude Code todos os dias, sempre <em>na sua mão.</em></h2>
+            <p>Da primeira linha ao deploy. A Sixtysix oferece planos acessíveis para você usar Claude Code com simplicidade e cobrança previsível.</p>
+          </motion.div>
+
           <div className="feature-grid">
-            {features.map(([number, title, copy]) => (
-              <article className="feature-card" key={number}>
+            {features.map(([number, title, copy], i) => (
+              <motion.article
+                className="feature-card"
+                key={number}
+                initial={{ opacity: 0, y: 35 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 1.05, delay: i * 0.12, ease: [0.22, 1, 0.36, 1] }}
+              >
                 <span>{number}</span>
                 <h3>{title}</h3>
                 <p>{copy}</p>
-              </article>
+              </motion.article>
             ))}
           </div>
           <div
@@ -560,10 +575,10 @@ export default function App() {
         <div className="integration-grid">
           <motion.div
             className="phone-card-wrapper"
-            initial={{ opacity: 0, x: -55, scale: 0.94 }}
+            initial={{ opacity: 0, x: -70, scale: 0.94 }}
             whileInView={{ opacity: 1, x: 0, scale: 1 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           >
             <div className="phone-glow" />
             <div className="phone-device">
@@ -617,10 +632,10 @@ export default function App() {
 
           <motion.div
             className="integration-copy"
-            initial={{ opacity: 0, x: 55 }}
+            initial={{ opacity: 0, x: 70 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 1.2, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           >
             <span className="eyebrow">integração nativa</span>
             <h2 className="integration-title">
@@ -692,14 +707,26 @@ export default function App() {
 
       <section className="calc-phrase-section shell" id="economia">
         <div className="calc-phrase-wrap">
-          <div className="calc-header">
+          <motion.div
+            className="calc-header"
+            initial={{ opacity: 0, y: 35 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+          >
             <span className="eyebrow">simulador de custos</span>
             <h2 className="calc-title">
               Calcule sua <em>economia.</em>
             </h2>
-          </div>
+          </motion.div>
 
-          <div className="calc-phrase-heading">
+          <motion.div
+            className="calc-phrase-heading"
+            initial={{ opacity: 0, x: -60 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 1.2, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          >
             <span className="calc-phrase-line">
               Eu quero fazer{' '}
               <span className="phrase-dropdown-wrap">
@@ -793,15 +820,25 @@ export default function App() {
               na Six, então vou pagar de taxa{' '}
               <span className="phrase-price-val">R$ {formatBRL(sixPlanCost)}.</span>
             </span>
-          </div>
+          </motion.div>
 
-          <p className="calc-phrase-sub">
+          <motion.p
+            className="calc-phrase-sub"
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 1.1, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          >
             Você economiza <strong className="phrase-green-num">R$ {formatBRL(calculatedSavings)}</strong>, cerca de{' '}
             {savingsMultiplier}x mais barato do que na API oficial.
-          </p>
+          </motion.p>
 
-          <div
+          <motion.div
             className="calc-phrase-action-wrap"
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 1.1, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
             onMouseLeave={() => setCalcAction('primary')}
           >
             <a
@@ -839,24 +876,40 @@ export default function App() {
                 Testar 7 dias grátis <Arrow />
               </span>
             </a>
-          </div>
+          </motion.div>
 
-          <p className="calc-phrase-footnote">
+          <motion.p
+            className="calc-phrase-footnote"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 1.1, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
+          >
             Sem mensalidade surpresa. Cobrança em Reais via Pix.
-          </p>
+          </motion.p>
         </div>
 
-        <img
+        <motion.img
           src="/assets/calc-warrior.jpg"
           alt="Guerreiro suplicando"
           className="calc-warrior-img"
           aria-hidden="true"
+          initial={{ opacity: 0, x: 90, scale: 0.94 }}
+          whileInView={{ opacity: 0.95, x: 0, scale: 1 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 1.3, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
         />
       </section>
 
       {/* SEÇÃO DE PLANOS & DIFERENCIAIS (TOTALMENTE UNIFICADA NO PADRÃO DO SITE) */}
       <section className="plans-section shell" id="planos">
-        <div className="plans-header">
+        <motion.div
+          className="plans-header"
+          initial={{ opacity: 0, y: 35 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+        >
           <span className="eyebrow">modelos oficiais · zero rateio</span>
           <h2 className="plans-title">
             Planos com uso <em>100% ilimitado.</em>
@@ -864,12 +917,19 @@ export default function App() {
           <p className="plans-subtitle">
             Esqueça contas compartilhadas que caem no meio do raciocínio ou surpresas na fatura em Dólar. Conecte sua chave no <strong>Claude Code</strong>, <strong>VS Code</strong>, <strong>Cursor</strong> ou <strong>Codex</strong> e programe com preço fixo no Pix.
           </p>
-        </div>
+        </motion.div>
 
         <span id="teste" style={{ display: 'block', position: 'relative', top: '-110px', visibility: 'hidden' }} />
         <div className="plans-grid">
           {/* Teste Grátis */}
-          <div className="plan-card plan-card-trial" id="teste-gratis">
+          <motion.div
+            className="plan-card plan-card-trial"
+            id="teste-gratis"
+            initial={{ opacity: 0, y: 45, scale: 0.95 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
+          >
             <div className="plan-card-top">
               <span className="plan-tag plan-tag-green">7 dias grátis</span>
               <h3 className="plan-name">Teste Grátis</h3>
@@ -890,10 +950,16 @@ export default function App() {
             <a href="#duvidas" className="plan-btn">
               Começar Teste Grátis <Arrow />
             </a>
-          </div>
+          </motion.div>
 
           {/* Dev */}
-          <div className="plan-card">
+          <motion.div
+            className="plan-card"
+            initial={{ opacity: 0, y: 45, scale: 0.95 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 1.15, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
+          >
             <div className="plan-card-top">
               <span className="plan-tag">Mais versátil</span>
               <h3 className="plan-name">Dev</h3>
@@ -914,10 +980,16 @@ export default function App() {
             <a href="#duvidas" className="plan-btn">
               Começar no Dev
             </a>
-          </div>
+          </motion.div>
 
           {/* Pro Ilimitado */}
-          <div className="plan-card plan-card-featured">
+          <motion.div
+            className="plan-card plan-card-featured"
+            initial={{ opacity: 0, y: 45, scale: 0.94 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 1.2, delay: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          >
             <div className="plan-card-top">
               <span className="plan-tag">Mais completo</span>
               <h3 className="plan-name">Pro Ilimitado</h3>
@@ -939,12 +1011,18 @@ export default function App() {
             <a href="#duvidas" className="plan-btn plan-btn-featured">
               Garantir Acesso Ilimitado <Arrow />
             </a>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       <section className="faq shell" id="duvidas">
-        <div className="faq-intro">
+        <motion.div
+          className="faq-intro"
+          initial={{ opacity: 0, x: -60 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
+        >
           <h2 className="faq-title">
             <span className="faq-title-green">Tem dúvidas?</span> Relaxa,<br />
             nós temos as respostas.
@@ -958,8 +1036,14 @@ export default function App() {
             </a>
             <span className="faq-footnote">Sem burocracia. Chave individual com ativação imediata.</span>
           </div>
-        </div>
-        <div className="faq-list">
+        </motion.div>
+        <motion.div
+          className="faq-list"
+          initial={{ opacity: 0, x: 60 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 1.2, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+        >
           <AccordionPrimitive.Root type="single" collapsible className="faq-accordion-root">
             {faqs.map(([question, answer], index) => (
               <AccordionPrimitive.Item key={question} value={`item-${index}`} className="faq-accordion-item">
@@ -978,7 +1062,7 @@ export default function App() {
               </AccordionPrimitive.Item>
             ))}
           </AccordionPrimitive.Root>
-        </div>
+        </motion.div>
       </section>
 
       <section className="pre-footer-cta-wrap">
@@ -986,26 +1070,26 @@ export default function App() {
           src="/assets/cherub-left.webp"
           alt="Anjo nas nuvens à esquerda"
           className="cherub-flank cherub-flank-left"
-          initial={{ opacity: 0, x: -90, rotate: -6 }}
+          initial={{ opacity: 0, x: -110, rotate: -6 }}
           whileInView={{ opacity: 1, x: 0, rotate: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
         />
         <motion.img
           src="/assets/cherub-right.webp"
           alt="Anjo nas nuvens à direita"
           className="cherub-flank cherub-flank-right"
-          initial={{ opacity: 0, x: 90, rotate: 6 }}
+          initial={{ opacity: 0, x: 110, rotate: 6 }}
           whileInView={{ opacity: 1, x: 0, rotate: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}
         />
         <motion.div
           className="pre-footer-cta shell"
           initial={{ opacity: 0, y: 40, scale: 0.94 }}
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
         >
           <span className="eyebrow">comece agora</span>
           <h2 className="pre-footer-title">
