@@ -244,9 +244,12 @@ export default function ClaudeCodePage() {
             </div>
 
             <h1 className="hero-abacate-title">
-              O poder total do <em>Claude Code.</em>
-              <br />
-              Sem sustos na fatura em Dólar.
+              <span className="hero-title-line">
+                O poder do <em>Claude Code.</em>
+              </span>
+              <span className="hero-title-line">
+                Sem sustos na fatura em Dólar.
+              </span>
             </h1>
 
             <p className="hero-abacate-subtitle">
@@ -591,40 +594,16 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
         )}
       </section>
 
-      {/* Comparativo de Dores vs Solução SixtySix */}
-      <section className="claude-compare-section shell">
+      {/* Calculadora Interativa Dólar vs Real (Pix) */}
+      <section className="claude-compare-section shell" id="calculadora-dolar">
         <div className="claude-section-header">
-          <span className="eyebrow">liberdade de codar</span>
+          <span className="eyebrow">simulador de custos · dólar vs real</span>
           <h2 className="claude-section-title">
-            Por que programadores trocam a API oficial pela <em>SixtySix?</em>
+            Converta sua fatura em Dólar e veja a economia na <em>SixtySix.</em>
           </h2>
           <p className="claude-section-subtitle">
-            O Claude Code é incrível, mas as limitações e custos da conta oficial travam a produtividade no meio do dia.
+            O Claude Code é incrível, mas a fatura em Dólar com IOF de 4,38% e spread bancário assusta no fim do mês. Compare seu consumo na Anthropic com o valor fixo no Pix.
           </p>
-        </div>
-
-        <div className="claude-compare-grid">
-          <div className="claude-compare-card card-pain">
-            <span className="compare-badge pain-badge">Direto na Anthropic</span>
-            <h3 className="compare-title">Fatura imprevisível em Dólar</h3>
-            <ul className="compare-list">
-              <li>✕ Dólar oscilando com IOF de 4,38% e taxa de câmbio abusiva</li>
-              <li>✕ Limites rígidos de cotas a cada 5 horas que travam à tarde</li>
-              <li>✕ Erros 429 ("Rate limit exceeded") no ápice do deploy</li>
-              <li>✕ Faturas surpresa de US$ 150 a US$ 300+ no cartão de crédito</li>
-            </ul>
-          </div>
-
-          <div className="claude-compare-card card-gain">
-            <span className="compare-badge gain-badge">Na SixtySix</span>
-            <h3 className="compare-title">Uso liberado com Preço Fixo no Pix</h3>
-            <ul className="compare-list">
-              <li><Check /> Cobrança previsível em Reais, paga via Pix sem cartão</li>
-              <li><Check /> Acesso ilimitado ao Claude Fable 5.1 e GPT Astra 6</li>
-              <li><Check /> Chave própria individual com zero rateio e total privacidade</li>
-              <li><Check /> Alta estabilidade com cluster dedicado de 99.9% uptime</li>
-            </ul>
-          </div>
         </div>
 
         {/* Calculadora Interativa Dólar vs Real */}

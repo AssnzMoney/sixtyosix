@@ -2056,9 +2056,9 @@ h2 em {
 
 .claude-hero-grid {
   display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
+  grid-template-columns: 1.2fr 0.8fr;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
   max-width: 1180px;
   margin: 0 auto;
 }
@@ -2093,12 +2093,32 @@ h2 em {
 /* Título estilo AbacatePay */
 .hero-abacate-title {
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(38px, 4.4vw, 62px);
+  font-size: clamp(30px, 3.2vw, 48px);
   font-weight: 800;
-  line-height: 1.04;
-  letter-spacing: -0.04em;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
   color: #1f4647;
   margin: 0 0 16px;
+}
+
+.hero-title-line {
+  display: block;
+}
+
+@media (min-width: 900px) {
+  .hero-title-line {
+    white-space: nowrap;
+  }
+}
+
+.hero-abacate-title em {
+  font-family: 'Instrument Serif', 'Newsreader', Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: #16a34a;
+  letter-spacing: -0.02em;
+  font-size: 1.08em;
+  white-space: nowrap;
 }
 
 .hero-abacate-subtitle {
