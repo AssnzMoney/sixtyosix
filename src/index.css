@@ -2890,16 +2890,19 @@ h2 em {
 /* Cabeçalho de Introdução ao Preço em 2 Colunas com Platão & Aristóteles */
 .claude-price-intro-split {
   display: grid;
-  grid-template-columns: 1.25fr 0.85fr;
-  align-items: center;
-  gap: 48px;
+  grid-template-columns: 1.15fr 0.95fr;
+  align-items: end;
+  gap: 36px;
   max-width: 1220px;
-  margin: 0 auto 36px;
+  margin: 0 auto 0;
   padding: 0 12px;
+  position: relative;
+  z-index: 5;
 }
 
 .claude-price-intro-col-left {
   text-align: left;
+  padding-bottom: 24px;
 }
 
 .claude-price-intro-col-left .eyebrow {
@@ -2928,7 +2931,7 @@ h2 em {
   line-height: 1.6;
   color: #4e6b68;
   margin: 0;
-  max-width: 640px;
+  max-width: 620px;
   text-align: left;
 }
 
@@ -2939,12 +2942,13 @@ h2 em {
   text-underline-offset: 3px;
 }
 
-/* Lado Direito: Platão & Aristóteles com Óculos Pixel */
+/* Lado Direito: Platão & Aristóteles pisando em cima do quadrado verde */
 .claude-price-intro-col-right {
   display: flex;
   justify-content: center;
   align-items: flex-end;
   position: relative;
+  z-index: 10;
 }
 
 .claude-philosophers-card {
@@ -2952,16 +2956,18 @@ h2 em {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
+  margin-bottom: -18px; /* Pés pisando diretamente na borda superior do container verde */
 }
 
 .claude-philosophers-img {
   width: 100%;
-  max-width: 390px;
+  max-width: 480px;
   height: auto;
-  max-height: 380px;
+  max-height: 480px;
   object-fit: contain;
-  filter: drop-shadow(0 16px 28px rgba(31, 70, 71, 0.16));
+  filter: drop-shadow(0 16px 28px rgba(31, 70, 71, 0.22));
   transition: transform 0.3s ease;
+  display: block;
 }
 
 .claude-philosophers-img:hover {
@@ -2970,21 +2976,22 @@ h2 em {
 
 .claude-philosophers-bubble {
   position: absolute;
-  top: 14px;
-  right: -24px;
+  top: -36px;
+  left: 10px; /* Acima do dedo indicador levantado de Platão, sem tampar o rosto de ninguém */
   background: #ffffff;
   border: 1px solid rgba(31, 70, 71, 0.15);
-  box-shadow: 0 10px 28px rgba(31, 70, 71, 0.12);
+  box-shadow: 0 12px 28px rgba(31, 70, 71, 0.15);
   border-radius: 18px 18px 18px 4px;
-  padding: 8px 14px;
+  padding: 9px 16px;
   font-family: 'Manrope', sans-serif;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #1f4647;
-  max-width: 210px;
+  max-width: 250px;
   line-height: 1.35;
   pointer-events: none;
-  animation: floatBubble 3s ease-in-out infinite;
+  z-index: 12;
+  animation: floatBubble 3.5s ease-in-out infinite;
 }
 
 @keyframes floatBubble {
@@ -2996,10 +3003,12 @@ h2 em {
   .claude-price-intro-split {
     grid-template-columns: 1fr;
     text-align: center;
-    gap: 28px;
+    gap: 20px;
+    margin-bottom: 0;
   }
   .claude-price-intro-col-left {
     text-align: center;
+    padding-bottom: 0;
   }
   .claude-price-intro-title {
     text-align: center;
@@ -3008,12 +3017,17 @@ h2 em {
     text-align: center;
     margin: 0 auto;
   }
+  .claude-philosophers-card {
+    margin-bottom: -12px;
+  }
   .claude-philosophers-img {
-    max-width: 290px;
-    max-height: 300px;
+    max-width: 340px;
+    max-height: 360px;
   }
   .claude-philosophers-bubble {
-    right: 0;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 
