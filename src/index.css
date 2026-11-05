@@ -2056,7 +2056,7 @@ h2 em {
 
 .claude-hero-grid {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1.25fr 0.75fr;
   align-items: center;
   gap: 24px;
   max-width: 1180px;
@@ -2093,12 +2093,22 @@ h2 em {
 /* Título estilo AbacatePay */
 .hero-abacate-title {
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(32px, 3.5vw, 50px);
+  font-size: clamp(28px, 3.1vw, 46px);
   font-weight: 800;
   line-height: 1.12;
   letter-spacing: -0.035em;
   color: #1f4647;
   margin: 0 0 16px;
+}
+
+.hero-title-block {
+  display: block;
+}
+
+@media (min-width: 900px) {
+  .hero-title-block {
+    white-space: nowrap;
+  }
 }
 
 .hero-abacate-title em {

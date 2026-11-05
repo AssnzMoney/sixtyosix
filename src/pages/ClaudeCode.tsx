@@ -244,13 +244,17 @@ export default function ClaudeCodePage() {
             </div>
 
             <h1 className="hero-abacate-title">
-              Claude Code no terminal:
-              <br />
-              <em>programe sem travas.</em>
+              <span className="hero-title-block">
+                O poder total do <em>Claude Code.</em>
+              </span>
+              <span className="hero-title-block">
+                Sem sustos na fatura em Dólar.
+              </span>
             </h1>
 
             <p className="hero-abacate-subtitle">
-              Agente autônomo oficial sem cortes de 5 horas e sem surpresas na fatura em Dólar. Preço fixo no Pix.
+              Programe com o agente autônomo mais avançado do mundo direto no seu terminal.
+              Conecte sua chave própria da SixtySix, esqueça limites diários de cotas e codifique com preço fixo no Pix.
             </p>
 
             <div className="hero-abacate-actions">
@@ -269,6 +273,33 @@ export default function ClaudeCodePage() {
 
           {/* Coluna da Arte & Badges Flutuantes (Estilo AbacatePay) */}
           <div className="hero-abacate-art-col">
+            {/* Anotação estilo manuscrito com seta curvada apontando pro Napoleão */}
+            <div className="hero-handwritten-wrap">
+              <span className="hero-handwritten-text">já dizia napoleão:</span>
+              <svg
+                className="hero-handwritten-arrow"
+                width="34"
+                height="38"
+                viewBox="0 0 34 38"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6 6 C 22 10, 24 22, 22 34"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M14 26 L 22 34 L 29 26"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+
             {/* Imagem do Napoleão recortada transparente */}
             <img
               src="/assets/claude-code-ou-morte.webp"
