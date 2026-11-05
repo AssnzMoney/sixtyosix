@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, ArrowRight, Sparkles } from 'lucide-react'
+import { Plus, Minus, ChevronDown, ArrowRight } from 'lucide-react'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -835,32 +835,8 @@ export default function App() {
               <p className="plan-desc">Acesso total e irrestrito para testar tudo na prática antes de decidir.</p>
             </div>
             <ul className="plan-features">
-              <li className="plan-feature-model">
-                <span className="plan-feature-model-badge badge-claude" title="Claude (Anthropic)">
-                  <img src="/assets/brands/claude.svg" alt="Claude" />
-                </span>
-                <span className="plan-feature-model-text">
-                  <strong>Claude Fable 5.1</strong>
-                </span>
-              </li>
-              <li className="plan-feature-model">
-                <span className="plan-feature-model-badge badge-openai" title="OpenAI">
-                  <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
-                </span>
-                <span className="plan-feature-model-text">
-                  <strong>GPT Astra 6</strong>
-                </span>
-              </li>
-              <li className="plan-feature-model">
-                <span className="plan-feature-model-badge badge-glm" title="GLM (Z.ai)">
-                  <img src="/assets/brands/glm.svg" alt="GLM" />
-                </span>
-                <span className="plan-feature-model-text">
-                  <strong>GLM-4</strong>
-                </span>
-              </li>
-              <li className="plan-feature-divider" />
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
+              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4</strong></span></li>
               <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
               <li><Check /> <span>Chave oficial própria (Zero Rateio)</span></li>
               <li><Check /> <span>Sem cartão de crédito necessário</span></li>
@@ -883,23 +859,7 @@ export default function App() {
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
             </div>
             <ul className="plan-features">
-              <li className="plan-feature-model">
-                <span className="plan-feature-model-badge badge-openai" title="OpenAI">
-                  <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
-                </span>
-                <span className="plan-feature-model-text">
-                  <strong>GPT Astra 6</strong>
-                </span>
-              </li>
-              <li className="plan-feature-model">
-                <span className="plan-feature-model-badge badge-glm" title="GLM (Z.ai)">
-                  <img src="/assets/brands/glm.svg" alt="GLM" />
-                </span>
-                <span className="plan-feature-model-text">
-                  <strong>GLM-4 Plus</strong>
-                </span>
-              </li>
-              <li className="plan-feature-divider" />
+              <li><Check /> <span>GPT Astra 6 & GLM-4 Plus</span></li>
               <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
               <li><Check /> <span>Chave própria para modelos oficiais</span></li>
               <li><Check /> <span>Conexão direta aos modelos oficiais</span></li>
@@ -923,31 +883,7 @@ export default function App() {
               <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
             </div>
             <ul className="plan-features">
-              <li className="plan-feature-model">
-                <span className="plan-feature-model-badge badge-claude" title="Claude (Anthropic)">
-                  <img src="/assets/brands/claude.svg" alt="Claude" />
-                </span>
-                <span className="plan-feature-model-text">
-                  <strong>Claude Fable 5.1</strong>
-                </span>
-              </li>
-              <li className="plan-feature-model">
-                <span className="plan-feature-model-badge badge-openai" title="OpenAI">
-                  <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
-                </span>
-                <span className="plan-feature-model-text">
-                  <strong>GPT Astra 6</strong>
-                </span>
-              </li>
-              <li className="plan-feature-model">
-                <span className="plan-feature-model-badge badge-glm" title="GLM (Z.ai)">
-                  <img src="/assets/brands/glm.svg" alt="GLM" />
-                </span>
-                <span className="plan-feature-model-text">
-                  <strong>GLM-4 Plus</strong>
-                </span>
-              </li>
-              <li className="plan-feature-divider" />
+              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
