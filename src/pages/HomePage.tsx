@@ -452,8 +452,24 @@ export default function App() {
       </header>
 
       <section className="hands-section" id="recursos">
-        <img className="hand hand-left" src="/assets/sixtysix-hand-reach.webp" alt="" />
-        <img className="hand hand-right" src="/assets/sixtysix-hand-logo.webp" alt="" />
+        <motion.img
+          className="hand hand-left"
+          src="/assets/sixtysix-hand-reach.webp"
+          alt=""
+          initial={{ opacity: 0, x: -110 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: '-70px' }}
+          transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1] }}
+        />
+        <motion.img
+          className="hand hand-right"
+          src="/assets/sixtysix-hand-logo.webp"
+          alt=""
+          initial={{ opacity: 0, x: 110 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: '-70px' }}
+          transition={{ duration: 0.95, ease: [0.16, 1, 0.3, 1] }}
+        />
         <div className="hands-content shell">
           <div className="hands-eyebrow-container">
             <div className="hands-eyebrow-box">
@@ -542,7 +558,13 @@ export default function App() {
 
       <section className="integration-section shell" id="como-funciona">
         <div className="integration-grid">
-          <div className="phone-card-wrapper">
+          <motion.div
+            className="phone-card-wrapper"
+            initial={{ opacity: 0, x: -55, scale: 0.94 }}
+            whileInView={{ opacity: 1, x: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="phone-glow" />
             <div className="phone-device">
               <div className="phone-notch-bar">
@@ -591,9 +613,15 @@ export default function App() {
               </div>
               <span className="badges-caption">Integre com IA em minutos</span>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="integration-copy">
+          <motion.div
+            className="integration-copy"
+            initial={{ opacity: 0, x: 55 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          >
             <span className="eyebrow">integração nativa</span>
             <h2 className="integration-title">
               <span className="text-emerald">Integre do jeito que</span>
@@ -658,7 +686,7 @@ export default function App() {
                 </span>
               </Link>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -954,17 +982,31 @@ export default function App() {
       </section>
 
       <section className="pre-footer-cta-wrap">
-        <img
+        <motion.img
           src="/assets/cherub-left.webp"
           alt="Anjo nas nuvens à esquerda"
           className="cherub-flank cherub-flank-left"
+          initial={{ opacity: 0, x: -90, rotate: -6 }}
+          whileInView={{ opacity: 1, x: 0, rotate: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         />
-        <img
+        <motion.img
           src="/assets/cherub-right.webp"
           alt="Anjo nas nuvens à direita"
           className="cherub-flank cherub-flank-right"
+          initial={{ opacity: 0, x: 90, rotate: 6 }}
+          whileInView={{ opacity: 1, x: 0, rotate: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         />
-        <div className="pre-footer-cta shell">
+        <motion.div
+          className="pre-footer-cta shell"
+          initial={{ opacity: 0, y: 40, scale: 0.94 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+        >
           <span className="eyebrow">comece agora</span>
           <h2 className="pre-footer-title">
             Você leu até aqui. <span className="pre-footer-green">Tá interessado né?</span>
@@ -980,7 +1022,7 @@ export default function App() {
           <p className="pre-footer-footnote">
             Preço fixo no Pix. Chave individual com Zero Rateio.
           </p>
-        </div>
+        </motion.div>
       </section>
 
       <footer className="footer-wrap">

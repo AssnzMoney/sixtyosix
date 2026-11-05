@@ -244,7 +244,12 @@ export default function ClaudeCodePage() {
       <section className="claude-hero-section shell">
         <div className="claude-hero-grid">
           {/* Coluna de Texto & Ações */}
-          <div className="claude-hero-content">
+          <motion.div
+            className="claude-hero-content"
+            initial={{ opacity: 0, x: -45 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="hero-abacate-badge">
               <span className="hero-abacate-dot" />
               <span>Claude Code CLI SixtySix</span>
@@ -308,13 +313,23 @@ export default function ClaudeCodePage() {
             <p className="hero-abacate-footnote">
               Sem mensalidade surpresa. Chave própria com Zero Rateio.
             </p>
-          </div>
+          </motion.div>
 
           {/* Coluna da Arte & Badges Flutuantes (Estilo AbacatePay) */}
-          <div className="hero-abacate-art-col">
+          <motion.div
+            className="hero-abacate-art-col"
+            initial={{ opacity: 0, x: 65, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ duration: 0.85, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="hero-art-stage">
               {/* Anotação estilo manuscrito com seta curvada apontando diretamente para a nuvem */}
-              <div className="hero-handwritten-wrap">
+              <motion.div
+                className="hero-handwritten-wrap"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <span className="hero-handwritten-text">já dizia napoleão:</span>
                 <svg
                   className="hero-handwritten-arrow"
@@ -339,7 +354,7 @@ export default function ClaudeCodePage() {
                     strokeLinejoin="round"
                   />
                 </svg>
-              </div>
+              </motion.div>
 
               {/* Imagem do Napoleão recortada transparente */}
               <img
@@ -349,7 +364,12 @@ export default function ClaudeCodePage() {
               />
 
               {/* Badge Flutuante Esquerda */}
-              <div className="floating-badge floating-badge-left">
+              <motion.div
+                className="floating-badge floating-badge-left"
+                initial={{ opacity: 0, y: 25, scale: 0.88 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.55, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div className="floating-badge-icon badge-icon-check">
                   <Check size={18} strokeWidth={2.5} />
                 </div>
@@ -360,10 +380,15 @@ export default function ClaudeCodePage() {
                     <span className="badge-pill-green">Ativo</span>
                   </span>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Badge Flutuante Direita */}
-              <div className="floating-badge floating-badge-right">
+              <motion.div
+                className="floating-badge floating-badge-right"
+                initial={{ opacity: 0, y: 25, scale: 0.88 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.55, delay: 0.65, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div className="floating-badge-icon badge-icon-pix">
                   <DollarSign size={18} strokeWidth={2.4} />
                 </div>
@@ -373,37 +398,51 @@ export default function ClaudeCodePage() {
                     <strong>Sem IOF cambial</strong>
                   </span>
                 </div>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Faixa de Métricas / Diferenciais estilo AbacatePay */}
       <section className="abacate-stats-section shell">
-        <div className="abacate-stats-strip">
-          <div className="abacate-stat-col">
-            <h3 className="abacate-stat-val">Zero Rateio</h3>
-            <p className="abacate-stat-desc">chave própria e individual</p>
-          </div>
-          <div className="abacate-stat-col">
-            <h3 className="abacate-stat-val">Segundos</h3>
-            <p className="abacate-stat-desc">do comando à resposta no terminal</p>
-          </div>
-          <div className="abacate-stat-col">
-            <h3 className="abacate-stat-val">24 × 7</h3>
-            <p className="abacate-stat-desc">sem travas por limites de 5 horas</p>
-          </div>
-          <div className="abacate-stat-col">
-            <h3 className="abacate-stat-val">No Pix</h3>
-            <p className="abacate-stat-desc">preço fixo sem sustos em Dólar</p>
-          </div>
-        </div>
+        <motion.div
+          className="abacate-stats-strip"
+          initial={{ opacity: 0, y: 35, filter: 'blur(4px)' }}
+          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {[
+            { val: 'Zero Rateio', desc: 'chave própria e individual' },
+            { val: 'Segundos', desc: 'do comando à resposta no terminal' },
+            { val: '24 × 7', desc: 'sem travas por limites de 5 horas' },
+            { val: 'No Pix', desc: 'preço fixo sem sustos em Dólar' },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.val}
+              className="abacate-stat-col"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <h3 className="abacate-stat-val">{stat.val}</h3>
+              <p className="abacate-stat-desc">{stat.desc}</p>
+            </motion.div>
+          ))}
+        </motion.div>
       </section>
 
       {/* Guia Oficial de Conexão e Tutoriais */}
       <section className="claude-steps-section shell" id="passo-a-passo">
-        <div className="claude-section-header">
+        <motion.div
+          className="claude-section-header"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+        >
           <span className="eyebrow">instruções de conexão</span>
           <h2 className="claude-section-title">
             Como conectar suas ferramentas ao gateway <em>SixTySix.</em>
@@ -411,10 +450,16 @@ export default function ClaudeCodePage() {
           <p className="claude-section-subtitle">
             Instruções oficiais e passo a passo simples para configurar Claude Code, Claude Desktop e Codex no Windows.
           </p>
-        </div>
+        </motion.div>
 
         {/* Seletor de Aplicativo estilo Pílula */}
-        <div className="tutorial-tabs-wrap">
+        <motion.div
+          className="tutorial-tabs-wrap"
+          initial={{ opacity: 0, scale: 0.94 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.55, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        >
           <div className="tutorial-tabs">
             <button
               type="button"
@@ -439,21 +484,33 @@ export default function ClaudeCodePage() {
               <span>Codex (Windows)</span>
             </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Aba 1: Claude Code no terminal do Windows (CMD) */}
         {selectedApp === 'claude-code' && (
           <div className="tutorial-pane">
-            <div className="tutorial-intro-card">
+            <motion.div
+              className="tutorial-intro-card"
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            >
               <p>
                 No Windows, abra a janela do <strong>Prompt de Comando (CMD)</strong> e configure as variáveis de ambiente antes de rodar o agente.
                 As variáveis definidas com o comando <code>set</code> valem especificamente para aquela janela do CMD aberta.
                 Substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua chave individual fornecida pelo administrador.
               </p>
-            </div>
+            </motion.div>
 
             <div className="tutorial-steps-grid">
-              <div className="claude-step-card">
+              <motion.div
+                className="claude-step-card"
+                initial={{ opacity: 0, x: -35 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div className="claude-step-top">
                   <span className="claude-step-badge">Passo 01</span>
                   <h4>Instale o CLI Oficial</h4>
@@ -472,9 +529,15 @@ export default function ClaudeCodePage() {
                     <span>{copiedSnippet === 'npm install -g @anthropic-ai/claude-code' ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="claude-step-card tutorial-step-large">
+              <motion.div
+                className="claude-step-card tutorial-step-large"
+                initial={{ opacity: 0, x: 35 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 0.65, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              >
                 <div className="claude-step-top">
                   <span className="claude-step-badge">Passo 02</span>
                   <h4>Defina as Variáveis no CMD e Inicie</h4>
@@ -508,7 +571,7 @@ claude --model claude-fable-5-1`}
                 <span className="tutorial-footnote">
                   Importante: substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua própria chave. As variáveis definidas com <code>set</code> valem para aquela janela do CMD. Se abrir outra janela, repita os comandos.
                 </span>
-              </div>
+              </motion.div>
             </div>
           </div>
         )}
@@ -639,7 +702,13 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
       {/* Seção de Introdução ao Preço & Custos estilo AbacatePay */}
       <section className="claude-calc-dark-section shell" id="calculadora-dolar">
         <div className="claude-price-intro-split">
-          <div className="claude-price-intro-col-left">
+          <motion.div
+            className="claude-price-intro-col-left"
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+          >
             <span className="eyebrow">Preço</span>
             <h2 className="claude-price-intro-title">
               Quanto custa usar o <br />
@@ -650,9 +719,15 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               Diferente da Anthropic que cobra em Dólar com IOF de 4,38% e taxa de câmbio abusiva no cartão, aqui o valor é previsível em Reais.
               Veja os <a href="#planos-claude">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="claude-price-intro-col-right">
+          <motion.div
+            className="claude-price-intro-col-right"
+            initial={{ opacity: 0, x: 65, scale: 0.94 }}
+            whileInView={{ opacity: 1, x: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-60px' }}
+            transition={{ duration: 0.85, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="claude-philosophers-card">
               <img
                 src="/philosophers-glasses.png"
@@ -660,11 +735,17 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
                 className="claude-philosophers-img"
               />
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Bloco Verde #1f4647 Preenchido com a Calculadora e Linhas Onduladas */}
-        <div className="claude-calc-dark-wrap">
+        <motion.div
+          className="claude-calc-dark-wrap"
+          initial={{ opacity: 0, y: 40, scale: 0.97 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: '-70px' }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        >
           {/* Linhas onduladas fluidas em branco estilo AbacatePay - Absolute para não ocupar espaço no fluxo */}
           <svg
             className="claude-calc-waves-bg"
@@ -808,12 +889,18 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               ({savingsMultiplier}x mais barato do que na fatura em Dólar).
             </p>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Planos Destacados para Claude Code (Exatamente os 3 aprovados) */}
       <section className="plans-section shell" id="planos-claude">
-        <div className="plans-header">
+        <motion.div
+          className="plans-header"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+        >
           <span className="eyebrow">acesso imediato</span>
           <h2 className="plans-title">
             Escolha seu plano para rodar <em>Claude Code.</em>
@@ -821,11 +908,17 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
           <p className="plans-subtitle">
             Teste gratuitamente por 7 dias ou garanta o acesso ilimitado com preço fixo no Pix.
           </p>
-        </div>
+        </motion.div>
 
         <div className="plans-grid">
           {/* Teste Grátis */}
-          <div className="plan-card plan-card-trial">
+          <motion.div
+            className="plan-card plan-card-trial"
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.65, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="plan-card-top">
               <span className="plan-tag plan-tag-green">7 dias grátis</span>
               <h3 className="plan-name">Teste Grátis</h3>
@@ -846,10 +939,16 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="plan-btn">
               Começar Teste Grátis <Arrow />
             </a>
-          </div>
+          </motion.div>
 
           {/* Dev */}
-          <div className="plan-card">
+          <motion.div
+            className="plan-card"
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.65, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="plan-card-top">
               <span className="plan-tag">Mais versátil</span>
               <h3 className="plan-name">Dev</h3>
@@ -870,10 +969,16 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="plan-btn">
               Começar no Dev
             </a>
-          </div>
+          </motion.div>
 
           {/* Pro Ilimitado */}
-          <div className="plan-card plan-card-featured">
+          <motion.div
+            className="plan-card plan-card-featured"
+            initial={{ opacity: 0, y: 45, scale: 0.93 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.7, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
             <div className="plan-card-top">
               <span className="plan-tag">Mais completo</span>
               <h3 className="plan-name">Pro Ilimitado</h3>
@@ -895,13 +1000,19 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="plan-btn plan-btn-featured">
               Garantir Acesso Ilimitado <Arrow />
             </a>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* FAQ Claude Code */}
       <section className="faq shell" id="duvidas-claude">
-        <div className="faq-intro">
+        <motion.div
+          className="faq-intro"
+          initial={{ opacity: 0, x: -45 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        >
           <h2 className="faq-title">
             <span className="faq-title-green">Dúvidas sobre</span><br />
             o Claude Code.
@@ -915,42 +1026,70 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             </a>
             <span className="faq-footnote">Sem mensalidade surpresa. Ativação imediata.</span>
           </div>
-        </div>
-        <div className="faq-list">
+        </motion.div>
+        <motion.div
+          className="faq-list"
+          initial={{ opacity: 0, x: 45 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.75, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+        >
           <AccordionPrimitive.Root type="single" collapsible className="faq-accordion-root">
             {claudeFaqs.map(([question, answer], index) => (
-              <AccordionPrimitive.Item key={question} value={`item-${index}`} className="faq-accordion-item">
-                <AccordionPrimitive.Header>
-                  <AccordionPrimitive.Trigger className="faq-accordion-trigger">
-                    <span>{question}</span>
-                    <span className="faq-accordion-icon-wrap" aria-hidden="true">
-                      <Plus className="faq-accordion-plus" size={19} strokeWidth={1.8} />
-                      <Minus className="faq-accordion-minus" size={19} strokeWidth={1.8} />
-                    </span>
-                  </AccordionPrimitive.Trigger>
-                </AccordionPrimitive.Header>
-                <AccordionPrimitive.Content className="faq-accordion-content animate-accordion-down data-[state=closed]:animate-accordion-up">
-                  <p>{answer}</p>
-                </AccordionPrimitive.Content>
-              </AccordionPrimitive.Item>
+              <motion.div
+                key={question}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: index * 0.05, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <AccordionPrimitive.Item value={`item-${index}`} className="faq-accordion-item">
+                  <AccordionPrimitive.Header>
+                    <AccordionPrimitive.Trigger className="faq-accordion-trigger">
+                      <span>{question}</span>
+                      <span className="faq-accordion-icon-wrap" aria-hidden="true">
+                        <Plus className="faq-accordion-plus" size={19} strokeWidth={1.8} />
+                        <Minus className="faq-accordion-minus" size={19} strokeWidth={1.8} />
+                      </span>
+                    </AccordionPrimitive.Trigger>
+                  </AccordionPrimitive.Header>
+                  <AccordionPrimitive.Content className="faq-accordion-content animate-accordion-down data-[state=closed]:animate-accordion-up">
+                    <p>{answer}</p>
+                  </AccordionPrimitive.Content>
+                </AccordionPrimitive.Item>
+              </motion.div>
             ))}
           </AccordionPrimitive.Root>
-        </div>
+        </motion.div>
       </section>
 
       {/* Pre-Footer CTA com os Anjos */}
       <section className="pre-footer-cta-wrap">
-        <img
+        <motion.img
           src="/assets/cherub-left.webp"
           alt="Anjo nas nuvens à esquerda"
           className="cherub-flank cherub-flank-left"
+          initial={{ opacity: 0, x: -90, rotate: -6 }}
+          whileInView={{ opacity: 1, x: 0, rotate: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         />
-        <img
+        <motion.img
           src="/assets/cherub-right.webp"
           alt="Anjo nas nuvens à direita"
           className="cherub-flank cherub-flank-right"
+          initial={{ opacity: 0, x: 90, rotate: 6 }}
+          whileInView={{ opacity: 1, x: 0, rotate: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
         />
-        <div className="pre-footer-cta shell">
+        <motion.div
+          className="pre-footer-cta shell"
+          initial={{ opacity: 0, y: 40, scale: 0.94 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
+        >
           <span className="eyebrow">comece agora</span>
           <h2 className="pre-footer-title">
             Pronto para codar com Claude Code <span className="pre-footer-green">sem limites?</span>
@@ -966,7 +1105,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
           <p className="pre-footer-footnote">
             Sem cartão de crédito necessário. Ativação instantânea.
           </p>
-        </div>
+        </motion.div>
       </section>
 
       {/* Footer Padrão SixtySix */}
