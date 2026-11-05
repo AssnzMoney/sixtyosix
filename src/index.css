@@ -1517,66 +1517,122 @@ h2 em {
   margin-top: 3px;
 }
 
-.plan-features li.plan-models-item {
-  align-items: center;
+/* Bloco de Modelos estilo Kodeo dentro dos cards de planos */
+.plan-models-section {
+  background: #fbfdfc;
+  border: 1px solid rgba(31, 70, 71, 0.08);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 22px;
+  box-shadow: 0 1px 4px rgba(31, 70, 71, 0.03);
+  transition: all 0.2s ease;
 }
 
-.plan-features li.plan-models-item > svg {
-  margin-top: 0;
+.plan-card-featured .plan-models-section {
+  background: rgba(158, 234, 108, 0.09);
+  border-color: rgba(34, 197, 94, 0.22);
 }
 
-.plan-models-row {
+.plan-models-eyebrow {
+  display: block;
+  font-family: 'Fustat', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #52796f;
+  margin-bottom: 10px;
+}
+
+.plan-models-badge-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  flex: 1;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
-.plan-models-label {
+.plan-model-mini-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  background: #ffffff;
+  border: 1px solid rgba(31, 70, 71, 0.14);
+  box-shadow: 0 1px 3px rgba(31, 70, 71, 0.05);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.plan-model-mini-badge:hover {
+  transform: translateY(-2px);
+  border-color: #22c55e;
+  box-shadow: 0 3px 8px rgba(31, 70, 71, 0.12);
+}
+
+.plan-model-mini-badge img {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  display: block;
+}
+
+.plan-models-sublist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-model-subitem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: #1f4647;
+}
+
+.plan-model-plus {
+  color: #16a34a;
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1;
+  width: 11px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.plan-model-subicon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.plan-model-subicon img {
+  width: 16.5px;
+  height: 16.5px;
+  object-fit: contain;
+  display: block;
+}
+
+.plan-model-subicon.icon-sparkle {
+  color: #16a34a;
+}
+
+.plan-model-subname {
   font-family: 'Fustat', sans-serif;
   font-size: 13.5px;
   font-weight: 700;
   color: #1f4647;
   letter-spacing: -0.01em;
-}
-
-.plan-models-badges {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.plan-model-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid rgba(31, 70, 71, 0.14);
-  box-shadow: 0 1px 3px rgba(31, 70, 71, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-  cursor: pointer;
-}
-
-.plan-model-badge:hover {
-  transform: translateY(-2px);
-  border-color: #22c55e;
-  box-shadow: 0 4px 10px rgba(31, 70, 71, 0.12);
-}
-
-.plan-model-badge img {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  display: block;
-}
-
-.plan-model-badge .plan-model-glm {
-  width: 18px;
-  height: 18px;
+  line-height: 1.35;
 }
 
 .plan-btn {

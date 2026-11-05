@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, ArrowRight } from 'lucide-react'
+import { Plus, Minus, ChevronDown, ArrowRight, Sparkles } from 'lucide-react'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -834,25 +834,41 @@ export default function App() {
               </div>
               <p className="plan-desc">Acesso total e irrestrito para testar tudo na prática antes de decidir.</p>
             </div>
+
+            {/* Bloco de Modelos estilo Kodeo */}
+            <div className="plan-models-section">
+              <span className="plan-models-eyebrow">TUDO DO PRO ILIMITADO</span>
+              <div className="plan-models-badge-row">
+                <span className="plan-model-mini-badge" title="Claude Fable 5.1 (Anthropic)">
+                  <img src="/assets/brands/claude.svg" alt="Claude" />
+                </span>
+                <span className="plan-model-mini-badge" title="GPT Astra 6 (OpenAI)">
+                  <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
+                </span>
+                <span className="plan-model-mini-badge" title="GLM-4 Plus (Z.ai)">
+                  <img src="/assets/brands/glm.svg" alt="GLM" />
+                </span>
+              </div>
+              <ul className="plan-models-sublist">
+                <li className="plan-model-subitem">
+                  <span className="plan-model-plus">+</span>
+                  <span className="plan-model-subicon">
+                    <img src="/assets/brands/claude.svg" alt="Claude" />
+                  </span>
+                  <span className="plan-model-subname">Claude Fable 5.1 liberado</span>
+                </li>
+                <li className="plan-model-subitem">
+                  <span className="plan-model-plus">+</span>
+                  <span className="plan-model-subicon icon-sparkle">
+                    <Sparkles size={14} className="text-emerald" />
+                  </span>
+                  <span className="plan-model-subname">7 dias grátis sem cartão</span>
+                </li>
+              </ul>
+            </div>
+
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li className="plan-models-item">
-                <Check />
-                <div className="plan-models-row">
-                  <span className="plan-models-label">Modelos:</span>
-                  <div className="plan-models-badges">
-                    <span className="plan-model-badge" title="Claude Fable 5.1 (Anthropic)">
-                      <img src="/assets/brands/claude.svg" alt="Claude" />
-                    </span>
-                    <span className="plan-model-badge" title="GPT Astra 6 (OpenAI)">
-                      <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
-                    </span>
-                    <span className="plan-model-badge" title="GLM-4 (Z.ai)">
-                      <img src="/assets/brands/glm.svg" alt="GLM" className="plan-model-glm" />
-                    </span>
-                  </div>
-                </div>
-              </li>
               <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
               <li><Check /> <span>Chave oficial própria (Zero Rateio)</span></li>
               <li><Check /> <span>Sem cartão de crédito necessário</span></li>
@@ -874,21 +890,27 @@ export default function App() {
               </div>
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
             </div>
+
+            {/* Bloco de Modelos estilo Kodeo */}
+            <div className="plan-models-section">
+              <span className="plan-models-eyebrow">MODELOS INCLUSOS</span>
+              <ul className="plan-models-sublist">
+                <li className="plan-model-subitem">
+                  <span className="plan-model-subicon">
+                    <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
+                  </span>
+                  <span className="plan-model-subname">GPT Astra 6</span>
+                </li>
+                <li className="plan-model-subitem">
+                  <span className="plan-model-subicon">
+                    <img src="/assets/brands/glm.svg" alt="GLM" />
+                  </span>
+                  <span className="plan-model-subname">GLM-4 Plus</span>
+                </li>
+              </ul>
+            </div>
+
             <ul className="plan-features">
-              <li className="plan-models-item">
-                <Check />
-                <div className="plan-models-row">
-                  <span className="plan-models-label">Modelos:</span>
-                  <div className="plan-models-badges">
-                    <span className="plan-model-badge" title="GPT Astra 6 (OpenAI)">
-                      <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
-                    </span>
-                    <span className="plan-model-badge" title="GLM-4 Plus (Z.ai)">
-                      <img src="/assets/brands/glm.svg" alt="GLM" className="plan-model-glm" />
-                    </span>
-                  </div>
-                </div>
-              </li>
               <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
               <li><Check /> <span>Chave própria para modelos oficiais</span></li>
               <li><Check /> <span>Conexão direta aos modelos oficiais</span></li>
@@ -911,24 +933,37 @@ export default function App() {
               </div>
               <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
             </div>
+
+            {/* Bloco de Modelos estilo Kodeo */}
+            <div className="plan-models-section">
+              <span className="plan-models-eyebrow">TUDO DO DEV</span>
+              <div className="plan-models-badge-row">
+                <span className="plan-model-mini-badge" title="GPT Astra 6 (OpenAI)">
+                  <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
+                </span>
+                <span className="plan-model-mini-badge" title="GLM-4 Plus (Z.ai)">
+                  <img src="/assets/brands/glm.svg" alt="GLM" />
+                </span>
+              </div>
+              <ul className="plan-models-sublist">
+                <li className="plan-model-subitem">
+                  <span className="plan-model-plus">+</span>
+                  <span className="plan-model-subicon">
+                    <img src="/assets/brands/claude.svg" alt="Claude" />
+                  </span>
+                  <span className="plan-model-subname">Claude Fable 5.1</span>
+                </li>
+                <li className="plan-model-subitem">
+                  <span className="plan-model-plus">+</span>
+                  <span className="plan-model-subicon icon-sparkle">
+                    <Sparkles size={14} className="text-emerald" />
+                  </span>
+                  <span className="plan-model-subname">Outros modelos e todo modelo novo que entrar</span>
+                </li>
+              </ul>
+            </div>
+
             <ul className="plan-features">
-              <li className="plan-models-item">
-                <Check />
-                <div className="plan-models-row">
-                  <span className="plan-models-label">Modelos:</span>
-                  <div className="plan-models-badges">
-                    <span className="plan-model-badge" title="Claude Fable 5.1 (Anthropic)">
-                      <img src="/assets/brands/claude.svg" alt="Claude" />
-                    </span>
-                    <span className="plan-model-badge" title="GPT Astra 6 (OpenAI)">
-                      <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
-                    </span>
-                    <span className="plan-model-badge" title="GLM-4 Plus (Z.ai)">
-                      <img src="/assets/brands/glm.svg" alt="GLM" className="plan-model-glm" />
-                    </span>
-                  </div>
-                </div>
-              </li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
