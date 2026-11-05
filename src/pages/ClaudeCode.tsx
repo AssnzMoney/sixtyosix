@@ -216,12 +216,14 @@ export default function ClaudeCodePage() {
             </div>
 
             <h1 className="hero-abacate-title">
-              Claude Code CLI: programe sem travas, no Pix.
+              O poder total do <em>Claude Code.</em>
+              <br />
+              Sem sustos na fatura em Dólar.
             </h1>
 
             <p className="hero-abacate-subtitle">
-              Agente autônomo no seu terminal com IA oficial sem limites diários de cotas:
-              refatore, teste e suba deploys em segundos. Preço fixo em Reais.
+              Programe com o agente autônomo mais avançado do mundo direto no seu terminal.
+              Conecte sua chave própria da SixtySix, esqueça limites diários de cotas e codifique com preço fixo no Pix.
             </p>
 
             <div className="hero-abacate-actions">
@@ -313,7 +315,7 @@ export default function ClaudeCodePage() {
           </div>
           <div className="abacate-stat-col">
             <h3 className="abacate-stat-val">Segundos</h3>
-            <p className="abacate-stat-desc">do comando à execução no terminal</p>
+            <p className="abacate-stat-desc">do comando à resposta no terminal</p>
           </div>
           <div className="abacate-stat-col">
             <h3 className="abacate-stat-val">24 × 7</h3>
