@@ -2966,37 +2966,7 @@ h2 em {
   max-height: 480px;
   object-fit: contain;
   filter: drop-shadow(0 16px 28px rgba(31, 70, 71, 0.22));
-  transition: transform 0.3s ease;
   display: block;
-}
-
-.claude-philosophers-img:hover {
-  transform: translateY(-4px) scale(1.02);
-}
-
-.claude-philosophers-bubble {
-  position: absolute;
-  top: -36px;
-  left: 10px; /* Acima do dedo indicador levantado de Platão, sem tampar o rosto de ninguém */
-  background: #ffffff;
-  border: 1px solid rgba(31, 70, 71, 0.15);
-  box-shadow: 0 12px 28px rgba(31, 70, 71, 0.15);
-  border-radius: 18px 18px 18px 4px;
-  padding: 9px 16px;
-  font-family: 'Manrope', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  color: #1f4647;
-  max-width: 250px;
-  line-height: 1.35;
-  pointer-events: none;
-  z-index: 12;
-  animation: floatBubble 3.5s ease-in-out infinite;
-}
-
-@keyframes floatBubble {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
 }
 
 @media (max-width: 900px) {
@@ -3023,11 +2993,6 @@ h2 em {
   .claude-philosophers-img {
     max-width: 340px;
     max-height: 360px;
-  }
-  .claude-philosophers-bubble {
-    top: -30px;
-    left: 50%;
-    transform: translateX(-50%);
   }
 }
 

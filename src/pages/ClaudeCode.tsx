@@ -658,9 +658,6 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
                 alt="Platão e Aristóteles calculando a economia"
                 className="claude-philosophers-img"
               />
-              <div className="claude-philosophers-bubble">
-                <span>"Até a filosofia concorda: pagar em Dólar é loucura."</span>
-              </div>
             </div>
           </div>
         </div>
