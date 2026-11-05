@@ -836,7 +836,23 @@ export default function App() {
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4</strong></span></li>
+              <li className="plan-models-item">
+                <Check />
+                <div className="plan-models-row">
+                  <span className="plan-models-label">Modelos:</span>
+                  <div className="plan-models-badges">
+                    <span className="plan-model-badge" title="Claude Fable 5.1 (Anthropic)">
+                      <img src="/assets/brands/claude.svg" alt="Claude" />
+                    </span>
+                    <span className="plan-model-badge" title="GPT Astra 6 (OpenAI)">
+                      <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
+                    </span>
+                    <span className="plan-model-badge" title="GLM-4 (Z.ai)">
+                      <img src="/assets/brands/glm.svg" alt="GLM" className="plan-model-glm" />
+                    </span>
+                  </div>
+                </div>
+              </li>
               <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
               <li><Check /> <span>Chave oficial própria (Zero Rateio)</span></li>
               <li><Check /> <span>Sem cartão de crédito necessário</span></li>
@@ -859,7 +875,20 @@ export default function App() {
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> <span>GPT Astra 6 & GLM-4 Plus</span></li>
+              <li className="plan-models-item">
+                <Check />
+                <div className="plan-models-row">
+                  <span className="plan-models-label">Modelos:</span>
+                  <div className="plan-models-badges">
+                    <span className="plan-model-badge" title="GPT Astra 6 (OpenAI)">
+                      <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
+                    </span>
+                    <span className="plan-model-badge" title="GLM-4 Plus (Z.ai)">
+                      <img src="/assets/brands/glm.svg" alt="GLM" className="plan-model-glm" />
+                    </span>
+                  </div>
+                </div>
+              </li>
               <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
               <li><Check /> <span>Chave própria para modelos oficiais</span></li>
               <li><Check /> <span>Conexão direta aos modelos oficiais</span></li>
@@ -883,7 +912,23 @@ export default function App() {
               <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
+              <li className="plan-models-item">
+                <Check />
+                <div className="plan-models-row">
+                  <span className="plan-models-label">Modelos:</span>
+                  <div className="plan-models-badges">
+                    <span className="plan-model-badge" title="Claude Fable 5.1 (Anthropic)">
+                      <img src="/assets/brands/claude.svg" alt="Claude" />
+                    </span>
+                    <span className="plan-model-badge" title="GPT Astra 6 (OpenAI)">
+                      <img src="/assets/brands/openai.svg" alt="OpenAI GPT" />
+                    </span>
+                    <span className="plan-model-badge" title="GLM-4 Plus (Z.ai)">
+                      <img src="/assets/brands/glm.svg" alt="GLM" className="plan-model-glm" />
+                    </span>
+                  </div>
+                </div>
+              </li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>

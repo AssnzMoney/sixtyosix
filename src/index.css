@@ -1517,6 +1517,68 @@ h2 em {
   margin-top: 3px;
 }
 
+.plan-features li.plan-models-item {
+  align-items: center;
+}
+
+.plan-features li.plan-models-item > svg {
+  margin-top: 0;
+}
+
+.plan-models-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+}
+
+.plan-models-label {
+  font-family: 'Fustat', sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1f4647;
+  letter-spacing: -0.01em;
+}
+
+.plan-models-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plan-model-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(31, 70, 71, 0.14);
+  box-shadow: 0 1px 3px rgba(31, 70, 71, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+}
+
+.plan-model-badge:hover {
+  transform: translateY(-2px);
+  border-color: #22c55e;
+  box-shadow: 0 4px 10px rgba(31, 70, 71, 0.12);
+}
+
+.plan-model-badge img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+}
+
+.plan-model-badge .plan-model-glm {
+  width: 18px;
+  height: 18px;
+}
+
 .plan-btn {
   display: flex;
   align-items: center;
