@@ -977,6 +977,10 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               <span className="claude-glass-card-label">Quanto você consome na Anthropic por mês?</span>
               <div className="claude-glass-big-val">
                 <NumberRoller value={calcUsd} prefix="US$ " decimals={2} duration={0.45} />
+                <span className="claude-glass-val-sep">/</span>
+                <span className="claude-glass-val-secondary">
+                  <NumberRoller value={totalAnthropicBRL} prefix="R$ " decimals={2} duration={0.45} />
+                </span>
               </div>
 
               <div className="claude-glass-slider-wrap">

@@ -5,18 +5,101 @@ interface PlanCardWavesProps {
   className?: string
 }
 
+// 5 Linhas orgânicas com curvas não-padronizadas que se encontram
+// e se completam perfeitamente com continuidade C1 nas bordas entre cada card:
+// Junção Card 0 -> Card 1 (x=400 / x=0): Y = [220, 280, 340, 400, 460]
+// Junção Card 1 -> Card 2 (x=400 / x=0): Y = [200, 270, 330, 390, 450]
+const cardPaths: Record<0 | 1 | 2, Array<{ d: string; stroke: string; strokeWidth: number }>> = {
+  // Card 0: Teste Grátis (Fase 1: Ascensão & Ondulação Inicial)
+  0: [
+    {
+      d: 'M -5 170 C 110 110, 270 270, 405 220',
+      stroke: 'rgba(31, 70, 71, 0.22)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 230 C 130 330, 260 210, 405 280',
+      stroke: 'rgba(31, 70, 71, 0.17)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 300 C 120 220, 280 400, 405 340',
+      stroke: 'rgba(31, 70, 71, 0.14)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 380 C 140 450, 270 330, 405 400',
+      stroke: 'rgba(31, 70, 71, 0.16)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 450 C 130 390, 280 500, 405 460',
+      stroke: 'rgba(31, 70, 71, 0.12)',
+      strokeWidth: 1.8,
+    },
+  ],
+
+  // Card 1: Dev (Fase 2: Conexão Central & Cristas Suaves)
+  1: [
+    {
+      d: 'M -5 220 C 120 160, 260 140, 405 200',
+      stroke: 'rgba(31, 70, 71, 0.22)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 280 C 140 350, 270 320, 405 270',
+      stroke: 'rgba(31, 70, 71, 0.17)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 340 C 120 270, 280 250, 405 330',
+      stroke: 'rgba(31, 70, 71, 0.14)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 400 C 140 460, 270 430, 405 390',
+      stroke: 'rgba(31, 70, 71, 0.16)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 460 C 130 520, 280 480, 405 450',
+      stroke: 'rgba(31, 70, 71, 0.12)',
+      strokeWidth: 1.8,
+    },
+  ],
+
+  // Card 2: Pro Ilimitado (Fase 3: Resolução & Conclusão Harmônica)
+  2: [
+    {
+      d: 'M -5 200 C 130 260, 270 120, 405 170',
+      stroke: 'rgba(31, 70, 71, 0.22)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 270 C 120 210, 280 320, 405 230',
+      stroke: 'rgba(31, 70, 71, 0.17)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 330 C 140 400, 270 240, 405 300',
+      stroke: 'rgba(31, 70, 71, 0.14)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 390 C 120 330, 280 440, 405 370',
+      stroke: 'rgba(31, 70, 71, 0.16)',
+      strokeWidth: 1.8,
+    },
+    {
+      d: 'M -5 450 C 140 500, 270 380, 405 430',
+      stroke: 'rgba(31, 70, 71, 0.12)',
+      strokeWidth: 1.8,
+    },
+  ],
+}
+
 export default function PlanCardWaves({ cardIndex, className = '' }: PlanCardWavesProps) {
-  // Coordenadas calculadas para sincronização perfeita de ondas contínuas entre os 3 cards
-  // Card 0: 0 a 380px
-  // Gap 1: 380 a 404px (24px)
-  // Card 1: 404 a 784px
-  // Gap 2: 784 a 808px (24px)
-  // Card 2: 808 a 1188px
-  const viewBoxes = {
-    0: '0 0 380 550',
-    1: '404 0 380 550',
-    2: '808 0 380 550',
-  }
+  const paths = cardPaths[cardIndex] || cardPaths[0]
 
   return (
     <svg
@@ -30,42 +113,21 @@ export default function PlanCardWaves({ cardIndex, className = '' }: PlanCardWav
         pointerEvents: 'none',
         zIndex: 0,
       }}
-      viewBox={viewBoxes[cardIndex]}
+      viewBox="0 0 400 520"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       preserveAspectRatio="none"
       aria-hidden="true"
     >
-      <path
-        d="M -40 240 C 140 160, 270 310, 470 210 C 670 120, 860 300, 1020 190 C 1120 130, 1190 180, 1240 165"
-        stroke="rgba(31, 70, 71, 0.13)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M -40 295 C 170 380, 330 220, 560 330 C 760 420, 930 240, 1090 320 C 1170 360, 1210 330, 1240 315"
-        stroke="rgba(31, 70, 71, 0.10)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M -40 355 C 190 260, 380 430, 630 310 C 850 190, 1010 400, 1150 290 C 1190 260, 1220 280, 1240 270"
-        stroke="rgba(31, 70, 71, 0.08)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M -40 415 C 220 330, 410 480, 680 370 C 910 270, 1070 420, 1180 340 C 1210 320, 1230 335, 1240 330"
-        stroke="rgba(31, 70, 71, 0.09)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M -40 465 C 250 380, 460 520, 740 410 C 970 320, 1110 460, 1200 400 C 1220 390, 1235 405, 1240 400"
-        stroke="rgba(31, 70, 71, 0.06)"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M -40 515 C 280 430, 500 560, 800 450 C 1030 360, 1150 490, 1240 450"
-        stroke="rgba(31, 70, 71, 0.05)"
-        strokeWidth="1.5"
-      />
+      {paths.map((p, idx) => (
+        <path
+          key={idx}
+          d={p.d}
+          stroke={p.stroke}
+          strokeWidth={p.strokeWidth}
+          strokeLinecap="round"
+        />
+      ))}
     </svg>
   )
 }

@@ -3520,8 +3520,13 @@ h2 em {
 }
 
 .claude-glass-big-val {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   font-family: 'Fustat', sans-serif;
-  font-size: clamp(36px, 4.2vw, 46px);
+  font-size: clamp(30px, 3.8vw, 44px);
   font-weight: 800;
   color: #ffffff;
   text-align: center;
@@ -3531,6 +3536,20 @@ h2 em {
 
 .claude-glass-big-val.highlight-green {
   color: #9eea6c;
+}
+
+.claude-glass-val-sep {
+  opacity: 0.45;
+  font-weight: 400;
+  font-size: 0.8em;
+  color: #ffffff;
+  margin: 0 2px;
+}
+
+.claude-glass-val-secondary {
+  color: #d1fae5;
+  opacity: 0.92;
+  font-size: 0.88em;
 }
 
 .claude-glass-card-sub {
@@ -3708,7 +3727,8 @@ h2 em {
     border-radius: 18px;
   }
   .claude-glass-big-val {
-    font-size: clamp(28px, 7.5vw, 38px);
+    font-size: clamp(22px, 6.2vw, 32px);
+    gap: 2px 6px;
   }
   .claude-glass-card-meta {
     display: grid;
