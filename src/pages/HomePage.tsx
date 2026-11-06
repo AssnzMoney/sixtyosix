@@ -532,23 +532,19 @@ export default function App() {
       </header>
 
       <section className="hands-section" id="recursos">
-        <motion.img
+        <img
           className="hand hand-left"
           src="/assets/sixtysix-hand-reach.webp"
-          alt=""
-          initial={{ opacity: 0, x: -140 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: '-70px' }}
-          transition={{ duration: 1.25, ease: [0.22, 1, 0.36, 1] }}
+          alt="Mão alcançando"
+          loading="eager"
+          decoding="async"
         />
-        <motion.img
+        <img
           className="hand hand-right"
           src="/assets/sixtysix-hand-logo.webp"
-          alt=""
-          initial={{ opacity: 0, x: 140 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true, margin: '-70px' }}
-          transition={{ duration: 1.25, ease: [0.22, 1, 0.36, 1] }}
+          alt="Mão com logo"
+          loading="eager"
+          decoding="async"
         />
         <div className="hands-content shell">
           <motion.div
@@ -801,8 +797,8 @@ export default function App() {
               <span className="highlight-green-text">Claude Code?</span>
             </h2>
             <p className="claude-price-intro-sub">
-              A partir de R$ 79,00 fixos no Pix (ou teste 7 dias grátis), sem mensalidade surpresa e sem limites de cota a cada 5 horas.
-              Diferente da Anthropic que cobra em Dólar com IOF de 4,38% e taxa de câmbio abusiva no cartão, aqui o valor é previsível em Reais.
+              A partir de <strong>R$ 79,00 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong> a cada 5 horas.
+              Diferente da Anthropic que cobra em Dólar com IOF de 4,38% e taxa de câmbio abusiva no cartão, aqui o <strong>valor é previsível em Reais</strong>.
               Veja os <a href="#planos">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>
           </motion.div>
@@ -1013,7 +1009,9 @@ export default function App() {
           >
             <PlanCardWaves cardIndex={0} />
             <div className="plan-card-top">
-              <span className="plan-tag plan-tag-green">7 dias grátis</span>
+              <div className="plan-card-badge-wrap">
+                <span className="plan-tag plan-tag-green">7 dias grátis</span>
+              </div>
               <h3 className="plan-name">Teste Grátis</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
@@ -1025,9 +1023,9 @@ export default function App() {
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
               <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4</strong></span></li>
-              <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
-              <li><Check /> <span>Chave oficial própria (Zero Rateio)</span></li>
-              <li><Check /> <span>Sem cartão de crédito necessário</span></li>
+              <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
+              <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
+              <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
             <a href="#duvidas" className="plan-btn">
               Começar Teste Grátis <Arrow />
@@ -1044,7 +1042,9 @@ export default function App() {
           >
             <PlanCardWaves cardIndex={1} />
             <div className="plan-card-top">
-              <span className="plan-tag">Mais versátil</span>
+              <div className="plan-card-badge-wrap">
+                <img src="/assets/plan-cash.webp" alt="Dev" className="plan-card-cash-icon" />
+              </div>
               <h3 className="plan-name">Dev</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
@@ -1054,11 +1054,11 @@ export default function App() {
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> <span>GPT Astra 6 & GLM-4 Plus</span></li>
-              <li><Check /> <span>Claude Code, Cursor & VS Code</span></li>
-              <li><Check /> <span>Chave própria para modelos oficiais</span></li>
-              <li><Check /> <span>Conexão direta aos modelos oficiais</span></li>
-              <li><Check /> <span>Cobrança fixa em Reais via Pix</span></li>
+              <li><Check /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
+              <li><Check /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
+              <li><Check /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
+              <li><Check /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
             <a href="#duvidas" className="plan-btn">
               Começar no Dev
@@ -1075,7 +1075,9 @@ export default function App() {
           >
             <PlanCardWaves cardIndex={2} />
             <div className="plan-card-top">
-              <span className="plan-tag">Mais completo</span>
+              <div className="plan-card-badge-wrap">
+                <img src="/assets/plan-cash.webp" alt="Pro" className="plan-card-cash-icon" />
+              </div>
               <h3 className="plan-name">Pro Ilimitado</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
@@ -1089,8 +1091,8 @@ export default function App() {
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
-              <li><Check /> <span>Claude Code, Cursor, VS Code, Codex</span></li>
-              <li><Check /> <span>Cobrança fixa em Reais sem IOF via Pix</span></li>
+              <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong>, <strong>VS Code</strong>, <strong>Codex</strong></span></li>
+              <li><Check /> <span><strong>Cobrança fixa em Reais</strong> sem IOF via Pix</span></li>
             </ul>
             <a href="#duvidas" className="plan-btn plan-btn-featured">
               Garantir Acesso Ilimitado <Arrow />

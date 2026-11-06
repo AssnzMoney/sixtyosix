@@ -1593,15 +1593,14 @@ h2 em {
 .plan-card {
   position: relative;
   overflow: hidden;
-  background: #1f4647;
-  background: linear-gradient(180deg, #1f4647 0%, #163637 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #ffffff;
+  border: 1px solid var(--line);
   border-radius: 24px;
   padding: 34px 28px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 0 16px 40px -10px rgba(18, 52, 53, 0.4);
+  box-shadow: 0 4px 18px -2px rgba(31, 70, 71, 0.05);
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
@@ -1632,53 +1631,76 @@ h2 em {
 
 .plan-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 50px -8px rgba(18, 52, 53, 0.55);
-  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 14px 30px -4px rgba(31, 70, 71, 0.1);
+  border-color: rgba(31, 70, 71, 0.22);
 }
 
 .plan-card-trial {
-  border-color: rgba(158, 234, 108, 0.4);
-  background: linear-gradient(180deg, #1f4647 0%, #163637 100%);
+  border-color: rgba(34, 197, 94, 0.45);
+  background: linear-gradient(180deg, #ffffff 0%, #f6fcf8 100%);
 }
 
 .plan-card-trial:hover {
-  border-color: rgba(158, 234, 108, 0.7);
+  border-color: rgba(34, 197, 94, 0.75);
 }
 
 .plan-card-featured {
-  border-color: #9eea6c;
-  box-shadow: 0 18px 45px -8px rgba(158, 234, 108, 0.22), 0 0 0 1px rgba(158, 234, 108, 0.3);
+  border-color: #1f4647;
+  box-shadow: 0 8px 30px -4px rgba(31, 70, 71, 0.12);
 }
 
 .plan-card-featured:hover {
-  border-color: #9eea6c;
-  box-shadow: 0 24px 55px -6px rgba(158, 234, 108, 0.32), 0 0 0 1px rgba(158, 234, 108, 0.45);
+  border-color: #1f4647;
+  box-shadow: 0 16px 36px -4px rgba(31, 70, 71, 0.18);
+}
+
+.plan-card-badge-wrap {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  margin-bottom: 12px;
+}
+
+.plan-card-badge-wrap .plan-tag {
+  margin-bottom: 0;
+}
+
+.plan-card-cash-icon {
+  height: 44px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 6px 14px rgba(110, 204, 60, 0.28));
+  transition: transform 0.25s ease;
+}
+
+.plan-card:hover .plan-card-cash-icon {
+  transform: translateY(-2px) scale(1.06);
 }
 
 .plan-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   font-family: 'Fustat', sans-serif;
   font-size: 12px;
   font-weight: 700;
-  color: #c0ded6;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--muted);
+  background: #f0f4f3;
   padding: 4px 12px;
   border-radius: 100px;
   margin-bottom: 14px;
 }
 
 .plan-tag-green {
-  background: rgba(158, 234, 108, 0.16);
-  border-color: rgba(158, 234, 108, 0.38);
-  color: #9eea6c;
+  background: #e8f7ee;
+  color: #16a34a;
 }
 
 .plan-name {
   font-family: 'Fustat', sans-serif;
   font-size: 24px;
   font-weight: 700;
-  color: #ffffff;
+  color: #1f4647;
   margin: 0 0 10px;
 }
 
@@ -1692,28 +1714,28 @@ h2 em {
 .plan-curr {
   font-size: 20px;
   font-weight: 700;
-  color: #9eea6c;
+  color: #1f4647;
 }
 
 .plan-val {
   font-family: 'Fustat', sans-serif;
   font-size: 46px;
   font-weight: 800;
-  color: #ffffff;
+  color: #1f4647;
   line-height: 1;
   letter-spacing: -0.04em;
 }
 
 .plan-period {
   font-size: 14px;
-  color: #9fc1b8;
+  color: var(--muted);
   font-weight: 500;
 }
 
 .plan-desc {
   font-size: 13.5px;
   line-height: 1.55;
-  color: #c0ded6;
+  color: var(--muted);
   margin: 0 0 22px;
 }
 
@@ -1730,14 +1752,14 @@ h2 em {
 .plan-features li {
   font-size: 13.5px;
   line-height: 1.5;
-  color: #e2edea;
+  color: #1f4647;
   display: flex;
   align-items: flex-start;
   gap: 10px;
 }
 
 .plan-features li strong {
-  color: #ffffff;
+  color: #123435;
   font-weight: 700;
 }
 
@@ -1747,7 +1769,7 @@ h2 em {
 
 .plan-features li svg {
   flex-shrink: 0;
-  color: #9eea6c;
+  color: #16a34a;
   margin-top: 3px;
 }
 
@@ -2102,31 +2124,39 @@ h2 em {
 
   /* Mãos de Michelangelo Section - Visíveis e Reconciliadas sem Sobreposição */
   .hands-section {
-    padding: clamp(170px, 45vw, 220px) 0 32px;
+    padding: clamp(170px, 45vw, 220px) 0 32px !important;
     overflow: hidden;
     position: relative;
   }
+  .hand {
+    position: absolute !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
   .hand-left {
     display: block !important;
-    width: clamp(175px, 46vw, 240px);
-    left: -18px;
-    top: 10px;
-    position: absolute;
-    pointer-events: none;
-    z-index: 2;
-    opacity: 1;
-    transform: rotate(-3deg);
+    width: clamp(155px, 42vw, 210px) !important;
+    left: -12px !important;
+    top: 10px !important;
+    position: absolute !important;
+    z-index: 2 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: rotate(-3deg) !important;
   }
   .hand-right {
     display: block !important;
-    width: clamp(165px, 43vw, 230px);
-    right: -18px;
-    top: clamp(65px, 16vw, 85px);
-    position: absolute;
-    pointer-events: none;
-    z-index: 1;
-    opacity: 1;
-    transform: rotate(3deg);
+    width: clamp(145px, 39vw, 200px) !important;
+    right: -12px !important;
+    top: clamp(62px, 15vw, 82px) !important;
+    position: absolute !important;
+    z-index: 1 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: rotate(3deg) !important;
   }
   .hands-content { position: relative; z-index: 2; }
   .hands-eyebrow-container { margin-bottom: 10px; }
@@ -2264,17 +2294,23 @@ h2 em {
 
 @media (max-width: 520px) {
   .hands-section {
-    padding-top: clamp(160px, 46vw, 200px);
+    padding-top: clamp(160px, 46vw, 205px) !important;
   }
   .hand-left {
-    width: clamp(145px, 44vw, 190px);
-    left: -14px;
-    top: 8px;
+    width: clamp(140px, 42vw, 175px) !important;
+    left: -10px !important;
+    top: 8px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: rotate(-3deg) !important;
   }
   .hand-right {
-    width: clamp(135px, 41vw, 180px);
-    right: -14px;
-    top: clamp(52px, 15vw, 72px);
+    width: clamp(130px, 39vw, 165px) !important;
+    right: -10px !important;
+    top: clamp(52px, 14vw, 68px) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: rotate(3deg) !important;
   }
   .cherub-flank {
     width: clamp(170px, 46vw, 240px);
@@ -3368,6 +3404,11 @@ h2 em {
   margin: 0;
   max-width: 620px;
   text-align: left;
+}
+
+.claude-price-intro-sub strong {
+  color: #123435;
+  font-weight: 700;
 }
 
 .claude-price-intro-sub a {
