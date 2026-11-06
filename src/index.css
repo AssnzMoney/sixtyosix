@@ -1665,8 +1665,9 @@ h2 em {
   margin-bottom: 0;
 }
 
-.plan-card-cash-icon {
-  height: 44px;
+.plan-card-cash-icon,
+.plan-card-badge-icon {
+  height: 46px;
   width: auto;
   object-fit: contain;
   display: block;
@@ -1674,7 +1675,8 @@ h2 em {
   transition: transform 0.25s ease;
 }
 
-.plan-card:hover .plan-card-cash-icon {
+.plan-card:hover .plan-card-cash-icon,
+.plan-card:hover .plan-card-badge-icon {
   transform: translateY(-2px) scale(1.06);
 }
 

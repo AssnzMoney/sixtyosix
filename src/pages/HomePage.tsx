@@ -1010,7 +1010,7 @@ export default function App() {
             <PlanCardWaves cardIndex={0} />
             <div className="plan-card-top">
               <div className="plan-card-badge-wrap">
-                <span className="plan-tag plan-tag-green">7 dias grátis</span>
+                <img src="/assets/plan-trial.webp" alt="Teste Grátis" className="plan-card-cash-icon" />
               </div>
               <h3 className="plan-name">Teste Grátis</h3>
               <div className="plan-price">
