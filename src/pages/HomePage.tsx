@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { Plus, Minus, ChevronDown, ArrowRight } from 'lucide-react'
@@ -164,6 +164,7 @@ export default function App() {
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [megaMenuOpen, setMegaMenuOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -175,11 +176,15 @@ export default function App() {
       if (!target.closest('.nav-dropdown-trigger') && !target.closest('.mega-menu-panel')) {
         setMegaMenuOpen(false)
       }
+      if (!target.closest('.nav-mobile-toggle') && !target.closest('.nav-mobile-drawer')) {
+        setMobileMenuOpen(false)
+      }
     }
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 15)
       if (window.scrollY > 20) {
         setMegaMenuOpen(false)
+        setMobileMenuOpen(false)
       }
     }
     document.addEventListener('click', handleOutsideClick)
@@ -264,8 +269,126 @@ export default function App() {
             <a href="#planos" className="nav-cta-btn">
               Criar conta grátis
             </a>
+            <button
+              type="button"
+              className="nav-mobile-toggle"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f4647" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1f4647" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="7" x2="20" y2="7" />
+                  <line x1="4" y1="12" x2="20" y2="12" />
+                  <line x1="9" y1="17" x2="20" y2="17" />
+                </svg>
+              )}
+            </button>
           </div>
         </nav>
+
+        {/* Drawer Mobile estilo AbacatePay */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              className="nav-mobile-drawer"
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="nav-mobile-drawer-inner">
+                <div className="nav-mobile-group">
+                  <span className="nav-mobile-group-title">Modelos Oficiais de IA</span>
+                  <Link
+                    to="/claude-code"
+                    className="nav-mobile-item"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="nav-mobile-item-head">
+                      <strong>Claude Fable 5.1</strong>
+                      <span className="nav-mobile-badge">Destaque</span>
+                    </div>
+                    <small>Raciocínio profundo e Claude Code ilimitado</small>
+                  </Link>
+                  <a
+                    href="#planos"
+                    className="nav-mobile-item"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="nav-mobile-item-head">
+                      <strong>GPT Astra 6</strong>
+                    </div>
+                    <small>Velocidade ultra-rápida e inteligência multimodal</small>
+                  </a>
+                  <a
+                    href="#planos"
+                    className="nav-mobile-item"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="nav-mobile-item-head">
+                      <strong>GLM-4 Plus</strong>
+                    </div>
+                    <small>Refatoração avançada e geração de código</small>
+                  </a>
+                </div>
+
+                <div className="nav-mobile-links">
+                  <a
+                    href="#como-funciona"
+                    className="nav-mobile-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Como funciona
+                  </a>
+                  <a
+                    href="#economia"
+                    className="nav-mobile-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Calculadora
+                  </a>
+                  <a
+                    href="#planos"
+                    className="nav-mobile-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Planos & Preço
+                  </a>
+                  <a
+                    href="#duvidas"
+                    className="nav-mobile-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Dúvidas frequentes
+                  </a>
+                </div>
+
+                <div className="nav-mobile-actions">
+                  <a
+                    href="#planos"
+                    className="nav-mobile-btn-primary"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Criar conta grátis <Arrow />
+                  </a>
+                  <a
+                    href="#login"
+                    className="nav-mobile-btn-secondary"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Entrar na plataforma
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Mega Menu Dropdown estilo AbacatePay */}
         {megaMenuOpen && (

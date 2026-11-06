@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { Plus, Minus, ChevronDown, Check, Terminal, ShieldCheck, Zap, DollarSign } from 'lucide-react'
 import NumberFlow from '@number-flow/react'
@@ -79,15 +79,31 @@ export default function ClaudeCodePage() {
     { label: 'US$ 250', value: 250 },
   ]
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.nav-dropdown-trigger') && !target.closest('.mega-menu-panel')) {
+        setMegaMenuOpen(false)
+      }
+      if (!target.closest('.nav-mobile-toggle') && !target.closest('.nav-mobile-drawer')) {
+        setMobileMenuOpen(false)
+      }
+    }
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 15)
       if (window.scrollY > 20) {
         setMegaMenuOpen(false)
+        setMobileMenuOpen(false)
       }
     }
+    document.addEventListener('click', handleOutsideClick)
     window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      document.removeEventListener('click', handleOutsideClick)
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   const copyText = (text: string) => {
@@ -138,8 +154,116 @@ export default function ClaudeCodePage() {
               <span className="nav-cta-desktop">Testar Claude Code</span>
               <span className="nav-cta-mobile">Testar grátis</span>
             </a>
+            <button
+              type="button"
+              className="nav-mobile-toggle"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f4647" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1f4647" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="7" x2="20" y2="7" />
+                  <line x1="4" y1="12" x2="20" y2="12" />
+                  <line x1="9" y1="17" x2="20" y2="17" />
+                </svg>
+              )}
+            </button>
           </div>
         </nav>
+
+        {/* Drawer Mobile estilo AbacatePay */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              className="nav-mobile-drawer"
+              initial={{ opacity: 0, y: -10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="nav-mobile-drawer-inner">
+                <div className="nav-mobile-group">
+                  <span className="nav-mobile-group-title">Modelos Oficiais de IA</span>
+                  <Link
+                    to="/claude-code"
+                    className="nav-mobile-item"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="nav-mobile-item-head">
+                      <strong>Claude Fable 5.1</strong>
+                      <span className="nav-mobile-badge">Ativo</span>
+                    </div>
+                    <small>Raciocínio profundo e Claude Code ilimitado</small>
+                  </Link>
+                  <Link
+                    to="/"
+                    className="nav-mobile-item"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <div className="nav-mobile-item-head">
+                      <strong>Todos os Modelos</strong>
+                    </div>
+                    <small>GPT Astra 6, GLM-4 Plus e Claude</small>
+                  </Link>
+                </div>
+
+                <div className="nav-mobile-links">
+                  <a
+                    href="/#como-funciona"
+                    className="nav-mobile-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Como funciona
+                  </a>
+                  <a
+                    href="#calculadora-dolar"
+                    className="nav-mobile-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Calculadora Dólar vs Pix
+                  </a>
+                  <a
+                    href="#planos-claude"
+                    className="nav-mobile-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Planos Claude Code
+                  </a>
+                  <a
+                    href="#duvidas-claude"
+                    className="nav-mobile-link"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Dúvidas frequentes
+                  </a>
+                </div>
+
+                <div className="nav-mobile-actions">
+                  <a
+                    href="#planos-claude"
+                    className="nav-mobile-btn-primary"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Garantir no Pix <Arrow />
+                  </a>
+                  <Link
+                    to="/"
+                    className="nav-mobile-btn-secondary"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Entrar na plataforma
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Mega Menu Dropdown */}
         {megaMenuOpen && (
