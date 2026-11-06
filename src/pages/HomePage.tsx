@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { Plus, Minus, ChevronDown, ArrowRight } from 'lucide-react'
+import { Slider } from '@/components/ui/slider-number-flow'
+import NumberRoller from '@/components/ui/number-roller'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -113,40 +115,12 @@ const partners = [
   },
 ]
 
-const calcModels = [
-  {
-    id: 'fable',
-    name: 'Claude Fable 5.1',
-    shortName: 'Claude Fable 5.1',
-    tag: 'Anthropic',
-    inPrice: 5.0,
-    outPrice: 25.0,
-  },
-  {
-    id: 'astra',
-    name: 'GPT Astra 6',
-    shortName: 'GPT Astra 6',
-    tag: 'OpenAI',
-    inPrice: 2.5,
-    outPrice: 12.0,
-  },
-  {
-    id: 'glm',
-    name: 'GLM-4 Plus',
-    shortName: 'GLM-4 Plus',
-    tag: 'Z.ai',
-    inPrice: 1.5,
-    outPrice: 3.0,
-  },
-]
-
-const volumeLevels = [
-  { label: '500 prompts', value: 500 },
-  { label: '1.000 prompts', value: 1000 },
-  { label: '2.000 prompts', value: 2000 },
-  { label: '4.000 prompts', value: 4000 },
-  { label: '8.000 prompts', value: 8000 },
-  { label: '16.000 prompts', value: 16000 },
+const presetLevels = [
+  { label: 'US$ 30', value: 30 },
+  { label: 'US$ 60', value: 60 },
+  { label: 'US$ 100', value: 100 },
+  { label: 'US$ 150', value: 150 },
+  { label: 'US$ 250', value: 250 },
 ]
 
 export default function App() {
@@ -155,12 +129,22 @@ export default function App() {
   const [heroAction, setHeroAction] = useState<'primary' | 'secondary'>('primary')
   const [handsAction, setHandsAction] = useState<'primary' | 'secondary'>('primary')
   const [integrationAction, setIntegrationAction] = useState<'primary' | 'secondary'>('primary')
-  const [calcAction, setCalcAction] = useState<'primary' | 'secondary'>('primary')
 
-  const [volIdx, setVolIdx] = useState(3)
-  const [activeCalcModel, setActiveCalcModel] = useState('fable')
-  const [volDropdownOpen, setVolDropdownOpen] = useState(false)
-  const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+  const [calcUsd, setCalcUsd] = useState(100)
+
+  // Cotação real do Dólar no cartão (comercial + IOF + Spread bancário):
+  const commercialDollar = 5.85
+  const iofRate = 0.0438
+  const cardSpread = 0.045
+  const effectiveDollarRate = commercialDollar * (1 + iofRate + cardSpread) // ~R$ 6.37
+
+  const totalAnthropicBRL = calcUsd * effectiveDollarRate
+  const sixtySixCost = calcUsd <= 60 ? 79 : 119
+  const sixtySixPlanName = calcUsd <= 60 ? 'Dev' : 'Pro Ilimitado'
+
+  const savingsBRL = Math.max(0, totalAnthropicBRL - sixtySixCost)
+  const savingsPercent = Math.round((savingsBRL / totalAnthropicBRL) * 100)
+  const savingsMultiplier = (totalAnthropicBRL / sixtySixCost).toFixed(1)
 
   const [isScrolled, setIsScrolled] = useState(false)
   const [megaMenuOpen, setMegaMenuOpen] = useState(false)
@@ -169,10 +153,6 @@ export default function App() {
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      if (!target.closest('.phrase-dropdown-wrap')) {
-        setModelDropdownOpen(false)
-        setVolDropdownOpen(false)
-      }
       if (!target.closest('.nav-dropdown-trigger') && !target.closest('.mega-menu-panel')) {
         setMegaMenuOpen(false)
       }
@@ -194,30 +174,6 @@ export default function App() {
       window.removeEventListener('scroll', handleScroll)
     }
   }, [])
-
-  const currentVol = volumeLevels[volIdx].value
-  const currentModel = calcModels.find((m) => m.id === activeCalcModel) || calcModels[0]
-  const totalInputTokens = currentVol * 2000
-  const totalOutputTokens = currentVol * 800
-  const rawUsd = (totalInputTokens / 1_000_000) * currentModel.inPrice + (totalOutputTokens / 1_000_000) * currentModel.outPrice
-  const officialTokenCostBrl = rawUsd * 6.16
-
-  let sixPlanCost = 119
-  let sixPlanSubtitle = 'Plano Pro Ilimitado'
-  if (activeCalcModel !== 'fable' && currentVol <= 1000) {
-    sixPlanCost = 79
-    sixPlanSubtitle = 'Plano Dev'
-  } else {
-    sixPlanCost = 119
-    sixPlanSubtitle = 'Plano Pro Ilimitado'
-  }
-
-  const calculatedSavings = Math.max(0, officialTokenCostBrl - sixPlanCost)
-  const savingsMultiplier = officialTokenCostBrl > sixPlanCost
-    ? (officialTokenCostBrl / sixPlanCost).toFixed(1)
-    : '1.0'
-
-  const sixBarPercentage = Math.min(100, Math.max(12, Math.round((sixPlanCost / officialTokenCostBrl) * 100)))
 
   const formatBRL = (val: number) => {
     return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -303,6 +259,12 @@ export default function App() {
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
               <div className="nav-mobile-drawer-inner">
+                <div className="nav-mobile-top-brand">
+                  <a href="#top" onClick={() => setMobileMenuOpen(false)}>
+                    <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" style={{ height: '32px' }} />
+                  </a>
+                  <span className="nav-mobile-top-tag">Plataforma Oficial</span>
+                </div>
                 <div className="nav-mobile-group">
                   <span className="nav-mobile-group-title">Modelos Oficiais de IA</span>
                   <Link
@@ -822,200 +784,197 @@ export default function App() {
         </div>
       </section>
 
-      <section className="calc-phrase-section shell" id="economia">
-        <div className="calc-phrase-wrap">
+      {/* Seção de Introdução ao Preço & Custos estilo AbacatePay */}
+      <section className="claude-calc-dark-section" id="economia">
+        <div className="claude-price-intro-split">
           <motion.div
-            className="calc-header"
-            initial={{ opacity: 0, y: 35 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <span className="eyebrow">simulador de custos</span>
-            <h2 className="calc-title">
-              Calcule sua <em>economia.</em>
-            </h2>
-          </motion.div>
-
-          <motion.div
-            className="calc-phrase-heading"
+            className="claude-price-intro-col-left"
             initial={{ opacity: 0, x: -60 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 1.2, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
           >
-            <span className="calc-phrase-line">
-              Eu quero fazer{' '}
-              <span className="phrase-dropdown-wrap">
-                <button
-                  type="button"
-                  className="phrase-pill phrase-pill-amber"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setVolDropdownOpen(!volDropdownOpen)
-                    setModelDropdownOpen(false)
-                  }}
-                  aria-haspopup="listbox"
-                  aria-expanded={volDropdownOpen}
-                >
-                  <span>{currentVol.toLocaleString('pt-BR')} prompts</span>
-                  <svg className={`phrase-caret ${volDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-
-                {volDropdownOpen && (
-                  <div className="phrase-menu phrase-menu-amber">
-                    {volumeLevels.map((lvl, index) => (
-                      <button
-                        key={lvl.label}
-                        type="button"
-                        className={`phrase-menu-item ${volIdx === index ? 'is-selected' : ''}`}
-                        onClick={() => {
-                          setVolIdx(index)
-                          setVolDropdownOpen(false)
-                        }}
-                      >
-                        <span>{lvl.value.toLocaleString('pt-BR')} prompts</span>
-                        {volIdx === index && (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </span>{' '}
-              usando{' '}
-              <span className="phrase-dropdown-wrap">
-                <button
-                  type="button"
-                  className="phrase-pill phrase-pill-blue"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setModelDropdownOpen(!modelDropdownOpen)
-                    setVolDropdownOpen(false)
-                  }}
-                  aria-haspopup="listbox"
-                  aria-expanded={modelDropdownOpen}
-                >
-                  <span>{currentModel.shortName}</span>
-                  <svg className={`phrase-caret ${modelDropdownOpen ? 'is-open' : ''}`} width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-
-                {modelDropdownOpen && (
-                  <div className="phrase-menu phrase-menu-blue">
-                    {calcModels.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`phrase-menu-item ${activeCalcModel === m.id ? 'is-selected' : ''}`}
-                        onClick={() => {
-                          setActiveCalcModel(m.id)
-                          setModelDropdownOpen(false)
-                        }}
-                      >
-                        <div className="phrase-menu-model-info">
-                          <strong>{m.name}</strong>
-                          <small>${m.inPrice.toFixed(2)} / ${m.outPrice.toFixed(2)} por 1M</small>
-                        </div>
-                        {activeCalcModel === m.id && (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </span>
-            </span>
-            <span className="calc-phrase-line">
-              na Six, então vou pagar de taxa{' '}
-              <span className="phrase-price-val">R$ {formatBRL(sixPlanCost)}.</span>
-            </span>
+            <span className="eyebrow">simulador de custos</span>
+            <h2 className="claude-price-intro-title">
+              Quanto custa usar o <br />
+              <span className="highlight-green-text">Claude Code?</span>
+            </h2>
+            <p className="claude-price-intro-sub">
+              A partir de R$ 79,00 fixos no Pix (ou teste 7 dias grátis), sem mensalidade surpresa e sem limites de cota a cada 5 horas.
+              Diferente da Anthropic que cobra em Dólar com IOF de 4,38% e taxa de câmbio abusiva no cartão, aqui o valor é previsível em Reais.
+              Veja os <a href="#planos">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
+            </p>
           </motion.div>
-
-          <motion.p
-            className="calc-phrase-sub"
-            initial={{ opacity: 0, y: 25 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 1.1, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
-          >
-            Você economiza <strong className="phrase-green-num">R$ {formatBRL(calculatedSavings)}</strong>, cerca de{' '}
-            {savingsMultiplier}x mais barato do que na API oficial.
-          </motion.p>
 
           <motion.div
-            className="calc-phrase-action-wrap"
-            initial={{ opacity: 0, y: 25 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            className="claude-price-intro-col-right"
+            initial={{ opacity: 0, x: 75, scale: 0.94 }}
+            whileInView={{ opacity: 1, x: 0, scale: 1 }}
             viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 1.1, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-            onMouseLeave={() => setCalcAction('primary')}
+            transition={{ duration: 1.25, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           >
-            <a
-              href="#teste"
-              className={`hero-action-pill ${calcAction === 'primary' ? 'is-active' : ''}`}
-              onMouseEnter={() => setCalcAction('primary')}
-              onClick={() => setCalcAction('primary')}
-            >
-              {calcAction === 'primary' && (
-                <motion.div
-                  layoutId="calc-pill-indicator"
-                  className="hero-active-pill-bg"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                />
-              )}
-              <span className="hero-pill-content">
-                Começar a codar agora <Arrow />
-              </span>
-            </a>
-
-            <a
-              href="#teste-gratis"
-              className={`hero-action-pill ${calcAction === 'secondary' ? 'is-active' : ''}`}
-              onMouseEnter={() => setCalcAction('secondary')}
-              onClick={() => setCalcAction('secondary')}
-            >
-              {calcAction === 'secondary' && (
-                <motion.div
-                  layoutId="calc-pill-indicator"
-                  className="hero-active-pill-bg"
-                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                />
-              )}
-              <span className="hero-pill-content">
-                Testar 7 dias grátis <Arrow />
-              </span>
-            </a>
+            <div className="claude-philosophers-card">
+              <img
+                src="/philosophers-glasses.png"
+                alt="Platão e Aristóteles calculando a economia"
+                className="claude-philosophers-img"
+              />
+            </div>
           </motion.div>
-
-          <motion.p
-            className="calc-phrase-footnote"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true, margin: '-60px' }}
-            transition={{ duration: 1.1, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
-          >
-            Sem mensalidade surpresa. Cobrança em Reais via Pix.
-          </motion.p>
         </div>
 
-        <motion.img
-          src="/assets/calc-warrior.jpg"
-          alt="Guerreiro suplicando"
-          className="calc-warrior-img"
-          aria-hidden="true"
-          initial={{ opacity: 0, x: 90, scale: 0.94 }}
-          whileInView={{ opacity: 0.95, x: 0, scale: 1 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 1.3, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-        />
+        {/* Bloco Verde #1f4647 Preenchido com a Calculadora e Linhas Onduladas */}
+        <motion.div
+          className="claude-calc-dark-wrap"
+          initial={{ opacity: 0, y: 40, scale: 0.97 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, margin: '-70px' }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {/* Linhas onduladas fluidas em branco estilo AbacatePay - Absolute para não ocupar espaço no fluxo */}
+          <svg
+            className="claude-calc-waves-bg"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+            viewBox="0 0 1200 600"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M-40 480 C 220 380, 420 560, 720 440 C 960 340, 1100 420, 1240 370"
+              stroke="rgba(255, 255, 255, 0.12)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 515 C 240 410, 450 585, 760 465 C 1000 365, 1140 440, 1240 395"
+              stroke="rgba(255, 255, 255, 0.09)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 550 C 260 440, 480 610, 800 490 C 1040 390, 1170 460, 1240 420"
+              stroke="rgba(255, 255, 255, 0.07)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 440 C 190 350, 390 520, 680 410 C 920 310, 1060 390, 1240 340"
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 400 C 160 320, 360 480, 640 380 C 880 280, 1020 360, 1240 310"
+              stroke="rgba(255, 255, 255, 0.05)"
+              strokeWidth="1.5"
+            />
+          </svg>
+
+          {/* Header dentro da caixa verde */}
+          <div className="claude-calc-dark-header">
+            <h2 className="claude-calc-dark-title">
+              Simule e veja quanto <br />
+              você <span className="highlight-green">economiza de verdade.</span>
+            </h2>
+            <p className="claude-calc-dark-subtitle">
+              Esqueça IOF de 4,38%, cotação oscilando e faturas surpresa no cartão de crédito. Compare os valores com a SixtySix no Pix.
+            </p>
+
+            {/* Presets no estilo AbacatePay */}
+            <div className="claude-calc-dark-tabs">
+              {presetLevels.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  className={`claude-calc-dark-tab ${calcUsd === preset.value ? 'is-active' : ''}`}
+                  onClick={() => setCalcUsd(preset.value)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="claude-calc-dark-cards">
+            {/* Card 1: Quanto você consome na Anthropic por mês? */}
+            <div className="claude-glass-card">
+              <span className="claude-glass-card-label">Quanto você consome na Anthropic por mês?</span>
+              <div className="claude-glass-big-val">
+                <NumberRoller value={calcUsd} prefix="US$ " decimals={2} duration={0.45} />
+              </div>
+
+              <div className="claude-glass-slider-wrap">
+                <Slider
+                  value={[calcUsd]}
+                  onValueChange={(val) => setCalcUsd(val[0])}
+                  min={20}
+                  max={400}
+                  step={10}
+                  aria-label="Consumo estimado em Dólar"
+                />
+              </div>
+
+              <div className="claude-glass-card-meta">
+                <span>Câmbio base: R$ {commercialDollar.toFixed(2)}</span>
+                <span>IOF: 4,38%</span>
+                <span>Spread cartão: ~4,5%</span>
+                <strong>Efetivo: R$ {effectiveDollarRate.toFixed(2)} / US$</strong>
+              </div>
+            </div>
+
+            {/* Card 2: Você paga na SixtySix & Economia */}
+            <div className="claude-glass-card">
+              <span className="claude-glass-card-label">Você paga no Pix na SixtySix</span>
+              <div className="claude-glass-big-val highlight-green">
+                <NumberRoller value={sixtySixCost} prefix="R$ " decimals={2} duration={0.45} />
+              </div>
+              <span className="claude-glass-card-sub">
+                Preço fixo no Pix ({sixtySixPlanName}) sem surpresas cambiais
+              </span>
+
+              <div className="claude-glass-card-divider" />
+
+              <div className="claude-glass-rows">
+                <div className="claude-glass-row">
+                  <span className="glass-row-label">Fatura direta em Dólar (Cartão + IOF + Spread)</span>
+                  <span className="glass-row-val text-red">
+                    <NumberRoller value={totalAnthropicBRL} prefix="R$ " suffix=" / mês" decimals={2} duration={0.45} />
+                  </span>
+                </div>
+                <div className="claude-glass-row">
+                  <span className="glass-row-label">Economia líquida no seu bolso</span>
+                  <span className="glass-row-val highlight-green">
+                    <NumberRoller
+                      value={savingsBRL}
+                      prefix="R$ "
+                      suffix={` / mês (-${savingsPercent}%)`}
+                      decimals={2}
+                      duration={0.45}
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Botão de Ação Verde Vibrante */}
+          <div className="claude-calc-dark-action">
+            <a href="#planos" className="claude-calc-dark-btn">
+              Garantir Preço Fixo no Pix <Arrow />
+            </a>
+            <p className="claude-calc-dark-footnote">
+              Você economiza cerca de{' '}
+              <strong>
+                <NumberRoller
+                  value={savingsBRL * 12}
+                  prefix="R$ "
+                  suffix=" por ano"
+                  decimals={2}
+                  duration={0.45}
+                />
+              </strong>{' '}
+              ({savingsMultiplier}x mais barato do que na fatura em Dólar).
+            </p>
+          </div>
+        </motion.div>
       </section>
 
       {/* SEÇÃO DE PLANOS & DIFERENCIAIS (TOTALMENTE UNIFICADA NO PADRÃO DO SITE) */}
@@ -1270,7 +1229,7 @@ export default function App() {
         <div className="shell footer-bottom-bar">
           <div className="footer-brand-meta">
             <a className="brand footer-brand" href="#top" aria-label="Six, início">
-              <img src="/assets/logo.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
+              <img src="/assets/logo-white.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
             </a>
             <span className="footer-copyright">
               © 2026 Sixtysix · CNPJ 69.864.497/0001-92 · Todos os direitos reservados.

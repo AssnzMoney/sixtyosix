@@ -188,6 +188,12 @@ export default function ClaudeCodePage() {
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
               <div className="nav-mobile-drawer-inner">
+                <div className="nav-mobile-top-brand">
+                  <Link to="/" onClick={() => setMobileMenuOpen(false)}>
+                    <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" style={{ height: '32px' }} />
+                  </Link>
+                  <span className="nav-mobile-top-tag">Plataforma Oficial</span>
+                </div>
                 <div className="nav-mobile-group">
                   <span className="nav-mobile-group-title">Modelos Oficiais de IA</span>
                   <Link
@@ -1309,7 +1315,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
         <div className="shell footer-bottom-bar">
           <div className="footer-brand-meta">
             <Link className="brand footer-brand" to="/" aria-label="Six, início">
-              <img src="/assets/logo.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
+              <img src="/assets/logo-white.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
             </Link>
             <span className="footer-copyright">
               © 2026 Sixtysix · CNPJ 69.864.497/0001-92 · Todos os direitos reservados.

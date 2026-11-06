@@ -108,6 +108,23 @@ h1, h2, h3, h4, h5, h6, .brand {
   flex-direction: column;
   gap: 16px;
 }
+.nav-mobile-top-brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 8px;
+  border-bottom: 1px solid rgba(31, 70, 71, 0.08);
+}
+.nav-mobile-top-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2ea603;
+  background: #e6f9da;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 .nav-mobile-group {
   background: #f8fafb;
   border: 1px solid rgba(31, 70, 71, 0.08);
@@ -247,14 +264,20 @@ h1, h2, h3, h4, h5, h6, .brand {
   color: #1f4647;
 }
 .brand-logo-img {
-  height: 34px;
+  height: 38px;
   width: auto;
   object-fit: contain;
   display: block;
+  transition: transform 0.2s ease;
+}
+.brand:hover .brand-logo-img {
+  transform: scale(1.05);
 }
 .brand-logo-footer {
-  height: 34px;
-  filter: brightness(0) invert(1);
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 .brand-dot {
   width: 10px;
