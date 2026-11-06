@@ -6,6 +6,7 @@ import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { Plus, Minus, ChevronDown, ArrowRight } from 'lucide-react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
+import PlanCardWaves from '@/components/ui/plan-card-waves'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1006,6 +1007,7 @@ export default function App() {
             viewport={{ once: true, margin: '-50px' }}
             transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
           >
+            <PlanCardWaves cardIndex={0} />
             <div className="plan-card-top">
               <span className="plan-tag plan-tag-green">7 dias grátis</span>
               <h3 className="plan-name">Teste Grátis</h3>
@@ -1036,6 +1038,7 @@ export default function App() {
             viewport={{ once: true, margin: '-50px' }}
             transition={{ duration: 1.15, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
           >
+            <PlanCardWaves cardIndex={1} />
             <div className="plan-card-top">
               <span className="plan-tag">Mais versátil</span>
               <h3 className="plan-name">Dev</h3>
@@ -1066,6 +1069,7 @@ export default function App() {
             viewport={{ once: true, margin: '-50px' }}
             transition={{ duration: 1.2, delay: 0.28, ease: [0.22, 1, 0.36, 1] }}
           >
+            <PlanCardWaves cardIndex={2} />
             <div className="plan-card-top">
               <span className="plan-tag">Mais completo</span>
               <h3 className="plan-name">Pro Ilimitado</h3>
