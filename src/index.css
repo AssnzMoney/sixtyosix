@@ -1636,22 +1636,15 @@ h2 em {
 }
 
 .plan-card-trial {
-  border-color: rgba(34, 197, 94, 0.45);
-  background: linear-gradient(180deg, #ffffff 0%, #f6fcf8 100%);
-}
-
-.plan-card-trial:hover {
-  border-color: rgba(34, 197, 94, 0.75);
+  background: #ffffff;
 }
 
 .plan-card-featured {
-  border-color: #1f4647;
-  box-shadow: 0 8px 30px -4px rgba(31, 70, 71, 0.12);
+  box-shadow: 0 8px 30px -4px rgba(31, 70, 71, 0.08);
 }
 
 .plan-card-featured:hover {
-  border-color: #1f4647;
-  box-shadow: 0 16px 36px -4px rgba(31, 70, 71, 0.18);
+  box-shadow: 0 16px 36px -4px rgba(31, 70, 71, 0.14);
 }
 
 .plan-card-badge-wrap {
