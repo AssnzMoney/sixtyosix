@@ -1182,7 +1182,7 @@ export default function App() {
             Você leu até aqui. <span className="pre-footer-green">Tá interessado né?</span>
           </h2>
           <p className="pre-footer-sub">
-            Cadastro leva 2 minutos, sem cartão internacional, e você começa a codar hoje ainda.
+            Cadastro leva 2 minutos, sem dificuldades, e você começa a codar hoje ainda.
           </p>
           <div className="pre-footer-btn-wrap">
             <a href="#economia" className="pre-footer-btn">

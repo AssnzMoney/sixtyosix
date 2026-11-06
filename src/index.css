@@ -1571,6 +1571,13 @@ h2 em {
   margin: 12px 0 16px;
 }
 
+.plans-title em {
+  font-family: inherit;
+  font-style: normal;
+  font-weight: inherit;
+  color: #16a34a;
+}
+
 .plans-subtitle {
   font-size: clamp(15.5px, 1.25vw, 17.5px);
   line-height: 1.6;
