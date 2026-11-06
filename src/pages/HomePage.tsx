@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, ArrowRight } from 'lucide-react'
+import { Plus, Minus, ChevronDown, ArrowRight, Sparkles, KeyRound, Terminal, Code2 } from 'lucide-react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
@@ -264,7 +264,6 @@ export default function App() {
                   <a href="#top" onClick={() => setMobileMenuOpen(false)}>
                     <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" style={{ height: '32px' }} />
                   </a>
-                  <span className="nav-mobile-top-tag">Plataforma Oficial</span>
                 </div>
                 <div className="nav-mobile-group">
                   <span className="nav-mobile-group-title">Modelos Oficiais de IA</span>
@@ -275,7 +274,6 @@ export default function App() {
                   >
                     <div className="nav-mobile-item-head">
                       <strong>Claude Fable 5.1</strong>
-                      <span className="nav-mobile-badge">Destaque</span>
                     </div>
                     <small>Raciocínio profundo e Claude Code ilimitado</small>
                   </Link>
@@ -975,6 +973,123 @@ export default function App() {
               ({savingsMultiplier}x mais barato do que na fatura em Dólar).
             </p>
           </div>
+        </motion.div>
+      </section>
+
+      {/* SEÇÃO COMO FUNCIONA (PASSO A PASSO ANTES DOS PLANOS) */}
+      <section className="how-it-works-section shell" id="como-funciona">
+        <motion.div
+          className="how-it-works-header"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <span className="eyebrow">simples e direto</span>
+          <h2 className="how-it-works-title">
+            Como funciona a <em>SixtySix?</em>
+          </h2>
+          <p className="how-it-works-subtitle">
+            Do cadastro ao primeiro código gerado em menos de 2 minutos. Sem complicação, sem cartão internacional e sem rateio.
+          </p>
+        </motion.div>
+
+        <div className="how-it-works-grid">
+          {/* Passo 01: Escolha um plano */}
+          <motion.div
+            className="how-card"
+            initial={{ opacity: 0, y: 35 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.9, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="how-card-head">
+              <span className="how-card-num">01</span>
+              <div className="how-card-icon-wrap" aria-hidden="true">
+                <Sparkles size={20} />
+              </div>
+            </div>
+            <h3 className="how-card-title">Escolha seu plano</h3>
+            <p className="how-card-desc">
+              Comece pelo Teste Grátis de 7 dias com tudo liberado ou assine um plano com valor fixo no Pix, sem IOF e sem surpresas.
+            </p>
+            <div className="how-card-tag">Sem cartão no teste</div>
+          </motion.div>
+
+          {/* Passo 02: Gere uma chave */}
+          <motion.div
+            className="how-card"
+            initial={{ opacity: 0, y: 35 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.9, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="how-card-head">
+              <span className="how-card-num">02</span>
+              <div className="how-card-icon-wrap" aria-hidden="true">
+                <KeyRound size={20} />
+              </div>
+            </div>
+            <h3 className="how-card-title">Gere sua chave oficial</h3>
+            <p className="how-card-desc">
+              Gere sua chave própria e individual direto no painel com 1 clique. Conexão direta aos modelos oficiais e zero rateio.
+            </p>
+            <div className="how-card-tag">Chave 100% individual</div>
+          </motion.div>
+
+          {/* Passo 03: Configure dentro do seu workspace */}
+          <motion.div
+            className="how-card"
+            initial={{ opacity: 0, y: 35 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.9, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="how-card-head">
+              <span className="how-card-num">03</span>
+              <div className="how-card-icon-wrap" aria-hidden="true">
+                <Terminal size={20} />
+              </div>
+            </div>
+            <h3 className="how-card-title">Configure no seu workspace</h3>
+            <p className="how-card-desc">
+              Cole sua chave no Claude Code CLI, Cursor, VS Code ou Codex. Setup imediato com apenas 1 linha de comando ou configuração.
+            </p>
+            <div className="how-card-tag">Setup em 1 minuto</div>
+          </motion.div>
+
+          {/* Passo 04: Use direto no app próprio */}
+          <motion.div
+            className="how-card"
+            initial={{ opacity: 0, y: 35 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 0.9, delay: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="how-card-head">
+              <span className="how-card-num">04</span>
+              <div className="how-card-icon-wrap" aria-hidden="true">
+                <Code2 size={20} />
+              </div>
+            </div>
+            <h3 className="how-card-title">Code direto no app oficial</h3>
+            <p className="how-card-desc">
+              Pronto! Você programa no app próprio nativo do Claude Code ou Codex com respostas ultra-rápidas e uso 100% ilimitado.
+            </p>
+            <div className="how-card-tag highlight">Pronto para codar</div>
+          </motion.div>
+        </div>
+
+        <motion.div
+          className="how-it-works-action"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-40px' }}
+          transition={{ duration: 0.8, delay: 0.45 }}
+        >
+          <a href="#planos" className="how-action-btn">
+            Ver planos disponíveis <Arrow />
+          </a>
         </motion.div>
       </section>
 

@@ -110,7 +110,7 @@ export default function PlanCardWaves({ cardIndex, className = '' }: PlanCardWav
         width: '100%',
         height: '100%',
         pointerEvents: 'none',
-        zIndex: 0,
+        zIndex: 3,
       }}
       viewBox="0 0 400 520"
       fill="none"
