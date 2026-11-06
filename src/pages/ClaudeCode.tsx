@@ -856,7 +856,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
       </section>
 
       {/* Seção de Introdução ao Preço & Custos estilo AbacatePay */}
-      <section className="claude-calc-dark-section shell" id="calculadora-dolar">
+      <section className="claude-calc-dark-section" id="calculadora-dolar">
         <div className="claude-price-intro-split">
           <motion.div
             className="claude-price-intro-col-left"

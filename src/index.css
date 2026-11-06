@@ -3205,7 +3205,8 @@ h2 em {
    SIMULADOR DE ECONOMIA ESTILO ABACATEPAY (DARK GREEN BOX #1F4647)
    ========================================================================== */
 .claude-calc-dark-section {
-  padding: 40px 0 45px;
+  padding: 40px 0 55px;
+  width: 100%;
 }
 
 /* Cabeçalho de Introdução ao Preço em 2 Colunas com Platão & Aristóteles */
@@ -3214,9 +3215,10 @@ h2 em {
   grid-template-columns: 1.15fr 0.95fr;
   align-items: end;
   gap: 36px;
-  max-width: 1220px;
+  max-width: 1380px;
+  width: min(1380px, calc(100% - 48px));
   margin: 0 auto 0;
-  padding: 0 12px;
+  padding: 0 16px;
   position: relative;
   z-index: 5;
 }
@@ -3296,6 +3298,8 @@ h2 em {
     text-align: center;
     gap: 18px;
     margin-bottom: 0;
+    width: min(1380px, calc(100% - 24px));
+    padding: 0 4px;
   }
   .claude-price-intro-col-left {
     text-align: center;
@@ -3321,20 +3325,20 @@ h2 em {
   }
 }
 
-/* Container Verde #1f4647 Preenchido com Linhas Onduladas */
+/* Container Verde #1f4647 Preenchido com Linhas Onduladas (AbacatePay .sim) */
 .claude-calc-dark-wrap {
   background: #1f4647;
   background: linear-gradient(180deg, #1f4647 0%, #163637 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 36px;
-  padding: 42px 48px 48px;
+  border-radius: 48px;
+  padding: 56px 44px 52px;
   text-align: center;
   color: #ffffff;
   box-shadow: 0 24px 60px -15px rgba(31, 70, 71, 0.35);
   position: relative;
   overflow: hidden;
-  max-width: 1220px;
-  width: 100%;
+  max-width: 1380px;
+  width: min(1380px, calc(100% - 48px));
   margin: 0 auto;
 }
 
@@ -3422,7 +3426,7 @@ h2 em {
 .claude-calc-dark-cards {
   position: relative;
   z-index: 2;
-  max-width: 780px;
+  max-width: 820px;
   width: 100%;
   margin: 0 auto;
   display: flex;
@@ -3607,7 +3611,11 @@ h2 em {
 }
 
 @media (max-width: 680px) {
+  .claude-price-intro-split {
+    width: calc(100% - 20px);
+  }
   .claude-calc-dark-wrap {
+    width: calc(100% - 20px);
     padding: 32px 14px 28px;
     border-radius: 26px;
   }
