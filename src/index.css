@@ -2316,30 +2316,39 @@ h2 em {
   .faq-action { align-items: center; }
   .faq-support-btn { width: 100%; max-width: 320px; }
 
-  /* Pre-Footer CTA com Anjos Visíveis e Imponentes */
+  /* Pre-Footer CTA com Anjos Visíveis e Imponentes (Estilo AbacatePay) */
   .pre-footer-cta-wrap {
-    padding: 72px 0 68px;
-    min-height: auto;
+    padding: 72px 0 clamp(160px, 36vw, 220px);
+    min-height: 520px;
     overflow: hidden;
     position: relative;
   }
   .cherub-flank {
     display: block !important;
-    width: clamp(210px, 44vw, 360px);
-    max-height: 90%;
-    bottom: -18px;
+    width: clamp(200px, 42vw, 340px);
+    max-height: clamp(180px, 38vw, 260px);
+    bottom: 0px;
     opacity: 1;
     z-index: 1;
+    object-fit: contain;
+    object-position: bottom;
   }
-  .cherub-flank-left { left: -26px; }
-  .cherub-flank-right { right: -26px; }
+  .cherub-flank-left { left: -24px; }
+  .cherub-flank-right { right: -24px; }
   .pre-footer-title { font-size: clamp(24px, 6.8vw, 34px); line-height: 1.15; }
   .pre-footer-sub { font-size: 14.5px; max-width: 90%; }
   .pre-footer-btn { width: 100%; max-width: 320px; }
 
-  /* Footer */
-  .footer-wrap { padding: 48px 0 32px; }
-  .footer-columns-grid { grid-template-columns: repeat(2, 1fr); gap: 28px 16px; }
+  /* Footer Mobile em 2 Colunas (Estilo AbacatePay) */
+  .footer-wrap {
+    margin-top: 0;
+    border-radius: 36px 36px 0 0;
+    padding: 48px 0 32px;
+  }
+  .footer-columns-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 30px 18px !important;
+  }
   .footer-bottom-bar { flex-direction: column; align-items: flex-start; gap: 14px; margin-top: 32px; }
 }
 
@@ -2363,15 +2372,38 @@ h2 em {
     visibility: visible !important;
     transform: rotate(3deg) !important;
   }
+  .pre-footer-cta-wrap {
+    padding: 56px 0 clamp(160px, 44vw, 210px) !important;
+    min-height: 480px;
+  }
   .cherub-flank {
-    width: clamp(170px, 46vw, 240px);
-    bottom: -14px;
-    opacity: 0.98;
+    width: clamp(170px, 46vw, 230px) !important;
+    max-height: clamp(160px, 42vw, 200px) !important;
+    bottom: 0px !important;
+    opacity: 1 !important;
     display: block !important;
   }
-  .cherub-flank-left { left: -18px; }
-  .cherub-flank-right { right: -18px; }
-  .footer-columns-grid { grid-template-columns: 1fr; gap: 24px; }
+  .cherub-flank-left { left: -14px !important; }
+  .cherub-flank-right { right: -14px !important; }
+  .footer-wrap {
+    margin-top: 0 !important;
+    border-radius: 32px 32px 0 0 !important;
+    padding: 40px 0 28px !important;
+  }
+  .footer-columns-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 26px 16px !important;
+  }
+  .footer-col-title {
+    font-size: 15px !important;
+    margin-bottom: 12px !important;
+  }
+  .footer-link-list {
+    gap: 9px !important;
+  }
+  .footer-link-list a {
+    font-size: 13.5px !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
