@@ -1125,9 +1125,16 @@ export default function App() {
                 <span className="plan-period">/mês</span>
               </div>
               <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
+
+              {/* Chave de API 100% Inclusa */}
+              <div className="plan-api-included-pill">
+                <span className="plan-api-included-dot">⚡</span>
+                <span><strong>Chave de API Inclusa</strong> (Zero custo extra)</span>
+              </div>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>Chave de API oficial inclusa</strong> (Claude Code, Cursor & VS Code)</span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
