@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, Check, Terminal, ShieldCheck, Zap, DollarSign } from 'lucide-react'
+import { Plus, Minus, ChevronDown, Check, X, Terminal, ShieldCheck, Zap, DollarSign } from 'lucide-react'
 import NumberFlow from '@number-flow/react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
@@ -52,6 +52,7 @@ export default function ClaudeCodePage() {
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
   const [selectedApp, setSelectedApp] = useState<'claude-code' | 'claude-desktop' | 'codex'>('claude-code')
   const [calcUsd, setCalcUsd] = useState(100)
+  const [devWithApi, setDevWithApi] = useState(false)
 
   const formatBRL = (val: number) => {
     return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -1125,20 +1126,81 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               <h3 className="plan-name">Dev</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
-                <span className="plan-val">79</span>
+                <span className="plan-val">
+                  {devWithApi ? '94' : '79'}
+                  <span className="plan-cents">,99</span>
+                </span>
                 <span className="plan-period">/mês</span>
               </div>
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
+
+              {/* Opção de Ganhar a Chave de API (+ R$ 15) */}
+              <div className={`plan-api-toggle-box ${devWithApi ? 'is-api-active' : ''}`}>
+                <div className="plan-api-segmented">
+                  <button
+                    type="button"
+                    className={`plan-api-seg-btn ${!devWithApi ? 'is-active' : ''}`}
+                    onClick={() => setDevWithApi(false)}
+                  >
+                    Apenas no Site
+                  </button>
+                  <button
+                    type="button"
+                    className={`plan-api-seg-btn is-api-btn ${devWithApi ? 'is-active' : ''}`}
+                    onClick={() => setDevWithApi(true)}
+                  >
+                    + Chave de API <span className="plan-api-addon-pill">+R$ 15</span>
+                  </button>
+                </div>
+
+                <div className={`plan-api-status-note ${devWithApi ? 'is-api' : ''}`}>
+                  {devWithApi ? (
+                    <span>
+                      ⚡ <strong>Com API:</strong> use direto no Claude Code, Cursor e VS Code.
+                    </span>
+                  ) : (
+                    <span>
+                      🌐 <strong>Sem API:</strong> modelos liberados apenas via plataforma no site.
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
+
             <ul className="plan-features">
-              <li><Check /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
-              <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
-              <li><Check /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
-              <li><Check /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
-              <li><Check /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
+              <li><Check size={14} /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
+              {devWithApi ? (
+                <>
+                  <li><Check size={14} /> <span><strong>Chave de API oficial inclusa</strong> (+ R$ 15/mês)</span></li>
+                  <li><Check size={14} /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
+                  <li><Check size={14} /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
+                </>
+              ) : (
+                <>
+                  <li><Check size={14} /> <span><strong>Acesso 100% via plataforma web</strong></span></li>
+                  <li>
+                    <X size={14} className="text-red" />
+                    <span className="plan-feature-muted">
+                      <strong>Sem chave de API</strong> (apenas via plataforma no site)
+                    </span>
+                  </li>
+                  <li><Check size={14} /> <span><strong>Ambiente próprio</strong> sem rateio</span></li>
+                </>
+              )}
+              <li><Check size={14} /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
+              <li><Check size={14} /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
-            <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="plan-btn">
-              Começar no Dev
+            <a
+              href={`https://wa.me/5511999999999?text=${encodeURIComponent(
+                devWithApi
+                  ? 'Olá! Quero assinar o plano Dev COM CHAVE DE API (R$ 94,99/mês) para usar no Claude Code.'
+                  : 'Olá! Quero assinar o plano Dev APENAS VIA SITE (R$ 79,99/mês).'
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="plan-btn"
+            >
+              {devWithApi ? 'Começar no Dev com API' : 'Começar no Dev (Via Site)'}
             </a>
           </motion.div>
 

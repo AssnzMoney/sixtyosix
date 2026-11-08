@@ -132,6 +132,7 @@ export default function App() {
   const [integrationAction, setIntegrationAction] = useState<'primary' | 'secondary'>('primary')
 
   const [calcUsd, setCalcUsd] = useState(100)
+  const [devWithApi, setDevWithApi] = useState(false)
 
   // Cotação real do Dólar no cartão (comercial + IOF + Spread bancário):
   const commercialDollar = 5.85
@@ -1046,20 +1047,72 @@ export default function App() {
               <h3 className="plan-name">Dev</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
-                <span className="plan-val">79</span>
+                <span className="plan-val">
+                  {devWithApi ? '94' : '79'}
+                  <span className="plan-cents">,99</span>
+                </span>
                 <span className="plan-period">/mês</span>
               </div>
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
+
+              {/* Opção de Ganhar a Chave de API (+ R$ 15) */}
+              <div className={`plan-api-toggle-box ${devWithApi ? 'is-api-active' : ''}`}>
+                <div className="plan-api-segmented">
+                  <button
+                    type="button"
+                    className={`plan-api-seg-btn ${!devWithApi ? 'is-active' : ''}`}
+                    onClick={() => setDevWithApi(false)}
+                  >
+                    Apenas no Site
+                  </button>
+                  <button
+                    type="button"
+                    className={`plan-api-seg-btn is-api-btn ${devWithApi ? 'is-active' : ''}`}
+                    onClick={() => setDevWithApi(true)}
+                  >
+                    + Chave de API <span className="plan-api-addon-pill">+R$ 15</span>
+                  </button>
+                </div>
+
+                <div className={`plan-api-status-note ${devWithApi ? 'is-api' : ''}`}>
+                  {devWithApi ? (
+                    <span>
+                      ⚡ <strong>Com API:</strong> use direto no Claude Code, Cursor e VS Code.
+                    </span>
+                  ) : (
+                    <span>
+                      🌐 <strong>Sem API:</strong> modelos liberados apenas via plataforma no site.
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
+
             <ul className="plan-features">
               <li><Check /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
-              <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
-              <li><Check /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
+              {devWithApi ? (
+                <>
+                  <li><Check /> <span><strong>Chave de API oficial inclusa</strong> (+ R$ 15/mês)</span></li>
+                  <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
+                  <li><Check /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
+                </>
+              ) : (
+                <>
+                  <li><Check /> <span><strong>Acesso 100% via plataforma web</strong></span></li>
+                  <li>
+                    <Cross />
+                    <span className="plan-feature-muted">
+                      <strong>Sem chave de API</strong> (apenas via plataforma no site)
+                    </span>
+                  </li>
+                  <li><Check /> <span><strong>Ambiente próprio</strong> sem rateio</span></li>
+                </>
+              )}
               <li><Check /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
             <a href="#duvidas" className="plan-btn">
-              Começar no Dev
+              {devWithApi ? 'Começar no Dev com API' : 'Começar no Dev (Via Site)'}
             </a>
           </motion.div>
 
