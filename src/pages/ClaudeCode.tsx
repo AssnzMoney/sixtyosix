@@ -1215,6 +1215,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
               <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
             </div>
             <ul className="plan-features">
+              <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
               <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
