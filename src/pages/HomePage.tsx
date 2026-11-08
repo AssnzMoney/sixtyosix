@@ -1056,35 +1056,21 @@ export default function App() {
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
 
               {/* Opção de Ganhar a Chave de API (+ R$ 15) */}
-              <div className={`plan-api-toggle-box ${devWithApi ? 'is-api-active' : ''}`}>
-                <div className="plan-api-segmented">
-                  <button
-                    type="button"
-                    className={`plan-api-seg-btn ${!devWithApi ? 'is-active' : ''}`}
-                    onClick={() => setDevWithApi(false)}
-                  >
-                    Apenas no Site
-                  </button>
-                  <button
-                    type="button"
-                    className={`plan-api-seg-btn is-api-btn ${devWithApi ? 'is-active' : ''}`}
-                    onClick={() => setDevWithApi(true)}
-                  >
-                    + Chave de API <span className="plan-api-addon-pill">+R$ 15</span>
-                  </button>
-                </div>
-
-                <div className={`plan-api-status-note ${devWithApi ? 'is-api' : ''}`}>
-                  {devWithApi ? (
-                    <span>
-                      ⚡ <strong>Com API:</strong> use direto no Claude Code, Cursor e VS Code.
-                    </span>
-                  ) : (
-                    <span>
-                      🌐 <strong>Sem API:</strong> modelos liberados apenas via plataforma no site.
-                    </span>
-                  )}
-                </div>
+              <div className="plan-api-segmented">
+                <button
+                  type="button"
+                  className={`plan-api-seg-btn ${!devWithApi ? 'is-active' : ''}`}
+                  onClick={() => setDevWithApi(false)}
+                >
+                  Apenas no Site
+                </button>
+                <button
+                  type="button"
+                  className={`plan-api-seg-btn is-api-btn ${devWithApi ? 'is-active' : ''}`}
+                  onClick={() => setDevWithApi(true)}
+                >
+                  + Chave de API <span className="plan-api-addon-pill">+R$ 15</span>
+                </button>
               </div>
             </div>
 

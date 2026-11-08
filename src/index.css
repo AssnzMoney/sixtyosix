@@ -2045,31 +2045,15 @@ h2 em {
   margin: 0 0 16px;
 }
 
-/* Seletor de Opção de API no Plano Dev (Estilo Fintech) */
-.plan-api-toggle-box {
-  margin: 0 0 20px;
-  background: #f6f5ef;
-  border: 1px solid rgba(31, 70, 71, 0.08);
-  border-radius: 14px;
-  padding: 7px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  transition: all 0.25s ease;
-}
-
-.plan-api-toggle-box.is-api-active {
-  background: #edf8ee;
-  border-color: rgba(22, 163, 74, 0.3);
-  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.08);
-}
-
+/* Seletor de Opção de API no Plano Dev (Direto, Clean e Moderno) */
 .plan-api-segmented {
   display: flex;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 10px;
+  background: #f0eee6;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 9999px;
   padding: 3px;
   gap: 3px;
+  margin: 0 0 22px;
 }
 
 .plan-api-seg-btn {
@@ -2084,8 +2068,8 @@ h2 em {
   color: #557571;
   background: transparent;
   border: none;
-  border-radius: 8px;
-  padding: 7px 8px;
+  border-radius: 9999px;
+  padding: 7px 10px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
@@ -2098,7 +2082,7 @@ h2 em {
 .plan-api-seg-btn.is-active {
   background: #ffffff;
   color: #1f4647;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .plan-api-seg-btn.is-active.is-api-btn {
@@ -2117,20 +2101,6 @@ h2 em {
   padding: 2px 6px;
   border-radius: 9999px;
   line-height: 1;
-}
-
-.plan-api-status-note {
-  font-size: 12px;
-  line-height: 1.4;
-  color: #557571;
-  padding: 1px 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.plan-api-status-note.is-api {
-  color: #0d4a2b;
 }
 
 .plan-cents {
