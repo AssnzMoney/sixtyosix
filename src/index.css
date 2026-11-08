@@ -2111,28 +2111,6 @@ h2 em {
   line-height: 1;
 }
 
-/* Indicador de API Já Inclusa no Plano Pro */
-.plan-api-included-pill {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  background: #edf8ee;
-  border: 1px solid rgba(22, 163, 74, 0.22);
-  border-radius: 9px;
-  padding: 7px 12px;
-  font-family: 'Fustat', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  color: #0b3824;
-  margin: 0 0 20px;
-}
-
-.plan-api-included-dot {
-  font-size: 13px;
-  line-height: 1;
-}
-
 .plan-cents {
   font-size: 0.6em;
   font-weight: 700;
