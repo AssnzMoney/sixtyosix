@@ -2045,15 +2045,15 @@ h2 em {
   margin: 0 0 16px;
 }
 
-/* Seletor de Opção de API no Plano Dev (Direto, Clean e Moderno) */
+/* Seletor de Opção de API no Plano Dev (Bordas Menos Redondas / Estilo Retangular Moderno) */
 .plan-api-segmented {
   display: flex;
   background: #f0eee6;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 9px;
   padding: 3px;
   gap: 3px;
-  margin: 0 0 22px;
+  margin: 0 0 20px;
 }
 
 .plan-api-seg-btn {
@@ -2063,14 +2063,15 @@ h2 em {
   justify-content: center;
   gap: 5px;
   font-family: 'Fustat', sans-serif;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #557571;
   background: transparent;
-  border: none;
-  border-radius: 9999px;
+  border: 1px solid transparent;
+  border-radius: 7px;
   padding: 7px 10px;
   cursor: pointer;
+  outline: none;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
 }
@@ -2079,16 +2080,23 @@ h2 em {
   color: #1f4647;
 }
 
+.plan-api-seg-btn:focus,
+.plan-api-seg-btn:focus-visible {
+  outline: none;
+}
+
 .plan-api-seg-btn.is-active {
   background: #ffffff;
   color: #1f4647;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
 .plan-api-seg-btn.is-active.is-api-btn {
   background: #1f4647;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(31, 70, 71, 0.25);
+  border-color: #1f4647;
+  box-shadow: 0 2px 6px rgba(31, 70, 71, 0.2);
 }
 
 .plan-api-addon-pill {
@@ -2099,7 +2107,7 @@ h2 em {
   font-size: 10.5px;
   font-weight: 800;
   padding: 2px 6px;
-  border-radius: 9999px;
+  border-radius: 5px;
   line-height: 1;
 }
 

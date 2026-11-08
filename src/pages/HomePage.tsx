@@ -1048,8 +1048,11 @@ export default function App() {
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
                 <span className="plan-val">
-                  {devWithApi ? '94' : '79'}
-                  <span className="plan-cents">,99</span>
+                  <NumberRoller
+                    value={devWithApi ? 94.99 : 79.99}
+                    decimals={2}
+                    duration={0.45}
+                  />
                 </span>
                 <span className="plan-period">/mês</span>
               </div>
