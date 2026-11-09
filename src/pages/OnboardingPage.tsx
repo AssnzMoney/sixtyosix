@@ -59,9 +59,9 @@ export default function OnboardingPage() {
         navigate('/dashboard')
         return
       }
-      setDisplayName(user.customName || suggestedName)
+      setDisplayName(user.customName || '')
     }
-  }, [user, loading, isEditing, navigate, suggestedName])
+  }, [user?.id, user?.customName, user?.hasCompletedOnboarding, loading, isEditing, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

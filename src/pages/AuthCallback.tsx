@@ -1,59 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase, isSupabaseConfigured } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import { Loader2, AlertCircle } from 'lucide-react'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
+  const { session, user, loading } = useAuth()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    async function handleAuth() {
-      if (!supabase || !isSupabaseConfigured) {
-        navigate('/')
-        return
-      }
-
-      try {
-        // Supabase processa automaticamente hash/tokens no browser
-        const { data, error } = await supabase.auth.getSession()
-        if (error) {
-          setErrorMsg(error.message)
-          return
-        }
-
-        if (data?.session) {
-          const user = data.session.user
-          const meta = user.user_metadata || {}
-          const localOnboarding = localStorage.getItem(`sixtysix_onboarding_${user.id}`) === 'true'
-          const localCustomName = localStorage.getItem(`sixtysix_custom_name_${user.id}`)
-
-          const hasCompletedOnboarding = Boolean(
-            meta.has_completed_onboarding ||
-            localOnboarding ||
-            meta.custom_name ||
-            localCustomName
-          )
-
-          if (!hasCompletedOnboarding) {
-            navigate('/onboarding')
-          } else {
-            navigate('/dashboard')
-          }
-        } else {
-          // Aguarda brevemente se o hash ainda estiver sendo parseado
-          const timeout = setTimeout(() => {
-            navigate('/dashboard')
-          }, 1500)
-          return () => clearTimeout(timeout)
-        }
-      } catch (err: any) {
-        setErrorMsg(err?.message || 'Falha ao autenticar com o provedor.')
-      }
+    if (loading) return
+    if (session && user) {
+      navigate(user.hasCompletedOnboarding ? '/dashboard' : '/onboarding', { replace: true })
+    } else {
+      setErrorMsg('Não foi possível concluir o login. Volte e tente novamente.')
     }
-
-    handleAuth()
-  }, [navigate])
+  }, [loading, session, user, navigate])
 
   return (
     <div style={{

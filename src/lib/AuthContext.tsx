@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from './supabase'
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js'
+import { normalizeDisplayName, savedDisplayName } from './displayName'
 
 export interface UserProfile {
   id: string
@@ -22,7 +23,7 @@ interface AuthContextType {
   isConfigured: boolean
   signInWithGoogle: () => Promise<{ error: Error | null }>
   signInWithDiscord: () => Promise<{ error: Error | null }>
-  signInWithEmail: (email: string) => Promise<{ error: Error | null }>
+  signInWithEmail: (email: string, createAccount?: boolean) => Promise<{ error: Error | null }>
   verifyEmailOtp: (email: string, token: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
   demoLogin: (provider: 'google' | 'discord', asNewUser?: boolean) => void
@@ -35,14 +36,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const LOCAL_STORAGE_USER_KEY = 'sixtysix_auth_user'
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_USER_KEY)
-      return saved ? JSON.parse(saved) : null
-    } catch {
-      return null
-    }
-  })
+  const [user, setUser] = useState<UserProfile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -73,16 +67,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const rawName = meta.full_name || meta.name || meta.user_name || (su.email ? su.email.split('@')[0] : 'Desenvolvedor')
-    const localCustomName = localStorage.getItem(`sixtysix_custom_name_${su.id}`)
-    const localOnboarding = localStorage.getItem(`sixtysix_onboarding_${su.id}`) === 'true'
     const hasPlanSaved = localStorage.getItem(`sixtysix_has_plan_${su.id}`) === 'true'
-
-    const customName = meta.custom_name || meta.display_name || localCustomName || ''
-    const hasCompletedOnboarding = Boolean(
-      meta.has_completed_onboarding ||
-      localOnboarding ||
-      (customName && customName.trim().length > 0)
-    )
+    const customName = savedDisplayName(meta)
+    const hasCompletedOnboarding = Boolean(customName)
 
     const finalName = hasCompletedOnboarding && customName.trim() ? customName.trim() : rawName
 
@@ -113,7 +100,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = mapSupabaseUser(session.user)
         setUser(profile)
         localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile))
+      } else {
+        setUser(null)
+        localStorage.removeItem(LOCAL_STORAGE_USER_KEY)
       }
+      setLoading(false)
+    }).catch(() => {
+      setSession(null)
+      setUser(null)
       setLoading(false)
     })
 
@@ -126,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const profile = mapSupabaseUser(currentSession.user)
         setUser(profile)
         localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile))
-      } else if (!currentSession && user?.provider !== 'demo') {
+      } else if (!currentSession) {
         setUser(null)
         localStorage.removeItem(LOCAL_STORAGE_USER_KEY)
       }
@@ -139,42 +133,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const updateDisplayName = async (chosenName: string) => {
-    const cleanName = chosenName.trim()
-    if (!cleanName || !user) return
-
-    const updated: UserProfile = {
-      ...user,
-      name: cleanName,
-      customName: cleanName,
-      hasCompletedOnboarding: true,
-    }
+    const cleanName = normalizeDisplayName(chosenName)
+    if (!supabase || !session?.user) throw new Error('Entre na sua conta para salvar seu nome.')
+    const { data, error } = await supabase.auth.updateUser({
+      data: { custom_name: cleanName, has_completed_onboarding: true },
+    })
+    if (error || !data.user) throw new Error('Não foi possível salvar seu nome na conta. Tente novamente.')
+    const updated = mapSupabaseUser(data.user)
     setUser(updated)
     localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updated))
-    localStorage.setItem(`sixtysix_custom_name_${user.id}`, cleanName)
-    localStorage.setItem(`sixtysix_onboarding_${user.id}`, 'true')
-
-    if (supabase && isSupabaseConfigured && session?.user) {
-      try {
-        await supabase.auth.updateUser({
-          data: {
-            custom_name: cleanName,
-            display_name: cleanName,
-            has_completed_onboarding: true,
-          },
-        })
-        await supabase.from('profiles').upsert({
-          id: user.id,
-          email: user.email,
-          name: cleanName,
-          custom_name: cleanName,
-          avatar_url: user.avatarUrl,
-          provider: user.provider,
-          updated_at: new Date().toISOString(),
-        })
-      } catch (err) {
-        console.warn('Sincronização com Supabase Profiles:', err)
-      }
-    }
   }
 
   const toggleSubscriptionPlan = () => {
@@ -226,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error ? new Error(error.message) : null }
   }
 
-  const signInWithEmail = async (email: string) => {
+  const signInWithEmail = async (email: string, createAccount = false) => {
     if (!supabase || !isSupabaseConfigured) {
       return {
         error: new Error('CONFIG_NEEDED: As credenciais do Supabase precisam ser configuradas.'),
@@ -235,6 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
+        shouldCreateUser: createAccount,
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })

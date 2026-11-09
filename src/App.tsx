@@ -19,10 +19,11 @@ function ScrollToTop() {
 }
 
 function AccountRoute({ onboarding = false }: { onboarding?: boolean }) {
-  const { session, loading } = useAuth()
+  const { session, user, loading } = useAuth()
   const demo = ['localhost','127.0.0.1'].includes(window.location.hostname) && new URLSearchParams(window.location.search).get('demo') === '1'
   if (loading) return <div className="six-auth-loading" role="status">Carregando sua conta…</div>
   if (!session && !demo) return <Navigate to="/login" replace />
+  if (session && !onboarding && !user?.hasCompletedOnboarding) return <Navigate to="/onboarding" replace />
   return onboarding ? <OnboardingPage /> : <DashboardPage />
 }
 export default function App() {
@@ -40,6 +41,8 @@ export default function App() {
           <Route path="/glm" element={<Glm4Page />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/entrar" element={<LoginPage />} />
+          <Route path="/criar-conta" element={<Navigate to="/login?mode=cadastro" replace />} />
+          <Route path="/cadastro" element={<Navigate to="/login?mode=cadastro" replace />} />
           
           {/* Conta privada: a API valida novamente a sessão e o proprietário. */}
           <Route

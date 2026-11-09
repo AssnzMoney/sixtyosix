@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft,
@@ -44,6 +44,8 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const {
     user,
+    session,
+    loading: authLoading,
     isConfigured,
     signInWithGoogle,
     signInWithDiscord,
@@ -53,6 +55,9 @@ export default function LoginPage() {
     demoLogin,
   } = useAuth()
 
+  const [searchParams, setSearchParams] = useSearchParams()
+  const isCreating = searchParams.get('mode') === 'cadastro'
+  const changeMode = (create: boolean) => { setSearchParams(create ? { mode: 'cadastro' } : {}); setStep('email'); setErrorMsg(null); setCode(['','','','','','']) }
   const [email, setEmail] = useState('')
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [code, setCode] = useState(['', '', '', '', '', ''])
@@ -63,10 +68,8 @@ export default function LoginPage() {
 
   // Redireciona imediatamente para o onboarding se o usuário já estiver logado mas ainda não escolheu seu nome
   useEffect(() => {
-    if (user && !user.hasCompletedOnboarding) {
-      navigate('/onboarding')
-    }
-  }, [user, navigate])
+    if (!authLoading && session && user) navigate(user.hasCompletedOnboarding ? '/dashboard' : '/onboarding', { replace: true })
+  }, [authLoading, session, user, navigate])
 
   const handleGoogleLogin = async () => {
     setErrorMsg(null)
@@ -102,16 +105,9 @@ export default function LoginPage() {
     setErrorMsg(null)
     setLoading(true)
 
-    if (!isConfigured) {
-      // Simulação rápida para feedback imediato
-      setTimeout(() => {
-        setLoading(false)
-        setStep('code')
-      }, 600)
-      return
-    }
+    if (!isConfigured) { setLoading(false); setErrorMsg('O acesso por e-mail está temporariamente indisponível.'); return }
 
-    const { error } = await signInWithEmail(email)
+    const { error } = await signInWithEmail(email.trim(), isCreating)
     setLoading(false)
     if (error) {
       setErrorMsg(error.message)
@@ -139,14 +135,7 @@ export default function LoginPage() {
     setLoading(true)
 
     const token = code.join('')
-    if (!isConfigured) {
-      setTimeout(() => {
-        demoLogin('google', true)
-        setLoading(false)
-        navigate('/onboarding')
-      }, 700)
-      return
-    }
+    if (!isConfigured) { setLoading(false); setErrorMsg('O acesso por e-mail está temporariamente indisponível.'); return }
 
     const { error } = await verifyEmailOtp(email, token)
     setLoading(false)
@@ -156,6 +145,8 @@ export default function LoginPage() {
       navigate('/onboarding')
     }
   }
+
+  if (authLoading) return <div className="six-auth-loading" role="status">Verificando sua sessão…</div>
 
   return (
     <div className="login-page-wrap">
@@ -248,9 +239,10 @@ export default function LoginPage() {
                     exit={{ opacity: 0, x: 20 }}
                     transition={{ duration: 0.25 }}
                   >
-                    <h1 className="login-title">Boas vindas à SixtySix</h1>
+                    <div className="login-mode-tabs" role="group" aria-label="Acesso à SixtySix"><button type="button" aria-pressed={!isCreating} onClick={() => changeMode(false)}>Entrar</button><button type="button" aria-pressed={isCreating} onClick={() => changeMode(true)}>Criar conta</button></div>
+                    <h1 className="login-title">{isCreating ? 'Crie sua conta SixtySix' : 'Boas vindas à SixtySix'}</h1>
                     <p className="login-sub">
-                      Acesse sua chave individual e programe sem travas diárias. Todos os seus modelos oficiais conectados em um só lugar.
+                      {isCreating ? 'Comece com Google, Discord ou e-mail. Depois, escolha como quer ser chamado no seu painel.' : 'Entre para acompanhar seu consumo e gerenciar suas chaves. Se você já acessou neste navegador, sua sessão será recuperada.'}
                     </p>
 
                     {/* Botões Sociais: Google & Discord */}
@@ -262,7 +254,7 @@ export default function LoginPage() {
                         disabled={loading}
                       >
                         <GoogleIcon />
-                        <span>Entrar com Google</span>
+                        <span>{isCreating ? 'Criar conta com Google' : 'Entrar com Google'}</span>
                       </button>
 
                       <button
@@ -272,12 +264,12 @@ export default function LoginPage() {
                         disabled={loading}
                       >
                         <DiscordIcon />
-                        <span>Entrar com Discord</span>
+                        <span>{isCreating ? 'Criar conta com Discord' : 'Entrar com Discord'}</span>
                       </button>
                     </div>
 
                     <div className="login-divider">
-                      <span>Ou entre com e-mail</span>
+                      <span>{isCreating ? 'Ou crie com e-mail' : 'Ou entre com e-mail'}</span>
                     </div>
 
                     {/* Formulário com E-mail */}
@@ -303,7 +295,7 @@ export default function LoginPage() {
                         disabled={loading || !email.includes('@')}
                         className={`login-submit-btn ${email.includes('@') ? 'is-ready' : ''}`}
                       >
-                        {loading ? 'Processando...' : 'Enviar código'}
+                        {loading ? 'Processando...' : isCreating ? 'Criar conta com e-mail' : 'Receber acesso por e-mail'}
                       </button>
                     </form>
                   </motion.div>
@@ -324,9 +316,9 @@ export default function LoginPage() {
                       <span>Alterar e-mail</span>
                     </button>
 
-                    <h1 className="login-title">Código de Acesso</h1>
+                    <h1 className="login-title">Confira seu e-mail</h1>
                     <p className="login-sub">
-                      Enviamos um código de 6 dígitos para <strong>{email}</strong>.
+                      Enviamos as instruções para <strong>{email}</strong>. Abra o link de acesso ou, se recebeu um código de 6 dígitos, informe abaixo.
                     </p>
 
                     <form onSubmit={handleVerify} className="login-form">
@@ -365,7 +357,7 @@ export default function LoginPage() {
                           onClick={handleSendCode}
                           className="login-resend-btn"
                         >
-                          Não recebeu? Reenviar código
+                          Não recebeu? Reenviar e-mail
                         </button>
                       </div>
                     </form>

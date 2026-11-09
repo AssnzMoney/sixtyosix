@@ -178,7 +178,7 @@ export default function DashboardPage() {
   const demoRows = useMemo(demoRequests, [])
   const rows = demo ? demoRows : accountData?.owner === session?.user.id ? accountData?.rows || [] : []
   const metricsReady = demo || (keyState === "loaded" && accountData?.owner === session?.user.id)
-  const name = user?.name?.split(" ")[0] || (demo ? "Alysson" : "dev")
+  const name = user?.name || (demo ? "Alysson" : "dev")
 
   useEffect(() => {
     if (!toast) return
@@ -516,13 +516,14 @@ export default function DashboardPage() {
               )}
             </span>
             <span>
-              <strong>{name}</strong>
+              <strong title={name}>{name}</strong>
               <small>
                 {demo
                   ? "Workspace de demonstração"
                   : user?.email || "Entre na sua conta"}
               </small>
             </span>
+            {session && <Link to="/onboarding?edit=true" className="six-profile-edit" aria-label="Editar nome de exibição" title="Editar meu nome"><Settings2 size={16} /></Link>}
             <button
               aria-label={session ? "Sair da conta" : "Ir para login"}
               onClick={() =>

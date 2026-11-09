@@ -7615,3 +7615,6 @@ h2 em {
     grid-template-columns: 1fr;
   }
 }
+
+/* Explicit account entry modes share the same verified authentication. */
+.login-mode-tabs{display:flex;gap:4px;padding:4px;background:#eaf0e3;border:1px solid #dce6d4;border-radius:13px;margin-bottom:24px}.login-mode-tabs button{flex:1;border:0;background:transparent;color:#64765b;padding:10px 15px;border-radius:9px;font:inherit;font-size:13px;cursor:pointer}.login-mode-tabs button[aria-pressed="true"]{background:#fff;color:#244d38;box-shadow:0 2px 7px #244d3810;font-weight:700}.login-mode-tabs button:focus-visible{outline:2px solid #527b38;outline-offset:2px}
