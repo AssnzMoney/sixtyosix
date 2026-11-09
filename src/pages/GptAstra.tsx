@@ -14,7 +14,7 @@ const Arrow = () => (
 )
 
 const astraFaqs = [
-  ['O que significa GPT Astra 6?', 'É o nome do perfil exibido no Codex. O gateway pode encaminhar as solicitações a diferentes modelos compatíveis; por isso o nome do perfil não garante um modelo upstream específico.'],
+  ['O que significa GPT Astra 6?', 'É o perfil GPT Astra 6 que você seleciona no Codex. O identificador usado na configuração é gpt-6-astra.'],
   ['O GPT Astra 6 funciona no Codex?', 'Sim. No Codex, use o provedor personalizado Responses da SixtySix, a chave individual e o ID gpt-6-astra. Siga o arquivo config.toml mostrado nesta página.'],
   ['Posso usar GLM no Codex?', 'Não pela configuração atual do gateway. O catálogo do Codex aceita somente gpt-6-astra. O perfil GLM 5 é separado e deve ser usado no ZCode.'],
   ['Qual é a URL e como informo a chave?', 'A URL base é https://www.sixtysix.online/v1. Salve sua chave individual na variável SIXTYSIX_GATEWAY_API_KEY do Windows e referencie essa variável no config.toml; não cole a chave diretamente nesse arquivo.'],
@@ -607,7 +607,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             <div className="claude-step-card">
               <div className="claude-step-top"><span className="claude-step-badge">Atenção</span><h4>GLM é outra configuração</h4></div>
               <p>GLM 5 não aparece no catálogo do Codex. Para usar esse perfil, configure-o no ZCode com <code>https://www.sixtysix.online/glm</code> e o ID <code>glm-5</code>.</p>
-              <span className="tutorial-footnote">O perfil GPT Astra 6 é um alias; o modelo upstream pode variar. A rota não garante um modelo oficial GPT específico.</span>
+              
             </div>
           </div>
         </div>
