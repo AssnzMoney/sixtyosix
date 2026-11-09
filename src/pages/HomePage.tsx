@@ -9,10 +9,10 @@ import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
 import { useAuth } from '../lib/AuthContext'
 
-const paymentLinks = {
-  dev: 'https://mpago.la/1FmQuD5',
-  devApi: 'https://mpago.la/2Rqf1Et',
-  pro: 'https://mpago.la/1zCF7KR',
+const purchasePaths = {
+  dev: '/comprar/dev',
+  devApi: '/comprar/devApi',
+  pro: '/comprar/pro',
 }
 
 const Arrow = () => (
@@ -1131,9 +1131,9 @@ export default function App() {
               <li><Check /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
-            <a href={devWithApi ? paymentLinks.devApi : paymentLinks.dev} className="plan-btn">
+            <Link to={devWithApi ? purchasePaths.devApi : purchasePaths.dev} className="plan-btn">
               {devWithApi ? 'Começar no Dev com API' : 'Começar no Dev (Via Site)'}
-            </a>
+            </Link>
           </motion.div>
 
           {/* Pro Ilimitado */}
@@ -1166,9 +1166,9 @@ export default function App() {
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong>, <strong>VS Code</strong>, <strong>Codex</strong></span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> sem IOF via Pix</span></li>
             </ul>
-            <a href={paymentLinks.pro} className="plan-btn plan-btn-featured">
+            <Link to={purchasePaths.pro} className="plan-btn plan-btn-featured">
               Garantir Acesso Ilimitado <Arrow />
-            </a>
+            </Link>
           </motion.div>
         </div>
       </section>

@@ -34,6 +34,9 @@ test('stores provider facts instead of trusting payment status in the request',a
   const mock=async (url:string|URL|Request,init?:RequestInit)=>{
     if (String(url).endsWith('users/me')) return Response.json({id:99})
     if (String(url).includes('/v1/payments/')) return Response.json({id:123,collector_id:99,status:'pending',transaction_amount:119.99,currency_id:'BRL'})
+    if(String(url).includes('/billing_payments'))return Response.json([])
+    if(String(url).includes('/authorized_payments/search'))return Response.json({results:[]})
+    if(init?.method==='PATCH')return new Response(null,{status:204})
     writes.push(JSON.parse(String(init?.body)));return new Response(null,{status:201})
   }
   await receiveNotification(notification,env,mock as typeof fetch)

@@ -1,7 +1,8 @@
 {
-  "functions": { "api/access.ts": { "maxDuration": 300 } },
+  "functions": { "api/access.ts": { "maxDuration": 300 },"api/mercadopago.ts":{"maxDuration":300} },
   "rewrites": [
     { "source": "/api/mercadopago/webhook", "destination": "/api/mercadopago" },
+    { "source": "/api/billing/:action", "destination": "/api/mercadopago?action=:action" },
     { "source": "/api/account/trial", "destination": "/api/access?action=trial" },
     { "source": "/api/account/:action", "destination": "/api/account?action=:action" },
     { "source": "/glm/v1/:path*", "destination": "/api/access?action=proxy&path=/glm/v1/:path*" },

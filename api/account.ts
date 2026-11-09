@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto'
 
-type Config = { url: string; secret: string; publicKey: string }
-type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null }
+type Config = { url: string; secret: string; publicKey: string;billingConnected?:boolean }
+type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean }
+type Subscription = {id:string;plan_code:string;amount_cents:number;api_enabled:boolean;models:string[];paid_until:string|null;provider_status:string;created_at:string;entitled:boolean;billing_mode:string}
+type PaidAccess = {subscription_id:string;gateway_client_id:string;token_prefix:string;paid_until:string|null;revoked_at:string|null;api_enabled:boolean;created_at:string;entitled:boolean;billing_mode:string}
 type Trial = { gateway_client_id:string; token_prefix:string; created_at:string; expires_at:string; revoked_at:string|null }
 type Usage = { id: number; client_id: string; requested_alias: string; status_code: number; input_tokens: number; output_tokens: number; latency_ms: number; created_at: string }
 export class AccountError extends Error {
@@ -16,7 +18,7 @@ export function configuration(env = process.env): Config {
   const publicKey = env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_PUBLISHABLE_KEY
   if (!url || !secret || !publicKey) throw new AccountError(503, 'A conexão do painel está sendo configurada. Tente novamente em instantes.')
   if (!url.startsWith('https://')) throw new AccountError(503, 'Configuração de conexão inválida.')
-  return { url, secret, publicKey }
+  return { url, secret, publicKey,billingConnected:Boolean(env.MERCADOPAGO_ACCESS_TOKEN&&env.MERCADOPAGO_WEBHOOK_SECRET) }
 }
 
 export function createAccountService(config: Config, request: typeof fetch = fetch) {
@@ -66,13 +68,18 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         const mine = await clients(userId)
         const trials = await db<Trial[]>('gateway_trials', { user_id:`eq.${userId}`,select:'gateway_client_id,token_prefix,created_at,expires_at,revoked_at',limit:'1' })
         const trial=trials[0]
-        if(trial) mine.push({id:trial.gateway_client_id,name:'Teste grátis · 7 dias',enabled:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),created_at:trial.created_at,key_prefix:trial.token_prefix})
+        if(trial) mine.push({id:trial.gateway_client_id,name:'Teste grátis · 7 dias',enabled:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),created_at:trial.created_at,key_prefix:trial.token_prefix,managed:true})
+        const paid=await db<PaidAccess[]>('billing_key_access',{user_id:`eq.${userId}`,select:'subscription_id,gateway_client_id,token_prefix,paid_until,revoked_at,api_enabled,created_at,entitled'})
+        const subscriptions=await db<Subscription[]>('billing_subscription_state',{user_id:`eq.${userId}`,select:'id,plan_code,amount_cents,api_enabled,models,paid_until,provider_status,created_at,entitled,billing_mode',order:'created_at.desc',limit:'50'})
+        for(const access of paid)mine.push({id:access.gateway_client_id,name:'Assinatura · '+(access.api_enabled?'API':'Site'),enabled:access.entitled&&!access.revoked_at&&Boolean(access.paid_until&&Date.parse(access.paid_until)>Date.now()),created_at:access.created_at,key_prefix:access.token_prefix,managed:true,visible:access.api_enabled})
+        const selected=subscriptions.find(item=>item.entitled&&item.paid_until&&Date.parse(item.paid_until)>Date.now())||subscriptions[0]
+        const subscription=selected?{id:selected.id,plan:selected.plan_code,name:selected.plan_code==='pro'?'Pro':selected.plan_code==='devApi'?'Dev + API':'Dev',amount:selected.amount_cents/100,api:selected.api_enabled,models:selected.models,active:selected.entitled&&Boolean(selected.paid_until&&Date.parse(selected.paid_until)>Date.now()),expires:selected.paid_until,status:selected.provider_status,mode:selected.billing_mode}:null
         const usage = mine.length ? await db<Usage[]>('gateway_usage', {
           select: 'id,client_id,requested_alias,status_code,input_tokens,output_tokens,latency_ms,created_at',
           client_id: `in.(${mine.map(c => c.id).join(',')})`, and: `(created_at.gte.${start},created_at.lt.${end},created_at.lte.${new Date(asOf).toISOString()})`,
           order: 'created_at.desc,id.desc', limit: '1000', offset: String(offset),
         }) : []
-        return { keys: mine.map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:trial?.gateway_client_id===c.id })), usage, hasMore: usage.length === 1000, subscription: null, billingConnected: false,
+        return { keys: mine.filter(c=>c.visible!==false).map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:Boolean(c.managed) })), usage, hasMore: usage.length === 1000, subscription, billingConnected:Boolean(config.billingConnected),
           trial:trial?{expires:trial.expires_at,active:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),revoked:Boolean(trial.revoked_at)}:null }
       }
       if (method === 'POST' && path === 'claim') {
@@ -93,6 +100,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         if (!uuid.test(id)) throw new AccountError(400, 'Chave inválida.')
         const trialRevoked=await db<boolean>('rpc/account_revoke_trial',{},'POST',{p_user_id:userId,p_client_id:id})
         if(trialRevoked)return {ok:true}
+        if(await db<boolean>('rpc/billing_revoke_key',{},'POST',{p_user_id:userId,p_client_id:id}))return {ok:true}
         const updated = await db<Client[]>('gateway_clients', { id: `eq.${id}`, user_id: `eq.${userId}`, enabled: 'eq.true', select: 'id' }, 'PATCH', { enabled: false, revoked_at: new Date().toISOString() })
         if (!updated.length) throw new AccountError(404, 'Chave não encontrada ou já revogada.')
         return { ok: true }

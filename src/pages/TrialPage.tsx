@@ -14,6 +14,7 @@ export default function TrialPage(){
   useEffect(()=>{
     if(loading)return
     sessionStorage.setItem('sixtysix_pending_trial','1')
+    sessionStorage.removeItem('sixtysix_pending_purchase');sessionStorage.removeItem('sixtysix_pending_subscription')
     if(!session){navigate('/login?mode=cadastro',{replace:true});return}
     if(!user?.hasCompletedOnboarding){navigate('/onboarding',{replace:true});return}
     const controller=new AbortController();setError('')

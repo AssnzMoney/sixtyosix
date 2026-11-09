@@ -7,6 +7,18 @@ import { createAccessService, seal, unseal, trialActive, proxyPath } from '../ap
 const uid='1a9ff780-4164-4952-a9af-cbf41cc02042'
 const env={SUPABASE_URL:'https://example.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'sb_secret_private',VITE_SUPABASE_ANON_KEY:'public'}
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex')
+
+test('paid API blocks expired, refunded, revoked, site-only and excluded models',async()=>{
+ const id='11111111-1111-4111-8111-111111111111'
+ const paid={user_id:uid,subscription_id:id,encrypted_upstream:seal('private-bridge',env.SUPABASE_SERVICE_ROLE_KEY,`${uid}:paid:${id}:upstream`),paid_until:new Date(Date.now()+86400000).toISOString(),revoked_at:null,api_enabled:true,models:['gpt-6-astra'],entitled:true}
+ for(const change of [{paid_until:new Date(Date.now()-1).toISOString()},{entitled:false},{revoked_at:new Date().toISOString()},{api_enabled:false}]){
+  const service=createAccessService(env,(async()=>Response.json([{...paid,...change}])) as typeof fetch)
+  await assert.rejects(service.authorizePaid('sk-sp-test','gpt-6-astra'),{status:403})
+ }
+ const service=createAccessService(env,(async()=>Response.json([paid])) as typeof fetch)
+ await assert.rejects(service.authorizePaid('sk-sp-test','claude-fable-5-1'),{status:403})
+ assert.equal((await service.authorizePaid('sk-sp-test','gpt-6-astra')).token,'private-bridge')
+})
 test('expired or revoked trials cannot recover an upstream credential',async()=>{
   for(const dates of [{expires_at:new Date(Date.now()-1).toISOString(),revoked_at:null},{expires_at:new Date(Date.now()+86400000).toISOString(),revoked_at:new Date().toISOString()}]){
     const service=createAccessService(env,(async()=>Response.json([{user_id:uid,encrypted_upstream:'not-decryptable',...dates}])) as typeof fetch)

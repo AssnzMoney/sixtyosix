@@ -6,6 +6,7 @@ import path from 'node:path'
 
 import accountHandler from './api/account.ts'
 import accessHandler from './api/access.ts'
+import mercadoPagoHandler from './api/mercadopago.ts'
 import siteConfiguration from './.figma/make/site.json'
 
 
@@ -14,7 +15,7 @@ export default defineConfig(({ mode }) => {
   // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
   const emitSourcemaps = mode === 'development'
   const serverEnv = loadEnv(mode, process.cwd(), '')
-  for (const key of ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','VITE_SUPABASE_ANON_KEY','SUPABASE_PUBLISHABLE_KEY']) { if (serverEnv[key]) process.env[key] = serverEnv[key] }
+  for (const key of ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','VITE_SUPABASE_ANON_KEY','SUPABASE_PUBLISHABLE_KEY','MERCADOPAGO_ACCESS_TOKEN','MERCADOPAGO_WEBHOOK_SECRET']) { if (serverEnv[key]) process.env[key] = serverEnv[key] }
 
   return {
     base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
@@ -23,6 +24,7 @@ export default defineConfig(({ mode }) => {
       minify: !emitSourcemaps,
     },
     plugins: [
+      {name:'billing-api',configureServer(server){server.middlewares.use((req,res,next)=>{if(!req.url?.startsWith('/api/billing/'))return next();const url=new URL(req.url,'http://localhost');url.searchParams.set('action',url.pathname.split('/').pop()||'');req.url=url.pathname+url.search;void mercadoPagoHandler(req,res)})}},
       { name: "account-api", configureServer(server) { server.middlewares.use((req, res, next) => { if(req.url?.split('?')[0]==='/api/account/trial'){void accessHandler(req,res);return} if (!req.url?.startsWith("/api/account/")) return next(); void accountHandler(req, res) }) } },
 react(),
       tailwindcss(),

@@ -1,100 +1,58 @@
-# SixtySix — registro da operação e da próxima integração
+# SixtySix — operação e pagamentos
 
-Atualizado em 9 de novembro de 2026. Resumo técnico das decisões desta conversa. Não é uma transcrição integral. Credenciais, códigos de login, dados de clientes e chaves privadas foram excluídos.
+Atualizado em 9 de novembro de 2026. Registro das decisões e implementação; não é transcrição do chat. Credenciais excluídas.
 
-## Teste grátis de 7 dias
+## Conta e catálogo
 
-- Botão Começar Teste Grátis → /teste-gratis → login/cadastro → nome preferido → ativação automática.
-- Uma ativação por auth.users.id, protegida por chave primária e trava transacional. Repetir a ativação recupera o mesmo acesso e o mesmo vencimento; não renova os 7 dias. Revogação não permite reiniciar.
-- /api/account/trial exige sessão validada no servidor e e-mail confirmado. Não exige pagamento/cartão.
-- Chave pública sk-sx- individual. Credenciais de entrega e de conexão privada cifradas com AES-256-GCM e vinculadas ao usuário/finalidade por AAD. A chave criptográfica é derivada, com separação de domínio, da credencial privada do servidor. Rotação dessa credencial exige migrar a cifragem dos testes ativos antes da troca.
-- gateway_trials contém proprietário, hash da chave pública, credenciais cifradas, início, vencimento e revogação. Somente service_role tem acesso. Funções account_start_trial e account_revoke_trial são exclusivas do servidor.
-- /v1, /glm/v1 e /api/codex passam por api/access.ts. A chave sk-sx- é validada em toda requisição; no instante do vencimento, o acesso é recusado. O cliente não recebe a credencial privada usada no gateway anterior, portanto não consegue contornar a vigência usando o endereço antigo.
-- Chaves anteriores sk-flg- mantêm a autenticação existente no gateway. O transporte preserva o corpo, status, respostas e streaming; o proxy não envia cookies do portal ao provedor.
-- A credencial privada de cada teste usa um gateway_client separado, sem user_id legado. O painel inclui esse consumo somente após verificar a propriedade de gateway_trials. O cliente do teste não pode emitir chaves legadas sem vencimento pela função de criação de chaves antigas.
-- O painel mostra a chave como teste gerenciado, o vencimento e o histórico; pode revogar o acesso. O cliente pode consultar a chave de teste novamente na sessão autenticada enquanto estiver ativa; ela não é salva no armazenamento local nem em URLs.
-- Migração: supabase/trial-access.sql. Verificação transacional, com rollback: supabase/trial-checks.rollback.sql. Não altera testes/chaves legados.
+Site: https://www.sixtysix.online. Painel /dashboard; entrada /login; nome preferido /onboarding. Sessão persistida no navegador e validada no servidor, com e-mail confirmado. Não há bloqueio por IP.
 
-## Receptor Mercado Pago — implementação atual
+- Dev: R$79,99, somente site, Astra 6 e GLM 5.
+- Dev + API: R$94,99, site e chave externa, Astra 6 e GLM 5.
+- Pro: R$119,99, site e chave externa, Fable 5.1, Astra 6 e GLM 5.
+- IDs: gpt-6-astra, glm-5, claude-fable-5-1. Permissões aplicadas pelo servidor.
 
-- URL de notificação: https://www.sixtysix.online/api/mercadopago/webhook.
-- Função independente api/mercadopago.ts, encaminhada pelo vercel.json antes do fallback da SPA.
-- GET/HEAD informa estado de configuração sem expor credenciais; POST exige assinatura HMAC, valida ID assinado e consulta a API autenticada do Mercado Pago.
-- MERCADOPAGO_WEBHOOK_SECRET e MERCADOPAGO_ACCESS_TOKEN salvos como segredos privados de produção. Republicação concluída após verificação da Vercel.
-- Eventos payment, subscription_preapproval, subscription_authorized_payment e subscription_preapproval_plan. Outros tópicos assinados são ignorados.
-- Recibos sanitizados e deduplicados em billing_webhook_events, com RLS e acesso exclusivo do servidor. Falha de consulta/persistência retorna 503 para permitir nova tentativa.
-- Migração: supabase/billing-webhook.sql. Não modifica clientes, chaves ou consumo existentes.
-- Receber eventos ainda não significa entregar chaves: esta etapa registra fatos verificados como awaiting_account_link. Checkout vinculado à conta, concessão, vigência e entrega automática precisam ser conectados e conferidos antes da ativação comercial automática. A rota declara automaticKeyDelivery=false até essa conclusão.
-- Receptor republicado e conferido: status receiver_configured; uma notificação assinada de verificação consultou um plano real pela API e gerou um único recibo, sem cobrança. Isso comprova a assinatura, o Access Token, a consulta ao Mercado Pago e a gravação privada. Não substitui a conferência de uma entrega disparada pelo próprio painel do Mercado Pago. Nenhum segredo está no Git.
-- A documentação abaixo conserva as decisões e pendências de integração; esta seção descreve a implementação mais recente.
+## Compra automática
 
-## O que está publicado
+Botões da LP abrem /comprar/dev, /comprar/devApi ou /comprar/pro. Antes do checkout, cliente entra/cria conta e conclui o nome preferido. O servidor cria pedido com UUID, proprietário verificado, preço e modelos fixos. O e-mail pagador pode ser diferente do login; nunca é usado para adivinhar o proprietário.
 
-- Site e painel: https://www.sixtysix.online.
-- Painel privado: /dashboard. Cadastro: /criar-conta. Entrada: /login.
-- Primeiro acesso: /onboarding pede o nome escolhido pelo cliente e salva na conta.
-- Sessão persistida no navegador; sair da conta ou limpar os dados exige entrar novamente.
-- Autenticação por Supabase, com Google, Discord e e-mail por link/código.
-- A API de conta valida a sessão no servidor e exige e-mail confirmado. Não existe bloqueio por IP: rede móvel, Wi-Fi e VPN podem mudar o endereço.
-- /api/account/summary consulta apenas as chaves e o consumo pertencentes ao usuário autenticado.
-- /api/account/claim associa uma chave existente mediante prova da chave completa. Uma chave vinculada a outro usuário não pode ser transferida assim.
-- /api/account/keys permite criar uma chave individual para quem já tem acesso de teste ativo. Ainda não libera o primeiro acesso só por cadastrar uma conta.
-- /api/account/revoke revoga uma chave própria, preservando o histórico.
-- As chaves usam prefixo sk-flg-. O banco guarda o hash SHA-256, não o segredo completo. A chave nova aparece uma vez no painel.
-- O servidor do gateway continua no projeto existente 66cloud.vercel.app. O domínio novo encaminha /v1, /glm e as rotas existentes. Não é um serviço dependente do computador pessoal ligado.
-- Claude usa URL base https://www.sixtysix.online. Clientes OpenAI compatíveis usam https://www.sixtysix.online/v1. Os tutoriais existentes apresentam os identificadores claude-fable-5-1, gpt-6-astra e a rota GLM configurada.
+Cartão: POST /preapproval cria assinatura pendente sem plano associado, frequência mensal e external_reference igual ao UUID do pedido. Autorização sem pagamento aprovado não concede acesso. A cobrança segue mês de calendário, que pode ter 28 a 31 dias.
 
-## Navegação dos planos
+Pix: POST /checkout/preferences cria checkout com Pix selecionado e cartões excluídos. Não cria débito automático. Cada pagamento aprovado libera 30 dias; renovação antecipada soma ao prazo restante sem trocar a chave. Pagamentos duplicados não somam novamente. A renovação é feita pelo cliente na página /assinatura.
 
-O botão do painel usa /planos, que abre a seção /#planos diretamente. A rolagem acompanha a âncora também ao navegar entre telas. /dashboard não depende de localhost; apenas a demonstração fictícia está restrita ao ambiente local.
+O cliente paga no Mercado Pago. O webhook assinado consulta a API privada e valida recebedor, pedido conhecido, assinatura, moeda BRL, valor, ambiente real e aprovação. A URL de retorno e o corpo livre da notificação não autorizam acesso. A confirmação registra o pagamento e cria o acesso individual em uma transação idempotente. /assinatura entrega a chave aos planos com API, mostra pagamentos, vencimento e cancelamento.
 
-## Automação de pagamento solicitada — pendente de conexão
+Links genéricos antigos não vinculam compras automaticamente: eventos sem external_reference conhecida permanecem awaiting_account_link. Os botões novos usam checkout personalizado.
 
-Objetivo: conta confirmada → escolha de plano → pagamento → confirmação recebida pelo servidor → acesso individual no painel → tutorial. Nenhuma entrega manual por WhatsApp.
+## Vencimento e alterações
 
-Os botões pagos da LP apontam para os planos de assinatura Mercado Pago conferidos em 9/11/2026: Dev R$79,99/mês, Dev com API R$94,99/mês e Pro Ilimitado R$119,99/mês. O Mercado Pago mostra duração ilimitada, renovação mensal e cancelamento quando quiser. O seletor da variante Dev altera tanto o preço quanto o destino do botão.
+O gateway verifica um período aprovado atual em cada solicitação. No limite exato do vencimento, novas solicitações são bloqueadas. Solicitações em execução podem terminar. Renovação aprovada mantém a mesma chave. Cancelar assinatura interrompe próximas cobranças, preservando o período pago. Pix não tem renovação automática para cancelar.
 
-Links de assinatura estão publicados, mas o Mercado Pago ainda não está conectado ao servidor. Não há webhook de pagamento ou sincronização de status de assinatura neste repositório. Os links cobram recorrentemente, mas não comprovam pagamento ao painel nem vinculam sozinhos a compra à conta. Não anunciar a entrega automática como concluída antes do teste integrado.
+Estorno parcial/integral e contestação retiram a autorização do pagamento correspondente. Eventos atrasados não ressuscitam pagamentos estornados. Outro período válido aprovado continua contando. Revogar chave não cancela cobrança; uma chave paga revogada pode ser substituída enquanto o plano com API estiver ativo.
 
-### Dados necessários do proprietário
+O botão Atualizar pagamento reconcilia assinatura/faturas ou pagamentos Pix com a API, com intervalo mínimo de 45 segundos. Webhooks são o mecanismo automático principal, com erro em falha de processamento para o provedor repetir a entrega.
 
-1. Links curtos das três assinaturas associados aos botões.
-2. Credencial de servidor da aplicação Mercado Pago e segredo de assinatura das notificações, configurados como variáveis privadas na Vercel. Nunca usar prefixo VITE_ para segredos.
-3. Confirmar catálogo, preços, acesso à API e modelos autorizados de cada variante. A LP atual tem Dev por R$79,99, Dev com API por R$94,99 e Pro por R$119; mensagens antigas citaram outros valores. Não assumir que um deles é definitivo.
-4. Confirmar se a cobrança será recorrente ou pagamento avulso com vigência. Link de pagamento avulso não cria assinatura recorrente automaticamente.
-5. Definir vencimento, cancelamento, reembolso, contestação e política do teste grátis.
+## Acesso, privacidade e infraestrutura
 
-### Contrato da implementação
+/api/billing oferece checkout, status, sync, cancel, key, restore e chat. Cada operação valida sessão e propriedade. Chat do site valida plano/modelo e usa credencial privada; Dev não recebe chave externa. Não se usam flags editáveis do navegador como autorização.
 
-1. Cliente precisa estar autenticado e com e-mail confirmado antes do checkout.
-2. Servidor cria pedido com identificador aleatório, user_id verificado, plano, variante, preço, moeda e vigência. Não aceitar preço ou proprietário enviados livremente pelo navegador.
-3. Checkout deve carregar uma external_reference que identifique esse pedido. Links estáticos sem vínculo confiável com o pedido não bastam para atribuir uma compra automaticamente. O e-mail do pagador pode ser diferente do e-mail da conta.
-4. Ao receber uma notificação, validar assinatura x-signature, x-request-id e identificador do recurso conforme documentação oficial. Consultar o pagamento pela API do Mercado Pago com credencial privada. Não liberar acesso com base apenas no JSON enviado ou na URL de retorno.
-5. Validar conta recebedora, modo produção/teste, status aprovado, moeda, valor, pedido conhecido e produto comprado. Pagamento pendente, recusado ou retorno forjado não liberam acesso.
-6. Gravar o evento e a concessão em transação idempotente, com unicidade por pagamento. Notificações repetidas e simultâneas não podem duplicar chaves nem estender a vigência indevidamente.
-7. Criar o primeiro acesso pertencente ao user_id do pedido. Para disponibilizar o segredo com segurança, escolher entrega autenticada de uso único ou armazenamento cifrado com chave exclusiva do servidor; hashes existentes não são recuperáveis. Não persistir o segredo em logs, Git, URLs ou localStorage.
-8. Painel consulta o estado do pedido e exibe a chave individual e os tutoriais ao receber a concessão. O cliente não precisa informar pagamento ao administrador.
-9. O gateway precisa aplicar vigência, permissões de modelo e acesso à API a cada requisição. O schema atual enabled/user_id não representa sozinho todas as regras comerciais. Alterações devem preservar os testes já existentes e não conceder API a uma variante vendida somente para uso no site.
-10. Tratar renovação, expiração, cancelamento, reembolso e contestação sem alterar chaves de outros clientes. Incluir reconciliação para notificações perdidas.
-11. Testar pagamento aprovado, pendente, recusado, assinatura inválida, evento repetido, valor incorreto, conta de outro cliente, renovação e estorno antes de ativar venda automática.
+Tabelas billing_subscriptions, billing_payments, billing_access e billing_webhook_events têm RLS e acesso somente service_role. Views usam security_invoker. RPCs de cobrança são exclusivos do servidor.
 
-### Não usar como autorização
+Chaves pagas sk-sp- são individuais, com hash para autenticação e cópia cifrada AES-256-GCM para entrega na sessão autenticada. O token privado sk-flg- de conexão fica cifrado no servidor e nunca é entregue. O gateway_client privado tem user_id legado nulo, impedindo emissão de chaves antigas ilimitadas. Cifragem deriva da credencial privada Supabase e usa AAD por usuário/assinatura/finalidade. Antes de rotacionar essa credencial, migrar a cifragem existente.
 
-- Flags de plano em localStorage ou user_metadata editáveis pelo cliente.
-- Parâmetros status=approved na volta do checkout.
-- Nome/e-mail do pagador sem pedido vinculado à conta.
-- Somente o fato de o cliente conseguir criar uma conta.
+Gateway interno: 66cloud.vercel.app. /v1, /glm/v1 e /api/codex no domínio novo validam chaves gerenciadas por api/access.ts e preservam streaming. As chaves legadas mantêm seu funcionamento. Não depende do computador pessoal ligado.
 
-## Fontes de configuração
+Claude: https://www.sixtysix.online. Clientes OpenAI compatíveis: https://www.sixtysix.online/v1.
 
-- Credenciais do Supabase: variáveis privadas do projeto na Vercel; não incluídas neste documento.
-- Chaves individuais: /dashboard, seção Chaves de API.
-- Migração atual do portal: supabase/account-portal.sql.
-- Implementação atual: api/account.ts; src/lib/account.ts.
-- Documentação Mercado Pago: https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks
-- Preferências de checkout: https://www.mercadopago.com.br/developers/pt/reference/online-payments/checkout-pro-preferences/create-preference/post
-- Autenticação e-mail: https://supabase.com/docs/guides/auth/auth-email-passwordless
+## Teste grátis
 
-## Limites do registro
+/teste-gratis ativa sete dias uma única vez por conta, sem cartão. Repetir recupera a mesma chave sk-sx- e o mesmo vencimento; expiração/revogação não reiniciam o prazo. gateway_trials e RPCs são privados. A vigência é aplicada em cada solicitação. Testes e chaves existentes foram preservados.
 
-Este documento resume o histórico disponível nesta conversa e o código conferido. Não confirma conversas fechadas, credenciais antigas, pagamentos ou funcionalidades ainda não verificadas. Atualizar o estado aqui conforme cada integração for realmente implantada.
+## Configuração e verificação
+
+Webhook: https://www.sixtysix.online/api/mercadopago/webhook. Tópicos: payment, subscription_preapproval, subscription_authorized_payment e subscription_preapproval_plan.
+
+Segredos privados na Vercel: MERCADOPAGO_ACCESS_TOKEN, MERCADOPAGO_WEBHOOK_SECRET, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_URL. Nunca usar VITE_ para segredos. Chave pública Supabase: VITE_SUPABASE_ANON_KEY ou SUPABASE_PUBLISHABLE_KEY.
+
+Schema: supabase/billing-lifecycle.sql. Verificação transacional: supabase/billing-checks.rollback.sql. Testes: server/billing.test.ts, server/access.test.ts, server/account.test.ts e server/mercadopago.test.ts. Verificam aprovação, duplicação, cancelamento, estorno, evento atrasado, renovação, propriedade, recuperação de chave, expiração e privacidade. Os dados QA são revertidos por rollback.
+
+Nenhuma cobrança real foi feita nesta validação. A primeira compra real deve ser acompanhada para confirmar o evento real de pagamento e a entrega. Testes controlados não equivalem a uma compra efetivamente paga.

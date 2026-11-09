@@ -32,14 +32,17 @@ import {
   Zap,
   RefreshCw,
   CircleCheck,
+  MessageSquare,
 } from "lucide-react"
 import { useAuth } from "../lib/AuthContext"
-import { accountRequest, accountSummary, type AccountTrial } from "../lib/account"
+import { accountRequest, accountSummary, type AccountTrial, type AccountSubscription } from "../lib/account"
+import SiteChat from '../components/SiteChat'
 import NumberRoller from "../components/ui/number-roller"
 import { useInView } from "framer-motion"
 import "./dashboard.css"
+import './billing.css'
 
-type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help"
+type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help" | "chat"
 type Model = string
 type RequestRow = {
   id: string
@@ -62,6 +65,7 @@ const models: Model[] = ["Fable 5.1", "Astra 6", "GLM 5"]
 const nav = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "usage", label: "Meu consumo", icon: Activity },
+  { id: "chat", label: "Conversar no site", icon: MessageSquare },
   { id: "keys", label: "Chaves de API", icon: KeyRound },
   { id: "guides", label: "Como conectar", icon: Terminal },
   { id: "plan", label: "Plano e assinatura", icon: CreditCard },
@@ -161,9 +165,10 @@ export default function DashboardPage() {
   const [os, setOs] = useState("powershell")
   const [clientKey, setClientKey] = useState("")
   const [reveal, setReveal] = useState(false)
-  const [accountData, setAccountData] = useState<{ owner: string; keys: KeyRow[]; rows: RequestRow[]; trial:AccountTrial|null } | null>(null)
+  const [accountData, setAccountData] = useState<{ owner: string; keys: KeyRow[]; rows: RequestRow[]; trial:AccountTrial|null;subscription:AccountSubscription|null } | null>(null)
   const keys = accountData?.owner === session?.user.id ? accountData?.keys || [] : []
   const trial = accountData?.owner === session?.user.id ? accountData?.trial : null
+  const subscription=accountData?.owner===session?.user.id?accountData?.subscription:null
   const [accountError, setAccountError] = useState("")
   const [busy, setBusy] = useState(false)
   const [newKeyName, setNewKeyName] = useState("")
@@ -212,7 +217,7 @@ export default function DashboardPage() {
         const data = await accountSummary(first, last, controller.signal)
         if (controller.signal.aborted) return
         const labels: Record<string,string> = { "claude-fable-5-1": "Fable 5.1", "gpt-6-astra": "Astra 6", "glm-5": "GLM 5" }
-        setAccountData({ owner, keys: data.keys, trial:data.trial||null, rows: data.usage.map(r => ({ id: String(r.id), date: r.created_at, model: labels[r.requested_alias] || r.requested_alias, input: r.input_tokens, output: r.output_tokens, duration: r.latency_ms / 1000, success: r.status_code >= 200 && r.status_code < 400 })) })
+        setAccountData({ owner, keys: data.keys, trial:data.trial||null,subscription:data.subscription, rows: data.usage.map(r => ({ id: String(r.id), date: r.created_at, model: labels[r.requested_alias] || r.requested_alias, input: r.input_tokens, output: r.output_tokens, duration: r.latency_ms / 1000, success: r.status_code >= 200 && r.status_code < 400 })) })
         setAccountError("")
         setKeyState("loaded")
       } catch (error) {
@@ -304,7 +309,7 @@ export default function DashboardPage() {
   const inputCost = input / 1000000 * inputRate
   const outputCost = output / 1000000 * outputRate
   const reference = inputCost + outputCost
-  const planCost = demo ? 119 : keys.some(k => k.active) ? 0 : null
+  const planCost = demo ? 119 : subscription?.active?subscription.amount:keys.some(k => k.active) ? 0 : null
   const canEstimate = metricsReady && planCost !== null
   const saving = Math.max(0, reference - (planCost ?? 0))
   const switchTab = (next: Tab) => {
@@ -611,7 +616,7 @@ export default function DashboardPage() {
                       ? "Cada solicitação, cada token. Tudo em um só lugar."
                       : tab === "keys"
                         ? "O ponto de partida para conectar suas ferramentas."
-                        : tab === "plan"
+                        : tab === 'chat'?'Suas ideias, seu código e suas conversas em um só lugar.':tab === "plan"
                           ? "Seu acesso, seus benefícios e os próximos passos."
                           : "Vamos colocar suas ferramentas para funcionar."}
               </p>
@@ -991,7 +996,7 @@ export default function DashboardPage() {
                       <div className="six-saving-total"><strong>{canEstimate ? <DashboardNumber value={saving} format="money" replay={numberReplay} /> : "—"}<small>de economia estimada no consumo selecionado</small></strong><span>{canEstimate && reference > (planCost ?? 0) ? <>−<DashboardNumber value={Math.round(saving / reference * 100)} format="percent" replay={numberReplay} /></> : "—"}</span></div>
                       <div className="six-cost-comparison">
                         <div><span>Custo de referência por tokens</span><b>{metricsReady ? <DashboardNumber value={reference} format="money" replay={numberReplay} /> : "—"}</b><i><em style={{width:"100%"}} /></i></div>
-                        <div><span>{demo ? "SixtySix · mensalidade integral" : "SixtySix · teste sem cobrança"}</span><b>{canEstimate ? <DashboardNumber value={planCost ?? 0} format="money" replay={numberReplay} /> : "—"}</b><i><em style={{width: canEstimate ? `${Math.min(100,(planCost ?? 0) / Math.max(1, reference) * 100)}%` : "0%"}} /></i></div>
+                        <div><span>{demo||subscription?.active ? "SixtySix · mensalidade integral" : "SixtySix · teste sem cobrança"}</span><b>{canEstimate ? <DashboardNumber value={planCost ?? 0} format="money" replay={numberReplay} /> : "—"}</b><i><em style={{width: canEstimate ? `${Math.min(100,(planCost ?? 0) / Math.max(1, reference) * 100)}%` : "0%"}} /></i></div>
                       </div>
                       <div className="six-token-costs"><span>Entrada <b><DashboardNumber value={inputCost} format="money" replay={numberReplay} /></b><small><DashboardNumber value={input} replay={numberReplay} /> tokens</small></span><span>Saída <b><DashboardNumber value={outputCost} format="money" replay={numberReplay} /></b><small><DashboardNumber value={output} replay={numberReplay} /> tokens</small></span></div>
                       <p>{demo ? "Simulação por tokens, com tarifas ilustrativas editáveis. Compara o consumo filtrado com a mensalidade integral de R$ 119, sem rateio." : canEstimate ? "Estimativa com seus tokens reais e preços de referência editáveis. Seu acesso de teste não tem cobrança." : "Vincule sua chave de teste para calcular a estimativa com seu consumo."}</p>
@@ -1501,6 +1506,8 @@ export default function DashboardPage() {
             </>
           )}
 
+          {tab === "chat" && <SiteChat key={session?.user.id||'guest'} models={demo?[]:subscription?.active?subscription.models:trial?.active?['claude-fable-5-1','gpt-6-astra','glm-5']:[]}/>}
+
           {tab === "plan" && (
             <>
               <div className="six-plan-grid">
@@ -1508,22 +1515,23 @@ export default function DashboardPage() {
                   <span className="six-pill">
                     {demo ? "Plano ilustrativo" : "Minha assinatura"}
                   </span>
-                  <h2>{demo ? "Pro" : trial?.active ? "Teste grátis · 7 dias" : keys.some(k => k.active) ? "Acesso de teste ativo" : trial ? "Teste encerrado" : "Sem acesso vinculado"}</h2>
+                  <h2>{demo ? "Pro" : subscription?`${subscription.name}${subscription.active?'':subscription.status==='pending'?' · aguardando pagamento':' · período encerrado'}`:trial?.active ? "Teste grátis · 7 dias" : keys.some(k => k.active) ? "Acesso de teste ativo" : trial ? "Teste encerrado" : "Sem acesso vinculado"}</h2>
+                  {subscription&&<p>{subscription.expires?`Período pago até ${new Date(subscription.expires).toLocaleString('pt-BR')}.`:'Aguardando confirmação do pagamento.'} {subscription.status==='cancelled'?'Renovação cancelada.':''}</p>}
                   {trial&&<p>{trial.revoked?'Chave do teste revogada.':`Fim do teste: ${new Date(trial.expires).toLocaleString('pt-BR')}.`}</p>}
                   <p>
-                    Seu espaço para construir com Fable 5.1, Astra 6 e GLM 5.
+                    {subscription?`Modelos do seu plano: ${subscription.models.map(model=>({'claude-fable-5-1':'Fable 5.1','gpt-6-astra':'Astra 6','glm-5':'GLM 5'}[model]||model)).join(', ')}.`:'Seu espaço para construir com Fable 5.1, Astra 6 e GLM 5.'}
                   </p>
                   <div className="six-plan-price">
-                    {demo ? <DashboardNumber value={119} format="money" replay={numberReplay} /> : "—"}
+                    {demo ? <DashboardNumber value={119} format="money" replay={numberReplay} /> : subscription?<DashboardNumber value={subscription.amount} format="money" replay={numberReplay}/>:"—"}
                     <span>
                       {demo
                         ? "/ mês · exemplo"
-                        : "Sem cobrança ativa · pagamentos ainda não conectados"}
+                        : subscription?(subscription.mode==='pix'?'/ 30 dias · pagamento com Pix':'/ mês · renovação pelo Mercado Pago'):"Sem cobrança ativa"}
                     </span>
                   </div>
                   <div className="six-plan-benefits">
                     {[
-                      "Chave individual de acesso",
+                      subscription&&!subscription.api?"Uso somente pelo site":"Chave individual de acesso",
                       "Configuração nas ferramentas compatíveis",
                       "Histórico e consumo por perfil",
                       "Tutoriais organizados em um só lugar",
@@ -1537,6 +1545,7 @@ export default function DashboardPage() {
                   <Link className="six-primary" to="/planos">
                     Ver planos disponíveis <ArrowUpRight size={15} />
                   </Link>
+                  {!demo&&<Link className="six-secondary" style={{marginTop:12}} to="/assinatura">Pagamentos, chave e cancelamento <ArrowRight size={15}/></Link>}
                 </section>
                 <section className="six-plan-note">
                   <img
@@ -1568,10 +1577,7 @@ export default function DashboardPage() {
                   </div>
                   <CreditCard size={18} />
                 </div>
-                {empty(
-                  "Nenhuma cobrança disponível",
-                  "Quando a integração de cobrança estiver conectada, seus pagamentos e recibos aparecerão aqui.",
-                )}
+                {subscription?<><p>Consulte a situação de cada pagamento e a data do período contratado.</p><Link className="six-primary" to="/assinatura">Ver meus pagamentos</Link></>:empty("Nenhuma cobrança disponível","Você ainda não contratou um plano nesta conta.")}
               </section>
             </>
           )}

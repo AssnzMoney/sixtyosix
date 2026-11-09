@@ -19,6 +19,8 @@ function fixture() {
     if (url.pathname.endsWith('/gateway_usage')) return Response.json([{id:1,client_id:own,requested_alias:'gpt-6-astra',input_tokens:500,output_tokens:20,status_code:200,created_at:'2026-01-01'}])
     if (url.pathname.endsWith('/gateway_trials')) return Response.json([])
     if (url.pathname.endsWith('/account_revoke_trial')) return Response.json(false)
+    if (url.pathname.endsWith('/billing_revoke_key')) return Response.json(false)
+    if (url.pathname.endsWith('/billing_key_access')||url.pathname.endsWith('/billing_subscription_state')) return Response.json([])
     if (url.pathname.includes('/rpc/')) return Response.json(own)
     throw new Error('Unexpected destination')
   }
