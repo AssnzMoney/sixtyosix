@@ -359,24 +359,26 @@ export default function LoginPage() {
         {/* Coluna Direita: Showcase com Arte Renascentista estilo AbacatePay */}
         <div className="login-right-col">
           <div className="login-showcase-panel">
-            {/* Pill superior estilo AbacatePay */}
-            <div className="login-art-pill">
-              Sem mensalidade em Dólar. Aprovação imediata no Pix.
-            </div>
-
-            {/* Composição Clássica estilo AbacatePay (As duas donzelas com a SixtySix) */}
-            <motion.div
-              className="login-art-stage"
-              initial={{ opacity: 0, y: 22, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <img
-                src="/assets/login-artwork-composite.webp"
-                alt="Composição Renascentista SixtySix"
-                className="login-art-composite-img"
+            {/* Palco Artístico com as Donzelas Renascentistas (Fotos 3 e 4) */}
+            <div className="login-art-stage">
+              <motion.img
+                src="/assets/login-art-lady-left.webp"
+                alt="Donzela Renascentista"
+                className="login-art-lady-left"
+                initial={{ opacity: 0, x: -35 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
               />
-            </motion.div>
+
+              <motion.img
+                src="/assets/login-art-lady-right.webp"
+                alt="Dama Renascentista"
+                className="login-art-lady-right"
+                initial={{ opacity: 0, x: 35 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+              />
+            </div>
 
             {/* Texto de Impacto Inferior com Slides */}
             <div className="showcase-bottom-copy">

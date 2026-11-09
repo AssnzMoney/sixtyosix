@@ -5342,59 +5342,78 @@ h2 em {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 50px 40px;
-  background: radial-gradient(circle at 50% 38%, #f8fdf9 0%, #eaf7ed 50%, #daf2e0 100%);
+  padding: 40px 0;
+  background: radial-gradient(circle at 50% 38%, #f8fdf9 0%, #eaf7ed 48%, #daf2e0 100%);
   position: relative;
   overflow: hidden;
 }
 
 .login-showcase-panel {
   width: 100%;
-  max-width: 600px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-}
-
-.login-art-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
-  border: 1px solid #c7eed2;
-  color: #1f4647;
-  font-family: 'Manrope', sans-serif;
-  font-size: 12.5px;
-  font-weight: 700;
-  padding: 6px 18px;
-  border-radius: 9999px;
-  box-shadow: 0 4px 12px rgba(31, 70, 71, 0.05);
-  letter-spacing: -0.01em;
+  gap: 24px;
+  position: relative;
+  z-index: 2;
 }
 
 .login-art-stage {
   width: 100%;
-  max-width: 560px;
+  height: 440px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: space-between;
   position: relative;
-  margin: 10px 0 15px;
+  margin: 0 0 10px;
 }
 
-.login-art-composite-img {
-  width: 100%;
-  height: auto;
-  max-height: 380px;
+.login-art-lady-left {
+  height: 420px;
+  width: auto;
   object-fit: contain;
-  filter: drop-shadow(0 18px 38px rgba(31, 70, 71, 0.09));
-  transition: transform 0.3s ease;
+  margin-left: -20px;
+  filter: drop-shadow(0 16px 36px rgba(31, 70, 71, 0.08));
+  user-select: none;
+  pointer-events: none;
 }
 
-.login-art-composite-img:hover {
-  transform: translateY(-2px) scale(1.01);
+.login-art-lady-right {
+  height: 485px;
+  width: auto;
+  object-fit: contain;
+  margin-right: -60px;
+  filter: drop-shadow(0 18px 40px rgba(31, 70, 71, 0.08));
+  user-select: none;
+  pointer-events: none;
+}
+
+@media (max-height: 850px) {
+  .login-art-stage {
+    height: 380px;
+  }
+  .login-art-lady-left {
+    height: 360px;
+    margin-left: -15px;
+  }
+  .login-art-lady-right {
+    height: 420px;
+    margin-right: -45px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .login-art-stage {
+    height: 340px;
+  }
+  .login-art-lady-left {
+    height: 320px;
+    margin-left: -10px;
+  }
+  .login-art-lady-right {
+    height: 375px;
+    margin-right: -35px;
+  }
 }
 
 /* Headline Inferior & Dots */
@@ -5403,7 +5422,9 @@ h2 em {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  max-width: 500px;
+  padding: 0 24px;
 }
 
 .showcase-headline {
