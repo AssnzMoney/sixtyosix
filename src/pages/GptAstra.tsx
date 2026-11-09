@@ -478,7 +478,7 @@ export default function GptAstraPage() {
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
               >
-                <span className="hero-handwritten-text">já dizia o filósofo:</span>
+                <span className="hero-handwritten-text">o segredo dos deuses:</span>
                 <svg
                   className="hero-handwritten-arrow"
                   width="36"
