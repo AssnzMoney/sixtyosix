@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
-import { isLocalhost } from '../lib/isLocalhost'
 import { Loader2, AlertCircle } from 'lucide-react'
 
 export default function AuthCallback() {
@@ -36,21 +35,15 @@ export default function AuthCallback() {
             localCustomName
           )
 
-          // Se estiver em ambiente local (localhost), libera o fluxo de onboarding / dashboard
-          if (isLocalhost()) {
-            if (!hasCompletedOnboarding) {
-              navigate('/onboarding')
-            } else {
-              navigate('/dashboard')
-            }
+          if (!hasCompletedOnboarding) {
+            navigate('/onboarding')
           } else {
-            // Em produção (no ar), a plataforma está desativada: volta para a página inicial
-            navigate('/')
+            navigate('/dashboard')
           }
         } else {
           // Aguarda brevemente se o hash ainda estiver sendo parseado
           const timeout = setTimeout(() => {
-            navigate(isLocalhost() ? '/dashboard' : '/')
+            navigate('/dashboard')
           }, 1500)
           return () => clearTimeout(timeout)
         }

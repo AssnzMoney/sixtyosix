@@ -8,7 +8,6 @@ import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
 import { useAuth } from '../lib/AuthContext'
-import { isLocalhost } from '../lib/isLocalhost'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -226,7 +225,7 @@ export default function App() {
           <div className="nav-right">
             {user ? (
               <div className="nav-user-logged">
-                <Link to={isLocalhost() ? "/dashboard" : "/login"} className="nav-user-badge" title={isLocalhost() ? `Conectado como ${user.email} - Acessar Dashboard` : `Conectado como ${user.email}`}>
+                <Link to="/dashboard" className="nav-user-badge" title={`Conectado como ${user.email} - Acessar Dashboard`}>
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt={user.name} className="nav-user-avatar" />
                   ) : (

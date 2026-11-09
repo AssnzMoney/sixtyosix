@@ -1,7 +1,6 @@
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AuthProvider } from './lib/AuthContext'
-import { isLocalhost } from './lib/isLocalhost'
 import HomePage from './pages/HomePage'
 import ClaudeCodePage from './pages/ClaudeCode'
 import GptAstraPage from './pages/GptAstra'
@@ -20,8 +19,6 @@ function ScrollToTop() {
 }
 
 export default function App() {
-  const localEnv = isLocalhost()
-
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -36,23 +33,11 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/entrar" element={<LoginPage />} />
           
-          {/* Rotas da Plataforma: liberadas estritamente em localhost (em produção redireciona silenciosamente para a home) */}
-          <Route
-            path="/onboarding"
-            element={localEnv ? <OnboardingPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/dashboard"
-            element={localEnv ? <DashboardPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/app"
-            element={localEnv ? <DashboardPage /> : <Navigate to="/" replace />}
-          />
-          <Route
-            path="/plataforma"
-            element={localEnv ? <DashboardPage /> : <Navigate to="/" replace />}
-          />
+          {/* Rotas da Plataforma */}
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/app" element={<DashboardPage />} />
+          <Route path="/plataforma" element={<DashboardPage />} />
 
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="*" element={<HomePage />} />

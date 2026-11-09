@@ -12,7 +12,6 @@ import {
   Mail,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
-import { isLocalhost } from '../lib/isLocalhost'
 
 const GoogleIcon = () => (
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -223,7 +222,7 @@ export default function LoginPage() {
                 <div className="login-logged-actions">
                   <button
                     type="button"
-                    onClick={() => navigate(isLocalhost() ? '/dashboard' : '/')}
+                    onClick={() => navigate('/dashboard')}
                     className="login-submit-btn is-ready"
                   >
                     Acessar Plataforma
