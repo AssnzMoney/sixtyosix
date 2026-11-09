@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, Check, X, Terminal, DollarSign } from 'lucide-react'
+import { Plus, Minus, ChevronDown, Check, X, DollarSign } from 'lucide-react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
@@ -14,34 +14,12 @@ const Arrow = () => (
 )
 
 const astraFaqs = [
-  [
-    'O que é o GPT Astra 6 e quais são seus diferenciais?',
-    'O GPT Astra 6 é o modelo de linguagem e visão multimodal de altíssima velocidade otimizado para desenvolvedores. Ele entrega respostas instantâneas, raciocínio avançado para engenharia de software e suporte nativo a leitura de imagens, mockups e interfaces, tudo conectado à sua chave SixtySix.',
-  ],
-  [
-    'O GPT Astra 6 suporta entrada multimodal (visão e imagens)?',
-    'Sim! O Astra 6 conta com inteligência multimodal nativa. Você pode enviar capturas de tela de bugs, diagramas de arquitetura, telas do Figma e mockups visuais diretamente no chat do Cursor ou assistentes do VS Code para gerar código correspondente instantaneamente.',
-  ],
-  [
-    'Em quais ferramentas e IDEs posso utilizar o GPT Astra 6?',
-    'Você pode utilizar no Cursor IDE, VS Code (via extensões Cline, Roo Code, Continue ou CodeGPT), Codex CLI, Prompt de Comando, PowerShell ou qualquer biblioteca compatível com a API padrão OpenAI (como a SDK oficial de Python e TypeScript).',
-  ],
-  [
-    'Como funciona o teste de 7 dias grátis?',
-    'Você pode testar o GPT Astra 6 sem compromisso. Crie sua conta, solicite sua chave individual de teste com o nosso suporte no WhatsApp e comece a rodar o modelo hoje mesmo, sem precisar cadastrar cartão de crédito.',
-  ],
-  [
-    'Qual o endpoint de gateway e nome do modelo para configurar?',
-    'O endpoint base padrão compatível é https://www.sixtysix.online/v1 e o identificador do modelo é gpt-astra-6. O passo a passo com instruções para Cursor, VS Code e Terminal está detalhado na seção acima.',
-  ],
-  [
-    'A SixtySix impõe limites de mensagens a cada poucas horas como no ChatGPT Plus?',
-    'Não! Na SixtySix você tem acesso ilimitado sem cortes de cota a cada 3 ou 5 horas. Você pode codificar o dia todo com fluxo contínuo e previsibilidade de custo em Reais via Pix.',
-  ],
-  [
-    'Posso usar minha chave simultaneamente no Cursor e no terminal?',
-    'Sim, sua chave individual SixtySix é multi-ambiente. Você pode conectá-la simultaneamente no seu Cursor para pair programming visual e no seu terminal para automações e scripts.',
-  ],
+  ['O que significa GPT Astra 6?', 'É o nome do perfil exibido no Codex. O gateway pode encaminhar as solicitações a diferentes modelos compatíveis; por isso o nome do perfil não garante um modelo upstream específico.'],
+  ['O GPT Astra 6 funciona no Codex?', 'Sim. No Codex, use o provedor personalizado Responses da SixtySix, a chave individual e o ID gpt-6-astra. Siga o arquivo config.toml mostrado nesta página.'],
+  ['Posso usar GLM no Codex?', 'Não pela configuração atual do gateway. O catálogo do Codex aceita somente gpt-6-astra. O perfil GLM 5 é separado e deve ser usado no ZCode.'],
+  ['Qual é a URL e como informo a chave?', 'A URL base é https://www.sixtysix.online/v1. Salve sua chave individual na variável SIXTYSIX_GATEWAY_API_KEY do Windows e referencie essa variável no config.toml; não cole a chave diretamente nesse arquivo.'],
+  ['O Codex pode usar ferramentas?', 'A rota dá suporte a respostas em streaming e chamadas de ferramentas padrão. Recursos exclusivos da OpenAI, incluindo web search, imagem e áudio, não fazem parte desse perfil.'],
+  ['Há limite de uso garantido?', 'Não há garantia de disponibilidade ou uso ilimitado. As cotas e o desempenho dependem do pool compartilhado e podem variar.'],
 ]
 
 export default function GptAstraPage() {
@@ -50,7 +28,6 @@ export default function GptAstraPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [heroAction, setHeroAction] = useState<'primary' | 'secondary'>('primary')
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
-  const [selectedApp, setSelectedApp] = useState<'cursor' | 'vscode' | 'terminal'>('cursor')
   const [calcUsd, setCalcUsd] = useState(100)
   const [devWithApi, setDevWithApi] = useState(false)
 
@@ -139,7 +116,7 @@ export default function GptAstraPage() {
             </div>
           </div>
           <div className="nav-right">
-            <Link to="/login" className="nav-login-link">
+            <Link to="/" className="nav-login-link">
               Entrar
             </Link>
             <a href="#planos-astra" className="nav-cta-btn">
@@ -176,7 +153,7 @@ export default function GptAstraPage() {
                   </Link>
                 </div>
                 <div className="nav-mobile-group">
-                  <span className="nav-mobile-group-title">Modelos Oficiais de IA</span>
+                  <span className="nav-mobile-group-title">Perfis de IA</span>
                   <Link
                     to="/astra-6"
                     className="nav-mobile-item"
@@ -185,7 +162,7 @@ export default function GptAstraPage() {
                     <div className="nav-mobile-item-head">
                       <strong>GPT Astra 6</strong>
                     </div>
-                    <small>Velocidade ultra-rápida e inteligência multimodal</small>
+                    <small>Velocidade ultra-rápida e respostas de texto e ferramentas padrão</small>
                   </Link>
                   <Link
                     to="/claude-code"
@@ -249,7 +226,7 @@ export default function GptAstraPage() {
                     Garantir no Pix <Arrow />
                   </a>
                   <Link
-                    to="/login"
+                    to="/"
                     className="nav-mobile-btn-secondary"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -269,7 +246,7 @@ export default function GptAstraPage() {
           >
             <div className="mega-menu-grid">
               <div className="mega-menu-col">
-                <span className="mega-menu-col-title">Modelos Oficiais de IA</span>
+                <span className="mega-menu-col-title">Perfis de IA</span>
                 <div className="mega-menu-items">
                   <Link
                     to="/astra-6"
@@ -280,7 +257,7 @@ export default function GptAstraPage() {
                     }}
                   >
                     <strong>GPT Astra 6</strong>
-                    <span>Velocidade ultra-rápida e inteligência multimodal.</span>
+                    <span>Velocidade ultra-rápida e respostas de texto e ferramentas padrão.</span>
                   </Link>
                   <Link
                     to="/claude-code"
@@ -298,8 +275,8 @@ export default function GptAstraPage() {
                     <span>Excelente em refatoração, documentação e testes.</span>
                   </Link>
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>Conexão Direta Oficial</strong>
-                    <span>Sem intermediários, sem compressão e sem erros 429.</span>
+                    <strong>Conexão pelo Gateway</strong>
+                    <span>A disponibilidade e as cotas dependem do pool compartilhado.</span>
                   </a>
                 </div>
               </div>
@@ -330,8 +307,8 @@ export default function GptAstraPage() {
                 <span className="mega-menu-col-title">Diferenciais SixtySix</span>
                 <div className="mega-menu-items">
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>Uso 100% Ilimitado</strong>
-                    <span>Sem limites diários de prompts ou cortes de velocidade.</span>
+                    <strong>Uso conforme cotas</strong>
+                    <span>As cotas e a disponibilidade podem variar.</span>
                   </a>
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Zero Rateio & Chave Própria</strong>
@@ -378,7 +355,7 @@ export default function GptAstraPage() {
               transition={{ duration: 0.9, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
             >
               <span className="hero-abacate-dot" />
-              <span>GPT Astra 6 Multimodal SixtySix</span>
+              <span>GPT Astra 6 no Codex</span>
             </motion.div>
 
             <h1 className="hero-abacate-title">
@@ -406,7 +383,7 @@ export default function GptAstraPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.0, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              Desenvolva com inteligência multimodal ultra-rápida conectando sua chave individual SixtySix diretamente no <strong>Cursor</strong>, <strong>VS Code (Cline & Roo)</strong> ou <strong>Codex</strong>. Sem cortes de cotas a cada poucas horas e com preço fixo em Reais via Pix.
+              Desenvolva com respostas de texto e ferramentas padrão ultra-rápida conectando sua chave individual SixtySix diretamente no <strong>Cursor</strong>, <strong>VS Code (Cline & Roo)</strong> ou <strong>Codex</strong>. As cotas e a disponibilidade podem variar e com preço fixo em Reais via Pix.
             </motion.p>
 
             <motion.div
@@ -527,7 +504,7 @@ export default function GptAstraPage() {
                 <div className="floating-badge-copy">
                   <span className="floating-badge-label">GPT Astra 6 · agora</span>
                   <span className="floating-badge-val">
-                    <strong>100% Ilimitado</strong>
+                    <strong>Cotas compartilhadas</strong>
                     <span className="badge-pill-green">Ativo</span>
                   </span>
                 </div>
@@ -566,8 +543,8 @@ export default function GptAstraPage() {
         >
           {[
             { val: 'Zero Rateio', desc: 'chave própria e individual' },
-            { val: 'Ultra-rápido', desc: 'baixa latência no Cursor e IDEs' },
-            { val: 'Multimodal', desc: 'leitura de imagens e visão nativa' },
+            { val: 'Codex Responses', desc: 'baixa latência no Cursor e IDEs' },
+            { val: 'Protocolo Responses', desc: 'respostas em streaming e ferramentas padrão' },
             { val: 'No Pix', desc: 'preço fixo sem sustos em Dólar' },
           ].map((stat, i) => (
             <motion.div
@@ -596,299 +573,44 @@ export default function GptAstraPage() {
         >
           <span className="eyebrow">instruções de conexão</span>
           <h2 className="claude-section-title">
-            Como conectar o <em>GPT Astra 6</em> no seu editor.
+            Como conectar o <em>GPT Astra 6</em> no Codex.
           </h2>
           <p className="claude-section-subtitle">
-            Em menos de 2 minutos você aponta o gateway oficial da SixtySix no Cursor, VS Code ou Terminal e começa a codificar com uso ilimitado.
+            Configure o provedor Responses do Codex com a URL, o alias e sua chave individual.
           </p>
         </motion.div>
 
-        {/* Seletor de Aplicativo estilo Pílula */}
-        <motion.div
-          className="tutorial-tabs-wrap"
-          initial={{ opacity: 0, scale: 0.94 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.9, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="tutorial-tabs">
-            <button
-              type="button"
-              className={`tutorial-tab-btn ${selectedApp === 'cursor' ? 'active' : ''}`}
-              onClick={() => setSelectedApp('cursor')}
-            >
-              <span>Cursor IDE</span>
-            </button>
-            <button
-              type="button"
-              className={`tutorial-tab-btn ${selectedApp === 'vscode' ? 'active' : ''}`}
-              onClick={() => setSelectedApp('vscode')}
-            >
-              <span>VS Code (Cline / Roo)</span>
-            </button>
-            <button
-              type="button"
-              className={`tutorial-tab-btn ${selectedApp === 'terminal' ? 'active' : ''}`}
-              onClick={() => setSelectedApp('terminal')}
-            >
-              <Terminal size={15} />
-              <span>Codex & Terminal</span>
-            </button>
-          </div>
-        </motion.div>
+        <div className="tutorial-pane">
+          <div className="tutorial-intro-card"><p>O perfil <strong>GPT Astra 6</strong> funciona no Codex pelo protocolo Responses. O identificador aceito é <code>gpt-6-astra</code>.</p></div>
+          <div className="tutorial-steps-grid">
+            <div className="claude-step-card tutorial-step-large">
+              <div className="claude-step-top"><span className="claude-step-badge">Passo 01</span><h4>Guarde sua chave no Windows</h4></div>
+              <p>Abra o PowerShell e execute o comando abaixo, trocando o texto pelo valor da sua chave individual. Feche e reabra o Codex depois.</p>
+              <div className="code-block-box"><pre>{`setx SIXTYSIX_GATEWAY_API_KEY "SUA_CHAVE_INDIVIDUAL"`}</pre></div>
+              <span className="tutorial-footnote">Não compartilhe a chave e não a coloque diretamente no config.toml.</span>
+            </div>
+            <div className="claude-step-card tutorial-step-large">
+              <div className="claude-step-top"><span className="claude-step-badge">Passo 02</span><h4>Configure o Codex</h4></div>
+              <p>Crie ou edite <code>%USERPROFILE%\.codex\config.toml</code>. Se já houver uma tabela <code>[model_providers.sixtysix]</code>, mescle os campos em vez de repetir a tabela.</p>
+              <div className="code-block-box"><pre>{`model = "gpt-6-astra"
+model_provider = "sixtysix"
+web_search = "disabled"
 
-        {/* Aba 1: Cursor IDE */}
-        {selectedApp === 'cursor' && (
-          <div className="tutorial-pane">
-            <motion.div
-              className="tutorial-intro-card"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <p>
-                No <strong>Cursor IDE</strong>, configure a Base URL customizada da OpenAI para apontar ao gateway oficial da SixtySix.
-                Assim você usa o modelo <code>gpt-astra-6</code> diretamente na aba de chat e no autocompletar de código sem cortes de cotas.
-              </p>
-            </motion.div>
-
-            <div className="tutorial-steps-grid">
-              <motion.div
-                className="claude-step-card"
-                initial={{ opacity: 0, x: -50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 01</span>
-                  <h4>Defina a Base URL do Gateway</h4>
-                </div>
-                <p>Nas configurações do Cursor (ícone de engrenagem) &gt; <strong>Models</strong>, ative <strong>Override OpenAI Base URL</strong> e cole:</p>
-                <div className="snippet-box">
-                  <code>https://www.sixtysix.online/v1</code>
-                  <button
-                    type="button"
-                    className="btn-copy"
-                    onClick={() => copyText('https://www.sixtysix.online/v1')}
-                  >
-                    {copiedSnippet === 'https://www.sixtysix.online/v1' ? <Check /> : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                    )}
-                    <span>{copiedSnippet === 'https://www.sixtysix.online/v1' ? 'Copiado!' : 'Copiar'}</span>
-                  </button>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="claude-step-card tutorial-step-large"
-                initial={{ opacity: 0, x: 50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 1.15, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 02</span>
-                  <h4>Adicione o Modelo e Cole sua Chave</h4>
-                </div>
-                <p>Insira sua chave individual no campo OpenAI API Key e adicione o modelo com o identificador exato abaixo:</p>
-                <div className="code-block-box">
-                  <pre>
-{`Modelo: gpt-astra-6
-Base URL: https://www.sixtysix.online/v1
-OpenAI API Key: SUA_CHAVE_INDIVIDUAL`}
-                  </pre>
-                  <button
-                    type="button"
-                    className="code-block-copy-btn"
-                    onClick={() => copyText('gpt-astra-6')}
-                  >
-                    {copiedSnippet === 'gpt-astra-6' ? (
-                      <>
-                        <Check size={14} />
-                        <span>Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                        <span>Copiar Nome do Modelo</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <span className="tutorial-footnote">
-                  Dica: clique em <strong>Verify</strong> no Cursor para testar a conexão com o gateway SixtySix.
-                </span>
-              </motion.div>
+[model_providers.sixtysix]
+name = "Gateway"
+base_url = "https://www.sixtysix.online/v1"
+wire_api = "responses"
+requires_openai_auth = false
+env_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }
+model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
+            </div>
+            <div className="claude-step-card">
+              <div className="claude-step-top"><span className="claude-step-badge">Atenção</span><h4>GLM é outra configuração</h4></div>
+              <p>GLM 5 não aparece no catálogo do Codex. Para usar esse perfil, configure-o no ZCode com <code>https://www.sixtysix.online/glm</code> e o ID <code>glm-5</code>.</p>
+              <span className="tutorial-footnote">O perfil GPT Astra 6 é um alias; o modelo upstream pode variar. A rota não garante um modelo oficial GPT específico.</span>
             </div>
           </div>
-        )}
-
-        {/* Aba 2: VS Code (Cline / Roo Code) */}
-        {selectedApp === 'vscode' && (
-          <div className="tutorial-pane">
-            <motion.div
-              className="tutorial-intro-card"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <p>
-                No <strong>VS Code</strong>, abra a extensão <strong>Cline</strong> ou <strong>Roo Code</strong>.
-                Selecione o provedor <strong>OpenAI Compatible</strong> para que você tenha autonomia total de edição de arquivos e inteligência multimodal de imagens.
-              </p>
-            </motion.div>
-
-            <div className="tutorial-steps-grid">
-              <motion.div
-                className="claude-step-card"
-                initial={{ opacity: 0, x: -50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 01</span>
-                  <h4>Selecione o Provedor</h4>
-                </div>
-                <p>Nas configurações do assistente, altere o provedor para <strong>OpenAI-Compatible</strong> e defina o Base URL:</p>
-                <div className="snippet-box">
-                  <code>https://www.sixtysix.online/v1</code>
-                  <button
-                    type="button"
-                    className="btn-copy"
-                    onClick={() => copyText('https://www.sixtysix.online/v1')}
-                  >
-                    {copiedSnippet === 'https://www.sixtysix.online/v1' ? <Check /> : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                    )}
-                    <span>{copiedSnippet === 'https://www.sixtysix.online/v1' ? 'Copiado!' : 'Copiar'}</span>
-                  </button>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="claude-step-card tutorial-step-large"
-                initial={{ opacity: 0, x: 50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 1.15, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 02</span>
-                  <h4>Insira o Model ID e Chave</h4>
-                </div>
-                <p>Preencha os campos com suas credenciais oficiais SixtySix:</p>
-                <div className="code-block-box">
-                  <pre>
-{`API Provider: OpenAI-Compatible
-Base URL: https://www.sixtysix.online/v1
-Model ID: gpt-astra-6
-API Key: SUA_CHAVE_INDIVIDUAL`}
-                  </pre>
-                  <button
-                    type="button"
-                    className="code-block-copy-btn"
-                    onClick={() => copyText(`https://www.sixtysix.online/v1\ngpt-astra-6`)}
-                  >
-                    {copiedSnippet?.includes('gpt-astra-6') ? (
-                      <>
-                        <Check size={14} />
-                        <span>Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                        <span>Copiar Parâmetros</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <span className="tutorial-footnote">
-                  Importante: o modelo suporta upload de imagens e mockups diretamente pelo chat do VS Code.
-                </span>
-              </motion.div>
-            </div>
-          </div>
-        )}
-
-        {/* Aba 3: Terminal & Codex */}
-        {selectedApp === 'terminal' && (
-          <div className="tutorial-pane">
-            <motion.div
-              className="tutorial-intro-card"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <p>
-                Para rodar o <strong>GPT Astra 6</strong> no terminal Windows, no <strong>Codex</strong> ou em scripts Python e Node.js,
-                configure as variáveis de ambiente com os comandos abaixo no Prompt de Comando (CMD):
-              </p>
-            </motion.div>
-
-            <div className="tutorial-codex-grid">
-              <div className="claude-step-card">
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 01</span>
-                  <h4>Configure a Base URL no Windows</h4>
-                </div>
-                <p>Execute no CMD para salvar a URL global compatível com qualquer biblioteca OpenAI:</p>
-                <div className="snippet-box">
-                  <code>setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"</code>
-                  <button
-                    type="button"
-                    className="btn-copy"
-                    onClick={() => copyText('setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"')}
-                  >
-                    {copiedSnippet === 'setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"' ? <Check /> : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                    )}
-                    <span>{copiedSnippet === 'setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"' ? 'Copiado!' : 'Copiar'}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="claude-step-card tutorial-step-large">
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 02</span>
-                  <h4>Defina sua Chave Individual</h4>
-                </div>
-                <p>Substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua própria chave fornecida no WhatsApp:</p>
-                <div className="code-block-box">
-                  <pre>
-{`setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"
-setx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"
-setx OPENAI_MODEL "gpt-astra-6"`}
-                  </pre>
-                  <button
-                    type="button"
-                    className="code-block-copy-btn"
-                    onClick={() => copyText(`setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"\nsetx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"\nsetx OPENAI_MODEL "gpt-astra-6"`)}
-                  >
-                    {copiedSnippet?.includes('OPENAI_API_KEY') ? (
-                      <>
-                        <Check size={14} />
-                        <span>Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                        <span>Copiar Comandos CMD</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <span className="tutorial-footnote">
-                  Após executar, feche e reabra o terminal para carregar as novas variáveis persistidas.
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </section>
 
       {/* Seção de Introdução ao Preço & Custos estilo AbacatePay */}
@@ -907,7 +629,7 @@ setx OPENAI_MODEL "gpt-astra-6"`}
               <span className="highlight-green-text">GPT Astra 6?</span>
             </h2>
             <p className="claude-price-intro-sub">
-              A partir de <strong>R$ 79,99 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong> a cada poucas horas.
+              A partir de <strong>R$ 79,99 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>conforme cotas e disponibilidade</strong> a cada poucas horas.
               Diferente de assinar plataformas no cartão com IOF de 4,38% e taxa de câmbio abusiva, aqui o <strong>valor é previsível em Reais</strong>.
               Veja os <a href="#planos-astra">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>
@@ -1132,7 +854,7 @@ setx OPENAI_MODEL "gpt-astra-6"`}
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
               <li><Check /> <span><strong>GPT Astra 6</strong>, <strong>Claude Fable 5.1</strong> e <strong>GLM-4</strong></span></li>
               <li><Check /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
-              <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
+              <li><Check /> <span><strong>Chave individual</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="plan-btn">
@@ -1190,7 +912,7 @@ setx OPENAI_MODEL "gpt-astra-6"`}
               <li><Check size={14} /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
               {devWithApi ? (
                 <>
-                  <li><Check size={14} /> <span><strong>Chave de API oficial inclusa</strong> (+ R$ 15/mês)</span></li>
+                  <li><Check size={14} /> <span><strong>Chave de API individual</strong> (+ R$ 15/mês)</span></li>
                   <li><Check size={14} /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
                   <li><Check size={14} /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
                 </>
@@ -1206,7 +928,7 @@ setx OPENAI_MODEL "gpt-astra-6"`}
                   <li><Check size={14} /> <span><strong>Ambiente próprio</strong> sem rateio</span></li>
                 </>
               )}
-              <li><Check size={14} /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
+              <li><Check size={14} /> <span><strong>Acesso ao gateway SixtySix</strong></span></li>
               <li><Check size={14} /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
             <a
@@ -1247,9 +969,9 @@ setx OPENAI_MODEL "gpt-astra-6"`}
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
               <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
-              <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
+              <li><Check /> <span><strong>Uso conforme cotas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
-              <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
+              <li><Check /> <span><strong>Perfis de acesso</strong> (disponibilidade variável)</span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong>, <strong>VS Code</strong>, <strong>Codex</strong></span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> sem IOF via Pix</span></li>
             </ul>
