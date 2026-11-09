@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { createAccountService } from './account.ts'
+import { createAccountService } from '../api/account.ts'
 
 const uid = '1a9ff780-4164-4952-a9af-cbf41cc02042'
 const own = '11111111-1111-4111-8111-111111111111'
