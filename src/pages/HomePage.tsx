@@ -247,9 +247,9 @@ export default function App() {
                 <Link to="/login" className="nav-login-link">
                   Entrar
                 </Link>
-                <a href="#planos" className="nav-cta-btn">
+                <Link to="/criar-conta" className="nav-cta-btn">
                   Criar conta grátis
-                </a>
+                </Link>
               </>
             )}
             <button
@@ -357,13 +357,13 @@ export default function App() {
                 </div>
 
                 <div className="nav-mobile-actions">
-                  <a
-                    href="#planos"
+                  <Link
+                    to="/criar-conta"
                     className="nav-mobile-btn-primary"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Criar conta grátis <Arrow />
-                  </a>
+                  </Link>
                   <Link
                     to="/login"
                     className="nav-mobile-btn-secondary"
