@@ -26,11 +26,13 @@ O botão do painel usa /planos, que abre a seção /#planos diretamente. A rolag
 
 Objetivo: conta confirmada → escolha de plano → pagamento → confirmação recebida pelo servidor → acesso individual no painel → tutorial. Nenhuma entrega manual por WhatsApp.
 
-Mercado Pago ainda não conectado. Não há checkout, webhook de pagamento ou assinatura recorrente operando neste repositório. Não anunciar a entrega automática como concluída antes do teste integrado.
+Os botões pagos da LP agora apontam para os links Mercado Pago fornecidos pelo proprietário: Dev R$79,99, Dev com API R$94,99 e Pro R$119. O seletor da variante Dev altera tanto o preço quanto o destino do botão.
+
+Mercado Pago ainda não conectado ao servidor. Não há webhook de pagamento ou assinatura recorrente operando neste repositório. Os links abrem a cobrança externa, mas não comprovam pagamento nem vinculam sozinhos a compra à conta. Não anunciar a entrega automática como concluída antes do teste integrado. O link de R$94,99 recebido é uma URL longa de checkout; substituir pelo link curto permanente da mesma cobrança quando disponível.
 
 ### Dados necessários do proprietário
 
-1. Links de pagamento e correspondência de cada plano/variante.
+1. Links de pagamento recebidos e associados aos botões. Confirmar o link curto permanente da variante Dev com API.
 2. Credencial de servidor da aplicação Mercado Pago e segredo de assinatura das notificações, configurados como variáveis privadas na Vercel. Nunca usar prefixo VITE_ para segredos.
 3. Confirmar catálogo, preços, acesso à API e modelos autorizados de cada variante. A LP atual tem Dev por R$79,99, Dev com API por R$94,99 e Pro por R$119; mensagens antigas citaram outros valores. Não assumir que um deles é definitivo.
 4. Confirmar se a cobrança será recorrente ou pagamento avulso com vigência. Link de pagamento avulso não cria assinatura recorrente automaticamente.

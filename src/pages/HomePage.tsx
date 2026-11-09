@@ -9,6 +9,12 @@ import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
 import { useAuth } from '../lib/AuthContext'
 
+const paymentLinks = {
+  dev: 'https://mpago.la/1ERx2oZ',
+  devApi: 'https://www.mercadopago.com.br/checkout/v1/payment/redirect/4cfcb710-0ce5-4fd9-8a32-1ff6ca36972f/payment-option-form/?source=link&router-request-id=a08b5478-9721-4db4-84f1-f120e0620efc&preference-id=3385620854-582e4225-91c6-44e0-83f2-84d56ced584f&p=75f00389995c0cad9dc0cd6bb45962ea',
+  pro: 'https://mpago.la/1W2DipL',
+}
+
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M5 12h14M13 6l6 6-6 6" />
@@ -1125,7 +1131,7 @@ export default function App() {
               <li><Check /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
-            <a href="#duvidas" className="plan-btn">
+            <a href={devWithApi ? paymentLinks.devApi : paymentLinks.dev} className="plan-btn">
               {devWithApi ? 'Começar no Dev com API' : 'Começar no Dev (Via Site)'}
             </a>
           </motion.div>
@@ -1160,7 +1166,7 @@ export default function App() {
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong>, <strong>VS Code</strong>, <strong>Codex</strong></span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> sem IOF via Pix</span></li>
             </ul>
-            <a href="#duvidas" className="plan-btn plan-btn-featured">
+            <a href={paymentLinks.pro} className="plan-btn plan-btn-featured">
               Garantir Acesso Ilimitado <Arrow />
             </a>
           </motion.div>
