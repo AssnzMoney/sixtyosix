@@ -5348,42 +5348,16 @@ h2 em {
   overflow: hidden;
 }
 
-/* Esfumado na borda esquerda (transição suave para a área de credenciais) */
-.login-left-edge-fade {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 140px;
-  background: linear-gradient(to right, #ffffff 15%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 100%);
-  pointer-events: none;
-  z-index: 5;
-}
-
-/* Esfumado na borda direita (transição suave para a borda final) */
-.login-right-edge-fade {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0;
-  width: 140px;
-  background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.85) 50%, #ffffff 85%);
-  pointer-events: none;
-  z-index: 5;
-}
-
-/* Esfumado verde suave na borda final inferior */
+/* Esfumado verde na borda final inferior (pega toda a largura e sobe nos cantos laterais) */
 .login-bottom-glow {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 155px;
-  object-fit: cover;
-  object-position: bottom center;
+  height: 330px;
+  object-fit: fill;
   pointer-events: none;
   z-index: 1;
-  opacity: 0.95;
 }
 
 .login-showcase-panel {
@@ -5398,7 +5372,7 @@ h2 em {
 
 .login-art-stage {
   width: 100%;
-  height: 470px;
+  height: 480px;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -5407,13 +5381,11 @@ h2 em {
 }
 
 .login-art-lady-left {
-  height: 420px;
+  height: 425px;
   width: auto;
   object-fit: contain;
-  margin-left: -30px;
+  margin-left: -20px;
   margin-bottom: -10px;
-  -webkit-mask-image: linear-gradient(to left, black 65%, transparent 95%);
-  mask-image: linear-gradient(to left, black 65%, transparent 95%);
   filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.05));
   user-select: none;
   pointer-events: none;
@@ -5423,16 +5395,17 @@ h2 em {
   height: 520px;
   width: auto;
   object-fit: contain;
-  margin-right: -100px;
+  margin-right: -80px;
   margin-bottom: -35px;
-  -webkit-mask-image: linear-gradient(to right, black 65%, transparent 95%);
-  mask-image: linear-gradient(to right, black 65%, transparent 95%);
   filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.05));
   user-select: none;
   pointer-events: none;
 }
 
 @media (max-height: 850px) {
+  .login-bottom-glow {
+    height: 270px;
+  }
   .login-art-stage {
     height: 400px;
   }
@@ -5449,6 +5422,9 @@ h2 em {
 }
 
 @media (max-width: 1100px) {
+  .login-bottom-glow {
+    height: 250px;
+  }
   .login-art-stage {
     height: 350px;
   }
