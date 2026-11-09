@@ -153,7 +153,7 @@ function FaqSection({ faqs }: { faqs: FaqItem[] }) {
         Frequently asked questions
       </h3>
 
-      <Accordion defaultValue={["item-1"]} className="flex flex-col gap-2">
+      <Accordion type="multiple" defaultValue={["item-1"]} className="flex flex-col gap-2">
         {faqs.map((item) => (
           <AccordionItem
             value={item.value}

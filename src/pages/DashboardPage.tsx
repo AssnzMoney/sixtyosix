@@ -1,1391 +1,1683 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { Link } from "react-router-dom"
 import {
   Activity,
-  Key,
-  Terminal,
-  MessageSquare,
-  CreditCard,
-  Copy,
-  Check,
-  Plus,
-  Trash2,
-  LogOut,
-  Sparkles,
-  ExternalLink,
-  ShieldCheck,
-  Zap,
-  TrendingUp,
-  X,
-  Send,
-  Bot,
-  User as UserIcon,
-  Menu,
-  Bell,
+  PanelLeftClose,
+  PanelLeftOpen,
   Sun,
   Moon,
-  ChevronDown,
-  ChevronUp,
-  ChevronRight,
-  Building2,
-  Lock,
-  Edit3,
-  HelpCircle,
-  Clock,
+  ArrowDownLeft,
   ArrowUpRight,
-  Layers,
-  Coins,
-  ArrowLeft,
-  DollarSign,
-  TrendingDown,
-  Cpu,
-} from 'lucide-react'
-import { useAuth } from '../lib/AuthContext'
-import { getApiKeys, createApiKey, revokeApiKey, ApiKeyItem } from '../lib/apiKeys'
+  ArrowRight,
+  BookOpen,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CircleHelp,
+  Copy,
+  CreditCard,
+  Download,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Search,
+  Settings2,
+  ShieldCheck,
+  Sparkles,
+  Terminal,
+  X,
+  Zap,
+  RefreshCw,
+  CircleCheck,
+} from "lucide-react"
+import { useAuth } from "../lib/AuthContext"
+import { accountRequest, accountSummary } from "../lib/account"
+import NumberRoller from "../components/ui/number-roller"
+import { useInView } from "framer-motion"
+import "./dashboard.css"
 
-const GoogleIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-    <path
-      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z"
-      fill="#4285F4"
-    />
-    <path
-      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.13C3.26 21.36 7.33 24 12 24z"
-      fill="#34A853"
-    />
-    <path
-      d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.13z"
-      fill="#FBBC05"
-    />
-    <path
-      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.13c.95-2.83 3.6-4.96 6.72-4.96z"
-      fill="#EA4335"
-    />
-  </svg>
-)
+type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help"
+type Model = string
+type RequestRow = {
+  id: string
+  date: string
+  model: Model
+  input: number
+  output: number
+  duration: number
+  success: boolean
+}
+type KeyRow = {
+  id: string
+  name: string
+  prefix: string
+  active: boolean
+  created: string
+}
+const models: Model[] = ["Fable 5.1", "Astra 6", "GLM 5"]
+const nav = [
+  { id: "overview", label: "Visão geral", icon: LayoutDashboard },
+  { id: "usage", label: "Meu consumo", icon: Activity },
+  { id: "keys", label: "Chaves de API", icon: KeyRound },
+  { id: "guides", label: "Como conectar", icon: Terminal },
+  { id: "plan", label: "Plano e assinatura", icon: CreditCard },
+] as const
+const n = (v: number) => new Intl.NumberFormat("pt-BR").format(v)
+const compact = (v: number) =>
+  new Intl.NumberFormat("pt-BR", {
+    notation: "compact",
+    maximumFractionDigits: 2,
+  }).format(v)
+const money = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+const dayKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+const dateLabel = (date: string) =>
+  new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
 
-const DiscordIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="#5865F2">
-    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.893.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-  </svg>
-)
+function demoRequests(): RequestRow[] {
+  const result: RequestRow[] = []
+  for (let d = 29; d >= 0; d--) {
+    const count = 6 + ((d * 7) % 13)
+    for (let i = 0; i < count; i++) {
+      const date = new Date()
+      date.setDate(date.getDate() - d)
+      date.setHours(8 + (i % 13), (i * 13) % 60, 0, 0)
+      if (date.getTime() > Date.now()) date.setTime(Date.now() - i * 60000)
+      const model = models[(i + d) % 5 < 3 ? 0 : (i + d) % 5 === 3 ? 1 : 2]
+      result.push({
+        id: `demo-${d}-${i}`,
+        date: date.toISOString(),
+        model,
+        input: 18000 + ((i * 6329 + d * 4127) % 62000),
+        output: 1200 + ((i * 451 + d * 317) % 6200),
+        duration: 1.2 + ((i + d) % 28) / 10,
+        success: (d * 13 + i) % 43 !== 0,
+      })
+    }
+  }
+  return result.sort((a, b) => b.date.localeCompare(a.date))
+}
 
-/* Ícone 3D Isometric Pedestal com Maço de Notas Verdes Neon (Idêntico ao print) */
-const MoneyPedestalIcon = () => (
-  <svg width="105" height="105" viewBox="0 0 130 130" fill="none" className="neon-pedestal-svg">
-    <defs>
-      <filter id="neon-glow-money" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="8" result="blur" />
-        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-      </filter>
-      <linearGradient id="money-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#dcfce7" />
-        <stop offset="40%" stopColor="#86efac" />
-        <stop offset="100%" stopColor="#22c55e" />
-      </linearGradient>
-    </defs>
-    {/* Base Pedestal Isométrico Escuro */}
-    <ellipse cx="65" cy="104" rx="46" ry="16" fill="#090d13" opacity="0.8" />
-    <path d="M24 88 L65 104 L106 88 L65 72 Z" fill="#1e2634" stroke="#2d3748" strokeWidth="1.5" />
-    <path d="M24 88 L24 97 L65 113 L65 104 Z" fill="#111827" />
-    <path d="M65 104 L65 113 L106 97 L106 88 Z" fill="#1b2432" />
-    {/* Anel de Neon Verde Brilhante no Pedestal */}
-    <ellipse cx="65" cy="88" rx="30" ry="11" fill="#22c55e" fillOpacity="0.5" filter="url(#neon-glow-money)" />
-    <ellipse cx="65" cy="88" rx="25" ry="8.5" stroke="#86efac" strokeWidth="2.5" />
-    {/* Maço Isométrico de Dinheiro Flutuando */}
-    <g transform="translate(0, -6)">
-      {/* Camadas inferiores */}
-      <path d="M42 54 L75 38 L98 50 L65 66 Z" fill="#15803d" />
-      <path d="M42 54 L42 60 L65 72 L65 66 Z" fill="#166534" />
-      <path d="M65 66 L65 72 L98 56 L98 50 Z" fill="#14532d" />
-      {/* Camada topo neon */}
-      <path d="M40 48 L73 32 L96 44 L63 60 Z" fill="url(#money-grad)" stroke="#4ade80" strokeWidth="1.5" />
-      <ellipse cx="68" cy="46" rx="8" ry="4" fill="#166534" fillOpacity="0.35" stroke="#22c55e" strokeWidth="1.2" />
-      <path d="M52 38 L55 39.5" stroke="#166534" strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M81 52 L84 53.5" stroke="#166534" strokeWidth="1.5" strokeLinecap="round" />
-    </g>
-  </svg>
-)
+function CodeBlock({
+  code,
+  copy,
+}: {
+  code: string
+  copy: (text: string) => void
+}) {
+  return (
+    <div className="six-code">
+      <div>
+        <span>
+          <Terminal size={13} /> Configuração
+        </span>
+        <button onClick={() => copy(code)}>
+          <Copy size={13} /> Copiar
+        </button>
+      </div>
+      <pre>
+        <code>{code}</code>
+      </pre>
+    </div>
+  )
+}
 
-/* Ícone 3D Isometric Pedestal com Calendário & Ciclo Neon (Idêntico ao print) */
-const CalendarPedestalIcon = () => (
-  <svg width="105" height="105" viewBox="0 0 130 130" fill="none" className="neon-pedestal-svg">
-    <defs>
-      <filter id="neon-glow-cal" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="8" result="blur" />
-        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-      </filter>
-    </defs>
-    {/* Base Pedestal Isométrico Escuro */}
-    <ellipse cx="65" cy="104" rx="46" ry="16" fill="#090d13" opacity="0.8" />
-    <path d="M24 88 L65 104 L106 88 L65 72 Z" fill="#1e2634" stroke="#2d3748" strokeWidth="1.5" />
-    <path d="M24 88 L24 97 L65 113 L65 104 Z" fill="#111827" />
-    <path d="M65 104 L65 113 L106 97 L106 88 Z" fill="#1b2432" />
-    {/* Anel de Neon Verde */}
-    <ellipse cx="65" cy="88" rx="30" ry="11" fill="#22c55e" fillOpacity="0.5" filter="url(#neon-glow-cal)" />
-    <ellipse cx="65" cy="88" rx="25" ry="8.5" stroke="#86efac" strokeWidth="2.5" />
-    {/* Ícone de Ciclo & Calendário Neon */}
-    <g transform="translate(34, 20)">
-      {/* Círculo com seta de renovação */}
-      <circle cx="31" cy="31" r="28" stroke="#86efac" strokeWidth="3" strokeDasharray="130 35" fill="none" filter="url(#neon-glow-cal)" />
-      <path d="M54 18 L60 25 L50 27" fill="none" stroke="#86efac" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Calendário Central */}
-      <rect x="18" y="18" width="26" height="24" rx="5" fill="#14532d" stroke="#4ade80" strokeWidth="2" />
-      <line x1="18" y1="26" x2="44" y2="26" stroke="#4ade80" strokeWidth="2" />
-      <circle cx="24" cy="32" r="1.5" fill="#86efac" />
-      <circle cx="31" cy="32" r="1.5" fill="#86efac" />
-      <circle cx="38" cy="32" r="1.5" fill="#86efac" />
-      <circle cx="24" cy="37" r="1.5" fill="#86efac" />
-      <circle cx="31" cy="37" r="1.5" fill="#86efac" />
-      {/* Moeda frontal */}
-      <circle cx="45" cy="42" r="10" fill="#22c55e" stroke="#dcfce7" strokeWidth="1.8" />
-      <text x="41.5" y="46.5" fill="#0b1311" fontSize="12" fontWeight="bold">S</text>
-    </g>
-  </svg>
-)
+
+function DashboardNumber({ value, format = "compact" }: { value: number; format?: "compact" | "money" | "percent" | "integer" | "decimal"; replay?: string }) {
+  // Explicit dashboard animation preference requested by the user.
+  const reducedMotion = false
+  const target = useRef<HTMLSpanElement>(null)
+  const visible = useInView(target, { amount: 0.3 })
+  const divisor = format === "compact" ? (value >= 1000000 ? 1000000 : value >= 1000 ? 1000 : 1) : 1
+  const suffix = format === "percent" ? "%" : divisor === 1000000 ? " mi" : divisor === 1000 ? " mil" : ""
+  const decimals = format === "money" ? 2 : format === "percent" || format === "decimal" ? 1 : divisor > 1 ? 2 : 0
+  const label = format === "money" ? money(value) : format === "percent" ? value.toFixed(1).replace(".", ",") + "%" : format === "integer" ? n(value) : format === "decimal" ? value.toFixed(1).replace(".", ",") : compact(value)
+  return <span ref={target} className="six-animated-number" role="img" aria-label={label}><span aria-hidden="true"><NumberRoller key={String(visible)} animateOnMount={!reducedMotion && visible} value={value / divisor} decimals={decimals} prefix={format === "money" ? "R$ " : ""} suffix={suffix} duration={reducedMotion ? 0 : 1.6} /></span></span>
+}
 
 export default function DashboardPage() {
-  const navigate = useNavigate()
-  const { user, signOut, toggleSubscriptionPlan, updateDisplayName } = useAuth()
+  const { user, session, signOut } = useAuth()
+  const [theme, setTheme] = useState(() => localStorage.getItem("six-dashboard-theme") || "dark")
+  useEffect(() => { localStorage.setItem("six-dashboard-theme", theme) }, [theme])
+  const [tab, setTab] = useState<Tab>("overview")
+  const allowDemo = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  const [demo, setDemo] = useState(() => allowDemo && new URLSearchParams(window.location.search).get("demo") === "1")
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("six-sidebar-collapsed") === "true")
+  useEffect(() => { localStorage.setItem("six-sidebar-collapsed", String(collapsed)) }, [collapsed])
+  const [drawer, setDrawer] = useState(false)
+  const [period, setPeriod] = useState("30")
+  const [from, setFrom] = useState(dayKey(new Date(Date.now() - 29 * 86400000)))
+  const [to, setTo] = useState(dayKey(new Date()))
+  const [modelFilter, setModelFilter] = useState("Todos os modelos")
+  const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const [toast, setToast] = useState("")
+  const [tool, setTool] = useState("claude")
+  const [os, setOs] = useState("powershell")
+  const [clientKey, setClientKey] = useState("")
+  const [reveal, setReveal] = useState(false)
+  const [accountData, setAccountData] = useState<{ owner: string; keys: KeyRow[]; rows: RequestRow[] } | null>(null)
+  const keys = accountData?.owner === session?.user.id ? accountData?.keys || [] : []
+  const [accountError, setAccountError] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [newKeyName, setNewKeyName] = useState("")
+  const [claimKey, setClaimKey] = useState("")
+  const [issuedKey, setIssuedKey] = useState("")
+  const [revokeId, setRevokeId] = useState("")
+  const [keyState, setKeyState] =
+    useState<"idle" | "loading" | "loaded" | "error">("idle")
+  const [refresh, setRefresh] = useState(0)
+  const [inputRate, setInputRate] = useState(15)
+  const [outputRate, setOutputRate] = useState(75)
+  const [formula, setFormula] = useState(false)
+  const [faq, setFaq] = useState<number | null>(0)
+  const demoRows = useMemo(demoRequests, [])
+  const rows = demo ? demoRows : accountData?.owner === session?.user.id ? accountData?.rows || [] : []
+  const metricsReady = demo || (keyState === "loaded" && accountData?.owner === session?.user.id)
+  const name = user?.name?.split(" ")[0] || (demo ? "Alysson" : "dev")
 
-  // Se o usuário estiver logado mas nunca escolheu como ser chamado, redireciona para onboarding
   useEffect(() => {
-    if (user && !user.hasCompletedOnboarding) {
-      navigate('/onboarding')
-    }
-  }, [user, navigate])
-
-  const [activeTab, setActiveTab] = useState<'overview' | 'keys' | 'ide' | 'playground' | 'pix'>('overview')
-  const [selectedPeriod, setSelectedPeriod] = useState('Hoje')
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
-  const [sandboxMode, setSandboxMode] = useState(true)
-
-  // API Keys state
-  const [keys, setKeys] = useState<ApiKeyItem[]>([])
-  const [loadingKeys, setLoadingKeys] = useState(true)
-  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showLimitModal, setShowLimitModal] = useState(false)
-  const [showEditNameModal, setShowEditNameModal] = useState(false)
-  const [newKeyName, setNewKeyName] = useState('')
-  const [justCreatedKey, setJustCreatedKey] = useState<string | null>(null)
-  const [editNameValue, setEditNameValue] = useState(user?.name || '')
-
-  // Menus sanfonados do Drawer / Sidebar
-  const [groupStoreOpen, setGroupStoreOpen] = useState(true)
-  const [groupIntegrationOpen, setGroupIntegrationOpen] = useState(true)
-
-  // Playground state
-  const [selectedModel, setSelectedModel] = useState('claude-fable-5.1')
-  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([
-    {
-      role: 'assistant',
-      text: `Olá, ${user?.name || 'Desenvolvedor'}! Conexão oficial ativa com SixtySix Gateway (24ms). Como posso acelerar seu código hoje?`,
-    },
-  ])
-  const [chatInput, setChatInput] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-
-  // Pix state
-  const [pixCopied, setPixCopied] = useState(false)
-  const pixCopyCode = '00020126580014br.gov.bcb.pix013666f8e21a-6666-4f9b-9876-sixtysixonline520400005303986540579.005802BR5916SIXTYSIX DEV LTDA6009SAO PAULO62070503***6304E8A2'
-
-  // Carrega chaves
+    if (!toast) return
+    const timer = setTimeout(() => setToast(""), 3000)
+    return () => clearTimeout(timer)
+  }, [toast])
   useEffect(() => {
-    const loadKeys = async () => {
-      const uid = user?.id || 'guest-user'
-      const items = await getApiKeys(uid)
-      setKeys(items)
-      setLoadingKeys(false)
+    setPage(1)
+  }, [period, from, to, modelFilter, search])
+  useEffect(() => {
+    setIssuedKey("")
+    setClientKey("")
+    setClaimKey("")
+    setRevokeId("")
+  }, [session?.user.id, demo])
+  useEffect(() => {
+    if (demo || !session?.user.id) { setKeyState("idle"); setAccountData(null); return }
+    const controller = new AbortController()
+    const owner = session.user.id
+    let pending = false
+    const now = new Date()
+    const first = period === "custom" ? from : dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - Number(period) + 1))
+    const last = period === "custom" ? to : dayKey(now)
+    setKeyState("loading")
+    async function load() {
+      if (pending) return
+      pending = true
+      try {
+        const data = await accountSummary(first, last, controller.signal)
+        if (controller.signal.aborted) return
+        const labels: Record<string,string> = { "claude-fable-5-1": "Fable 5.1", "gpt-6-astra": "Astra 6", "glm-5": "GLM 5" }
+        setAccountData({ owner, keys: data.keys, rows: data.usage.map(r => ({ id: String(r.id), date: r.created_at, model: labels[r.requested_alias] || r.requested_alias, input: r.input_tokens, output: r.output_tokens, duration: r.latency_ms / 1000, success: r.status_code >= 200 && r.status_code < 400 })) })
+        setAccountError("")
+        setKeyState("loaded")
+      } catch (error) {
+        if (controller.signal.aborted) return
+        setAccountError(error instanceof Error ? error.message : "Não foi possível carregar sua conta.")
+        setKeyState("error")
+      } finally { pending = false }
     }
-    loadKeys()
-  }, [user])
-
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedKeyId(id)
-    setTimeout(() => setCopiedKeyId(null), 2000)
+    load()
+    const timer = setInterval(load, 30000)
+    return () => { controller.abort(); clearInterval(timer) }
+  }, [demo, session?.user.id, period, from, to, refresh])
+  async function mutateAccount(action: "claim" | "keys" | "revoke", payload: Record<string,unknown>) {
+    setBusy(true); setAccountError("")
+    try {
+      const result = await accountRequest<{ key?: string }>(action, payload)
+      if (result.key) { setIssuedKey(result.key); setClientKey(result.key); setNewKeyName("") }
+      if (action === "claim") setClaimKey("")
+      setRevokeId("")
+      setRefresh(v => v + 1)
+      setToast(action === "keys" ? "Chave criada. Copie e guarde agora." : action === "claim" ? "Chave vinculada à sua conta." : "Chave revogada.")
+    } catch (error) { setAccountError(error instanceof Error ? error.message : "Não foi possível concluir.") }
+    finally { setBusy(false) }
   }
 
-  // Regra de negócio: sem plano ativo => limite de 1 chave
-  const handleOpenCreateModal = () => {
-    const hasPlan = user?.hasActivePlan ?? false
-    if (!hasPlan && keys.length >= 1) {
-      setShowLimitModal(true)
-      return
+  const filtered = useMemo(() => {
+    const cutoff = new Date()
+    cutoff.setHours(0, 0, 0, 0)
+    if (period !== "custom")
+      cutoff.setDate(cutoff.getDate() - (Number(period) - 1))
+    return rows.filter((r) => {
+          const day = dayKey(new Date(r.date))
+          const within =
+            period === "custom"
+              ? day >= from && day <= to
+              : new Date(r.date) >= cutoff
+          return (
+            within &&
+            (modelFilter === "Todos os modelos" || r.model === modelFilter) &&
+            `${r.model} ${r.id}`.toLowerCase().includes(search.toLowerCase())
+          )
+        })
+  }, [rows, demo, period, from, to, modelFilter, search])
+  const input = filtered.reduce((sum, row) => sum + row.input, 0)
+  const output = filtered.reduce((sum, row) => sum + row.output, 0)
+  const success = filtered.length
+    ? (filtered.filter((r) => r.success).length / filtered.length) * 100
+    : 0
+  const average = filtered.length
+    ? filtered.reduce((s, r) => s + r.duration, 0) / filtered.length
+    : 0
+  const byModel = models.map((model) => ({
+    model,
+    tokens: filtered
+      .filter((r) => r.model === model)
+      .reduce((sum, r) => sum + r.input + r.output, 0),
+  }))
+  const chartDays = useMemo(() => {
+    const start =
+      period === "custom" ? new Date(`${from}T00:00:00`) : new Date()
+    if (period !== "custom") {
+      start.setHours(0, 0, 0, 0)
+      start.setDate(start.getDate() - Number(period) + 1)
     }
-    setShowCreateModal(true)
-  }
-
-  const handleCreateKey = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const hasPlan = user?.hasActivePlan ?? false
-    if (!hasPlan && keys.length >= 1) {
-      setShowCreateModal(false)
-      setShowLimitModal(true)
-      return
+    const end = period === "custom" ? new Date(`${to}T23:59:59`) : new Date()
+    const days: Array<{ date: string; tokens: number }> = []
+    const cursor = new Date(start)
+    while (cursor <= end && days.length < 366) {
+      const date = dayKey(cursor)
+      days.push({
+        date,
+        tokens: filtered
+          .filter((r) => dayKey(new Date(r.date)) === date)
+          .reduce((s, r) => s + r.input + r.output, 0),
+      })
+      cursor.setDate(cursor.getDate() + 1)
     }
-
-    const uid = user?.id || 'guest-user'
-    const { key, fullKey } = await createApiKey(uid, newKeyName || 'Minha IDE')
-    setKeys([key, ...keys])
-    setJustCreatedKey(fullKey)
-    setNewKeyName('')
+    return days
+  }, [period, from, to, filtered])
+  const [hoverDay, setHoverDay] = useState<number | null>(null)
+  const maximum = Math.max(...chartDays.map((d) => d.tokens), 1)
+  const points = chartDays
+    .map(
+      (d, i) =>
+        `${36 + (i / Math.max(chartDays.length - 1, 1)) * 704},${190 - (d.tokens / maximum) * 155}`,
+    )
+    .join(" ")
+  const numberReplay = `${tab}-${period}-${from}-${to}-${modelFilter}-${demo}`
+  const inputCost = input / 1000000 * inputRate
+  const outputCost = output / 1000000 * outputRate
+  const reference = inputCost + outputCost
+  const planCost = demo ? 119 : keys.some(k => k.active) ? 0 : null
+  const canEstimate = metricsReady && planCost !== null
+  const saving = Math.max(0, reference - (planCost ?? 0))
+  const switchTab = (next: Tab) => {
+    setTab(next)
+    setDrawer(false)
+    setSearch("")
+    setModelFilter("Todos os modelos")
   }
-
-  const handleRevokeKey = async (keyId: string) => {
-    if (!window.confirm('Tem certeza que deseja revogar esta chave? Qualquer IDE conectada a ela deixará de responder.')) return
-    const uid = user?.id || 'guest-user'
-    await revokeApiKey(uid, keyId)
-    setKeys(keys.filter((k) => k.id !== keyId))
+  async function copy(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setToast("Copiado para a área de transferência")
+    } catch {
+      setToast(
+        "Não foi possível copiar. Selecione o texto e copie manualmente.",
+      )
+    }
   }
-
-  const handleSaveChosenName = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editNameValue.trim()) return
-    await updateDisplayName(editNameValue.trim())
-    setShowEditNameModal(false)
+  function exportCsv() {
+    const csv =
+      "\uFEFF" +
+      [
+        "demonstracao;data;modelo;tokens_entrada;tokens_saida;duracao_s;resultado",
+        ...filtered.map(
+          (r) =>
+            `${demo ? "sim" : "nao"};${r.date};${r.model};${r.input};${r.output};${r.duration.toFixed(1)};${
+              r.success ? "concluida" : "falhou"
+            }`,
+        ),
+      ].join("\n")
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    )
+    const a = document.createElement("a")
+    a.href = url
+    a.download = demo ? "sixtysix-demonstracao-consumo.csv" : "sixtysix-consumo.csv"
+    a.click()
+    URL.revokeObjectURL(url)
   }
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!chatInput.trim() || isTyping) return
-
-    const userText = chatInput.trim()
-    setChatMessages((prev) => [...prev, { role: 'user', text: userText }])
-    setChatInput('')
-    setIsTyping(true)
-
-    setTimeout(() => {
-      let reply = ''
-      if (selectedModel.includes('claude')) {
-        reply = `[Claude 3.7 Fable]: Resposta gerada via SixtySix Gateway em 24ms. Tokens economizados com cota ilimitada.`
-      } else if (selectedModel.includes('astra')) {
-        reply = `[GPT Astra 6]: Processamento concluído com raciocínio profundo. Chaves ativas respondendo normalmente.`
-      } else {
-        reply = `[GLM-4 Plus]: Execução ultrarrápida via SixtySix. Custo total: R$ 0,00.`
-      }
-      setChatMessages((prev) => [...prev, { role: 'assistant', text: reply }])
-      setIsTyping(false)
-    }, 700)
-  }
-
-  const periodOptions = ['Hoje', 'Esse Mês', 'Últimos 30 Dias', 'Último ano', 'Todo o Período', 'Personalizar']
+  const actualKey = clientKey.trim() || "SUA_CHAVE_INDIVIDUAL"
+  const shellKey =
+    os === "bash"
+      ? `'${actualKey.replace(/'/g, `'"'"'`)}'`
+      : os === "powershell"
+        ? `'${actualKey.replace(/'/g, "''")}'`
+        : actualKey
+  const claudeCode =
+    os === "powershell"
+      ? `$env:ANTHROPIC_BASE_URL='https://www.sixtysix.online'\n$env:ANTHROPIC_API_KEY=${shellKey}\n$env:ANTHROPIC_MODEL='claude-fable-5-1'\nclaude --model claude-fable-5-1`
+      : os === "cmd"
+        ? `set ANTHROPIC_BASE_URL=https://www.sixtysix.online\nset "ANTHROPIC_API_KEY=${actualKey.replace(/[\r\n"]/g, "")}"\nset ANTHROPIC_MODEL=claude-fable-5-1\nclaude --model claude-fable-5-1`
+        : `export ANTHROPIC_BASE_URL='https://www.sixtysix.online'\nexport ANTHROPIC_API_KEY=${shellKey}\nexport ANTHROPIC_MODEL='claude-fable-5-1'\nclaude --model claude-fable-5-1`
+  const codexConfig = `model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://www.sixtysix.online/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://www.sixtysix.online/api/codex/models"`
+  const sectionTitle =
+    nav.find((v) => v.id === tab)?.label || "Central de ajuda"
+  const empty = (title: string, description: string, action?: ReactNode) => (
+    <div className="six-empty">
+      <span>
+        <Activity size={25} />
+      </span>
+      <h3>{title}</h3>
+      <p>{description}</p>
+      {action}
+    </div>
+  )
+  const table = (limit = 8) => (
+    <>
+      <div className="six-table-scroll">
+        <table className="six-table">
+          <thead>
+            <tr>
+              <th>Modelo / solicitação</th>
+              <th>Data e hora</th>
+              <th>Entrada</th>
+              <th>Saída</th>
+              <th>Duração</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered
+              .slice(
+                (tab === "usage" ? page - 1 : 0) * limit,
+                (tab === "usage" ? page : 1) * limit,
+              )
+              .map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <span
+                      className={`six-model-icon ${
+                        r.model === "Astra 6"
+                          ? "astra"
+                          : r.model === "GLM 5"
+                            ? "glm"
+                            : ""
+                      }`}
+                    >
+                      <img
+                        src={`/assets/brands/${
+                          r.model === "Fable 5.1"
+                            ? "claude"
+                            : r.model === "Astra 6"
+                              ? "openai"
+                              : "glm"
+                        }.svg`}
+                        alt=""
+                      />
+                    </span>
+                    <span>
+                      <strong>{r.model}</strong>
+                      <small>{r.id}</small>
+                    </span>
+                  </td>
+                  <td>
+                    {dateLabel(r.date)}
+                    <small>
+                      {new Date(r.date).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </small>
+                  </td>
+                  <td>{<DashboardNumber value={r.input} format="integer" replay={numberReplay} />}</td>
+                  <td>{<DashboardNumber value={r.output} format="integer" replay={numberReplay} />}</td>
+                  <td><DashboardNumber value={r.duration} format="decimal" replay={numberReplay} /> s</td>
+                  <td>
+                    <span className={`six-status ${r.success ? "" : "failed"}`}>
+                      {r.success ? <Check size={11} /> : <X size={11} />}
+                      {r.success ? "Concluída" : "Falhou"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+      {!filtered.length &&
+        empty(
+          demo
+            ? "Nenhuma solicitação neste filtro"
+            : "Seu histórico aparecerá aqui",
+          demo
+            ? "Experimente outro período ou modelo."
+            : "O histórico de consumo ainda precisa ser conectado à sua conta.",
+        )}
+    </>
+  )
 
   return (
-    <div className="pc-dash-wrapper">
-      {/* =========================================================================
-          BANNER SUPERIOR DE STATUS DE ASSINATURA (Desktop & Mobile)
-         ========================================================================= */}
-      {!user?.hasActivePlan ? (
-        <div className="pc-top-alert-banner is-free">
-          <div className="pc-alert-left">
-            <span className="pc-alert-icon">⚠️</span>
-            <span className="pc-alert-badge">Modo de Teste / Gratuito</span>
-            <span className="pc-alert-text">
-              Sem assinatura ativa — Limite de <strong>1 chave de API</strong>. Assine para liberar chaves ilimitadas para Cursor, Claude Code CLI e VS Code.
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab('pix')}
-            className="pc-alert-btn"
-          >
-            Ir para produção
-          </button>
-        </div>
-      ) : (
-        <div className="pc-top-alert-banner is-pro">
-          <div className="pc-alert-left">
-            <span className="pc-alert-icon">✨</span>
-            <span className="pc-alert-badge">Assinatura Pro Ativa</span>
-            <span className="pc-alert-text">
-              Plano Pro ativo. Chaves de API ilimitadas e latência máxima de 24ms via SixtySix Gateway.
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={toggleSubscriptionPlan}
-            className="pc-alert-btn-subtle"
-            title="Clique para testar o comportamento de bloqueio do plano gratuito"
-          >
-            Simular Sem Plano
-          </button>
-        </div>
+    <div className="six-dashboard" data-theme={theme} data-collapsed={collapsed}>
+      {drawer && (
+        <button
+          className="six-overlay"
+          aria-label="Fechar menu"
+          onClick={() => setDrawer(false)}
+        />
       )}
-
-      {/* =========================================================================
-          TOP HEADER BAR (Mobile & PC)
-         ========================================================================= */}
-      <header className="pc-top-header">
-        <div className="pc-top-left">
-          {/* Hambúrguer visível no Mobile */}
-          <button
-            type="button"
-            className="pc-mobile-menu-btn"
-            onClick={() => setMobileDrawerOpen(true)}
-            aria-label="Abrir menu"
-          >
-            <Menu size={22} color="#f8fafc" />
-          </button>
-
-          <Link to="/" className="pc-header-logo-link">
-            <img src="/assets/sidebar-logo.png" alt="SixtySix" className="pc-header-logo-img" />
-            <span className="pc-header-logo-badge">Pay</span>
-          </Link>
-
-          {/* Breadcrumb de Página (PC) */}
-          <div className="pc-header-breadcrumb">
-            <Activity size={18} color="#9eea6c" />
-            <span className="pc-breadcrumb-title">Dashboard</span>
-          </div>
+      <aside className={`six-sidebar ${drawer ? "open" : ""}`}>
+        <button className="six-sidebar-toggle" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"} title={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}>{collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}</button>
+        <Link to="/" className="six-brand">
+          <span className="six-brand-mark"><img src="/assets/sx-crown.png" alt="SixtySix SX com coroa dourada" /></span>
+          <span className="six-brand-word">
+            SixtySix<span>workspace</span>
+          </span>
+        </Link>
+        <div className="six-workspace">
+          <span className="six-workspace-icon">
+            {name.charAt(0).toUpperCase()}
+          </span>
+          <span>
+            <strong>Meu workspace</strong>
+            <small>Conta individual</small>
+          </span>
+          <ShieldCheck size={15} />
         </div>
-
-        <div className="pc-top-right">
-          {/* Alternador de Tema */}
-          <button type="button" className="pc-header-icon-btn" title="Alternar tema">
-            <Sun size={18} color="#94a3b8" />
+        <div className="six-nav-label">PLATAFORMA</div>
+        <nav aria-label="Navegação do dashboard">
+          {nav.map((item) => (
+            <button
+              key={item.id}
+              title={item.label}
+              aria-label={item.label}
+              className={tab === item.id ? "active" : ""}
+              onClick={() => switchTab(item.id)}
+            >
+              <item.icon size={18} />
+              <span>{item.label}</span>
+              {item.id === "guides" && <span className="six-nav-count">4</span>}
+            </button>
+          ))}
+        </nav>
+        <div className="six-sidebar-bottom">
+          <div className="six-help-card">
+            <span>
+              <Sparkles size={17} /> Pronto para criar?
+            </span>
+            <p>Sua próxima ideia começa com uma boa conexão.</p>
+            <button onClick={() => switchTab("guides")}>
+              Conectar minha IDE <ArrowUpRight size={15} />
+            </button>
+          </div>
+          <button className="six-help-link" onClick={() => switchTab("help")}>
+            <CircleHelp size={18} /> Central de ajuda <ArrowUpRight size={14} />
           </button>
-
-          {/* Sino de Notificações */}
-          <button type="button" className="pc-header-icon-btn has-dot" title="Notificações">
-            <Bell size={18} color="#94a3b8" />
-            <span className="pc-bell-dot" />
-          </button>
-
-          {/* Perfil Compacto no Topo (Com o Nome Escolhido pelo Usuário) */}
-          <div
-            className="pc-header-user-pill"
-            onClick={() => {
-              setEditNameValue(user?.name || '')
-              setShowEditNameModal(true)
-            }}
-            title="Clique para alterar seu nome de exibição"
-          >
-            <div className="pc-header-avatar-wrap">
+          <div className="six-profile">
+            <span className="six-avatar">
               {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.name} className="pc-header-avatar" />
+                <img src={user.avatarUrl} alt="" />
               ) : (
-                <div className="pc-header-avatar-fallback">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                </div>
+                name.charAt(0)
               )}
-            </div>
-            <div className="pc-header-user-meta">
-              <span className="pc-header-user-name">{user?.name || 'Desenvolvedor'}</span>
-              <span className="pc-header-user-sub">
-                {user?.hasActivePlan ? 'Pro' : 'Gratuito'}
-              </span>
-            </div>
-            <Edit3 size={13} color="#64748b" className="pc-edit-icon" />
+            </span>
+            <span>
+              <strong>{name}</strong>
+              <small>
+                {demo
+                  ? "Workspace de demonstração"
+                  : user?.email || "Entre na sua conta"}
+              </small>
+            </span>
+            <button
+              aria-label={session ? "Sair da conta" : "Ir para login"}
+              onClick={() =>
+                session
+                  ? signOut().then(() => window.location.assign("/login"))
+                  : window.location.assign("/login")
+              }
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
-      </header>
-
-      {/* =========================================================================
-          BODY: SIDEBAR ESQUERDA + PAINEL PRINCIPAL COM BORDAS ARREDONDADAS
-         ========================================================================= */}
-      <div className="pc-dash-layout">
-        {/* Backdrop para fechar o menu no Mobile */}
-        <AnimatePresence>
-          {mobileDrawerOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="pc-drawer-backdrop"
-              onClick={() => setMobileDrawerOpen(false)}
-            />
-          )}
-        </AnimatePresence>
-
-        {/* SIDEBAR (Desktop fixa + Mobile Drawer animado) */}
-        <aside className={`pc-sidebar ${mobileDrawerOpen ? 'is-mobile-open' : ''}`}>
-          {/* Header Mobile com botão Fechar */}
-          <div className="pc-drawer-mobile-header">
-            <div className="pc-header-logo-link">
-              <img src="/assets/sidebar-logo.png" alt="SixtySix" className="pc-header-logo-img" />
-              <span className="pc-header-logo-badge">Pay</span>
-            </div>
+      </aside>
+      <div className="six-main-shell">
+        <header className="six-topbar">
+          <div>
             <button
-              type="button"
-              className="pc-drawer-close-btn"
-              onClick={() => setMobileDrawerOpen(false)}
+              className="six-mobile-menu"
+              aria-label="Abrir menu"
+              onClick={() => setDrawer(true)}
             >
-              <X size={20} color="#94a3b8" />
+              <Menu size={20} />
             </button>
+            <span>Workspace</span>
+            <ChevronRight size={13} />
+            <strong>{sectionTitle}</strong>
           </div>
-
-          {/* Card Seletor de Organização SixtySix (Bordas Arredondadas) */}
-          <div className="pc-org-card">
-            <div className="pc-org-icon-box">
-              <Building2 size={18} color="#94a3b8" />
-            </div>
-            <div className="pc-org-details">
-              <span className="pc-org-title">Sixtysix</span>
-              <span className="pc-org-sub">
-                {user?.hasActivePlan ? '69.864.497/0001-92' : 'Plano Gratuito (1 chave)'}
-              </span>
-            </div>
-            <div className="pc-org-chevrons">
-              <ChevronUp size={12} color="#64748b" />
-              <ChevronDown size={12} color="#64748b" />
-            </div>
+          <div>
+            <button className="six-theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"} title="Alternar aparência">{theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}</button>
+            <span className="six-connection">
+              <span /> Gateway SixtySix
+            </span>
+            <a
+              href="https://www.sixtysix.online/claude-code#passo-a-passo"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <BookOpen size={16} />
+              <span>Documentação</span>
+              <ArrowUpRight size={13} />
+            </a>
           </div>
-
-          {/* Lista de Navegação da Sidebar */}
-          <div className="pc-sidebar-menu">
-            {/* Item 1: Dashboard (Pill com Fundo Verde Neon Arredondado) */}
-            <button
-              type="button"
-              className={`pc-nav-pill ${activeTab === 'overview' ? 'is-active-green' : ''}`}
+        </header>
+        <main className="six-main">
+          <div className="six-demo-bar">
+            <span>
+              <span className="six-demo-dot" />
+              {demo ? "Você está explorando uma demonstração" : "Seu workspace"}
+              <small>
+                {demo
+                  ? "Consumo, valores e plano são ilustrativos."
+                  : session ? "Dados vinculados à sua conta autenticada." : "Entre para vincular os dados da sua conta."}
+              </small>
+            </span>
+            {allowDemo && <button
               onClick={() => {
-                setActiveTab('overview')
-                setMobileDrawerOpen(false)
+                setDemo(!demo)
+                setClientKey("")
               }}
             >
-              <Activity size={18} />
-              <span>Dashboard</span>
-            </button>
-
-            {/* Grupo 1: Plataforma & Modelos ("Sua Loja" na referência) */}
-            <div className="pc-nav-group">
-              <button
-                type="button"
-                className="pc-group-header"
-                onClick={() => setGroupStoreOpen(!groupStoreOpen)}
-              >
-                <div className="pc-group-title">
-                  <Layers size={17} color="#94a3b8" />
-                  <span>Sua Conta &amp; Chaves</span>
-                </div>
-                {groupStoreOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-              </button>
-
-              {groupStoreOpen && (
-                <div className="pc-group-content">
-                  <button
-                    type="button"
-                    className={`pc-sub-nav-item ${activeTab === 'keys' ? 'is-current' : ''}`}
-                    onClick={() => {
-                      setActiveTab('keys')
-                      setMobileDrawerOpen(false)
-                    }}
-                  >
-                    <Key size={16} />
-                    <span>Chaves de API</span>
-                    <span className="pc-keys-count-badge">
-                      {keys.length}{!user?.hasActivePlan ? '/1' : ''}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`pc-sub-nav-item ${activeTab === 'ide' ? 'is-current' : ''}`}
-                    onClick={() => {
-                      setActiveTab('ide')
-                      setMobileDrawerOpen(false)
-                    }}
-                  >
-                    <Terminal size={16} />
-                    <span>Conectar IDEs (Cursor)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`pc-sub-nav-item ${activeTab === 'playground' ? 'is-current' : ''}`}
-                    onClick={() => {
-                      setActiveTab('playground')
-                      setMobileDrawerOpen(false)
-                    }}
-                  >
-                    <MessageSquare size={16} />
-                    <span>Playground Oficial</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`pc-sub-nav-item ${activeTab === 'pix' ? 'is-current' : ''}`}
-                    onClick={() => {
-                      setActiveTab('pix')
-                      setMobileDrawerOpen(false)
-                    }}
-                  >
-                    <CreditCard size={16} />
-                    <span>Assinatura &amp; Pix</span>
-                  </button>
-                </div>
-              )}
+              {demo ? "Ver minha conta" : "Explorar demonstração"}
+              <ArrowRight size={14} />
+            </button>}
+          </div>
+          {!demo && <div className="six-account-status" role="status">{!session ? <><span>Entre para acompanhar seu consumo real.</span><Link to="/login">Entrar</Link></> : accountError ? <><span>{accountError}</span><button onClick={() => setRefresh(v => v + 1)}>Tentar novamente</button></> : keyState === "loading" ? "Atualizando sua conta…" : <><span>Consumo real · atualização automática a cada 30 segundos</span><button onClick={() => setRefresh(v => v + 1)}>Atualizar</button></>}</div>}
+          <div className="six-heading">
+            <div>
+              <p className="six-kicker">SEU ESPAÇO PARA CONSTRUIR</p>
+              <h1>
+                {tab === "overview"
+                  ? `Tudo certo por aqui, ${name}.`
+                  : sectionTitle}
+                <span className="six-heading-dot">
+                  {tab === "overview" ? "✳" : ""}
+                </span>
+              </h1>
+              <p>
+                {tab === "overview"
+                  ? "Mais clareza sobre seu uso. Mais tempo para suas ideias."
+                  : tab === "guides"
+                    ? "Da sua chave à primeira resposta, sem complicação."
+                    : tab === "usage"
+                      ? "Cada solicitação, cada token. Tudo em um só lugar."
+                      : tab === "keys"
+                        ? "O ponto de partida para conectar suas ferramentas."
+                        : tab === "plan"
+                          ? "Seu acesso, seus benefícios e os próximos passos."
+                          : "Vamos colocar suas ferramentas para funcionar."}
+              </p>
             </div>
-
-            {/* Grupo 2: Integração & Sandbox */}
-            <div className="pc-nav-group">
+            {tab === "overview" ? (
               <button
-                type="button"
-                className="pc-group-header"
-                onClick={() => setGroupIntegrationOpen(!groupIntegrationOpen)}
+                className="six-primary"
+                onClick={() => switchTab("guides")}
               >
-                <div className="pc-group-title">
-                  <Zap size={17} color="#94a3b8" />
-                  <span>Integração</span>
-                </div>
-                {groupIntegrationOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                <PlusIcon />
+                Conectar ferramenta
               </button>
-
-              {groupIntegrationOpen && (
-                <div className="pc-group-content">
-                  {/* Modo Teste Sandbox Switch (Idêntico ao print) */}
-                  <div className="pc-sandbox-switch-row">
-                    <div className="pc-sandbox-info">
-                      <Sparkles size={16} color="#9eea6c" />
-                      <span>Modo Teste (Sandbox)</span>
-                    </div>
-                    <label className="pc-toggle-wrap">
-                      <input
-                        type="checkbox"
-                        checked={sandboxMode}
-                        onChange={(e) => setSandboxMode(e.target.checked)}
-                      />
-                      <span className="pc-toggle-slider" />
-                    </label>
-                  </div>
-
-                  {/* Alterar Como Ser Chamado */}
-                  <button
-                    type="button"
-                    className="pc-sub-nav-item"
-                    onClick={() => {
-                      setEditNameValue(user?.name || '')
-                      setShowEditNameModal(true)
-                      setMobileDrawerOpen(false)
-                    }}
-                  >
-                    <Edit3 size={16} />
-                    <span>Alterar como sou chamado</span>
-                  </button>
-
-                  {/* Suporte WhatsApp */}
-                  <a
-                    href="https://wa.me/5584999999999?text=Ol%C3%A1%20SixtySix,%20preciso%20de%20ajuda%20com%20minha%20conta"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="pc-sub-nav-item"
-                  >
-                    <HelpCircle size={16} />
-                    <span>Suporte</span>
-                  </a>
-                </div>
-              )}
-            </div>
+            ) : tab === "usage" ? (
+              <button
+                className="six-secondary"
+                disabled={!metricsReady || !filtered.length}
+                onClick={exportCsv}
+              >
+                <Download size={15} /> Exportar CSV
+              </button>
+            ) : null}
           </div>
 
-          {/* Rodapé da Sidebar: Perfil do Usuário com o NOME ESCOLHIDO */}
-          <div className="pc-sidebar-footer">
-            <div
-              className="pc-user-footer-card"
-              onClick={() => {
-                setEditNameValue(user?.name || '')
-                setShowEditNameModal(true)
-              }}
-              title="Clique para alterar seu nome"
-            >
-              <div className="pc-user-footer-avatar-wrap">
-                {user?.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name} className="pc-user-footer-avatar" />
-                ) : (
-                  <div className="pc-user-footer-fallback">
-                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                )}
-                <span className="pc-footer-prov-badge">
-                  {user?.provider === 'google' ? <GoogleIcon /> : <DiscordIcon />}
-                </span>
-              </div>
-
-              <div className="pc-user-footer-meta">
-                <span className="pc-user-footer-name">{user?.name || 'Desenvolvedor'}</span>
-                <span className="pc-user-footer-sub">
-                  {user?.customName ? 'Nome personalizado' : (user?.email || 'dev@sixtysix.online')}
-                </span>
-              </div>
-
-              <button
-                type="button"
-                className="pc-footer-signout-btn"
-                title="Desconectar"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  signOut()
-                  navigate('/login')
-                }}
-              >
-                <LogOut size={15} color="#94a3b8" />
-              </button>
-            </div>
-          </div>
-        </aside>
-
-        {/* =======================================================================
-            PAINEL PRINCIPAL DO DASHBOARD COM BORDAS SEMPRE ARREDONDADAS (24px)
-           ======================================================================= */}
-        <main className="pc-main-viewport">
-          {/* O Card Maior de Conteúdo (Bordas sempre arredondadas: 24px) */}
-          <div className="pc-large-rounded-container">
-            {/* TAB 1: VISÃO GERAL (IDÊNTICO AO PRINT DO PC) */}
-            {activeTab === 'overview' && (
-              <div className="pc-content-flow">
-                {/* 1. Barra de Período (Pills Arredondadas) + Status Demo */}
-                <div className="pc-period-filter-row">
-                  <div className="pc-pills-list">
-                    {periodOptions.map((period) => (
-                      <button
-                        key={period}
-                        type="button"
-                        className={`pc-filter-pill ${selectedPeriod === period ? 'is-active' : ''}`}
-                        onClick={() => setSelectedPeriod(period)}
-                      >
-                        {period}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="pc-status-demo-tag">
-                    <span className="pc-status-dot-pulse" />
-                    <span>{sandboxMode ? 'Dados de demonstração' : 'Conexão Real SixtySix Gateway'}</span>
-                  </div>
-                </div>
-
-                {/* 2. Card Hero Topo: Faturamento / Economia + MRR / Requisições (Bordas Arredondadas: 22px) */}
-                <div className="pc-hero-stats-card">
-                  {/* Coluna 1: Faturamento / Economia */}
-                  <div className="pc-hero-col">
-                    <div className="pc-hero-meta">
-                      <span className="pc-hero-label">Faturamento</span>
-                      <div className="pc-hero-amount">
-                        R$ <strong>3.500</strong>,00
-                        <span className="pc-hero-trend">↗ 5%</span>
-                      </div>
-                    </div>
-                    <div className="pc-hero-illustration">
-                      <MoneyPedestalIcon />
-                    </div>
-                  </div>
-
-                  {/* Divisória Vertical Sutil */}
-                  <div className="pc-hero-col-divider" />
-
-                  {/* Coluna 2: MRR / Cotas */}
-                  <div className="pc-hero-col">
-                    <div className="pc-hero-meta">
-                      <div className="pc-label-with-hint">
-                        <span className="pc-hero-label">MRR</span>
-                        <HelpCircle size={14} color="#64748b" />
-                      </div>
-                      <div className="pc-hero-amount">
-                        R$ <strong>3.500</strong>,00
-                        <span className="pc-hero-trend">↗ 5%</span>
-                      </div>
-                    </div>
-                    <div className="pc-hero-illustration">
-                      <CalendarPedestalIcon />
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Card de Métricas em Linha: 5 Itens (Bordas Arredondadas: 20px) */}
-                <div className="pc-metric-strip-card">
-                  {/* Item 1: Total de transações */}
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <Coins size={16} color="#94a3b8" />
-                      <span>Total de transações</span>
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">10</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-
-                  <div className="pc-strip-divider" />
-
-                  {/* Item 2: Novas */}
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <ArrowUpRight size={16} color="#94a3b8" />
-                      <span>Novas</span>
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">5</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-
-                  <div className="pc-strip-divider" />
-
-                  {/* Item 3: Renovações */}
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <Clock size={16} color="#94a3b8" />
-                      <span>Renovações</span>
-                      <HelpCircle size={12} color="#64748b" />
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">6</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-
-                  <div className="pc-strip-divider" />
-
-                  {/* Item 4: Ticket Médio */}
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <DollarSign size={16} color="#94a3b8" />
-                      <span>Ticket Médio</span>
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">R$ 350,00</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-
-                  <div className="pc-strip-divider" />
-
-                  {/* Item 5: Churn */}
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <TrendingDown size={16} color="#94a3b8" />
-                      <span>Churn</span>
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">25%</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4. Segundo Card de Métricas: Modelos e Desempenho (Bordas Arredondadas: 20px) */}
-                <div className="pc-metric-strip-card">
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <CreditCard size={16} color="#94a3b8" />
-                      <span>Conversão no cartão</span>
-                      <HelpCircle size={12} color="#64748b" />
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">85%</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-
-                  <div className="pc-strip-divider" />
-
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <ShieldCheck size={16} color="#94a3b8" />
-                      <span>Aprovação por tentativa</span>
-                      <HelpCircle size={12} color="#64748b" />
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">73,91%</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-
-                  <div className="pc-strip-divider" />
-
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <Clock size={16} color="#94a3b8" />
-                      <span>Salvas após recusa</span>
-                      <HelpCircle size={12} color="#64748b" />
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">5</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-
-                  <div className="pc-strip-divider" />
-
-                  <div className="pc-strip-item">
-                    <div className="pc-strip-header">
-                      <X size={16} color="#94a3b8" />
-                      <span>Vendas perdidas</span>
-                      <HelpCircle size={12} color="#64748b" />
-                    </div>
-                    <div className="pc-strip-val-wrap">
-                      <strong className="pc-strip-val">6</strong>
-                      <span className="pc-strip-trend">↗ 5%</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 5. Seção de Chaves de API com Validação de Plano (Bordas Arredondadas: 20px) */}
-                <div className="pc-keys-section-box">
-                  <div className="pc-keys-box-header">
-                    <div>
-                      <h3 className="pc-box-title">Chaves de API para IDEs</h3>
-                      <p className="pc-box-desc">
-                        {user?.hasActivePlan
-                          ? 'Sua assinatura Pro permite chaves ilimitadas para conectar no Cursor, Claude Code CLI e VS Code.'
-                          : 'Plano gratuito ativo: limite de 1 chave de API. Faça upgrade para gerar mais chaves.'}
-                      </p>
-                    </div>
-
-                    <div className="pc-keys-box-actions">
-                      <span className={`pc-plan-status-badge ${user?.hasActivePlan ? 'is-pro' : 'is-free'}`}>
-                        {user?.hasActivePlan ? 'Chaves Ilimitadas (Pro)' : `${keys.length} de 1 Chave em Uso`}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleOpenCreateModal}
-                        className="pc-add-key-btn"
-                      >
-                        <Plus size={16} />
-                        <span>Criar Chave</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Lista de Chaves Criadas */}
-                  <div className="pc-keys-grid">
-                    {loadingKeys ? (
-                      <div className="pc-empty-keys">Carregando chaves...</div>
-                    ) : keys.length === 0 ? (
-                      <div className="pc-empty-keys">
-                        <Key size={36} color="#64748b" />
-                        <p>Nenhuma chave criada ainda. Crie sua primeira chave para conectar sua IDE.</p>
-                        <button
-                          type="button"
-                          onClick={handleOpenCreateModal}
-                          className="pc-add-key-btn"
-                        >
-                          Criar Minha Primeira Chave
-                        </button>
-                      </div>
-                    ) : (
-                      keys.map((k) => (
-                        <div key={k.id} className="pc-single-key-card">
-                          <div className="pc-key-top">
-                            <span className="pc-key-title">{k.name}</span>
-                            <span className="pc-key-active-dot">Ativa</span>
-                          </div>
-
-                          <div className="pc-key-code-wrap">
-                            <code>{k.key_prefix}••••••••••••</code>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(k.key_prefix, k.id)}
-                              className="pc-key-copy-action"
-                              title="Copiar chave"
-                            >
-                              {copiedKeyId === k.id ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
-                            </button>
-                          </div>
-
-                          <div className="pc-key-bottom">
-                            <span className="pc-key-created-date">
-                              Criada em {new Date(k.created_at).toLocaleDateString('pt-BR')}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRevokeKey(k.id)}
-                              className="pc-key-delete-btn"
-                              title="Revogar chave"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 2: GERENCIAMENTO DE CHAVES DE API */}
-            {activeTab === 'keys' && (
-              <div className="pc-content-flow">
-                <div className="pc-keys-box-header">
-                  <div>
-                    <h2 className="pc-tab-main-title">Chaves de API Oficiais</h2>
-                    <p className="pc-box-desc">
-                      Gerencie suas chaves para autenticar extensões no Cursor, Claude Code CLI e VS Code.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenCreateModal}
-                    className="pc-add-key-btn"
-                  >
-                    <Plus size={16} />
-                    <span>Criar Nova Chave</span>
-                  </button>
-                </div>
-
-                {!user?.hasActivePlan && (
-                  <div className="pc-upgrade-warning-card">
-                    <Lock size={22} color="#f59e0b" />
-                    <div className="pc-upgrade-text">
-                      <strong>Limite de 1 Chave no Plano Gratuito</strong>
-                      <p>
-                        Para ter chaves individuais em múltiplos computadores e IDEs diferentes sem deslogar, ative seu plano Pro via Pix!
-                      </p>
-                    </div>
+          {(tab === "overview" || tab === "usage") && (
+            <>
+              <div className="six-filters">
+                <div className="six-periods">
+                  {[
+                    ["1", "Hoje"],
+                    ["7", "7 dias"],
+                    ["30", "Últimos 30 dias"],
+                    ["custom", "Personalizar"],
+                  ].map(([value, label]) => (
                     <button
-                      type="button"
-                      onClick={() => setActiveTab('pix')}
-                      className="pc-upgrade-card-btn"
+                      key={value}
+                      className={period === value ? "selected" : ""}
+                      onClick={() => setPeriod(value)}
                     >
-                      Assinar Plano Pro (R$ 49/mês)
+                      {label}
                     </button>
-                  </div>
-                )}
-
-                <div className="pc-keys-grid">
-                  {keys.map((k) => (
-                    <div key={k.id} className="pc-single-key-card">
-                      <div className="pc-key-top">
-                        <span className="pc-key-title">{k.name}</span>
-                        <span className="pc-key-active-dot">Ativa</span>
-                      </div>
-                      <div className="pc-key-code-wrap">
-                        <code>{k.key_prefix}••••••••••••</code>
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(k.key_prefix, k.id)}
-                          className="pc-key-copy-action"
-                        >
-                          {copiedKeyId === k.id ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
-                        </button>
-                      </div>
-                      <div className="pc-key-bottom">
-                        <span className="pc-key-created-date">
-                          Criada em {new Date(k.created_at).toLocaleDateString('pt-BR')}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRevokeKey(k.id)}
-                          className="pc-key-delete-btn"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* TAB 3: CONECTAR NA IDE */}
-            {activeTab === 'ide' && (
-              <div className="pc-content-flow">
-                <h2 className="pc-tab-main-title">Conectar na sua IDE Favorita</h2>
-                <p className="pc-box-desc">
-                  Utilize sua chave SixtySix em qualquer ferramenta com suporte OpenAI ou Anthropic API.
-                </p>
-
-                <div className="pc-ide-options-grid">
-                  {/* Cursor */}
-                  <div className="pc-ide-card">
-                    <div className="pc-ide-card-head">
-                      <h3>Cursor IDE</h3>
-                      <span className="pc-ide-pill">Mais Usado</span>
-                    </div>
-                    <p className="pc-ide-instructions">
-                      Vá em <strong>Settings &gt; Models &gt; OpenAI API Key</strong>:
-                    </p>
-                    <div className="pc-ide-codeblock">
-                      <div className="pc-code-line">
-                        <span>Base URL:</span>
-                        <code>https://api.sixtysix.online/v1</code>
-                      </div>
-                      <div className="pc-code-line">
-                        <span>API Key:</span>
-                        <code>{keys[0]?.key_prefix ? `${keys[0].key_prefix}••••••` : 'sk-live-66-xxxx'}</code>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Claude Code CLI */}
-                  <div className="pc-ide-card">
-                    <div className="pc-ide-card-head">
-                      <h3>Claude Code CLI</h3>
-                      <span className="pc-ide-pill">Terminal Oficial</span>
-                    </div>
-                    <p className="pc-ide-instructions">
-                      No terminal, configure as variáveis de ambiente antes de iniciar:
-                    </p>
-                    <div className="pc-ide-codeblock">
-                      <code>
-                        export ANTHROPIC_BASE_URL=https://api.sixtysix.online/v1<br />
-                        export ANTHROPIC_API_KEY={keys[0]?.key_prefix ? `${keys[0].key_prefix}••••••` : 'sk-live-66-xxxx'}<br />
-                        claude
-                      </code>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: PLAYGROUND */}
-            {activeTab === 'playground' && (
-              <div className="pc-content-flow">
-                <div className="pc-playground-box">
-                  <div className="pc-playground-header">
-                    <div>
-                      <h2 className="pc-tab-main-title">Playground Oficial</h2>
-                      <p className="pc-box-desc">
-                        Faça perguntas e teste a velocidade de resposta em tempo real.
-                      </p>
-                    </div>
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      className="pc-model-dropdown"
-                    >
-                      <option value="claude-fable-5.1">Claude 3.7 Fable (Codificação)</option>
-                      <option value="gpt-astra-6">GPT Astra 6 (Raciocínio &amp; Visão)</option>
-                      <option value="glm-4-plus">GLM-4 Plus (Velocidade Extrema)</option>
-                    </select>
-                  </div>
-
-                  <div className="pc-chat-stream">
-                    {chatMessages.map((m, idx) => (
-                      <div key={idx} className={`pc-chat-row is-${m.role}`}>
-                        <div className="pc-chat-avatar">
-                          {m.role === 'assistant' ? <Bot size={16} /> : <UserIcon size={16} />}
-                        </div>
-                        <div className="pc-chat-bubble">
-                          <span className="pc-chat-author">
-                            {m.role === 'assistant' ? 'SixtySix Gateway' : (user?.name || 'Você')}
-                          </span>
-                          <p className="pc-chat-text">{m.text}</p>
-                        </div>
-                      </div>
+                <label className="six-select">
+                  <Settings2 size={14} />
+                  <select
+                    aria-label="Filtrar por modelo"
+                    value={modelFilter}
+                    onChange={(e) => setModelFilter(e.target.value)}
+                  >
+                    {["Todos os modelos", ...models].map((m) => (
+                      <option key={m}>{m}</option>
                     ))}
-                    {isTyping && (
-                      <div className="pc-chat-typing-row">
-                        <span className="pc-status-dot-pulse" />
-                        <span>Processando no gateway em 24ms...</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <form onSubmit={handleSendMessage} className="pc-chat-input-bar">
-                    <input
-                      type="text"
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      placeholder="Envie seu prompt ou dúvida para os modelos..."
-                      className="pc-chat-field"
-                    />
-                    <button type="submit" disabled={isTyping || !chatInput.trim()} className="pc-chat-send-btn">
-                      <Send size={16} />
-                    </button>
-                  </form>
-                </div>
+                  </select>
+                  <ChevronDown size={13} />
+                </label>
               </div>
-            )}
-
-            {/* TAB 5: ASSINATURA & PIX */}
-            {activeTab === 'pix' && (
-              <div className="pc-content-flow">
-                <div className="pc-pix-panel">
-                  <div className="pc-pix-top">
-                    <span className="pc-pix-plan-pill">Plano Desenvolvedor Pro</span>
-                    <h2 className="pc-pix-price">R$ 49,00 <span className="pc-pix-mo">/ mês</span></h2>
-                    <p className="pc-box-desc">
-                      Acesso completo e ilimitado aos três modelos sem cartão de crédito internacional e sem surpresas.
-                    </p>
+              {period === "custom" && (
+                <div className="six-date-range">
+                  <label>
+                    De{" "}
+                    <input
+                      type="date"
+                      value={from}
+                      max={to}
+                      onChange={(e) => setFrom(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Até{" "}
+                    <input
+                      type="date"
+                      value={to}
+                      min={from}
+                      max={dayKey(new Date())}
+                      onChange={(e) => setTo(e.target.value)}
+                    />
+                  </label>
+                  <span>
+                    {from > to
+                      ? "Selecione um intervalo válido."
+                      : "Intervalos de até 366 dias."}
+                  </span>
+                </div>
+              )}
+              <div className="six-stats">
+                <article className="six-stat">
+                  <span>
+                    <Zap size={16} />
+                    Tokens consumidos
+                  </span>
+                  <strong>
+                    {metricsReady ? <DashboardNumber value={input + output} replay={numberReplay} /> : "—"}
+                    <small>tokens</small>
+                  </strong>
+                  <p>
+                    <span className="six-dot emerald" />
+                    {metricsReady
+                      ? <><DashboardNumber value={filtered.length} format="integer" replay={numberReplay} /> solicitações no período</>
+                      : "Aguardando integração do consumo"}
+                  </p>
+                  <div className="six-mini-bars">
+                    {[3, 5, 4, 8, 6, 9, 7, 11, 8, 13, 11, 16].map((h, i) => (
+                      <i key={i} style={{ height: metricsReady ? h * 2 : 3 }} />
+                    ))}
                   </div>
-
-                  <div className="pc-pix-grid">
-                    <div className="pc-pix-qr-container">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                          pixCopyCode
-                        )}`}
-                        alt="QR Code Pix"
-                        className="pc-pix-qr-img"
-                      />
-                      <span className="pc-pix-qr-sub">Abra o app do seu banco e aponte a câmera</span>
-                    </div>
-
-                    <div className="pc-pix-info-container">
-                      <label className="pc-pix-copy-label">Chave Pix Copia e Cola:</label>
-                      <div className="pc-pix-input-row">
-                        <input type="text" readOnly value={pixCopyCode} className="pc-pix-copy-input" />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(pixCopyCode)
-                            setPixCopied(true)
-                            setTimeout(() => setPixCopied(false), 2500)
-                          }}
-                          className="pc-pix-copy-btn"
-                        >
-                          {pixCopied ? <Check size={16} color="#22c55e" /> : <Copy size={16} />}
-                          <span>{pixCopied ? 'Copiado!' : 'Copiar'}</span>
-                        </button>
+                </article>
+                <article className="six-stat">
+                  <span>
+                    <ArrowDownLeft size={16} />
+                    Tokens de entrada
+                  </span>
+                  <strong>
+                    {metricsReady ? <DashboardNumber value={input} replay={numberReplay} /> : "—"}
+                    <small>tokens</small>
+                  </strong>
+                  <p>Contexto enviado às suas ferramentas</p>
+                </article>
+                <article className="six-stat">
+                  <span>
+                    <ArrowUpRight size={16} />
+                    Tokens de saída
+                  </span>
+                  <strong>
+                    {metricsReady ? <DashboardNumber value={output} replay={numberReplay} /> : "—"}
+                    <small>tokens</small>
+                  </strong>
+                  <p>Respostas geradas no período</p>
+                </article>
+                <article className="six-stat">
+                  <span>
+                    <CircleCheck size={16} />
+                    Solicitações concluídas
+                  </span>
+                  <strong>
+                    {metricsReady ? <DashboardNumber value={success} format="percent" replay={numberReplay} /> : "—"}
+                  </strong>
+                  <p>
+                    {metricsReady
+                      ? <>Tempo médio de <DashboardNumber value={average} format="decimal" replay={numberReplay} /> s por resposta</>
+                      : "Sem métricas disponíveis"}
+                  </p>
+                </article>
+              </div>
+              {tab === "overview" && (
+                <div className="six-chart-grid">
+                  <section className="six-panel six-consumption">
+                    <div className="six-panel-head">
+                      <div>
+                        <h2>
+                          <Activity size={16} /> Seu ritmo de criação
+                        </h2>
+                        <p>Consumo de tokens ao longo do período</p>
                       </div>
-
-                      <div className="pc-pix-action-box">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            toggleSubscriptionPlan()
-                            alert(
-                              user?.hasActivePlan
-                                ? 'Plano alterado para Gratuito (você pode testar o bloqueio de 1 chave).'
-                                : 'Assinatura Pro confirmada com sucesso! Chaves de API ilimitadas liberadas.'
+                      <span className="six-legend">
+                        <i /> Tokens totais
+                      </span>
+                    </div>
+                    {metricsReady && chartDays.length ? (
+                      <div className="six-chart">
+                        <div className="six-chart-value">
+                          {<DashboardNumber value={input + output} replay={numberReplay} />}
+                          <span>tokens no período</span>
+                        </div>
+                        <svg
+                          viewBox="0 0 780 220"
+                          role="img"
+                          aria-label="Gráfico demonstrativo de consumo de tokens por dia"
+                          onMouseLeave={() => setHoverDay(null)}
+                          onMouseMove={(event) => {
+                            const rect =
+                              event.currentTarget.getBoundingClientRect()
+                            setHoverDay(
+                              Math.max(
+                                0,
+                                Math.min(
+                                  chartDays.length - 1,
+                                  Math.round(
+                                    ((((event.clientX - rect.left) /
+                                      rect.width) *
+                                      780 -
+                                      36) /
+                                      704) *
+                                      (chartDays.length - 1),
+                                  ),
+                                ),
+                              ),
                             )
                           }}
-                          className="pc-confirm-payment-btn"
                         >
-                          <Zap size={16} />
-                          <span>
-                            {user?.hasActivePlan
-                              ? 'Simular Desativação de Plano (Modo Sandbox)'
-                              : 'Confirmar Pagamento Pix (Ativar Pro)'}
-                          </span>
-                        </button>
+                          <defs>
+                            <linearGradient
+                              id="six-area"
+                              x1="0"
+                              y1="0"
+                              x2="0"
+                              y2="1"
+                            >
+                              <stop
+                                offset="0%"
+                                stopColor="#25a879"
+                                stopOpacity=".2"
+                              />
+                              <stop
+                                offset="100%"
+                                stopColor="#25a879"
+                                stopOpacity="0"
+                              />
+                            </linearGradient>
+                          </defs>
+                          {[35, 87, 139, 190].map((y, i) => (
+                            <g key={y}>
+                              <line
+                                x1="36"
+                                x2="740"
+                                y1={y}
+                                y2={y}
+                                stroke="#e9eeeb"
+                                strokeDasharray="4 5"
+                              />
+                              <text
+                                x="0"
+                                y={y + 4}
+                                fontSize="10"
+                                fill="#8a9992"
+                              >
+                                {compact((maximum * (3 - i)) / 3)}
+                              </text>
+                            </g>
+                          ))}
+                          <polygon
+                            points={`36,190 ${points} ${
+                              chartDays.length === 1 ? "740,190" : "740,190"
+                            }`}
+                            fill="url(#six-area)"
+                          />
+                          <polyline
+                            points={points}
+                            fill="none"
+                            stroke="#249f75"
+                            strokeWidth="2.5"
+                            strokeLinejoin="round"
+                          />
+                          {chartDays.length === 1 && (
+                            <circle
+                              cx="36"
+                              cy={190 - (chartDays[0].tokens / maximum) * 155}
+                              r="4"
+                              fill="#249f75"
+                            />
+                          )}
+                          {hoverDay !== null && chartDays[hoverDay] && (
+                            <g>
+                              <line
+                                x1={
+                                  36 +
+                                  (hoverDay /
+                                    Math.max(chartDays.length - 1, 1)) *
+                                    704
+                                }
+                                x2={
+                                  36 +
+                                  (hoverDay /
+                                    Math.max(chartDays.length - 1, 1)) *
+                                    704
+                                }
+                                y1="25"
+                                y2="190"
+                                stroke="#7fa996"
+                                strokeDasharray="3 3"
+                              />
+                              <circle
+                                cx={
+                                  36 +
+                                  (hoverDay /
+                                    Math.max(chartDays.length - 1, 1)) *
+                                    704
+                                }
+                                cy={
+                                  190 -
+                                  (chartDays[hoverDay].tokens / maximum) * 155
+                                }
+                                r="4"
+                                fill="#fff"
+                                stroke="#249f75"
+                                strokeWidth="2"
+                              />
+                            </g>
+                          )}
+                        </svg>
+                        <div className="six-chart-labels">
+                          {chartDays
+                            .filter(
+                              (_, i) =>
+                                i %
+                                  Math.max(
+                                    1,
+                                    Math.floor(chartDays.length / 5),
+                                  ) ===
+                                0,
+                            )
+                            .slice(0, 6)
+                            .map((d) => (
+                              <span key={d.date}>
+                                {dateLabel(d.date + "T12:00:00")}
+                              </span>
+                            ))}
+                        </div>
+                        <p className="six-chart-hover" aria-live="polite">
+                          {hoverDay !== null && chartDays[hoverDay]
+                            ? `${dateLabel(chartDays[hoverDay].date + "T12:00:00")} · ${n(chartDays[hoverDay].tokens)} tokens`
+                            : "Passe pelo gráfico para ver os detalhes de cada dia."}
+                        </p>
+                      </div>
+                    ) : (
+                      empty(
+                        "Seu consumo, em perspectiva",
+                        "Assim que o histórico estiver conectado, você poderá acompanhar seu ritmo por aqui.",
+                      )
+                    )}
+                  </section>
+                  <section className="six-panel six-models">
+                    <div className="six-panel-head">
+                      <div>
+                        <h2>Seus modelos</h2>
+                        <p>Participação no consumo</p>
+                      </div>
+                      <span className="six-soft-icon">
+                        <Sparkles size={17} />
+                      </span>
+                    </div>
+                    <div
+                      className="six-donut"
+                      style={{
+                        background:
+                          metricsReady && input + output > 0
+                            ? `conic-gradient(#247e61 0 ${(byModel[0].tokens / (input + output)) * 100}%, #a5d9a3 0 ${((byModel[0].tokens + byModel[1].tokens) / (input + output)) * 100}%, #e2edb2 0 100%)`
+                            : "#eef2ef",
+                      }}
+                    >
+                      <div>
+                        <strong>{metricsReady ? <DashboardNumber value={input + output} replay={numberReplay} /> : "—"}</strong>
+                        <span>tokens totais</span>
                       </div>
                     </div>
-                  </div>
+                    <div className="six-model-list">
+                      {byModel.map((m, i) => (
+                        <div key={m.model}>
+                          <span>
+                            <i
+                              style={{
+                                background: ["#247e61", "#a5d9a3", "#e2edb2"][
+                                  i
+                                ],
+                              }}
+                            />
+                            {m.model}
+                          </span>
+                          <strong>
+                            {metricsReady
+                              ? <DashboardNumber value={Math.round(input + output ? m.tokens / (input + output) * 100 : 0)} format="percent" replay={numberReplay} />
+                              : "—"}
+                          </strong>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
                 </div>
+              )}
+              {tab === "overview" && (
+                <div className="six-bottom-grid">
+                  <section className="six-savings">
+                    <div>
+                      <span className="six-pill">
+                        <Sparkles size={12} /> Economia estimada
+                      </span>
+                      <h2>Mais espaço para criar.<br />Menos custo no mês.</h2>
+                      <div className="six-saving-total"><strong>{canEstimate ? <DashboardNumber value={saving} format="money" replay={numberReplay} /> : "—"}<small>de economia estimada no consumo selecionado</small></strong><span>{canEstimate && reference > (planCost ?? 0) ? <>−<DashboardNumber value={Math.round(saving / reference * 100)} format="percent" replay={numberReplay} /></> : "—"}</span></div>
+                      <div className="six-cost-comparison">
+                        <div><span>Custo de referência por tokens</span><b>{metricsReady ? <DashboardNumber value={reference} format="money" replay={numberReplay} /> : "—"}</b><i><em style={{width:"100%"}} /></i></div>
+                        <div><span>{demo ? "SixtySix · mensalidade integral" : "SixtySix · teste sem cobrança"}</span><b>{canEstimate ? <DashboardNumber value={planCost ?? 0} format="money" replay={numberReplay} /> : "—"}</b><i><em style={{width: canEstimate ? `${Math.min(100,(planCost ?? 0) / Math.max(1, reference) * 100)}%` : "0%"}} /></i></div>
+                      </div>
+                      <div className="six-token-costs"><span>Entrada <b><DashboardNumber value={inputCost} format="money" replay={numberReplay} /></b><small><DashboardNumber value={input} replay={numberReplay} /> tokens</small></span><span>Saída <b><DashboardNumber value={outputCost} format="money" replay={numberReplay} /></b><small><DashboardNumber value={output} replay={numberReplay} /> tokens</small></span></div>
+                      <p>{demo ? "Simulação por tokens, com tarifas ilustrativas editáveis. Compara o consumo filtrado com a mensalidade integral de R$ 119, sem rateio." : canEstimate ? "Estimativa com seus tokens reais e preços de referência editáveis. Seu acesso de teste não tem cobrança." : "Vincule sua chave de teste para calcular a estimativa com seu consumo."}</p>
+                      <button onClick={() => setFormula(!formula)}>
+                        Como calculamos <ArrowUpRight size={14} />
+                      </button>
+                    </div>
+                    <img
+                      src="/assets/plan-cash.webp"
+                      alt="Ilustração de notas verdes"
+                    />
+                    {formula && (
+                      <div className="six-formula">
+                        <div className="six-rate-fields"><label>Entrada · R$ por 1 milhão<input type="number" min="0" max="100000" step="0.01" value={inputRate} onChange={e => setInputRate(Math.min(100000, Math.max(0, Number(e.target.value) || 0)))} /></label><label>Saída · R$ por 1 milhão<input type="number" min="0" max="100000" step="0.01" value={outputRate} onChange={e => setOutputRate(Math.min(100000, Math.max(0, Number(e.target.value) || 0)))} /></label></div>
+                        <p>({n(input)} ÷ 1.000.000 × {money(inputRate)}) + ({n(output)} ÷ 1.000.000 × {money(outputRate)}) = {money(reference)}. Economia = máximo entre zero e esse custo menos {money(planCost ?? 0)}. Os preços são hipóteses da simulação, aplicados aos modelos filtrados; não são uma tabela oficial. Mude-os para a referência que deseja comparar.</p>
+                      </div>
+                    )}
+                  </section>
+                  <section className="six-panel six-quickstart">
+                    <div className="six-panel-head">
+                      <div>
+                        <h2>Sua próxima conexão</h2>
+                        <p>Escolha uma ferramenta e comece a construir.</p>
+                      </div>
+                      <Terminal size={19} />
+                    </div>
+                    {[
+                      [
+                        "claude",
+                        "Claude Code",
+                        "No seu terminal, do seu jeito.",
+                        "claude",
+                      ],
+                      [
+                        "codex",
+                        "Codex",
+                        "Seu workspace com Astra 6.",
+                        "openai",
+                      ],
+                      ["glm", "ZCode", "Conecte o perfil GLM 5.", "glm"],
+                    ].map(([id, title, desc, icon]) => (
+                      <button
+                        key={id}
+                        onClick={() => {
+                          setTool(id)
+                          switchTab("guides")
+                        }}
+                      >
+                        <span className="six-tool-icon">
+                          <img src={`/assets/brands/${icon}.svg`} alt="" />
+                        </span>
+                        <span>
+                          <strong>{title}</strong>
+                          <small>{desc}</small>
+                        </span>
+                        <ArrowUpRight size={17} />
+                      </button>
+                    ))}
+                  </section>
+                </div>
+              )}
+              <section className="six-panel six-history">
+                <div className="six-panel-head">
+                  <div>
+                    <h2>
+                      Atividade {tab === "overview" ? "recente" : "do período"}
+                    </h2>
+                    <p>
+                      {demo
+                        ? "Solicitações ilustrativas do seu workspace de demonstração"
+                        : "Acompanhe o uso da sua chave individual"}
+                    </p>
+                  </div>
+                  {tab === "overview" ? (
+                    <button
+                      className="six-text-button"
+                      onClick={() => switchTab("usage")}
+                    >
+                      Ver todo o consumo <ArrowRight size={14} />
+                    </button>
+                  ) : (
+                    <label className="six-search">
+                      <Search size={15} />
+                      <input
+                        placeholder="Buscar modelo ou solicitação"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
+                    </label>
+                  )}
+                </div>
+                {table(tab === "overview" ? 4 : 10)}
+                {tab === "usage" && filtered.length > 0 && (
+                  <div className="six-pagination">
+                    <span>
+                      {n(filtered.length)} solicitações · página {page} de{" "}
+                      {Math.ceil(filtered.length / 10)}
+                    </span>
+                    <div>
+                      <button
+                        disabled={page === 1}
+                        onClick={() => setPage(page - 1)}
+                      >
+                        Anterior
+                      </button>
+                      <button
+                        disabled={page >= Math.ceil(filtered.length / 10)}
+                        onClick={() => setPage(page + 1)}
+                      >
+                        Próxima <ChevronRight size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+
+          {tab === "keys" && (
+            <>
+              <section className="six-panel six-key-intro">
+                <span className="six-key-large">
+                  <KeyRound size={26} />
+                </span>
+                <div>
+                  <h2>Uma chave sua. Todas as suas ferramentas.</h2>
+                  <p>
+                    Use sua chave individual para configurar os perfis
+                    disponíveis no seu acesso.
+                  </p>
+                </div>
+                <button
+                  className="six-primary"
+                  onClick={() => switchTab("guides")}
+                >
+                  Configurar ferramenta <ArrowRight size={15} />
+                </button>
+              </section>
+              {!demo && session && <section className="six-panel six-account-key-actions">
+                <h2>Já tem uma chave de teste?</h2><p>Vincule sua chave atual para consultar o histórico. A chave continua funcionando nos seus aplicativos.</p>
+                <form onSubmit={e => { e.preventDefault(); mutateAccount("claim", { key: claimKey }) }}><input type="password" autoComplete="off" aria-label="Chave de teste existente" placeholder="Cole sua chave individual sk-flg-…" value={claimKey} onChange={e => setClaimKey(e.target.value)} /><button className="six-primary" disabled={busy || !claimKey.trim()}>Vincular chave</button></form>
+                <h2>Criar outra chave</h2><p>Disponível para contas com um acesso de teste ativo já vinculado. Até 10 chaves ativas.</p>
+                <form onSubmit={e => { e.preventDefault(); mutateAccount("keys", { name: newKeyName }) }}><input aria-label="Nome da nova chave" maxLength={80} placeholder="Ex.: meu notebook" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} /><button className="six-secondary" disabled={busy || !newKeyName.trim() || !keys.some(k => k.active)}>Criar chave</button></form>
+                {issuedKey && <div className="six-issued-key"><strong>Copie agora. Esta chave só é exibida nesta sessão.</strong><code>{issuedKey}</code><button onClick={() => copy(issuedKey)}>Copiar chave</button><button onClick={() => setIssuedKey("")}>Já guardei</button></div>}
+              </section>}
+              <section className="six-panel">
+                <div className="six-panel-head">
+                  <div>
+                    <h2>Minhas chaves</h2>
+                    <p>
+                      {demo
+                        ? "Exemplo visual. Esta chave não autentica solicitações."
+                        : "Chaves cadastradas para sua conta"}
+                    </p>
+                  </div>
+                  <button
+                    className="six-icon-button"
+                    aria-label="Atualizar chaves"
+                    onClick={() => setRefresh(refresh + 1)}
+                  >
+                    <RefreshCw size={16} />
+                  </button>
+                </div>
+                {demo ? (
+                  <div className="six-demo-key">
+                    <KeyRound size={20} />
+                    <div>
+                      <strong>Minha chave de desenvolvimento</strong>
+                      <code>DEMO •••••••• ••••••••</code>
+                    </div>
+                    <span className="six-pill">Ilustrativa</span>
+                  </div>
+                ) : !session ? (
+                  empty(
+                    "Entre para ver suas chaves",
+                    "Seu cadastro e suas chaves ficam associados à sua conta.",
+                    <Link className="six-primary" to="/login">
+                      Entrar na SixtySix <ArrowRight size={14} />
+                    </Link>,
+                  )
+                ) : keyState === "loading" ? (
+                  empty(
+                    "Carregando suas chaves",
+                    "Consultando os dados da sua conta.",
+                  )
+                ) : keyState === "error" ? (
+                  empty(
+                    "Não foi possível carregar as chaves",
+                    "Tente novamente. Se persistir, entre em contato com o suporte.",
+                    <button
+                      className="six-secondary"
+                      onClick={() => setRefresh(refresh + 1)}
+                    >
+                      Tentar novamente
+                    </button>,
+                  )
+                ) : keys.length ? (
+                  <div className="six-table-scroll">
+                    <table className="six-table">
+                      <thead>
+                        <tr>
+                          <th>Nome</th>
+                          <th>Prefixo</th>
+                          <th>Criada em</th>
+                          <th>Status</th>
+                          <th>Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {keys.map((k) => (
+                          <tr key={k.id}>
+                            <td>
+                              <strong>{k.name}</strong>
+                            </td>
+                            <td>
+                              <code>{k.prefix}••••••••</code>
+                            </td>
+                            <td>{dateLabel(k.created)}</td>
+                            <td>
+                              <span className="six-status">
+                                {k.active ? "Ativa" : "Inativa"}
+                              </span>
+                            </td>
+                            <td>{k.active && (revokeId === k.id ? <span><button disabled={busy} onClick={() => mutateAccount("revoke", { id: k.id })}>Confirmar revogação</button> <button onClick={() => setRevokeId("")}>Cancelar</button></span> : <button onClick={() => setRevokeId(k.id)}>Revogar</button>)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  empty(
+                    "Sua chave começa aqui",
+                    "Vincule sua chave de teste no formulário acima. Se ainda não recebeu uma, solicite ao suporte.",
+                    <a
+                      className="six-primary"
+                      href="mailto:alisongeneral25@gmail.com?subject=Chave%20individual%20SixtySix"
+                    >
+                      Solicitar minha chave <ArrowUpRight size={14} />
+                    </a>,
+                  )
+                )}
+              </section>
+              <div className="six-note">
+                <ShieldCheck size={18} />
+                <p>
+                  O segredo completo de uma chave não pode ser recuperado a
+                  partir do prefixo. Use a chave entregue a você e guarde-a em
+                  local seguro.
+                </p>
               </div>
-            )}
-          </div>
+            </>
+          )}
+
+          {tab === "guides" && (
+            <>
+              <div className="six-guide-choices">
+                {[
+                  ["claude", "Claude Code", "Terminal", "claude"],
+                  ["desktop", "Claude Desktop", "Aplicativo", "claude"],
+                  ["codex", "Codex", "Terminal e desktop", "openai"],
+                  ["glm", "ZCode", "Perfil GLM 5", "glm"],
+                ].map(([id, title, desc, icon]) => (
+                  <button
+                    key={id}
+                    className={tool === id ? "selected" : ""}
+                    onClick={() => setTool(id)}
+                  >
+                    <img src={`/assets/brands/${icon}.svg`} alt="" />
+                    <strong>{title}</strong>
+                    <span>{desc}</span>
+                    {tool === id && <CircleCheck size={15} />}
+                  </button>
+                ))}
+              </div>
+              <div className="six-guide-layout">
+                <section className="six-panel six-guide">
+                  <div className="six-panel-head">
+                    <div>
+                      <span className="six-kicker">PASSO A PASSO</span>
+                      <h2>
+                        {tool === "claude"
+                          ? "Fable 5.1 no seu terminal"
+                          : tool === "codex"
+                            ? "Astra 6 no Codex"
+                            : tool === "desktop"
+                              ? "Fable 5.1 no Claude Desktop"
+                              : "GLM 5 no ZCode"}
+                      </h2>
+                    </div>
+                    <span className="six-pill">
+                      {tool === "codex" ? "Responses" : "Anthropic"}
+                    </span>
+                  </div>
+                  {(tool === "claude" || tool === "codex") && (
+                    <div
+                      className="six-os-tabs"
+                      aria-label="Sistema ou terminal"
+                    >
+                      {[
+                        ["powershell", "Windows · PowerShell"],
+                        ["cmd", "Windows · CMD"],
+                        ["bash", "macOS / Linux"],
+                      ].map(([id, label]) => (
+                        <button
+                          className={os === id ? "selected" : ""}
+                          key={id}
+                          onClick={() => setOs(id)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {tool === "claude" && (
+                    <>
+                      <GuideStep number="01" title="Instale o Claude Code">
+                        <p>
+                          Com Node.js e npm instalados, abra o terminal e
+                          execute:
+                        </p>
+                        <CodeBlock
+                          code="npm install -g @anthropic-ai/claude-code"
+                          copy={copy}
+                        />
+                      </GuideStep>
+                      <GuideStep
+                        number="02"
+                        title="Configure sua chave e inicie"
+                      >
+                        <p>
+                          Os comandos abaixo valem para a janela atual. Use sua
+                          chave individual no lugar do campo indicado.
+                        </p>
+                        <CodeBlock code={claudeCode} copy={copy} />
+                      </GuideStep>
+                      <GuideStep
+                        number="03"
+                        title="Faça sua primeira solicitação"
+                      >
+                        <p>
+                          Ao abrir o Claude Code, envie uma mensagem curta. Caso
+                          apareça uma tela de login da Anthropic, confira as
+                          variáveis na mesma janela e reinicie o comando.
+                        </p>
+                      </GuideStep>
+                    </>
+                  )}
+                  {tool === "codex" && (
+                    <>
+                      <GuideStep
+                        number="01"
+                        title="Salve sua chave no ambiente"
+                      >
+                        <p>
+                          {os === "bash"
+                            ? "Configure a variável nesta sessão do terminal."
+                            : "Configure a variável e abra o Codex a partir dessa mesma janela."}
+                        </p>
+                        <CodeBlock
+                          code={
+                            os === "powershell"
+                              ? `$env:SIXTYSIX_GATEWAY_API_KEY=${shellKey}`
+                              : os === "cmd"
+                                ? `set "SIXTYSIX_GATEWAY_API_KEY=${actualKey.replace(/[\r\n"]/g, "")}"`
+                                : `export SIXTYSIX_GATEWAY_API_KEY=${shellKey}`
+                          }
+                          copy={copy}
+                        />
+                      </GuideStep>
+                      <GuideStep
+                        number="02"
+                        title="Edite a configuração do Codex"
+                      >
+                        <p>
+                          Abra{" "}
+                          <code>
+                            {os === "bash"
+                              ? "~/.codex/config.toml"
+                              : "%USERPROFILE%\\.codex\\config.toml"}
+                          </code>
+                          . Mescle os campos se o provedor já existir; evite
+                          repetir a mesma tabela.
+                        </p>
+                        <CodeBlock code={codexConfig} copy={copy} />
+                      </GuideStep>
+                      <GuideStep
+                        number="03"
+                        title="Abra o Codex e selecione Astra 6"
+                      >
+                        <p>
+                          Reinicie o aplicativo a partir do ambiente
+                          configurado. O identificador deste perfil é{" "}
+                          <code>gpt-6-astra</code>. GLM 5 usa outra
+                          configuração, no ZCode.
+                        </p>
+                      </GuideStep>
+                    </>
+                  )}
+                  {tool === "desktop" && (
+                    <>
+                      <GuideStep number="01" title="Confira a opção de gateway">
+                        <p>
+                          Nas configurações de conexão do Claude Desktop,
+                          procure a opção Gateway. Ela precisa estar disponível
+                          na sua versão do aplicativo.
+                        </p>
+                      </GuideStep>
+                      <GuideStep number="02" title="Preencha as credenciais">
+                        <CodeBlock
+                          code={`Tipo: Chave de API estática\nURL base: https://www.sixtysix.online\nChave: ${actualKey}\nAutenticação: x-api-key\nModelo: claude-fable-5-1`}
+                          copy={copy}
+                        />
+                      </GuideStep>
+                      <GuideStep number="03" title="Salve, reinicie e teste">
+                        <p>
+                          Teste a conexão, salve as configurações e reinicie
+                          quando solicitado. Se sua versão não oferecer gateway
+                          personalizado, use o tutorial do Claude Code no
+                          terminal.
+                        </p>
+                      </GuideStep>
+                    </>
+                  )}
+                  {tool === "glm" && (
+                    <>
+                      <GuideStep
+                        number="01"
+                        title="Adicione um provedor personalizado"
+                      >
+                        <p>
+                          No ZCode, abra Model Settings → Add Provider.
+                          Selecione o formato compatível com Anthropic.
+                        </p>
+                      </GuideStep>
+                      <GuideStep number="02" title="Configure o perfil GLM 5">
+                        <CodeBlock
+                          code={`Nome: SixtySix\nTipo: Anthropic personalizado\nBase URL: https://www.sixtysix.online/glm\nAPI Key: ${actualKey}\nModel ID: glm-5`}
+                          copy={copy}
+                        />
+                      </GuideStep>
+                      <GuideStep number="03" title="Ative o provedor e teste">
+                        <p>
+                          Salve, ative o provedor e selecione o perfil GLM 5.
+                          Esta configuração é para o ZCode; ela não adiciona GLM
+                          ao catálogo atual do Codex.
+                        </p>
+                      </GuideStep>
+                    </>
+                  )}
+                </section>
+                <aside className="six-guide-side">
+                  <section className="six-panel">
+                    <span className="six-soft-icon">
+                      <KeyRound size={20} />
+                    </span>
+                    <h3>Deixe os comandos prontos</h3>
+                    <p>Cole sua chave para preencher os exemplos desta tela.</p>
+                    <label className="six-secret-input">
+                      <input
+                        aria-label="Sua chave individual"
+                        type={reveal ? "text" : "password"}
+                        autoComplete="off"
+                        value={clientKey}
+                        placeholder="Cole sua chave individual"
+                        onChange={(e) =>
+                          setClientKey(e.target.value.replace(/[\r\n]/g, ""))
+                        }
+                      />
+                      <button
+                        aria-label={reveal ? "Ocultar chave" : "Mostrar chave"}
+                        onClick={() => setReveal(!reveal)}
+                      >
+                        {reveal ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </label>
+                    <small>
+                      O preenchimento fica apenas na memória desta tela. Os
+                      comandos copiados conterão sua chave.
+                    </small>
+                    {clientKey && (
+                      <button
+                        className="six-text-button"
+                        onClick={() => setClientKey("")}
+                      >
+                        Limpar chave
+                      </button>
+                    )}
+                  </section>
+                  <section className="six-panel">
+                    <ShieldCheck size={21} />
+                    <h3>Não conectou?</h3>
+                    <p>
+                      Confira a URL, o identificador do modelo e se a chave está
+                      completa. Não envie o segredo da chave ao compartilhar um
+                      erro.
+                    </p>
+                    <button
+                      className="six-text-button"
+                      onClick={() => switchTab("help")}
+                    >
+                      Abrir central de ajuda <ArrowRight size={14} />
+                    </button>
+                  </section>
+                </aside>
+              </div>
+            </>
+          )}
+
+          {tab === "plan" && (
+            <>
+              <div className="six-plan-grid">
+                <section className="six-panel six-plan-main">
+                  <span className="six-pill">
+                    {demo ? "Plano ilustrativo" : "Minha assinatura"}
+                  </span>
+                  <h2>{demo ? "Pro" : keys.some(k => k.active) ? "Acesso de teste ativo" : "Sem acesso vinculado"}</h2>
+                  <p>
+                    Seu espaço para construir com Fable 5.1, Astra 6 e GLM 5.
+                  </p>
+                  <div className="six-plan-price">
+                    {demo ? <DashboardNumber value={119} format="money" replay={numberReplay} /> : "—"}
+                    <span>
+                      {demo
+                        ? "/ mês · exemplo"
+                        : "Sem cobrança ativa · pagamentos ainda não conectados"}
+                    </span>
+                  </div>
+                  <div className="six-plan-benefits">
+                    {[
+                      "Chave individual de acesso",
+                      "Configuração nas ferramentas compatíveis",
+                      "Histórico e consumo por perfil",
+                      "Tutoriais organizados em um só lugar",
+                    ].map((t) => (
+                      <span key={t}>
+                        <CircleCheck size={16} />
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <Link className="six-primary" to="/#planos">
+                    Ver planos disponíveis <ArrowUpRight size={15} />
+                  </Link>
+                </section>
+                <section className="six-plan-note">
+                  <img
+                    src="/assets/plan-trial.webp"
+                    alt="Ilustração de presente"
+                  />
+                  <h2>
+                    Uma boa ideia
+                    <br />
+                    merece um começo.
+                  </h2>
+                  <p>
+                    Os acessos, valores e limites devem ser confirmados no seu
+                    plano contratado.
+                  </p>
+                  <button
+                    className="six-secondary"
+                    onClick={() => switchTab("guides")}
+                  >
+                    Preparar minha ferramenta <ArrowRight size={15} />
+                  </button>
+                </section>
+              </div>
+              <section className="six-panel">
+                <div className="six-panel-head">
+                  <div>
+                    <h2>Cobranças e recibos</h2>
+                    <p>Seu histórico de assinatura</p>
+                  </div>
+                  <CreditCard size={18} />
+                </div>
+                {empty(
+                  "Nenhuma cobrança disponível",
+                  "Quando a integração de cobrança estiver conectada, seus pagamentos e recibos aparecerão aqui.",
+                )}
+              </section>
+            </>
+          )}
+
+          {tab === "help" && (
+            <div className="six-help-layout">
+              <section className="six-panel six-faq">
+                <div className="six-panel-head">
+                  <div>
+                    <h2>Respostas para continuar criando</h2>
+                    <p>O essencial sobre sua conexão</p>
+                  </div>
+                  <CircleHelp size={21} />
+                </div>
+                {[
+                  [
+                    "Onde consigo minha chave?",
+                    "Sua chave individual é fornecida pelo administrador da SixtySix. O login no site não emite automaticamente uma chave do gateway. Use a seção Chaves de API para consultar o cadastro ou solicitar acesso.",
+                  ],
+                  [
+                    "Deu erro 401. O que confiro?",
+                    "Confira se a chave está completa, sem espaços, se continua ativa e se o aplicativo usa a URL correta. Uma credencial de login Google ou Discord não substitui sua chave individual do gateway.",
+                  ],
+                  [
+                    "Posso usar GLM 5 no Codex?",
+                    "O catálogo atual do gateway no Codex usa gpt-6-astra. O tutorial de GLM 5 é para ZCode, com a URL base terminando em /glm.",
+                  ],
+                  [
+                    "O Claude Desktop não salva a conexão.",
+                    "Confira se sua versão oferece gateway personalizado, use autenticação x-api-key e salve e reinicie. Se o erro persistir, informe o aplicativo, a versão e a mensagem ao suporte, sem enviar sua chave.",
+                  ],
+                  [
+                    "Como funciona a economia exibida?",
+                    "Na demonstração, multiplicamos os tokens de entrada e saída do filtro por tarifas editáveis por milhão e subtraímos R$ 119 de mensalidade integral, sem rateio. Os preços iniciais são ilustrativos. A economia mínima exibida é zero.",
+                  ],
+                ].map(([q, a], i) => (
+                  <div className="six-faq-row" key={q}>
+                    <button
+                      aria-expanded={faq === i}
+                      onClick={() => setFaq(faq === i ? null : i)}
+                    >
+                      {q}
+                      <ChevronDown size={16} />
+                    </button>
+                    {faq === i && <p>{a}</p>}
+                  </div>
+                ))}
+              </section>
+              <section className="six-panel six-support">
+                <span className="six-soft-icon">
+                  <CircleHelp size={24} />
+                </span>
+                <h2>Vamos resolver juntos.</h2>
+                <p>
+                  Envie o nome da ferramenta, seu sistema e a mensagem de erro.
+                  Assim conseguimos entender o problema mais rápido.
+                </p>
+                <a
+                  className="six-primary"
+                  href="mailto:alisongeneral25@gmail.com?subject=Suporte%20SixtySix"
+                >
+                  Falar com o suporte <ArrowUpRight size={15} />
+                </a>
+                <button
+                  className="six-text-button"
+                  onClick={() => switchTab("guides")}
+                >
+                  Revisar configuração <ArrowRight size={14} />
+                </button>
+              </section>
+            </div>
+          )}
+          <footer className="six-dashboard-footer">
+            <span>Feito para suas próximas grandes ideias.</span>
+            <span>
+              <span className="six-dot emerald" /> SixtySix workspace{" "}
+              <span className="six-footer-separator">/</span>
+              <a href="/privacidade.html">Privacidade</a>
+            </span>
+          </footer>
         </main>
       </div>
+      {toast && (
+        <div className="six-toast" role="status">
+          <Check size={17} />
+          {toast}
+        </div>
+      )}
+    </div>
+  )
+}
 
-      {/* =========================================================================
-          MODAL: LIMITE DE CHAVES ATINGIDO (Para quem não tem plano ativo)
-         ========================================================================= */}
-      <AnimatePresence>
-        {showLimitModal && (
-          <div className="pc-modal-backdrop" onClick={() => setShowLimitModal(false)}>
-            <motion.div
-              className="pc-modal-card"
-              onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.94, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 15 }}
-            >
-              <div className="pc-modal-head">
-                <div className="pc-modal-badge is-amber">
-                  <Lock size={15} color="#f59e0b" />
-                  <span>Limite do Plano Gratuito</span>
-                </div>
-                <button
-                  type="button"
-                  className="pc-modal-close"
-                  onClick={() => setShowLimitModal(false)}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <h3 className="pc-modal-title">Você já possui 1 chave de API ativa</h3>
-              <p className="pc-modal-desc">
-                No plano gratuito ou sem assinatura ativa, cada desenvolvedor pode ter até <strong>1 chave de API</strong>. Para conectar diferentes IDEs simultaneamente (Cursor, Claude Code CLI, Cline, VS Code), assine o Plano Pro!
-              </p>
-
-              <div className="pc-modal-features">
-                <div className="pc-feat-row">
-                  <Check size={16} color="#22c55e" />
-                  <span>Chaves de API ilimitadas para todas as suas IDEs</span>
-                </div>
-                <div className="pc-feat-row">
-                  <Check size={16} color="#22c55e" />
-                  <span>Acesso irrestrito ao Claude 3.7 Fable, GPT Astra e GLM-4</span>
-                </div>
-                <div className="pc-feat-row">
-                  <Check size={16} color="#22c55e" />
-                  <span>Latência ultrabaixa de 24ms via SixtySix Gateway</span>
-                </div>
-              </div>
-
-              <div className="pc-modal-actions">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLimitModal(false)
-                    setActiveTab('pix')
-                  }}
-                  className="pc-primary-action-btn"
-                >
-                  <span>Ativar Assinatura Pro via Pix (R$ 49/mês)</span>
-                  <ArrowUpRight size={16} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    toggleSubscriptionPlan()
-                    setShowLimitModal(false)
-                    setShowCreateModal(true)
-                  }}
-                  className="pc-subtle-action-btn"
-                >
-                  Simular Ativação Imediata (Modo Sandbox)
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* =========================================================================
-          MODAL: CRIAR NOVA CHAVE DE API
-         ========================================================================= */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <div className="pc-modal-backdrop" onClick={() => setShowCreateModal(false)}>
-            <motion.div
-              className="pc-modal-card"
-              onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.94, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 15 }}
-            >
-              <div className="pc-modal-head">
-                <h3 className="pc-modal-title">Criar Nova Chave de API</h3>
-                <button
-                  type="button"
-                  className="pc-modal-close"
-                  onClick={() => {
-                    setShowCreateModal(false)
-                    setJustCreatedKey(null)
-                  }}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {justCreatedKey ? (
-                <div className="pc-key-created-box">
-                  <div className="pc-success-pill">
-                    <Check size={18} color="#22c55e" />
-                    <span>Chave criada com sucesso!</span>
-                  </div>
-                  <p className="pc-created-warning">
-                    Copie sua chave agora. Por segurança, você não poderá vê-la novamente por completo.
-                  </p>
-                  <div className="pc-revealed-key-row">
-                    <code>{justCreatedKey}</code>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(justCreatedKey, 'created')}
-                      className="pc-key-copy-action"
-                    >
-                      {copiedKeyId === 'created' ? <Check size={14} color="#22c55e" /> : <Copy size={14} />}
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateModal(false)
-                      setJustCreatedKey(null)
-                    }}
-                    className="pc-primary-action-btn is-full"
-                  >
-                    Concluído
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={handleCreateKey} className="pc-modal-form">
-                  <label className="pc-modal-label">Nome da Chave / Identificação:</label>
-                  <input
-                    type="text"
-                    required
-                    autoFocus
-                    value={newKeyName}
-                    onChange={(e) => setNewKeyName(e.target.value)}
-                    placeholder="Ex: Cursor MacBook Pro, Claude CLI Terminal..."
-                    className="pc-modal-input"
-                  />
-                  <div className="pc-modal-actions">
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateModal(false)}
-                      className="pc-subtle-action-btn"
-                    >
-                      Cancelar
-                    </button>
-                    <button type="submit" className="pc-primary-action-btn">
-                      Gerar Chave
-                    </button>
-                  </div>
-                </form>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* =========================================================================
-          MODAL: ALTERAR COMO GOSTARIA DE SER CHAMADO
-         ========================================================================= */}
-      <AnimatePresence>
-        {showEditNameModal && (
-          <div className="pc-modal-backdrop" onClick={() => setShowEditNameModal(false)}>
-            <motion.div
-              className="pc-modal-card"
-              onClick={(e) => e.stopPropagation()}
-              initial={{ opacity: 0, scale: 0.94, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 15 }}
-            >
-              <div className="pc-modal-head">
-                <h3 className="pc-modal-title">Como gostaria de ser chamado?</h3>
-                <button
-                  type="button"
-                  className="pc-modal-close"
-                  onClick={() => setShowEditNameModal(false)}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <p className="pc-modal-desc">
-                Em vez de exibir o nome completo ou tag original da sua conta do Google ou Discord, digite o nome que você prefere ver no cabeçalho e em toda a plataforma.
-              </p>
-
-              <form onSubmit={handleSaveChosenName} className="pc-modal-form">
-                <label className="pc-modal-label">Seu nome preferido:</label>
-                <input
-                  type="text"
-                  required
-                  autoFocus
-                  maxLength={30}
-                  value={editNameValue}
-                  onChange={(e) => setEditNameValue(e.target.value)}
-                  placeholder="Ex: Alysson, Neo, DevMax..."
-                  className="pc-modal-input"
-                />
-
-                <div className="pc-modal-actions">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditNameModal(false)}
-                    className="pc-subtle-action-btn"
-                  >
-                    Cancelar
-                  </button>
-                  <button type="submit" className="pc-primary-action-btn">
-                    Salvar Nome
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+function PlusIcon() {
+  return <span className="six-plus">+</span>
+}
+function GuideStep({
+  number,
+  title,
+  children,
+}: {
+  number: string
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <div className="six-guide-step">
+      <span>{number}</span>
+      <div>
+        <h3>{title}</h3>
+        {children}
+      </div>
     </div>
   )
 }

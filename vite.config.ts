@@ -1,9 +1,10 @@
-import { defineConfig, type HtmlTagDescriptor, type Plugin } from 'vite'
+import { defineConfig, loadEnv, type HtmlTagDescriptor, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import accountHandler from './api/account/[...path].ts'
 import siteConfiguration from './.figma/make/site.json'
 
 
@@ -11,6 +12,8 @@ import siteConfiguration from './.figma/make/site.json'
 export default defineConfig(({ mode }) => {
   // .figma/make/deploy-preview passes `--mode development` for cached-preview builds.
   const emitSourcemaps = mode === 'development'
+  const serverEnv = loadEnv(mode, process.cwd(), '')
+  for (const key of ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','VITE_SUPABASE_ANON_KEY','SUPABASE_PUBLISHABLE_KEY']) { if (serverEnv[key]) process.env[key] = serverEnv[key] }
 
   return {
     base: process.env.FIGMA_PUBLIC_URL ? `${process.env.FIGMA_PUBLIC_URL}/` : '/',
@@ -19,6 +22,7 @@ export default defineConfig(({ mode }) => {
       minify: !emitSourcemaps,
     },
     plugins: [
+      { name: "account-api", configureServer(server) { server.middlewares.use((req, res, next) => { if (!req.url?.startsWith("/api/account/")) return next(); void accountHandler(req, res) }) } },
 react(),
       tailwindcss(),
       figmaSiteConfiguration(siteConfiguration),

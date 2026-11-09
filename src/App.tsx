@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
-import { AuthProvider } from './lib/AuthContext'
-import { isLocalhost } from './lib/isLocalhost'
+import { AuthProvider, useAuth } from './lib/AuthContext'
 import HomePage from './pages/HomePage'
 import ClaudeCodePage from './pages/ClaudeCode'
 import GptAstraPage from './pages/GptAstra'
@@ -19,8 +18,14 @@ function ScrollToTop() {
   return null
 }
 
+function AccountRoute({ onboarding = false }: { onboarding?: boolean }) {
+  const { session, loading } = useAuth()
+  const demo = ['localhost','127.0.0.1'].includes(window.location.hostname) && new URLSearchParams(window.location.search).get('demo') === '1'
+  if (loading) return <div className="six-auth-loading" role="status">Carregando sua conta…</div>
+  if (!session && !demo) return <Navigate to="/login" replace />
+  return onboarding ? <OnboardingPage /> : <DashboardPage />
+}
 export default function App() {
-  const isLocal = isLocalhost()
 
   return (
     <AuthProvider>
@@ -36,22 +41,22 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/entrar" element={<LoginPage />} />
           
-          {/* Rotas da Plataforma: estritamente locais para validação antes de ir para produção */}
+          {/* Conta privada: a API valida novamente a sessão e o proprietário. */}
           <Route
             path="/onboarding"
-            element={isLocal ? <OnboardingPage /> : <Navigate to="/" replace />}
+            element={<AccountRoute onboarding />}
           />
           <Route
             path="/dashboard"
-            element={isLocal ? <DashboardPage /> : <Navigate to="/" replace />}
+            element={<AccountRoute />}
           />
           <Route
             path="/app"
-            element={isLocal ? <DashboardPage /> : <Navigate to="/" replace />}
+            element={<AccountRoute />}
           />
           <Route
             path="/plataforma"
-            element={isLocal ? <DashboardPage /> : <Navigate to="/" replace />}
+            element={<AccountRoute />}
           />
 
           <Route path="/auth/callback" element={<AuthCallback />} />

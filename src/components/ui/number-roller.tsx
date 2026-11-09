@@ -7,10 +7,11 @@ interface NumberRollerProps {
   suffix?: string
   decimals?: number
   className?: string
+  animateOnMount?: boolean
   duration?: number
 }
 
-function RollingDigit({ digit, duration = 0.55 }: { digit: string; duration?: number }) {
+function RollingDigit({ digit, duration = 0.55, animateOnMount = false }: { digit: string; duration?: number; animateOnMount?: boolean }) {
   const num = parseInt(digit, 10)
 
   if (isNaN(num)) {
@@ -29,7 +30,7 @@ function RollingDigit({ digit, duration = 0.55 }: { digit: string; duration?: nu
     >
       <motion.span
         className="flex flex-col items-center"
-        initial={false}
+        initial={animateOnMount ? { y: "0%" } : false}
         animate={{ y: `-${num * 10}%` }}
         transition={{
           duration,
@@ -61,6 +62,7 @@ export default function NumberRoller({
   decimals = 2,
   className = '',
   duration = 0.55,
+  animateOnMount = false,
 }: NumberRollerProps) {
   const parts = Math.max(0, value).toFixed(decimals).split('.')
   const intStr = parts[0]
@@ -92,7 +94,7 @@ export default function NumberRoller({
       {prefix && <span className="inline-block mr-[0.15em] select-none">{prefix}</span>}
       <span className="inline-flex items-baseline">
         {tokens.map((t) => (
-          <RollingDigit key={t.key} digit={t.char} duration={duration} />
+          <RollingDigit key={t.key} digit={t.char} duration={duration} animateOnMount={animateOnMount} />
         ))}
       </span>
       {suffix && <span className="inline-block ml-[0.15em] select-none">{suffix}</span>}

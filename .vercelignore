@@ -1,0 +1,12 @@
+.env*
+.tmp-*
+.git
+node_modules
+dist
+server/*.test.ts
+scripts
+supabase
+ACCOUNT-INTEGRATION.md
+DASHBOARD-NOTES.md
+AGENTS.md
+CLAUDE.md
