@@ -7,6 +7,7 @@ import GptAstraPage from './pages/GptAstra'
 import Glm4Page from './pages/Glm4'
 import LoginPage from './pages/LoginPage'
 import AuthCallback from './pages/AuthCallback'
+import DashboardPage from './pages/DashboardPage'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -30,6 +31,9 @@ export default function App() {
           <Route path="/glm" element={<Glm4Page />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/entrar" element={<LoginPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/app" element={<DashboardPage />} />
+          <Route path="/plataforma" element={<DashboardPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="*" element={<HomePage />} />
         </Routes>

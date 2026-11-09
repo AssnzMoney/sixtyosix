@@ -215,7 +215,7 @@ export default function LoginPage() {
                 <div className="login-logged-actions">
                   <button
                     type="button"
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate('/dashboard')}
                     className="login-submit-btn is-ready"
                   >
                     Acessar Plataforma

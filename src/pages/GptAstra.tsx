@@ -120,7 +120,7 @@ export default function GptAstraPage() {
           <div className="nav-right">
             {user ? (
               <div className="nav-user-logged">
-                <Link to="/login" className="nav-user-badge" title={`Conectado como ${user.email}`}>
+                <Link to="/dashboard" className="nav-user-badge" title={`Conectado como ${user.email} - Acessar Dashboard`}>
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt={user.name} className="nav-user-avatar" />
                   ) : (
