@@ -5,6 +5,7 @@ function configuration(env:NodeJS.ProcessEnv){
  if(!url?.startsWith('https://')||!secret||!publicKey)throw new AccountError(503,'Administração temporariamente indisponível.')
  return {url,secret,publicKey}
 }
+export const TRIAL_CUTOFF='2026-11-09T21:10:00.000Z'
 type Row = Record<string, any>
 const resources:Record<string,string>={
  clients:'id,user_id,name,enabled,created_at,key_prefix',
@@ -31,6 +32,7 @@ export function createAdminService(env=process.env,request:typeof fetch=fetch){
   if(resource==='users')url=`${config.url}/auth/v1/admin/users?page=${Math.floor(offset/500)+1}&per_page=500`
   else{
    const params=new URLSearchParams({select:resources[resource],limit:'500',offset:String(offset),order:resource==='usage'?'created_at.desc,id.desc':resource==='payments'?'recorded_at.desc,id.desc':resource==='keys'?'created_at.desc,subscription_id':resource==='trials'?'created_at.desc,user_id':'created_at.desc,id.desc'})
+   if(resource==='trials'&&query.get('history')!=='1')params.set('created_at',"gte.${TRIAL_CUTOFF}")
    if(['usage','payments'].includes(resource)){
     const from=query.get('from')||new Date(Date.now()-29*86400000).toISOString().slice(0,10),to=query.get('to')||new Date().toISOString().slice(0,10)
     if(![from,to].every(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x)||from>to||Date.parse(to)-Date.parse(from)>365*86400000)throw new AccountError(400,'Escolha um período de até 366 dias.')
@@ -49,11 +51,17 @@ export function createAdminService(env=process.env,request:typeof fetch=fetch){
 export default async function handler(req:IncomingMessage,res:ServerResponse){
  res.setHeader('Cache-Control','private, no-store');res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('X-Content-Type-Options','nosniff')
  try{
+  if(req.method==='POST'){
+   const query=new URLSearchParams({resource:'trials',history:'1'});const service=createAdminService();const config=configuration(process.env);let count=0;
+   for(let offset=0;offset<=1000000;offset+=500){query.set('offset',String(offset));const page=await service(req.headers.authorization,query);for(const trial of page.rows){if(Date.parse(trial.created_at)>=Date.parse(TRIAL_CUTOFF)||trial.revoked_at)continue;const response=await fetch(config.url+'/rest/v1/rpc/account_revoke_trial',{method:'POST',headers:{apikey:config.secret,...(!config.secret.startsWith('sb_secret_')?{Authorization:'Bearer '+config.secret}:{}),'Content-Type':'application/json'},body:JSON.stringify({p_user_id:trial.user_id,p_client_id:trial.gateway_client_id}),signal:AbortSignal.timeout(15000)});if(!response.ok||await response.json()!==true)throw new AccountError(503,'Revogação incompleta. Atualize e tente novamente.');count++}if(!page.hasMore)break}
+   res.statusCode=200;res.end(JSON.stringify({revoked:count,cutoff:TRIAL_CUTOFF}));return
+  }
   if(req.method!=='GET')throw new AccountError(405,'Operação não disponível.')
   const result=await createAdminService()(req.headers.authorization,new URL(req.url||'/', 'http://localhost').searchParams)
   res.statusCode=200;res.end(JSON.stringify(result))
  }catch(error){res.statusCode=error instanceof AccountError?error.status:503;res.end(JSON.stringify({error:error instanceof AccountError?error.message:'Administração temporariamente indisponível.'}))}
 }
+
 
 
 

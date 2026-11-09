@@ -41,10 +41,11 @@ export default function AdminPage(){
   return (data[tab]||[]).map(x=>{const sub=subs.get(x.subscription_id),client=clients.get(x.client_id);return {...x,customer:customer(x.user_id||sub?.user_id||client?.owner),plan_code:x.plan_code||sub?.plan_code,key:client?.key_prefix||x.client_id}}).filter(x=>JSON.stringify(x).toLowerCase().includes(search.toLowerCase()))
  },[data,tab,search])
  const usage=data.usage||[],payments=data.payments||[],failures=usage.filter(x=>x.status_code>=400),tokens=usage.reduce((a,x)=>a+Number(x.input_tokens||0)+Number(x.output_tokens||0),0),revenue=payments.filter(x=>x.status==='approved').reduce((a,x)=>a+Number(x.amount_cents||0),0)
+ async function revokeOld(){if(!session)return;setBusy(true);setError('');try{const response=await fetch('/api/management',{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`}});const result=await response.json();if(!response.ok)throw new Error(result.error);setRevision(x=>x+1)}catch(e){setError(e instanceof Error?e.message:'Não foi possível revogar.');setBusy(false)}}
  function exportCsv(){const cols=columns[tab],escape=(v:any)=>'"'+String(v??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"';const csv='\ufeff'+[cols.map(c=>escape(titles[c])).join(';'),...enriched.map(x=>cols.map(c=>escape(format(c,x[c]))).join(';'))].join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download=`sixtysix-${tab}-${from}-${to}.csv`;a.click();URL.revokeObjectURL(url)}
  return <main className="sx-admin"><header><Link to="/dashboard"><ArrowLeft size={17}/> Dashboard</Link><div className="sx-admin-brand"><img src="/assets/sidebar-logo.png" alt="SixtySix"/><span>SixtySix <small>Administração</small></span></div><span><ShieldCheck size={16}/> Área privada</span></header><section className="sx-admin-heading"><div><p>CONTROLE DA OPERAÇÃO</p><h1>Uma visão de tudo que acontece.</h1><span>Clientes, acesso e pagamentos reais da SixtySix.</span></div><button disabled={busy||!session} onClick={()=>setRevision(x=>x+1)}><RefreshCw size={16} className={busy?'sx-spin':''}/> {busy?'Atualizando…':'Atualizar'}</button></section>
  {loading?<p role="status">Conferindo sua conta…</p>:!session?<div className="sx-admin-message"><h2>Entre com sua conta administrativa</h2><Link to="/login">Entrar na SixtySix</Link></div>:<>
- <div className="sx-admin-filters"><label>De<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Até<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><span>Período aplicado ao consumo e aos pagamentos. Horários dos filtros em UTC.{updated&&` Atualizado às ${updated}.`}</span></div>
+ <p className="sx-admin-note">Testes contabilizados a partir de 09/11/2026 às 18h10 (Brasília).</p><button disabled={busy||!session} onClick={()=>void revokeOld()}>Revogar testes anteriores às 18h10</button><div className="sx-admin-filters"><label>De<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Até<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label><span>Período aplicado ao consumo e aos pagamentos. Horários dos filtros em UTC.{updated&&` Atualizado às ${updated}.`}</span></div>
  {error?<div role="alert" className="sx-admin-message">{error}</div>:<>
  {notice&&<p className="sx-admin-message">{notice}</p>}
  <div className="sx-admin-metrics">{[['Clientes cadastrados',data.users?.length],['Planos com acesso',(data.subscriptions||[]).filter(x=>x.entitled&&Date.parse(x.paid_until)>Date.now()).length],['Pagamentos aprovados',money(revenue)],['Tokens no período',number(tokens)],['Chamadas',number(usage.length)],['Falhas',number(failures.length)]].map(([label,value])=><article key={label}><span>{label}</span><strong>{busy?'…':value??'—'}</strong></article>)}</div>
@@ -53,6 +54,7 @@ export default function AdminPage(){
  </>}
  </main>
 }
+
 
 
 
