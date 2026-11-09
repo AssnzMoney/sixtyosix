@@ -57,11 +57,11 @@ const faqs = [
   ],
   [
     'Qual endereço (URL do gateway) e modelo devo configurar?',
-    'O endereço base oficial do gateway é https://66cloud.vercel.app para Claude Code e Claude Desktop (com modelo claude-fable-5-1). Para o Codex, a configuração aponta para https://66cloud.vercel.app/v1 (com modelo gpt-6-astra).',
+    'O endereço base oficial do gateway é https://www.sixtysix.online para Claude Code e Claude Desktop (com modelo claude-fable-5-1). Para o Codex, a configuração aponta para https://www.sixtysix.online/v1 (com modelo gpt-6-astra).',
   ],
   [
     'A chave não funcionou ou deu erro. O que devo verificar?',
-    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://66cloud.vercel.app; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate nosso suporte.',
+    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://www.sixtysix.online; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate nosso suporte.',
   ],
 ]
 
@@ -182,7 +182,7 @@ export default function App() {
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText('set ANTHROPIC_BASE_URL=https://66cloud.vercel.app')
+    navigator.clipboard.writeText('set ANTHROPIC_BASE_URL=https://www.sixtysix.online')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -667,13 +667,13 @@ export default function App() {
               </div>
               <div className="phone-nav-header">
                 <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
-                <span>66cloud.vercel.app</span>
+                <span>www.sixtysix.online</span>
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="6" r="1.5" /><circle cx="12" cy="18" r="1.5" /></svg>
               </div>
               <div className="phone-chat-body">
                 <div className="chat-msg-user">
                   <span className="chat-cmd-line">set ANTHROPIC_BASE_URL=</span>
-                  <span className="chat-cmd-url">https://66cloud.vercel.app</span>
+                  <span className="chat-cmd-url">https://www.sixtysix.online</span>
                 </div>
                 <div className="chat-msg-bot">
                   <div className="chat-bot-icon">
@@ -724,7 +724,7 @@ export default function App() {
               Conecte sua chave individual, aponte a URL base oficial e codifique sem interrupções.
             </p>
             <div className="snippet-box">
-              <code>set ANTHROPIC_BASE_URL=https://66cloud.vercel.app</code>
+              <code>set ANTHROPIC_BASE_URL=https://www.sixtysix.online</code>
               <button
                 type="button"
                 className="btn-copy"
