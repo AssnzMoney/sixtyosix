@@ -17,7 +17,7 @@ const Arrow = () => (
 const astraFaqs = [
   ['O que significa GPT Astra 6?', 'É o perfil GPT Astra 6 que você seleciona no Codex. O identificador usado na configuração é gpt-6-astra.'],
   ['O GPT Astra 6 funciona no Codex?', 'Sim. No Codex, use o provedor personalizado Responses da SixtySix, a chave individual e o ID gpt-6-astra. Siga o arquivo config.toml mostrado nesta página.'],
-  ['Posso usar GLM no Codex?', 'Não pela configuração atual do gateway. O catálogo do Codex aceita somente gpt-6-astra. O perfil GLM 5 é separado e deve ser usado no ZCode.'],
+  ['Posso usar GLM no Codex?', 'Não pela configuração atual do gateway. O catálogo do Codex aceita somente gpt-6-astra. O perfil GLM 5 é separado e deve ser usado no Claude Code.'],
   ['Qual é a URL e como informo a chave?', 'A URL base é https://www.sixtysix.online/v1. Salve sua chave individual na variável SIXTYSIX_GATEWAY_API_KEY do Windows e referencie essa variável no config.toml; não cole a chave diretamente nesse arquivo.'],
   ['O Codex pode usar ferramentas?', 'A rota dá suporte a respostas em streaming e chamadas de ferramentas padrão. Recursos exclusivos da OpenAI, incluindo web search, imagem e áudio, não fazem parte desse perfil.'],
   ['Há limite de uso garantido?', 'Não há garantia de disponibilidade ou uso ilimitado. As cotas e o desempenho dependem do pool compartilhado e podem variar.'],
@@ -631,7 +631,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             </div>
             <div className="claude-step-card">
               <div className="claude-step-top"><span className="claude-step-badge">Atenção</span><h4>GLM é outra configuração</h4></div>
-              <p>GLM 5 não aparece no catálogo do Codex. Para usar esse perfil, configure-o no ZCode com <code>https://www.sixtysix.online/glm</code> e o ID <code>glm-5</code>.</p>
+              <p>GLM 5 não aparece no catálogo do Codex. Para usar esse perfil, configure-o no Claude Code com <code>https://www.sixtysix.online/glm</code> e o ID <code>glm-5</code>.</p>
               
             </div>
           </div>
@@ -1193,3 +1193,4 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
     </main>
   )
 }
+

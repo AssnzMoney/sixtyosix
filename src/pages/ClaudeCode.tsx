@@ -21,7 +21,7 @@ const claudeFaqs = [
   ['Em quais terminais posso rodar o Claude Code?', 'Use o Claude Code CLI em um terminal compatível, configurando as variáveis mostradas no tutorial. No Windows, a página apresenta comandos para o CMD.'],
   ['Posso usar no Claude.ai pelo navegador?', 'Não. O site claude.ai não permite apontar a conexão para este gateway. Claude Desktop só funciona quando a versão instalada oferece configuração de gateway personalizado.'],
   ['Qual URL e ID devo configurar?', 'Use https://www.sixtysix.online como URL base e claude-fable-5-1 como ID do perfil. O gateway atual espera a chave no cabeçalho x-api-key.'],
-  ['Posso usar GLM 5 ou GPT Astra 6 nesta página?', 'Esta página configura o perfil Fable. Para GPT Astra 6 no Codex, abra o tutorial Astra. Para GLM 5, use o tutorial GLM 5 no ZCode; essa rota não aparece no catálogo do Codex.'],
+  ['Posso usar GLM 5 ou GPT Astra 6 nesta página?', 'Esta página configura o perfil Fable. Para GPT Astra 6 no Codex, abra o tutorial Astra. Para GLM 5, use o tutorial GLM 5 no Claude Code; essa rota não aparece no catálogo do Codex.'],
   ['Por que posso receber erro ou indisponibilidade?', 'O gateway pode ficar temporariamente indisponível. Confira URL, ID do perfil e chave. Ao pedir suporte, informe horário e código HTTP, nunca a chave.'],
 ]
 
@@ -302,7 +302,7 @@ export default function ClaudeCodePage() {
                   </Link>
                   <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GLM 5</strong>
-                    <span>Configure no ZCode com o ID glm-5.</span>
+                    <span>Configure no Claude Code com o ID glm-5.</span>
                   </Link>
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Acesso pelo gateway SixtySix</strong>
@@ -330,12 +330,12 @@ export default function ClaudeCodePage() {
                     <span>A configuração do Codex usa o perfil Astra; veja o tutorial específico.</span>
                   </a>
                   <a href="/#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>ZCode (perfil GLM)</strong>
-                    <span>Configure o perfil GLM 5 pelo tutorial específico do ZCode.</span>
+                    <strong>Claude Code (perfil GLM)</strong>
+                    <span>Configure o perfil GLM 5 pelo tutorial específico do Claude Code.</span>
                   </a>
                   <a href="/#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Codex & Terminal</strong>
-                    <span>Codex usa Astra; GLM 5 usa ZCode. As rotas são separadas.</span>
+                    <span>Codex usa Astra; GLM 5 usa Claude Code. As rotas são separadas.</span>
                   </a>
                 </div>
               </div>
@@ -1105,7 +1105,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
               <li><Check /> <span><strong>Fable 5.1</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
-              <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>ZCode</strong></span></li>
+              <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>Claude Code</strong></span></li>
               <li><Check /> <span><strong>Chave individual</strong></span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
@@ -1165,7 +1165,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
               {devWithApi ? (
                 <>
                   <li><Check size={14} /> <span><strong>Chave individual de API inclusa</strong> (+ R$ 15/mês)</span></li>
-                  <li><Check size={14} /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>ZCode</strong></span></li>
+                  <li><Check size={14} /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>Claude Code</strong></span></li>
                   <li><Check size={14} /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
                 </>
               ) : (
@@ -1224,7 +1224,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
               <li><Check /> <span><strong>Uso conforme cotas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Chave individual</strong> (chave individual)</span></li>
               <li><Check /> <span><strong>Perfis SixtySix</strong> (disponibilidade variável)</span></li>
-              <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>ZCode</strong></span></li>
+              <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>Claude Code</strong></span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> sem IOF via Pix</span></li>
             </ul>
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="plan-btn plan-btn-featured">
@@ -1419,3 +1419,4 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
     </main>
   )
 }
+

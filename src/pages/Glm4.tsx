@@ -17,15 +17,15 @@ const Arrow = () => (
 const glmFaqs = [
   [
     'O que é o GLM 5 e quais seus pontos fortes?',
-    'GLM 5 é o perfil disponível no ZCode. Use o identificador glm-5 e as configurações deste tutorial.',
+    'GLM 5 é o perfil disponível no Claude Code. Use o identificador glm-5 e as configurações deste tutorial.',
   ],
   [
     'Em quais IDEs e editores posso conectar o GLM 5?',
-    'Use o perfil GLM 5 no ZCode. O catálogo do Codex é separado e oferece apenas GPT-6 Astra; Cursor, VS Code e clientes OpenAI não estão documentados para a rota GLM.',
+    'Use o perfil GLM 5 no Claude Code. O catálogo do Codex é separado e oferece apenas GPT-6 Astra; Cursor, VS Code e clientes OpenAI não estão documentados para a rota GLM.',
   ],
   [
     'Como funciona a compatibilidade com a API da OpenAI?',
-    'No ZCode, selecione um provedor personalizado compatível com Anthropic, use https://www.sixtysix.online/glm e o modelo glm-5. Este tutorial não configura uma API OpenAI nem Codex para GLM.',
+    'No Claude Code, selecione um provedor personalizado compatível com Anthropic, use https://www.sixtysix.online/glm e o modelo glm-5. Este tutorial não configura uma API OpenAI nem Codex para GLM.',
   ],
   [
     'Como funciona o teste de 7 dias grátis?',
@@ -37,7 +37,7 @@ const glmFaqs = [
   ],
   [
     'Posso alternar entre GLM 5, Claude Fable e GPT Astra 6?',
-    'GLM 5 é configurado no ZCode. No Codex, o modelo disponível é GPT-6 Astra (ID gpt-6-astra); os catálogos e endpoints são distintos.',
+    'GLM 5 é configurado no Claude Code. No Codex, o modelo disponível é GPT-6 Astra (ID gpt-6-astra); os catálogos e endpoints são distintos.',
   ],
 ]
 
@@ -433,7 +433,7 @@ export default function Glm4Page() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1.0, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
-                No ZCode, com configuração guiada.
+                No Claude Code, com configuração guiada.
               </motion.span>
             </h1>
 
@@ -443,7 +443,7 @@ export default function Glm4Page() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.0, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              Conecte seu perfil GLM 5 ao ZCode usando a chave individual SixtySix e as instruções verificadas abaixo.
+              Conecte seu perfil GLM 5 ao Claude Code usando a chave individual SixtySix e as instruções verificadas abaixo.
             </motion.p>
 
             <motion.div
@@ -604,7 +604,7 @@ export default function Glm4Page() {
           {[
             { val: 'Zero Rateio', desc: 'chave própria e individual' },
             { val: 'Contexto do provedor', desc: 'refatoração de repositórios inteiros' },
-            { val: 'Refatoração Pro', desc: 'perfil acessado no ZCode' },
+            { val: 'Refatoração Pro', desc: 'perfil acessado no Claude Code' },
             { val: 'No Pix', desc: 'preço fixo sem sustos em Dólar' },
           ].map((stat, i) => (
             <motion.div
@@ -633,35 +633,34 @@ export default function Glm4Page() {
         >
           <span className="eyebrow">instruções de conexão</span>
           <h2 className="claude-section-title">
-            Como conectar o <em>GLM 5</em> no ZCode.
+            Como conectar o <em>GLM 5</em> no Claude Code.
           </h2>
           <p className="claude-section-subtitle">
-            Configure o provedor personalizado no ZCode com o endereço, o modelo e sua chave individual.
+            Configure o provedor personalizado no Claude Code com o endereço, o modelo e sua chave individual.
           </p>
         </motion.div>
 
         <div className="tutorial-pane">
           <div className="tutorial-intro-card">
-            <p>O perfil <strong>GLM 5</strong> está disponível no <strong>ZCode</strong> com uma chave SixtySix individual. O catálogo GLM é separado das opções Claude e Codex.</p>
+            <p>O perfil <strong>GLM 5</strong> está disponível no <strong>Claude Code</strong> com uma chave SixtySix individual. O catálogo GLM é separado das opções Claude e Codex.</p>
           </div>
           <div className="tutorial-steps-grid">
             <div className="claude-step-card tutorial-step-large">
               <div className="claude-step-top"><span className="claude-step-badge">Passo 01</span><h4>Adicione o provedor</h4></div>
-              <p>No ZCode, abra <strong>Model Settings → Add Provider</strong>, escolha provedor personalizado compatível com Anthropic e use:</p>
-              <div className="code-block-box"><pre>{`Nome: SixtySix
-Tipo: Anthropic personalizado
-Base URL: https://www.sixtysix.online/glm
-API Key: SUA_CHAVE_INDIVIDUAL
-Model ID: glm-5`}</pre></div>
+              <p>Instale o Claude Code com <code>npm install -g @anthropic-ai/claude-code</code>. No PowerShell do Windows, cole os comandos abaixo, substitua SUA_CHAVE_INDIVIDUAL pela chave do seu painel e execute na mesma janela:</p>
+              <div className="code-block-box"><pre>{`$env:ANTHROPIC_BASE_URL='https://www.sixtysix.online/glm'
+$env:ANTHROPIC_API_KEY='SUA_CHAVE_INDIVIDUAL'
+$env:ANTHROPIC_MODEL='glm-5'
+claude --model glm-5`}</pre></div>
             </div>
             <div className="claude-step-card">
               <div className="claude-step-top"><span className="claude-step-badge">Passo 02</span><h4>Ative e selecione GLM 5</h4></div>
-              <p>Salve o provedor, ative-o e selecione <strong>GLM 5</strong> na lista de modelos. Use a chave individual fornecida para sua conta.</p>
+              <p>Execute <code>claude --model glm-5</code> na mesma janela do terminal. Envie uma mensagem curta para conferir. A configuração vale para essa janela; repita os comandos quando abrir outro terminal. No Desktop, ative a inferência de terceiros e Gateway e use a mesma URL e chave, se a versão aceitar o modelo personalizado glm-5.</p>
               <p className="tutorial-footnote">O identificador aceito é <code>glm-5</code>. A rota GLM é independente dos catálogos Claude e Codex. </p>
             </div>
             <div className="claude-step-card">
               <div className="claude-step-top"><span className="claude-step-badge">Codex</span><h4>GLM não aparece no Codex</h4></div>
-              <p>O Codex do gateway aceita somente <code>gpt-6-astra</code>. Para GLM, use o ZCode conforme os passos acima.</p>
+              <p>O Codex do gateway aceita somente <code>gpt-6-astra</code>. Para GLM, use o Claude Code conforme os passos acima.</p>
               <Link className="tutorial-footnote" to="/astra-6">Ver configuração do Codex para GPT Astra 6 →</Link>
             </div>
           </div>
@@ -1224,3 +1223,5 @@ Model ID: glm-5`}</pre></div>
     </main>
   )
 }
+
+

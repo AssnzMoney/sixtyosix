@@ -1036,7 +1036,7 @@ export default function DashboardPage() {
                         "Seu workspace com Astra 6.",
                         "openai",
                       ],
-                      ["glm", "ZCode", "Conecte o perfil GLM 5.", "glm"],
+                      ["glm", "Claude Code", "Conecte o perfil GLM 5.", "glm"],
                     ].map(([id, title, desc, icon]) => (
                       <button
                         key={id}
@@ -1258,7 +1258,7 @@ export default function DashboardPage() {
                   ["claude", "Claude Code", "Terminal", "claude"],
                   ["desktop", "Claude Desktop", "Aplicativo", "claude"],
                   ["codex", "Codex", "Terminal e desktop", "openai"],
-                  ["glm", "ZCode", "Perfil GLM 5", "glm"],
+                  ["glm", "Claude Code", "Perfil GLM 5", "glm"],
                 ].map(([id, title, desc, icon]) => (
                   <button
                     key={id}
@@ -1284,7 +1284,7 @@ export default function DashboardPage() {
                             ? "Astra 6 no Codex"
                             : tool === "desktop"
                               ? "Fable 5.1 no Claude Desktop"
-                              : "GLM 5 no ZCode"}
+                              : "GLM 5 no Claude Code"}
                       </h2>
                     </div>
                     <span className="six-pill">
@@ -1391,7 +1391,7 @@ export default function DashboardPage() {
                           Reinicie o aplicativo a partir do ambiente
                           configurado. O identificador deste perfil é{" "}
                           <code>gpt-6-astra</code>. GLM 5 usa outra
-                          configuração, no ZCode.
+                          configuração, no Claude Code.
                         </p>
                       </GuideStep>
                     </>
@@ -1416,7 +1416,7 @@ export default function DashboardPage() {
                         </p>
                       </GuideStep>
                       <GuideStep number="04" title="Usar GLM 5 pelo Claude">
-                        <p>Para o perfil GLM 5, use a conexão compatível com Anthropic abaixo. No Claude Code do terminal, configure ANTHROPIC_BASE_URL com a URL terminando em /glm e inicie com claude --model glm-5. No Desktop, isso depende de sua versão aceitar um identificador de modelo personalizado: selecione ou cadastre glm-5. Trocar somente o nome exibido ou deixar Fable selecionado não troca o perfil para GLM. Se o Desktop não permitir esse modelo, use o terminal ou o ZCode.</p>
+                        <p>Para o perfil GLM 5, use a conexão compatível com Anthropic abaixo. No Claude Code do terminal, configure ANTHROPIC_BASE_URL com a URL terminando em /glm e inicie com claude --model glm-5. No Desktop, isso depende de sua versão aceitar um identificador de modelo personalizado: selecione ou cadastre glm-5. Trocar somente o nome exibido ou deixar Fable selecionado não troca o perfil para GLM. Se o Desktop não permitir esse modelo, use o Claude Code no terminal.</p>
                         <CodeBlock code={`URL base: https://www.sixtysix.online/glm\nModelo: glm-5\nChave: ${actualKey}\nAutenticação: x-api-key`} copy={copy}/>
                       </GuideStep>
                     </>
@@ -1428,20 +1428,20 @@ export default function DashboardPage() {
                         title="Adicione um provedor personalizado"
                       >
                         <p>
-                          No ZCode, abra Model Settings → Add Provider.
-                          Selecione o formato compatível com Anthropic.
+                          Abra o terminal e instale com npm install -g @anthropic-ai/claude-code.
+                          Execute os comandos abaixo na mesma janela. Eles já usam a opção de sistema selecionada neste guia e sua chave individual.
                         </p>
                       </GuideStep>
                       <GuideStep number="02" title="Configure o perfil GLM 5">
                         <CodeBlock
-                          code={`Nome: SixtySix\nTipo: Anthropic personalizado\nBase URL: https://www.sixtysix.online/glm\nAPI Key: ${actualKey}\nModel ID: glm-5`}
+                          code={claudeCode.split("https://www.sixtysix.online").join("https://www.sixtysix.online/glm").split("claude-fable-5-1").join("glm-5")}
                           copy={copy}
                         />
                       </GuideStep>
                       <GuideStep number="03" title="Ative o provedor e teste">
                         <p>
-                          Salve, ative o provedor e selecione o perfil GLM 5.
-                          Esta configuração é para o ZCode; ela não adiciona GLM
+                          Inicie com claude --model glm-5 na mesma janela e envie uma mensagem curta.
+                          Esta configuração é para o Claude Code; ela não adiciona GLM
                           ao catálogo atual do Codex.
                         </p>
                       </GuideStep>
@@ -1603,7 +1603,7 @@ export default function DashboardPage() {
                   ],
                   [
                     "Posso usar GLM 5 no Codex?",
-                    "O catálogo atual do gateway no Codex usa gpt-6-astra. O tutorial de GLM 5 é para ZCode, com a URL base terminando em /glm.",
+                    "O catálogo atual do gateway no Codex usa gpt-6-astra. O tutorial de GLM 5 é para Claude Code, com a URL base terminando em /glm.",
                   ],
                   [
                     "O Claude Desktop não salva a conexão.",
@@ -1692,4 +1692,7 @@ function GuideStep({
     </div>
   )
 }
+
+
+
 
