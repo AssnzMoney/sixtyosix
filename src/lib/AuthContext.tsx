@@ -94,10 +94,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Obtém sessão ativa
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session)
       if (session?.user) {
-        const profile = mapSupabaseUser(session.user)
+        const { data, error } = await supabase!.auth.getUser()
+        if (error && (error.status === 401 || error.status === 403)) {
+          setSession(null)
+          setUser(null)
+          setLoading(false)
+          return
+        }
+        const profile = mapSupabaseUser(data.user || session.user)
         setUser(profile)
         localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(profile))
       } else {
@@ -114,7 +121,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listener de mudanças na autenticação
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (event === 'INITIAL_SESSION') return
       setSession(currentSession)
       if (currentSession?.user) {
         const profile = mapSupabaseUser(currentSession.user)
