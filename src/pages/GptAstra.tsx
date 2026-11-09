@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, Check, X, DollarSign } from 'lucide-react'
+import { Plus, Minus, ChevronDown, Check, X, DollarSign, LogOut } from 'lucide-react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
+import { useAuth } from '../lib/AuthContext'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -28,6 +29,7 @@ export default function GptAstraPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [heroAction, setHeroAction] = useState<'primary' | 'secondary'>('primary')
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
+  const { user, signOut } = useAuth()
   const [calcUsd, setCalcUsd] = useState(100)
   const [devWithApi, setDevWithApi] = useState(false)
 
@@ -116,13 +118,36 @@ export default function GptAstraPage() {
             </div>
           </div>
           <div className="nav-right">
-            <Link to="/" className="nav-login-link">
-              Entrar
-            </Link>
-            <a href="#planos-astra" className="nav-cta-btn">
-              <span>Começar no Pix</span>
-              <Arrow />
-            </a>
+            {user ? (
+              <div className="nav-user-logged">
+                <Link to="/login" className="nav-user-badge" title={`Conectado como ${user.email}`}>
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="nav-user-avatar" />
+                  ) : (
+                    <div className="nav-user-avatar-initial">{user.name.charAt(0)}</div>
+                  )}
+                  <span className="nav-user-name">{user.name.split(' ')[0]}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="nav-user-logout"
+                  title="Sair da conta"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link to="/login" className="nav-login-link">
+                  Entrar
+                </Link>
+                <a href="#planos-astra" className="nav-cta-btn">
+                  <span>Começar no Pix</span>
+                  <Arrow />
+                </a>
+              </>
+            )}
             <button
               className="nav-mobile-toggle"
               aria-label="Abrir menu de navegação"

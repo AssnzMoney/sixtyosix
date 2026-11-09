@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, Check, X, Terminal, ShieldCheck, Zap, DollarSign } from 'lucide-react'
+import { Plus, Minus, ChevronDown, Check, X, Terminal, ShieldCheck, Zap, DollarSign, LogOut } from 'lucide-react'
 import NumberFlow from '@number-flow/react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
+import { useAuth } from '../lib/AuthContext'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -30,6 +31,7 @@ export default function ClaudeCodePage() {
   const [heroAction, setHeroAction] = useState<'primary' | 'secondary'>('primary')
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
   const [selectedApp, setSelectedApp] = useState<'claude-code' | 'claude-desktop' | 'codex'>('claude-code')
+  const { user, signOut } = useAuth()
   const [calcUsd, setCalcUsd] = useState(100)
   const [devWithApi, setDevWithApi] = useState(false)
 
@@ -128,13 +130,36 @@ export default function ClaudeCodePage() {
           </div>
 
           <div className="nav-right">
-            <Link to="/login" className="nav-login-link">
-              Entrar
-            </Link>
-            <a href="#planos-claude" className="nav-cta-btn">
-              <span className="nav-cta-desktop">Testar Claude Code</span>
-              <span className="nav-cta-mobile">Testar grátis</span>
-            </a>
+            {user ? (
+              <div className="nav-user-logged">
+                <Link to="/login" className="nav-user-badge" title={`Conectado como ${user.email}`}>
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="nav-user-avatar" />
+                  ) : (
+                    <div className="nav-user-avatar-initial">{user.name.charAt(0)}</div>
+                  )}
+                  <span className="nav-user-name">{user.name.split(' ')[0]}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="nav-user-logout"
+                  title="Sair da conta"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link to="/login" className="nav-login-link">
+                  Entrar
+                </Link>
+                <a href="#planos-claude" className="nav-cta-btn">
+                  <span className="nav-cta-desktop">Testar Claude Code</span>
+                  <span className="nav-cta-mobile">Testar grátis</span>
+                </a>
+              </>
+            )}
             <button
               type="button"
               className="nav-mobile-toggle"

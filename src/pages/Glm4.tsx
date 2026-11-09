@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, Check, X, DollarSign } from 'lucide-react'
+import { Plus, Minus, ChevronDown, Check, X, DollarSign, LogOut } from 'lucide-react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
+import { useAuth } from '../lib/AuthContext'
 
 const Arrow = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -41,6 +42,7 @@ const glmFaqs = [
 ]
 
 export default function Glm4Page() {
+  const { user, signOut } = useAuth()
   const [isScrolled, setIsScrolled] = useState(false)
   const [megaMenuOpen, setMegaMenuOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -134,13 +136,36 @@ export default function Glm4Page() {
             </div>
           </div>
           <div className="nav-right">
-            <Link to="/" className="nav-login-link">
-              Entrar
-            </Link>
-            <a href="#planos-glm" className="nav-cta-btn">
-              <span>Começar no Pix</span>
-              <Arrow />
-            </a>
+            {user ? (
+              <div className="nav-user-logged">
+                <Link to="/login" className="nav-user-badge" title={`Conectado como ${user.email}`}>
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.name} className="nav-user-avatar" />
+                  ) : (
+                    <div className="nav-user-avatar-initial">{user.name.charAt(0)}</div>
+                  )}
+                  <span className="nav-user-name">{user.name.split(' ')[0]}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="nav-user-logout"
+                  title="Sair da conta"
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link to="/login" className="nav-login-link">
+                  Entrar
+                </Link>
+                <a href="#planos-glm" className="nav-cta-btn">
+                  <span>Começar no Pix</span>
+                  <Arrow />
+                </a>
+              </>
+            )}
             <button
               className="nav-mobile-toggle"
               aria-label="Abrir menu de navegação"
