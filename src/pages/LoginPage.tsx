@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Sparkles,
   LogOut,
+  Mail,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
@@ -186,8 +187,23 @@ export default function LoginPage() {
                   ) : (
                     <div className="login-logged-avatar-fallback">{user.name.charAt(0)}</div>
                   )}
-                  <span className={`login-provider-tag tag-${user.provider}`}>
-                    {user.provider === 'google' ? 'Google' : user.provider === 'discord' ? 'Discord' : 'E-mail'}
+                  <span
+                    className={`login-provider-badge badge-${user.provider}`}
+                    title={
+                      user.provider === 'google'
+                        ? 'Conectado via Google'
+                        : user.provider === 'discord'
+                        ? 'Conectado via Discord'
+                        : 'Conectado via E-mail'
+                    }
+                  >
+                    {user.provider === 'google' ? (
+                      <GoogleIcon />
+                    ) : user.provider === 'discord' ? (
+                      <DiscordIcon />
+                    ) : (
+                      <Mail size={13} />
+                    )}
                   </span>
                 </div>
 

@@ -41,13 +41,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const mapSupabaseUser = (su: SupabaseUser): UserProfile => {
     const meta = su.user_metadata || {}
-    const provider = (su.app_metadata?.provider || 'email') as UserProfile['provider']
+    const appProvider = su.app_metadata?.provider
+    const identityProvider = su.identities?.[0]?.provider
+
+    let provider: UserProfile['provider'] = 'email'
+
+    // Detecção robusta para não confundir Google com Discord
+    if (
+      appProvider === 'google' ||
+      identityProvider === 'google' ||
+      meta.iss?.includes('google') ||
+      (meta.avatar_url && meta.avatar_url.includes('googleusercontent.com')) ||
+      (meta.picture && meta.picture.includes('googleusercontent.com'))
+    ) {
+      provider = 'google'
+    } else if (
+      appProvider === 'discord' ||
+      identityProvider === 'discord' ||
+      (meta.avatar_url && (meta.avatar_url.includes('discordapp.com') || meta.avatar_url.includes('discord.com')))
+    ) {
+      provider = 'discord'
+    } else if (appProvider === 'email' || su.email) {
+      provider = 'email'
+    }
+
     return {
       id: su.id,
       email: su.email || '',
       name: meta.full_name || meta.name || meta.user_name || (su.email ? su.email.split('@')[0] : 'Desenvolvedor'),
       avatarUrl: meta.avatar_url || meta.picture || '',
-      provider: provider === 'google' || provider === 'discord' ? provider : 'email',
+      provider,
     }
   }
 

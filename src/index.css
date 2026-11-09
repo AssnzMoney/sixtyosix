@@ -5166,32 +5166,39 @@ h2 em {
   border: 3px solid #9eea6c;
 }
 
-.login-provider-tag {
+.login-provider-badge {
   position: absolute;
-  bottom: -4px;
-  right: -6px;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 9999px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.login-provider-tag.tag-google {
+  bottom: -2px;
+  right: -4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   background: #ffffff;
-  color: #ea4335;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
 }
 
-.login-provider-tag.tag-discord {
-  background: #5865f2;
-  color: #ffffff;
+.login-provider-badge.badge-google {
+  background: #ffffff;
 }
 
-.login-provider-tag.tag-email {
+.login-provider-badge.badge-discord {
+  background: #ffffff;
+}
+
+.login-provider-badge.badge-email {
   background: #1f4647;
   color: #9eea6c;
+}
+
+.login-provider-badge svg {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 
 .login-logged-actions {
@@ -5431,10 +5438,10 @@ h2 em {
   pointer-events: none;
 }
 
-/* Mascote SixtySix com Paraquedas (Estático e Reto) */
+/* Mascote SixtySix com Paraquedas (Pousando próximo à legenda, paraquedas na linha das mãos) */
 .login-art-parachute-wrap {
   position: absolute;
-  top: 38%;
+  top: 65%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
