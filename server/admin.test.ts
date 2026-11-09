@@ -11,3 +11,4 @@ test('admin only accepts allowlisted resources, valid dates and bounded pages',a
 
 
 test('trial pagination orders by its existing user_id primary key',async()=>{const f=fixture();await f.run('Bearer token',new URLSearchParams({resource:'trials'}));const q=new URL(f.calls[1]).searchParams;assert.equal(q.get('order'),'created_at.desc,user_id')})
+test('trial cutoff is encoded as an actual timestamp',async()=>{const f=fixture();await f.run('Bearer token',new URLSearchParams({resource:'trials'}));assert.equal(new URL(f.calls[1]).searchParams.get('created_at'),'gte.2026-11-09T21:10:00.000Z')})
