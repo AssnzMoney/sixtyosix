@@ -2,17 +2,30 @@
 
 Atualizado em 9 de novembro de 2026. Resumo técnico das decisões desta conversa. Não é uma transcrição integral. Credenciais, códigos de login, dados de clientes e chaves privadas foram excluídos.
 
+## Teste grátis de 7 dias
+
+- Botão Começar Teste Grátis → /teste-gratis → login/cadastro → nome preferido → ativação automática.
+- Uma ativação por auth.users.id, protegida por chave primária e trava transacional. Repetir a ativação recupera o mesmo acesso e o mesmo vencimento; não renova os 7 dias. Revogação não permite reiniciar.
+- /api/account/trial exige sessão validada no servidor e e-mail confirmado. Não exige pagamento/cartão.
+- Chave pública sk-sx- individual. Credenciais de entrega e de conexão privada cifradas com AES-256-GCM e vinculadas ao usuário/finalidade por AAD. A chave criptográfica é derivada, com separação de domínio, da credencial privada do servidor. Rotação dessa credencial exige migrar a cifragem dos testes ativos antes da troca.
+- gateway_trials contém proprietário, hash da chave pública, credenciais cifradas, início, vencimento e revogação. Somente service_role tem acesso. Funções account_start_trial e account_revoke_trial são exclusivas do servidor.
+- /v1, /glm/v1 e /api/codex passam por api/access.ts. A chave sk-sx- é validada em toda requisição; no instante do vencimento, o acesso é recusado. O cliente não recebe a credencial privada usada no gateway anterior, portanto não consegue contornar a vigência usando o endereço antigo.
+- Chaves anteriores sk-flg- mantêm a autenticação existente no gateway. O transporte preserva o corpo, status, respostas e streaming; o proxy não envia cookies do portal ao provedor.
+- A credencial privada de cada teste usa um gateway_client separado, sem user_id legado. O painel inclui esse consumo somente após verificar a propriedade de gateway_trials. O cliente do teste não pode emitir chaves legadas sem vencimento pela função de criação de chaves antigas.
+- O painel mostra a chave como teste gerenciado, o vencimento e o histórico; pode revogar o acesso. O cliente pode consultar a chave de teste novamente na sessão autenticada enquanto estiver ativa; ela não é salva no armazenamento local nem em URLs.
+- Migração: supabase/trial-access.sql. Verificação transacional, com rollback: supabase/trial-checks.rollback.sql. Não altera testes/chaves legados.
+
 ## Receptor Mercado Pago — implementação atual
 
 - URL de notificação: https://www.sixtysix.online/api/mercadopago/webhook.
 - Função independente api/mercadopago.ts, encaminhada pelo vercel.json antes do fallback da SPA.
 - GET/HEAD informa estado de configuração sem expor credenciais; POST exige assinatura HMAC, valida ID assinado e consulta a API autenticada do Mercado Pago.
-- Segredo privado obrigatório: MERCADOPAGO_WEBHOOK_SECRET. O MERCADOPAGO_ACCESS_TOKEN já foi salvo como segredo de produção na Vercel.
+- MERCADOPAGO_WEBHOOK_SECRET e MERCADOPAGO_ACCESS_TOKEN salvos como segredos privados de produção. Republicação concluída após verificação da Vercel.
 - Eventos payment, subscription_preapproval, subscription_authorized_payment e subscription_preapproval_plan. Outros tópicos assinados são ignorados.
 - Recibos sanitizados e deduplicados em billing_webhook_events, com RLS e acesso exclusivo do servidor. Falha de consulta/persistência retorna 503 para permitir nova tentativa.
 - Migração: supabase/billing-webhook.sql. Não modifica clientes, chaves ou consumo existentes.
 - Receber eventos ainda não significa entregar chaves: esta etapa registra fatos verificados como awaiting_account_link. Checkout vinculado à conta, concessão, vigência e entrega automática precisam ser conectados e conferidos antes da ativação comercial automática. A rota declara automaticKeyDelivery=false até essa conclusão.
-- Antes de aceitar notificações reais, cadastrar a URL em produção no Mercado Pago, ativar Pagamentos e Planos e assinaturas, salvar e adicionar o segredo de assinatura na Vercel; publicar novamente. Não colocar o segredo no Git.
+- Receptor republicado e conferido: status receiver_configured; uma notificação assinada de verificação consultou um plano real pela API e gerou um único recibo, sem cobrança. Isso comprova a assinatura, o Access Token, a consulta ao Mercado Pago e a gravação privada. Não substitui a conferência de uma entrega disparada pelo próprio painel do Mercado Pago. Nenhum segredo está no Git.
 - A documentação abaixo conserva as decisões e pendências de integração; esta seção descreve a implementação mais recente.
 
 ## O que está publicado

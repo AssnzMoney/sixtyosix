@@ -17,6 +17,8 @@ function fixture() {
       return Response.json([{id:own,name:'Meu acesso',enabled:true,created_at:'2026-01-01',key_prefix:'sk-flg-test'}])
     }
     if (url.pathname.endsWith('/gateway_usage')) return Response.json([{id:1,client_id:own,requested_alias:'gpt-6-astra',input_tokens:500,output_tokens:20,status_code:200,created_at:'2026-01-01'}])
+    if (url.pathname.endsWith('/gateway_trials')) return Response.json([])
+    if (url.pathname.endsWith('/account_revoke_trial')) return Response.json(false)
     if (url.pathname.includes('/rpc/')) return Response.json(own)
     throw new Error('Unexpected destination')
   }

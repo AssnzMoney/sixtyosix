@@ -12,6 +12,7 @@ import {
   Mail,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import { accountDestination } from '../lib/authDestination'
 
 const GoogleIcon = () => (
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -68,7 +69,7 @@ export default function LoginPage() {
 
   // Redireciona imediatamente para o onboarding se o usuário já estiver logado mas ainda não escolheu seu nome
   useEffect(() => {
-    if (!authLoading && session && user) navigate(user.hasCompletedOnboarding ? '/dashboard' : '/onboarding', { replace: true })
+    if (!authLoading && session && user) navigate(accountDestination(user.hasCompletedOnboarding), { replace: true })
   }, [authLoading, session, user, navigate])
 
   const handleGoogleLogin = async () => {

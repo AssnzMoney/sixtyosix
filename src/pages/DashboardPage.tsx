@@ -34,7 +34,7 @@ import {
   CircleCheck,
 } from "lucide-react"
 import { useAuth } from "../lib/AuthContext"
-import { accountRequest, accountSummary } from "../lib/account"
+import { accountRequest, accountSummary, type AccountTrial } from "../lib/account"
 import NumberRoller from "../components/ui/number-roller"
 import { useInView } from "framer-motion"
 import "./dashboard.css"
@@ -56,6 +56,7 @@ type KeyRow = {
   prefix: string
   active: boolean
   created: string
+  managed?:boolean
 }
 const models: Model[] = ["Fable 5.1", "Astra 6", "GLM 5"]
 const nav = [
@@ -160,8 +161,9 @@ export default function DashboardPage() {
   const [os, setOs] = useState("powershell")
   const [clientKey, setClientKey] = useState("")
   const [reveal, setReveal] = useState(false)
-  const [accountData, setAccountData] = useState<{ owner: string; keys: KeyRow[]; rows: RequestRow[] } | null>(null)
+  const [accountData, setAccountData] = useState<{ owner: string; keys: KeyRow[]; rows: RequestRow[]; trial:AccountTrial|null } | null>(null)
   const keys = accountData?.owner === session?.user.id ? accountData?.keys || [] : []
+  const trial = accountData?.owner === session?.user.id ? accountData?.trial : null
   const [accountError, setAccountError] = useState("")
   const [busy, setBusy] = useState(false)
   const [newKeyName, setNewKeyName] = useState("")
@@ -210,7 +212,7 @@ export default function DashboardPage() {
         const data = await accountSummary(first, last, controller.signal)
         if (controller.signal.aborted) return
         const labels: Record<string,string> = { "claude-fable-5-1": "Fable 5.1", "gpt-6-astra": "Astra 6", "glm-5": "GLM 5" }
-        setAccountData({ owner, keys: data.keys, rows: data.usage.map(r => ({ id: String(r.id), date: r.created_at, model: labels[r.requested_alias] || r.requested_alias, input: r.input_tokens, output: r.output_tokens, duration: r.latency_ms / 1000, success: r.status_code >= 200 && r.status_code < 400 })) })
+        setAccountData({ owner, keys: data.keys, trial:data.trial||null, rows: data.usage.map(r => ({ id: String(r.id), date: r.created_at, model: labels[r.requested_alias] || r.requested_alias, input: r.input_tokens, output: r.output_tokens, duration: r.latency_ms / 1000, success: r.status_code >= 200 && r.status_code < 400 })) })
         setAccountError("")
         setKeyState("loaded")
       } catch (error) {
@@ -1129,10 +1131,11 @@ export default function DashboardPage() {
                 </button>
               </section>
               {!demo && session && <section className="six-panel six-account-key-actions">
+                {trial?<><h2>{trial.active?'Seu teste de 7 dias está ativo':'Teste de 7 dias encerrado'}</h2><p>{trial.revoked?'Chave revogada.':`Prazo: ${new Date(trial.expires).toLocaleString('pt-BR')}.`}</p><Link className="six-primary" to={trial.active?'/teste-gratis':'/planos'}>{trial.active?'Consultar minha chave de teste':'Ver planos'}</Link></>:<><h2>Comece seu teste grátis</h2><p>Ative uma chave individual por 7 dias, sem cartão.</p><Link className="six-primary" to="/teste-gratis">Ativar meus 7 dias</Link></>}
                 <h2>Já tem uma chave de teste?</h2><p>Vincule sua chave atual para consultar o histórico. A chave continua funcionando nos seus aplicativos.</p>
                 <form onSubmit={e => { e.preventDefault(); mutateAccount("claim", { key: claimKey }) }}><input type="password" autoComplete="off" aria-label="Chave de teste existente" placeholder="Cole sua chave individual sk-flg-…" value={claimKey} onChange={e => setClaimKey(e.target.value)} /><button className="six-primary" disabled={busy || !claimKey.trim()}>Vincular chave</button></form>
-                <h2>Criar outra chave</h2><p>Disponível para contas com um acesso de teste ativo já vinculado. Até 10 chaves ativas.</p>
-                <form onSubmit={e => { e.preventDefault(); mutateAccount("keys", { name: newKeyName }) }}><input aria-label="Nome da nova chave" maxLength={80} placeholder="Ex.: meu notebook" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} /><button className="six-secondary" disabled={busy || !newKeyName.trim() || !keys.some(k => k.active)}>Criar chave</button></form>
+                <h2>Criar outra chave</h2><p>Acessos anteriores vinculados podem criar até 10 chaves ativas. O teste automático usa uma chave para todas as suas ferramentas.</p>
+                <form onSubmit={e => { e.preventDefault(); mutateAccount("keys", { name: newKeyName }) }}><input aria-label="Nome da nova chave" maxLength={80} placeholder="Ex.: meu notebook" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} /><button className="six-secondary" disabled={busy || !newKeyName.trim() || !keys.some(k => k.active&&!k.managed)}>Criar chave</button></form>
                 {issuedKey && <div className="six-issued-key"><strong>Copie agora. Esta chave só é exibida nesta sessão.</strong><code>{issuedKey}</code><button onClick={() => copy(issuedKey)}>Copiar chave</button><button onClick={() => setIssuedKey("")}>Já guardei</button></div>}
               </section>}
               <section className="six-panel">
@@ -1505,7 +1508,8 @@ export default function DashboardPage() {
                   <span className="six-pill">
                     {demo ? "Plano ilustrativo" : "Minha assinatura"}
                   </span>
-                  <h2>{demo ? "Pro" : keys.some(k => k.active) ? "Acesso de teste ativo" : "Sem acesso vinculado"}</h2>
+                  <h2>{demo ? "Pro" : trial?.active ? "Teste grátis · 7 dias" : keys.some(k => k.active) ? "Acesso de teste ativo" : trial ? "Teste encerrado" : "Sem acesso vinculado"}</h2>
+                  {trial&&<p>{trial.revoked?'Chave do teste revogada.':`Fim do teste: ${new Date(trial.expires).toLocaleString('pt-BR')}.`}</p>}
                   <p>
                     Seu espaço para construir com Fable 5.1, Astra 6 e GLM 5.
                   </p>

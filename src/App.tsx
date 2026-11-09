@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage'
 import AuthCallback from './pages/AuthCallback'
 import DashboardPage from './pages/DashboardPage'
 import OnboardingPage from './pages/OnboardingPage'
+import TrialPage from './pages/TrialPage'
 
 function ScrollToTop() {
   const { pathname, hash, key } = useLocation()
@@ -43,6 +44,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/planos" element={<Navigate to="/#planos" replace />} />
+          <Route path="/teste-gratis" element={<TrialPage />} />
           <Route path="/claude-code" element={<ClaudeCodePage />} />
           <Route path="/astra-6" element={<GptAstraPage />} />
           <Route path="/gpt-astra" element={<GptAstraPage />} />

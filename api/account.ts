@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 
 type Config = { url: string; secret: string; publicKey: string }
 type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null }
+type Trial = { gateway_client_id:string; token_prefix:string; created_at:string; expires_at:string; revoked_at:string|null }
 type Usage = { id: number; client_id: string; requested_alias: string; status_code: number; input_tokens: number; output_tokens: number; latency_ms: number; created_at: string }
 export class AccountError extends Error {
   status: number
@@ -63,12 +64,16 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         const offset = Number(query.get('offset') || 0)
         if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000) throw new AccountError(400, 'Página inválida.')
         const mine = await clients(userId)
+        const trials = await db<Trial[]>('gateway_trials', { user_id:`eq.${userId}`,select:'gateway_client_id,token_prefix,created_at,expires_at,revoked_at',limit:'1' })
+        const trial=trials[0]
+        if(trial) mine.push({id:trial.gateway_client_id,name:'Teste grátis · 7 dias',enabled:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),created_at:trial.created_at,key_prefix:trial.token_prefix})
         const usage = mine.length ? await db<Usage[]>('gateway_usage', {
           select: 'id,client_id,requested_alias,status_code,input_tokens,output_tokens,latency_ms,created_at',
           client_id: `in.(${mine.map(c => c.id).join(',')})`, and: `(created_at.gte.${start},created_at.lt.${end},created_at.lte.${new Date(asOf).toISOString()})`,
           order: 'created_at.desc,id.desc', limit: '1000', offset: String(offset),
         }) : []
-        return { keys: mine.map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at })), usage, hasMore: usage.length === 1000, subscription: null, billingConnected: false }
+        return { keys: mine.map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:trial?.gateway_client_id===c.id })), usage, hasMore: usage.length === 1000, subscription: null, billingConnected: false,
+          trial:trial?{expires:trial.expires_at,active:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),revoked:Boolean(trial.revoked_at)}:null }
       }
       if (method === 'POST' && path === 'claim') {
         const key = typeof body.key === 'string' ? body.key.trim() : ''
@@ -86,6 +91,8 @@ export function createAccountService(config: Config, request: typeof fetch = fet
       if (method === 'POST' && path === 'revoke') {
         const id = typeof body.id === 'string' ? body.id : ''
         if (!uuid.test(id)) throw new AccountError(400, 'Chave inválida.')
+        const trialRevoked=await db<boolean>('rpc/account_revoke_trial',{},'POST',{p_user_id:userId,p_client_id:id})
+        if(trialRevoked)return {ok:true}
         const updated = await db<Client[]>('gateway_clients', { id: `eq.${id}`, user_id: `eq.${userId}`, enabled: 'eq.true', select: 'id' }, 'PATCH', { enabled: false, revoked_at: new Date().toISOString() })
         if (!updated.length) throw new AccountError(404, 'Chave não encontrada ou já revogada.')
         return { ok: true }

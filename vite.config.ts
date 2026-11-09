@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import accountHandler from './api/account.ts'
+import accessHandler from './api/access.ts'
 import siteConfiguration from './.figma/make/site.json'
 
 
@@ -22,7 +23,7 @@ export default defineConfig(({ mode }) => {
       minify: !emitSourcemaps,
     },
     plugins: [
-      { name: "account-api", configureServer(server) { server.middlewares.use((req, res, next) => { if (!req.url?.startsWith("/api/account/")) return next(); void accountHandler(req, res) }) } },
+      { name: "account-api", configureServer(server) { server.middlewares.use((req, res, next) => { if(req.url?.split('?')[0]==='/api/account/trial'){void accessHandler(req,res);return} if (!req.url?.startsWith("/api/account/")) return next(); void accountHandler(req, res) }) } },
 react(),
       tailwindcss(),
       figmaSiteConfiguration(siteConfiguration),

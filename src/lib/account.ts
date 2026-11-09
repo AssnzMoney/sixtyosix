@@ -1,8 +1,9 @@
 import { supabase } from './supabase'
 
-export type AccountKey = { id: string; name: string; prefix: string; active: boolean; created: string }
+export type AccountKey = { id: string; name: string; prefix: string; active: boolean; created: string; managed?:boolean }
+export type AccountTrial = {expires:string;active:boolean;revoked:boolean}
 export type AccountUsage = { id: number; client_id: string; requested_alias: string; status_code: number; input_tokens: number; output_tokens: number; latency_ms: number; created_at: string }
-export type AccountSummary = { keys: AccountKey[]; usage: AccountUsage[]; hasMore: boolean; subscription: null; billingConnected: boolean }
+export type AccountSummary = { keys: AccountKey[]; usage: AccountUsage[]; hasMore: boolean; subscription: null; billingConnected: boolean; trial?:AccountTrial|null }
 export async function accountRequest<T>(path: string, body?: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   const session = await supabase?.auth.getSession()
   const token = session?.data.session?.access_token
@@ -13,7 +14,7 @@ export async function accountRequest<T>(path: string, body?: Record<string, unkn
   })
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('A conexão do painel está sendo atualizada. Tente novamente em instantes.')
   const data = await response.json().catch(() => ({ error: 'A conexão do painel ainda não está disponível.' }))
-  if (!response.ok || data.error) throw new Error(data.error || 'Não foi possível consultar sua conta.')
+  if (!response.ok || data.error) throw new Error(typeof data.error==='string'?data.error:data.error?.message || 'Não foi possível consultar sua conta.')
   return data as T
 }
 export async function accountSummary(from: string, to: string, signal?: AbortSignal): Promise<AccountSummary> {

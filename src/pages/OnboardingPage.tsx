@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { User, Sparkles, ArrowRight, ShieldCheck, Check } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import { accountDestination } from '../lib/authDestination'
 
 const GoogleIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -56,7 +57,7 @@ export default function OnboardingPage() {
 
     if (!loading && user) {
       if (user.hasCompletedOnboarding && !isEditing) {
-        navigate('/dashboard')
+        navigate(accountDestination(true))
         return
       }
       setDisplayName(user.customName || '')
@@ -79,7 +80,7 @@ export default function OnboardingPage() {
     setSubmitting(true)
     try {
       await updateDisplayName(trimmed)
-      navigate('/dashboard')
+      navigate(isEditing?'/dashboard':accountDestination(true))
     } catch (err: any) {
       setError(err?.message || 'Falha ao salvar nome.')
       setSubmitting(false)

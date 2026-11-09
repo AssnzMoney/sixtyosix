@@ -48,11 +48,11 @@ const faqs = [
   ],
   [
     'Como funciona o teste de 7 dias grátis?',
-    'Você pode testar a conexão no seu ambiente sem compromisso. Crie sua conta, solicite sua chave individual com nosso suporte e comece a rodar o Claude Code hoje mesmo, sem precisar cadastrar cartão de crédito.',
+    'Clique em Começar Teste Grátis, entre ou crie sua conta e escolha como deseja ser chamado. Sua chave individual é liberada automaticamente por 7 dias, sem cartão e sem cobrança automática. Cada conta pode ativar o teste uma vez.',
   ],
   [
     'Onde consigo minha chave individual de acesso?',
-    'Sua chave individual é criada com exclusividade e entregue diretamente pelo administrador. Cada usuário possui sua chave própria e isolada, garantindo privacidade absoluta e 99.9% de estabilidade.',
+    'No teste grátis, sua chave é criada automaticamente e fica disponível na página do teste. O painel reúne suas chaves e o consumo da sua conta. Durante os 7 dias, você pode consultar a chave novamente para configurar suas ferramentas.',
   ],
   [
     'Posso usar no terminal, no VS Code e no Codex?',
@@ -1057,9 +1057,9 @@ export default function App() {
               <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
-            <a href="#duvidas" className="plan-btn">
+            <Link to="/teste-gratis" className="plan-btn">
               Começar Teste Grátis <Arrow />
-            </a>
+            </Link>
           </motion.div>
 
           {/* Dev */}
