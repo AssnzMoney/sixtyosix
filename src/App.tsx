@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AuthProvider } from './lib/AuthContext'
+import { isLocalhost } from './lib/isLocalhost'
 import HomePage from './pages/HomePage'
 import ClaudeCodePage from './pages/ClaudeCode'
 import GptAstraPage from './pages/GptAstra'
@@ -19,6 +20,8 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  const isLocal = isLocalhost()
+
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -33,11 +36,23 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/entrar" element={<LoginPage />} />
           
-          {/* Rotas da Plataforma */}
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/app" element={<DashboardPage />} />
-          <Route path="/plataforma" element={<DashboardPage />} />
+          {/* Rotas da Plataforma: estritamente locais para validação antes de ir para produção */}
+          <Route
+            path="/onboarding"
+            element={isLocal ? <OnboardingPage /> : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/dashboard"
+            element={isLocal ? <DashboardPage /> : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/app"
+            element={isLocal ? <DashboardPage /> : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/plataforma"
+            element={isLocal ? <DashboardPage /> : <Navigate to="/" replace />}
+          />
 
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="*" element={<HomePage />} />
