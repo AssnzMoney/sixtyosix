@@ -66,9 +66,9 @@ const partners = [
   },
   {
     id: 'vscode-1',
-    name: 'ZCode',
-    caption: 'Microsoft',
-    logo: '/assets/brands/vscode.svg',
+    name: 'GLM 5',
+    caption: 'Perfil no ZCode',
+    logo: '/assets/brands/glm.svg',
   },
   {
     id: 'claude-2',
@@ -90,9 +90,9 @@ const partners = [
   },
   {
     id: 'vscode-2',
-    name: 'ZCode',
-    caption: 'Microsoft',
-    logo: '/assets/brands/vscode.svg',
+    name: 'GLM 5',
+    caption: 'Perfil no ZCode',
+    logo: '/assets/brands/glm.svg',
   },
 ]
 
@@ -381,20 +381,20 @@ export default function App() {
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                   >
-                    <strong>Claude Code CLI</strong>
+                    <strong>Claude Code CLI (Fable)</strong>
                     <span>Agentes autônomos no seu terminal conforme cotas e disponibilidade.</span>
                   </Link>
                   <a href="#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>ZCode (GLM 5)</strong>
-                    <span>Substitua sua chave de API e programe sem interrupção.</span>
+                    <span>O perfil GLM 5 é configurado no ZCode; use o tutorial dedicado.</span>
                   </a>
                   <a href="#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GLM 5 no ZCode</strong>
-                    <span>Suporte nativo aos melhores assistentes do mercado.</span>
+                    <span>ZCode usa a rota GLM 5 compatível com Anthropic.</span>
                   </a>
                   <a href="#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Codex (Astra) e Terminal (Fable)</strong>
-                    <span>Ambientes de desenvolvimento com contexto estendido.</span>
+                    <span>Codex usa o perfil Astra; terminal usa Fable no Claude Code.</span>
                   </a>
                 </div>
               </div>
@@ -404,16 +404,16 @@ export default function App() {
                 <span className="mega-menu-col-title">Diferenciais SixtySix</span>
                 <div className="mega-menu-items">
                   <a href="#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>Uso sujeito às cotas</strong>
+                    <strong>Cotas compartilhadas</strong>
                     <span>As cotas e a disponibilidade podem variar.</span>
                   </a>
                   <a href="#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Chave individual</strong>
-                    <span>Sua chave individual, garantindo sigilo e estabilidade.</span>
+                    <span>Chave individual; cotas e disponibilidade do pool compartilhadas.</span>
                   </a>
                   <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Preço Fixo em Reais (Pix)</strong>
-                    <span>Esqueça IOF e variações do Dólar na fatura do cartão.</span>
+                    <span>Cobrança em Reais via Pix, conforme o plano selecionado.</span>
                   </a>
                   <a href="#economia" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Disponibilidade variável</strong>
@@ -493,7 +493,7 @@ export default function App() {
           </a>
         </div>
         <div className="partners">
-          <span className="partners-label">Trabalhe com os modelos que lideram o mercado</span>
+          <span className="partners-label">Use os perfis disponíveis nas interfaces documentadas</span>
           <Marquee pauseOnHover speed={22} className="partners-marquee">
             {partners.map((partner) => (
               <div className="partner-item" key={partner.id}>
@@ -997,12 +997,12 @@ export default function App() {
                 <span className="plan-val">0</span>
                 <span className="plan-period">/7 dias</span>
               </div>
-              <p className="plan-desc">Acesso total e irrestrito para testar tudo na prática antes de decidir.</p>
+              <p className="plan-desc">Acesso de teste por 7 dias aos perfis liberados para sua conta.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
+              <li><Check /> <span><strong>Acesso aos perfis do teste</strong></span></li>
               <li><Check /> <span><strong>Fable 5.1</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
-              <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
+              <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>ZCode</strong></span></li>
               <li><Check /> <span><strong>Chave individual</strong> (Chave individual)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
@@ -1062,7 +1062,7 @@ export default function App() {
               {devWithApi ? (
                 <>
                   <li><Check /> <span><strong>Chave de API individual</strong> (+ R$ 15/mês)</span></li>
-                  <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
+                  <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>ZCode</strong></span></li>
                   <li><Check /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
                 </>
               ) : (
@@ -1109,7 +1109,7 @@ export default function App() {
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
               <li><Check /> <span><strong>Fable 5.1</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
-              <li><Check /> <span><strong>Uso sujeito às cotas</strong> (sem travas diárias)</span></li>
+              <li><Check /> <span><strong>Cotas compartilhadas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Chave individual</strong> (chave individual; cotas compartilhadas)</span></li>
               <li><Check /> <span><strong>Perfis SixtySix</strong> (disponibilidade variável)</span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong>, <strong>VS Code</strong>, <strong>Codex</strong></span></li>
