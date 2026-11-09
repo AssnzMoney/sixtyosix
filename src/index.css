@@ -5431,10 +5431,10 @@ h2 em {
   pointer-events: none;
 }
 
-/* Mascote SixtySix Caindo de Paraquedas */
+/* Mascote SixtySix com Paraquedas (Estático e Reto) */
 .login-art-parachute-wrap {
   position: absolute;
-  top: 37%;
+  top: 38%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: flex;
@@ -5452,6 +5452,7 @@ h2 em {
   display: block;
   user-select: none;
   pointer-events: none;
+  transform: none;
 }
 
 @media (max-height: 850px) {

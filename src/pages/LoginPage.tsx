@@ -378,29 +378,14 @@ export default function LoginPage() {
                 transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
               />
 
-              {/* Mascote SixtySix Caindo de Paraquedas */}
-              <motion.div
-                className="login-art-parachute-wrap"
-                initial={{ opacity: 0, y: -20, scale: 0.9 }}
-                animate={{
-                  opacity: 1,
-                  y: [0, 8, 0],
-                  rotate: [-2, 2, -2],
-                  scale: 1,
-                }}
-                transition={{
-                  opacity: { duration: 0.8, delay: 0.15 },
-                  scale: { duration: 0.8, delay: 0.15 },
-                  y: { duration: 4.6, repeat: Infinity, ease: 'easeInOut' },
-                  rotate: { duration: 5.2, repeat: Infinity, ease: 'easeInOut' },
-                }}
-              >
+              {/* Mascote SixtySix com Paraquedas (Estático e Reto) */}
+              <div className="login-art-parachute-wrap">
                 <img
                   src="/assets/sixtysix-parachute.webp"
                   alt="SixtySix Paraquedas"
                   className="login-art-parachute-img"
                 />
-              </motion.div>
+              </div>
 
               <motion.img
                 src="/assets/login-art-lady-right.webp"
