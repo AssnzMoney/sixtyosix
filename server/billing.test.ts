@@ -89,6 +89,7 @@ test('one-time checkout opens with Pix selected and does not start recurring bil
  const preference=calls.find(c=>c.url.pathname==='/checkout/preferences')!.body
  assert.equal(preference.external_reference,order);assert.equal(preference.items[0].unit_price,94.99)
  assert.equal(preference.payment_methods.default_payment_method_id,'pix')
+ assert.deepEqual(preference.payment_methods.excluded_payment_types,[{id:'ticket'}])
  assert.ok(!('payer' in preference))
  assert.ok(!calls.some(c=>c.url.pathname==='/preapproval'))
  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/billing_apply_payment')))
