@@ -124,36 +124,27 @@ export default function GptAstraPage() {
               >
                 <button
                   type="button"
-                  className={`nav-dropdown-btn ${megaMenuOpen ? 'is-open' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setMegaMenuOpen(!megaMenuOpen)
-                  }}
+                  className={`nav-link-dropdown ${megaMenuOpen ? 'active' : ''}`}
+                  onClick={() => setMegaMenuOpen(!megaMenuOpen)}
                   aria-expanded={megaMenuOpen}
                 >
-                  Modelos & Integrações <ChevronDown size={14} className="dropdown-chevron" />
+                  Produtos
+                  <ChevronDown className={`nav-chevron ${megaMenuOpen ? 'rotate' : ''}`} size={13} />
                 </button>
               </div>
-              <a href="#como-conectar-astra" className="nav-link">
-                Como Conectar
-              </a>
-              <a href="#calculadora-astra" className="nav-link">
-                Simulador de Custo
-              </a>
-              <a href="#planos-astra" className="nav-link">
-                Planos & Preços
-              </a>
-              <a href="#duvidas-astra" className="nav-link">
-                Dúvidas
-              </a>
+              <a href="#como-conectar-astra">Como conectar</a>
+              <a href="#calculadora-astra">Calculadora</a>
+              <a href="#planos-astra">Preço</a>
+              <a href="#duvidas-astra">Dúvidas</a>
             </div>
           </div>
           <div className="nav-right">
             <Link to="/" className="nav-login-link">
               Entrar
             </Link>
-            <a href="#planos-astra" className="btn btn-primary nav-cta">
-              Começar no Pix <Arrow />
+            <a href="#planos-astra" className="nav-cta-btn">
+              <span>Começar no Pix</span>
+              <Arrow />
             </a>
             <button
               className="nav-mobile-toggle"
@@ -487,7 +478,7 @@ export default function GptAstraPage() {
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
               >
-                <span className="hero-handwritten-text">velocidade máxima:</span>
+                <span className="hero-handwritten-text">já dizia o filósofo:</span>
                 <svg
                   className="hero-handwritten-arrow"
                   width="36"
@@ -513,10 +504,10 @@ export default function GptAstraPage() {
                 </svg>
               </motion.div>
 
-              {/* Arte SixtySix */}
+              {/* Arte Filósofo com Mascote SX */}
               <motion.img
-                src="/assets/sixtysix-hand-logo.webp"
-                alt="SixtySix GPT Astra 6"
+                src="/assets/astra-statue.webp"
+                alt="Filósofo com mascote SixtySix"
                 className="hero-abacate-artwork"
                 initial={{ opacity: 0, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
