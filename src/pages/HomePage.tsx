@@ -288,8 +288,8 @@ export default function App() {
                     </div>
                     <small>Velocidade ultra-rápida e inteligência multimodal</small>
                   </Link>
-                  <a
-                    href="#planos"
+                  <Link
+                    to="/glm-4"
                     className="nav-mobile-item"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -297,7 +297,7 @@ export default function App() {
                       <strong>GLM-4 Plus</strong>
                     </div>
                     <small>Refatoração avançada e geração de código</small>
-                  </a>
+                  </Link>
                 </div>
 
                 <div className="nav-mobile-links">
@@ -378,10 +378,10 @@ export default function App() {
                     <strong>GPT Astra 6</strong>
                     <span>Velocidade ultra-rápida e inteligência multimodal.</span>
                   </Link>
-                  <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GLM-4 Plus</strong>
                     <span>Excelente em refatoração, documentação e testes.</span>
-                  </a>
+                  </Link>
                   <a href="#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Conexão Direta Oficial</strong>
                     <span>Sem intermediários, sem compressão e sem erros 429.</span>
@@ -1243,7 +1243,7 @@ export default function App() {
             <ul className="footer-link-list">
               <li><Link to="/claude-code">Claude Fable 5.1</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
-              <li><a href="#economia">GLM-4 Plus</a></li>
+              <li><Link to="/glm-4">GLM-4 Plus</Link></li>
             </ul>
           </div>
 

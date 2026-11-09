@@ -293,7 +293,7 @@ export default function GptAstraPage() {
                     <strong>Claude Fable 5.1</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
                   </Link>
-                  <Link to="/" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GLM-4 Plus</strong>
                     <span>Excelente em refatoração, documentação e testes.</span>
                   </Link>
@@ -1372,7 +1372,7 @@ setx OPENAI_MODEL "gpt-astra-6"`}
             <ul className="footer-link-list">
               <li><Link to="/astra-6" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>GPT Astra 6</Link></li>
               <li><Link to="/claude-code">Claude Fable 5.1</Link></li>
-              <li><a href="/#economia">GLM-4 Plus</a></li>
+              <li><Link to="/glm-4">GLM-4 Plus</Link></li>
             </ul>
           </div>
 

@@ -296,10 +296,10 @@ export default function ClaudeCodePage() {
                     <strong>GPT Astra 6</strong>
                     <span>Velocidade ultra-rápida e inteligência multimodal.</span>
                   </Link>
-                  <a href="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GLM-4 Plus</strong>
                     <span>Excelente em refatoração, documentação e testes.</span>
-                  </a>
+                  </Link>
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Conexão Direta Oficial</strong>
                     <span>Sem intermediários, sem compressão e sem erros 429.</span>
@@ -1342,7 +1342,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             <ul className="footer-link-list">
               <li><Link to="/claude-code" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Claude Fable 5.1</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
-              <li><a href="/#economia">GLM-4 Plus</a></li>
+              <li><Link to="/glm-4">GLM-4 Plus</Link></li>
             </ul>
           </div>
 
