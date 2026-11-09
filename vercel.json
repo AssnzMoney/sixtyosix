@@ -1,9 +1,10 @@
 {
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/glm/:path*", "destination": "https://66cloud.vercel.app/glm/:path*" },
+    { "source": "/v1/:path*", "destination": "https://66cloud.vercel.app/v1/:path*" },
+    { "source": "/api/codex/:path*", "destination": "https://66cloud.vercel.app/api/codex/:path*" },
+    { "source": "/api/health", "destination": "https://66cloud.vercel.app/api/health" },
+    { "source": "/api/admin/:path*", "destination": "https://66cloud.vercel.app/api/admin/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
-
