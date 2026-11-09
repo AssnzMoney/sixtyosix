@@ -5408,11 +5408,11 @@ h2 em {
 }
 
 .login-art-lady-left {
-  height: clamp(300px, 41vh, 410px);
+  height: clamp(370px, 50vh, 500px);
   width: auto;
   object-fit: contain;
-  margin-left: -20px;
-  margin-bottom: -10px;
+  margin-left: -35px;
+  margin-bottom: -24px;
   -webkit-mask-image: linear-gradient(to left, black 76%, rgba(0, 0, 0, 0.4) 90%, transparent 100%);
   mask-image: linear-gradient(to left, black 76%, rgba(0, 0, 0, 0.4) 90%, transparent 100%);
   filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.05));
@@ -5463,9 +5463,9 @@ h2 em {
     height: 400px;
   }
   .login-art-lady-left {
-    height: 360px;
-    margin-left: -20px;
-    margin-bottom: -10px;
+    height: 450px;
+    margin-left: -30px;
+    margin-bottom: -20px;
   }
   .login-art-lady-right {
     height: 450px;
@@ -5485,8 +5485,8 @@ h2 em {
     height: 350px;
   }
   .login-art-lady-left {
-    height: 320px;
-    margin-left: -15px;
+    height: 400px;
+    margin-left: -25px;
   }
   .login-art-lady-right {
     height: 400px;
