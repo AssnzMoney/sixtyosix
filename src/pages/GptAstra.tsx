@@ -139,7 +139,7 @@ export default function GptAstraPage() {
             </div>
           </div>
           <div className="nav-right">
-            <Link to="/" className="nav-login-link">
+            <Link to="/login" className="nav-login-link">
               Entrar
             </Link>
             <a href="#planos-astra" className="nav-cta-btn">
@@ -249,7 +249,7 @@ export default function GptAstraPage() {
                     Garantir no Pix <Arrow />
                   </a>
                   <Link
-                    to="/"
+                    to="/login"
                     className="nav-mobile-btn-secondary"
                     onClick={() => setMobileMenuOpen(false)}
                   >

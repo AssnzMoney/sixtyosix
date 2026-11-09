@@ -221,9 +221,9 @@ export default function App() {
           </div>
 
           <div className="nav-right">
-            <a href="#login" className="nav-login-link">
+            <Link to="/login" className="nav-login-link">
               Entrar
-            </a>
+            </Link>
             <a href="#planos" className="nav-cta-btn">
               Criar conta grátis
             </a>
@@ -339,13 +339,13 @@ export default function App() {
                   >
                     Criar conta grátis <Arrow />
                   </a>
-                  <a
-                    href="#login"
+                  <Link
+                    to="/login"
                     className="nav-mobile-btn-secondary"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Entrar na plataforma
-                  </a>
+                  </Link>
                 </div>
               </div>
             </motion.div>
