@@ -358,7 +358,18 @@ export default function LoginPage() {
 
         {/* Coluna Direita: Showcase com Arte Renascentista estilo AbacatePay */}
         <div className="login-right-col">
+          {/* Esfumados laterais de transição suave */}
+          <div className="login-left-edge-fade" />
           <div className="login-right-edge-fade" />
+
+          {/* Esfumado verde na borda final inferior */}
+          <img
+            src="/assets/login-bottom-glow.webp"
+            alt=""
+            className="login-bottom-glow"
+            aria-hidden="true"
+          />
+
           <div className="login-showcase-panel">
             {/* Palco Artístico com as Donzelas Renascentistas (Fotos 3 e 4) */}
             <div className="login-art-stage">
@@ -370,6 +381,20 @@ export default function LoginPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
               />
+
+              {/* Logo SixtySix Coroada Flutuando no Centro */}
+              <motion.div
+                className="login-art-center-logo-wrap"
+                initial={{ opacity: 0, scale: 0.88, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <img
+                  src="/assets/sixtysix-crowned-logo.webp"
+                  alt="SixtySix"
+                  className="login-art-crowned-logo"
+                />
+              </motion.div>
 
               <motion.img
                 src="/assets/login-art-lady-right.webp"

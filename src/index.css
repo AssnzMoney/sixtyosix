@@ -5348,15 +5348,42 @@ h2 em {
   overflow: hidden;
 }
 
+/* Esfumado na borda esquerda (transição suave para a área de credenciais) */
+.login-left-edge-fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 140px;
+  background: linear-gradient(to right, #ffffff 15%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Esfumado na borda direita (transição suave para a borda final) */
 .login-right-edge-fade {
   position: absolute;
   top: 0;
   bottom: 0;
   right: 0;
   width: 140px;
-  background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.9) 75%, #ffffff 100%);
+  background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.85) 50%, #ffffff 85%);
   pointer-events: none;
   z-index: 5;
+}
+
+/* Esfumado verde suave na borda final inferior */
+.login-bottom-glow {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 155px;
+  object-fit: cover;
+  object-position: bottom center;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.95;
 }
 
 .login-showcase-panel {
@@ -5385,6 +5412,8 @@ h2 em {
   object-fit: contain;
   margin-left: -30px;
   margin-bottom: -10px;
+  -webkit-mask-image: linear-gradient(to left, black 65%, transparent 95%);
+  mask-image: linear-gradient(to left, black 65%, transparent 95%);
   filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.05));
   user-select: none;
   pointer-events: none;
