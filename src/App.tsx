@@ -11,10 +11,18 @@ import DashboardPage from './pages/DashboardPage'
 import OnboardingPage from './pages/OnboardingPage'
 
 function ScrollToTop() {
-  const { pathname } = useLocation()
+  const { pathname, hash, key } = useLocation()
   useEffect(() => {
+    if (hash) {
+      let anchor: string
+      try { anchor = decodeURIComponent(hash.slice(1)) } catch { return }
+      const frame = requestAnimationFrame(() => {
+        document.getElementById(anchor)?.scrollIntoView({ block: 'start', behavior: 'instant' })
+      })
+      return () => cancelAnimationFrame(frame)
+    }
     window.scrollTo(0, 0)
-  }, [pathname])
+  }, [pathname, hash, key])
   return null
 }
 
@@ -34,6 +42,7 @@ export default function App() {
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/planos" element={<Navigate to="/#planos" replace />} />
           <Route path="/claude-code" element={<ClaudeCodePage />} />
           <Route path="/astra-6" element={<GptAstraPage />} />
           <Route path="/gpt-astra" element={<GptAstraPage />} />

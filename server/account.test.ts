@@ -11,7 +11,7 @@ function fixture() {
   const calls: {url:URL;init:RequestInit}[] = []
   const fake = async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = new URL(String(input)); calls.push({url,init})
-    if (url.pathname === '/auth/v1/user') return Response.json({id:uid})
+    if (url.pathname === '/auth/v1/user') return Response.json({id:uid,email_confirmed_at:'2026-01-01T00:00:00Z'})
     if (url.pathname.endsWith('/gateway_clients')) {
       if (init.method === 'PATCH') return Response.json([])
       return Response.json([{id:own,name:'Meu acesso',enabled:true,created_at:'2026-01-01',key_prefix:'sk-flg-test'}])
@@ -64,7 +64,16 @@ test('rejects malformed periods and does not silently truncate to first page',as
 })
 test('accepts the empty 204 response returned by a successful key claim',async()=>{
   const fake = async (input: string | URL | Request) => String(input).includes('/auth/v1/user')
-    ? Response.json({id:uid}) : new Response(null,{status:204})
+    ? Response.json({id:uid,email_confirmed_at:'2026-01-01T00:00:00Z'}) : new Response(null,{status:204})
   const service=createAccountService(config,fake as typeof fetch)
   assert.deepEqual(await service.execute('POST','claim','Bearer verified',{key:'sk-flg-'+'a'.repeat(43)}),{ok:true})
+})
+
+test('unconfirmed accounts cannot read usage, claim or issue keys',async()=>{
+  let calls=0
+  const service=createAccountService(config,(async()=>{calls++;return Response.json({id:uid})}) as typeof fetch)
+  for (const [method,path] of [['GET','summary'],['POST','keys'],['POST','claim']]) {
+    await assert.rejects(service.execute(method,path,'Bearer verified',{name:'Notebook'}),{status:403})
+  }
+  assert.equal(calls,3)
 })

@@ -1530,7 +1530,7 @@ export default function DashboardPage() {
                       </span>
                     ))}
                   </div>
-                  <Link className="six-primary" to="/#planos">
+                  <Link className="six-primary" to="/planos">
                     Ver planos disponíveis <ArrowUpRight size={15} />
                   </Link>
                 </section>

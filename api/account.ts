@@ -39,8 +39,9 @@ export function createAccountService(config: Config, request: typeof fetch = fet
       headers: { apikey: config.publicKey, Authorization: authorization }, signal: AbortSignal.timeout(10000),
     })
     if (!response.ok) throw new AccountError(response.status >= 500 ? 503 : 401, 'Sua sessão não pôde ser validada. Entre novamente.')
-    const user = await response.json() as { id?: string; is_anonymous?: boolean }
+    const user = await response.json() as { id?: string; is_anonymous?: boolean; email_confirmed_at?: string }
     if (!user.id || !uuid.test(user.id) || user.is_anonymous) throw new AccountError(401, 'Entre com uma conta válida.')
+    if (!user.email_confirmed_at) throw new AccountError(403, 'Confirme seu e-mail para acessar as chaves e o consumo da sua conta.')
     return user.id
   }
   async function clients(userId: string) {
