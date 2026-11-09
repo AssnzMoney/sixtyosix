@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, Check, X, Terminal, DollarSign } from 'lucide-react'
+import { Plus, Minus, ChevronDown, Check, X, DollarSign } from 'lucide-react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
@@ -15,28 +15,28 @@ const Arrow = () => (
 
 const glmFaqs = [
   [
-    'O que é o GLM-4 Plus e quais seus pontos fortes?',
-    'O GLM-4 Plus é um dos modelos mais avançados e eficientes para engenharia de software do mercado. Ele se destaca especialmente em refatoração profunda de código, criação de testes automatizados, documentação técnica e raciocínio lógico em bases de código com contexto estendido de 128k tokens.',
+    'O que é o GLM 5 e quais seus pontos fortes?',
+    'GLM 5 é o nome do perfil disponível no ZCode. A rota usa um pool compartilhado de modelos compatíveis; a execução de um modelo GLM upstream não é garantida e a disponibilidade pode variar.',
   ],
   [
-    'Em quais IDEs e editores posso conectar o GLM-4 Plus?',
-    'Você pode utilizar o GLM-4 Plus no Cursor IDE, VS Code (via extensões Cline, Roo Code, Continue ou CodeGPT), Codex CLI, Prompt de Comando, PowerShell ou diretamente com bibliotecas OpenAI em Python e TypeScript.',
+    'Em quais IDEs e editores posso conectar o GLM 5?',
+    'Use o perfil GLM 5 no ZCode. O catálogo do Codex é separado e oferece apenas GPT-6 Astra; Cursor, VS Code e clientes OpenAI não estão documentados para a rota GLM.',
   ],
   [
     'Como funciona a compatibilidade com a API da OpenAI?',
-    'O endpoint de gateway SixtySix (https://66cloud.vercel.app/v1) é 100% compatível com a especificação oficial OpenAI. Basta apontar a Base URL e utilizar o identificador de modelo glm-4-plus com sua chave individual SixtySix.',
+    'No ZCode, selecione um provedor personalizado compatível com Anthropic, use https://www.sixtysix.online/glm e o modelo glm-5. Este tutorial não configura uma API OpenAI nem Codex para GLM.',
   ],
   [
     'Como funciona o teste de 7 dias grátis?',
-    'Você pode testar o GLM-4 Plus sem compromisso. Crie sua conta, solicite sua chave individual de teste com o nosso suporte no WhatsApp e comece a rodar o modelo hoje mesmo, sem precisar cadastrar cartão de crédito.',
+    'Você pode testar o GLM 5 sem compromisso. Crie sua conta, solicite sua chave individual de teste com o nosso suporte no WhatsApp e comece a rodar o modelo hoje mesmo, sem precisar cadastrar cartão de crédito.',
   ],
   [
     'Existe limite de requisições por hora no plano ilimitado?',
-    'Não! Na SixtySix você não sofre cortes de cotas a cada 3 ou 5 horas. Você programa com fluxo de trabalho contínuo, estabilidade de 99.9% e custo previsível em Reais no Pix.',
+    'Há limites e disponibilidade definidos pelo provedor do pool compartilhado. O tráfego agregado pode atingir cotas, portanto não há garantia de uso ininterrupto nem SLA nesta rota.',
   ],
   [
-    'Posso alternar entre GLM-4 Plus, Claude Fable e GPT Astra 6?',
-    'Sim! No plano Pro Ilimitado você tem acesso a todos os modelos de ponta simultaneamente com sua chave única. No plano Dev você tem acesso liberado ao GLM-4 Plus e ao GPT Astra 6.',
+    'Posso alternar entre GLM 5, Claude Fable e GPT Astra 6?',
+    'GLM 5 é configurado no ZCode. No Codex, o modelo disponível é GPT-6 Astra (ID gpt-6-astra); os catálogos e endpoints são distintos.',
   ],
 ]
 
@@ -46,7 +46,6 @@ export default function Glm4Page() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [heroAction, setHeroAction] = useState<'primary' | 'secondary'>('primary')
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
-  const [selectedApp, setSelectedApp] = useState<'cursor' | 'vscode' | 'terminal'>('cursor')
   const [calcUsd, setCalcUsd] = useState(100)
   const [devWithApi, setDevWithApi] = useState(false)
 
@@ -135,7 +134,7 @@ export default function Glm4Page() {
             </div>
           </div>
           <div className="nav-right">
-            <Link to="/login" className="nav-login-link">
+            <Link to="/" className="nav-login-link">
               Entrar
             </Link>
             <a href="#planos-glm" className="nav-cta-btn">
@@ -172,14 +171,14 @@ export default function Glm4Page() {
                   </Link>
                 </div>
                 <div className="nav-mobile-group">
-                  <span className="nav-mobile-group-title">Modelos Oficiais de IA</span>
+                  <span className="nav-mobile-group-title">Perfis de IA</span>
                   <Link
                     to="/glm-4"
                     className="nav-mobile-item"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <div className="nav-mobile-item-head">
-                      <strong>GLM-4 Plus</strong>
+                      <strong>GLM 5</strong>
                     </div>
                     <small>Refatoração avançada, testes e documentação</small>
                   </Link>
@@ -235,7 +234,7 @@ export default function Glm4Page() {
                     className="nav-mobile-link"
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Planos GLM-4 Plus
+                    Planos GLM 5
                   </a>
                   <a
                     href="#duvidas-glm"
@@ -255,7 +254,7 @@ export default function Glm4Page() {
                     Garantir no Pix <Arrow />
                   </a>
                   <Link
-                    to="/login"
+                    to="/"
                     className="nav-mobile-btn-secondary"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -285,7 +284,7 @@ export default function Glm4Page() {
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                   >
-                    <strong>GLM-4 Plus</strong>
+                    <strong>GLM 5</strong>
                     <span>Excelente em refatoração, documentação e testes.</span>
                   </Link>
                   <Link
@@ -311,8 +310,8 @@ export default function Glm4Page() {
                     <span>Raciocínio profundo e código de alta complexidade.</span>
                   </Link>
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>Conexão Direta Oficial</strong>
-                    <span>Sem intermediários, sem compressão e sem erros 429.</span>
+                    <strong>Conexão pelo Gateway</strong>
+                    <span>A disponibilidade e as cotas dependem do pool compartilhado.</span>
                   </a>
                 </div>
               </div>
@@ -343,8 +342,8 @@ export default function Glm4Page() {
                 <span className="mega-menu-col-title">Diferenciais SixtySix</span>
                 <div className="mega-menu-items">
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>Uso 100% Ilimitado</strong>
-                    <span>Sem limites diários de prompts ou cortes de velocidade.</span>
+                    <strong>Uso conforme cotas</strong>
+                    <span>As cotas e a disponibilidade podem variar.</span>
                   </a>
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Zero Rateio & Chave Própria</strong>
@@ -391,7 +390,7 @@ export default function Glm4Page() {
               transition={{ duration: 0.9, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
             >
               <span className="hero-abacate-dot" />
-              <span>GLM-4 Plus Engenharia & Refatoração</span>
+              <span>GLM 5 Engenharia & Refatoração</span>
             </motion.div>
 
             <h1 className="hero-abacate-title">
@@ -401,7 +400,7 @@ export default function Glm4Page() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1.0, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
               >
-                O poder total do <em>GLM-4 Plus.</em>
+                Use o perfil <em>GLM 5.</em>
               </motion.span>
               <motion.span
                 className="hero-title-block"
@@ -409,7 +408,7 @@ export default function Glm4Page() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1.0, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
               >
-                Engenharia de precisão no Cursor.
+                No ZCode, com configuração guiada.
               </motion.span>
             </h1>
 
@@ -419,7 +418,7 @@ export default function Glm4Page() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1.0, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              Programe com um dos modelos mais eficientes do mundo para refatoração de código, testes unitários automatizados e documentação técnica. Conecte sua chave própria SixtySix no <strong>Cursor</strong>, <strong>VS Code</strong> ou <strong>Terminal</strong> e esqueça surpresas em Dólar.
+              Conecte seu perfil GLM 5 ao ZCode usando a chave individual SixtySix e as instruções verificadas abaixo.
             </motion.p>
 
             <motion.div
@@ -520,7 +519,7 @@ export default function Glm4Page() {
               {/* Arte SixtySix */}
               <motion.img
                 src="/assets/sixtysix-hand-logo.webp"
-                alt="SixtySix GLM-4 Plus"
+                alt="SixtySix GLM 5"
                 className="hero-abacate-artwork"
                 initial={{ opacity: 0, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -538,9 +537,9 @@ export default function Glm4Page() {
                   <Check size={18} strokeWidth={2.5} />
                 </div>
                 <div className="floating-badge-copy">
-                  <span className="floating-badge-label">GLM-4 Plus · agora</span>
+                  <span className="floating-badge-label">GLM 5 · agora</span>
                   <span className="floating-badge-val">
-                    <strong>100% Ilimitado</strong>
+                    <strong>Cotas compartilhadas</strong>
                     <span className="badge-pill-green">Ativo</span>
                   </span>
                 </div>
@@ -579,8 +578,8 @@ export default function Glm4Page() {
         >
           {[
             { val: 'Zero Rateio', desc: 'chave própria e individual' },
-            { val: 'Contexto 128k', desc: 'refatoração de repositórios inteiros' },
-            { val: 'Refatoração Pro', desc: 'especialista em testes e código limpo' },
+            { val: 'Contexto do provedor', desc: 'refatoração de repositórios inteiros' },
+            { val: 'Refatoração Pro', desc: 'perfil acessado no ZCode' },
             { val: 'No Pix', desc: 'preço fixo sem sustos em Dólar' },
           ].map((stat, i) => (
             <motion.div
@@ -609,299 +608,39 @@ export default function Glm4Page() {
         >
           <span className="eyebrow">instruções de conexão</span>
           <h2 className="claude-section-title">
-            Como conectar o <em>GLM-4 Plus</em> no seu editor.
+            Como conectar o <em>GLM 5</em> no ZCode.
           </h2>
           <p className="claude-section-subtitle">
-            Em menos de 2 minutos você aponta o gateway oficial da SixtySix no Cursor, VS Code ou Terminal e começa a codificar com uso ilimitado.
+            Configure o provedor personalizado no ZCode com o endereço, o modelo e sua chave individual.
           </p>
         </motion.div>
 
-        {/* Seletor de Aplicativo estilo Pílula */}
-        <motion.div
-          className="tutorial-tabs-wrap"
-          initial={{ opacity: 0, scale: 0.94 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 0.9, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="tutorial-tabs">
-            <button
-              type="button"
-              className={`tutorial-tab-btn ${selectedApp === 'cursor' ? 'active' : ''}`}
-              onClick={() => setSelectedApp('cursor')}
-            >
-              <span>Cursor IDE</span>
-            </button>
-            <button
-              type="button"
-              className={`tutorial-tab-btn ${selectedApp === 'vscode' ? 'active' : ''}`}
-              onClick={() => setSelectedApp('vscode')}
-            >
-              <span>VS Code (Cline / Roo)</span>
-            </button>
-            <button
-              type="button"
-              className={`tutorial-tab-btn ${selectedApp === 'terminal' ? 'active' : ''}`}
-              onClick={() => setSelectedApp('terminal')}
-            >
-              <Terminal size={15} />
-              <span>Codex & Terminal</span>
-            </button>
+        <div className="tutorial-pane">
+          <div className="tutorial-intro-card">
+            <p>O perfil <strong>GLM 5</strong> está disponível no <strong>ZCode</strong> com uma chave SixtySix individual. O catálogo GLM é separado das opções Claude e Codex.</p>
           </div>
-        </motion.div>
-
-        {/* Aba 1: Cursor IDE */}
-        {selectedApp === 'cursor' && (
-          <div className="tutorial-pane">
-            <motion.div
-              className="tutorial-intro-card"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <p>
-                No <strong>Cursor IDE</strong>, configure a Base URL customizada da OpenAI para apontar ao gateway SixtySix.
-                Assim você usa o modelo <code>glm-4-plus</code> para refatoração e pares de testes sem cortes de cotas.
-              </p>
-            </motion.div>
-
-            <div className="tutorial-steps-grid">
-              <motion.div
-                className="claude-step-card"
-                initial={{ opacity: 0, x: -50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 01</span>
-                  <h4>Defina a Base URL do Gateway</h4>
-                </div>
-                <p>Nas configurações do Cursor &gt; <strong>Models</strong>, ative <strong>Override OpenAI Base URL</strong> e cole:</p>
-                <div className="snippet-box">
-                  <code>https://66cloud.vercel.app/v1</code>
-                  <button
-                    type="button"
-                    className="btn-copy"
-                    onClick={() => copyText('https://66cloud.vercel.app/v1')}
-                  >
-                    {copiedSnippet === 'https://66cloud.vercel.app/v1' ? <Check /> : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                    )}
-                    <span>{copiedSnippet === 'https://66cloud.vercel.app/v1' ? 'Copiado!' : 'Copiar'}</span>
-                  </button>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="claude-step-card tutorial-step-large"
-                initial={{ opacity: 0, x: 50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 1.15, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 02</span>
-                  <h4>Adicione o Modelo e Cole sua Chave</h4>
-                </div>
-                <p>Insira sua chave individual no campo OpenAI API Key e adicione o modelo com o nome exato:</p>
-                <div className="code-block-box">
-                  <pre>
-{`Modelo: glm-4-plus
-Base URL: https://66cloud.vercel.app/v1
-OpenAI API Key: SUA_CHAVE_INDIVIDUAL`}
-                  </pre>
-                  <button
-                    type="button"
-                    className="code-block-copy-btn"
-                    onClick={() => copyText('glm-4-plus')}
-                  >
-                    {copiedSnippet === 'glm-4-plus' ? (
-                      <>
-                        <Check size={14} />
-                        <span>Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                        <span>Copiar Nome do Modelo</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <span className="tutorial-footnote">
-                  Dica: clique em <strong>Verify</strong> no Cursor para testar a conexão com o gateway SixtySix.
-                </span>
-              </motion.div>
+          <div className="tutorial-steps-grid">
+            <div className="claude-step-card tutorial-step-large">
+              <div className="claude-step-top"><span className="claude-step-badge">Passo 01</span><h4>Adicione o provedor</h4></div>
+              <p>No ZCode, abra <strong>Model Settings → Add Provider</strong>, escolha provedor personalizado compatível com Anthropic e use:</p>
+              <div className="code-block-box"><pre>{`Nome: SixtySix
+Tipo: Anthropic personalizado
+Base URL: https://www.sixtysix.online/glm
+API Key: SUA_CHAVE_INDIVIDUAL
+Model ID: glm-5`}</pre></div>
+            </div>
+            <div className="claude-step-card">
+              <div className="claude-step-top"><span className="claude-step-badge">Passo 02</span><h4>Ative e selecione GLM 5</h4></div>
+              <p>Salve o provedor, ative-o e selecione <strong>GLM 5</strong> na lista de modelos. Use a chave individual fornecida para sua conta.</p>
+              <p className="tutorial-footnote">O identificador aceito é <code>glm-5</code>. A rota GLM é independente dos catálogos Claude e Codex. A disponibilidade e o modelo upstream podem variar.</p>
+            </div>
+            <div className="claude-step-card">
+              <div className="claude-step-top"><span className="claude-step-badge">Codex</span><h4>GLM não aparece no Codex</h4></div>
+              <p>O Codex do gateway aceita somente <code>gpt-6-astra</code>. Para GLM, use o ZCode conforme os passos acima.</p>
+              <Link className="tutorial-footnote" to="/astra-6">Ver configuração do Codex para GPT Astra 6 →</Link>
             </div>
           </div>
-        )}
-
-        {/* Aba 2: VS Code */}
-        {selectedApp === 'vscode' && (
-          <div className="tutorial-pane">
-            <motion.div
-              className="tutorial-intro-card"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <p>
-                No <strong>VS Code</strong>, abra a extensão <strong>Cline</strong> ou <strong>Roo Code</strong>.
-                Selecione o provedor <strong>OpenAI Compatible</strong> para que você tenha autonomia total de refatoração em larga escala.
-              </p>
-            </motion.div>
-
-            <div className="tutorial-steps-grid">
-              <motion.div
-                className="claude-step-card"
-                initial={{ opacity: 0, x: -50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 01</span>
-                  <h4>Selecione o Provedor</h4>
-                </div>
-                <p>Nas configurações do assistente, altere o provedor para <strong>OpenAI-Compatible</strong> e defina o Base URL:</p>
-                <div className="snippet-box">
-                  <code>https://66cloud.vercel.app/v1</code>
-                  <button
-                    type="button"
-                    className="btn-copy"
-                    onClick={() => copyText('https://66cloud.vercel.app/v1')}
-                  >
-                    {copiedSnippet === 'https://66cloud.vercel.app/v1' ? <Check /> : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                    )}
-                    <span>{copiedSnippet === 'https://66cloud.vercel.app/v1' ? 'Copiado!' : 'Copiar'}</span>
-                  </button>
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="claude-step-card tutorial-step-large"
-                initial={{ opacity: 0, x: 50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true, margin: '-50px' }}
-                transition={{ duration: 1.15, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 02</span>
-                  <h4>Insira o Model ID e Chave</h4>
-                </div>
-                <p>Preencha os campos com suas credenciais oficiais SixtySix:</p>
-                <div className="code-block-box">
-                  <pre>
-{`API Provider: OpenAI-Compatible
-Base URL: https://66cloud.vercel.app/v1
-Model ID: glm-4-plus
-API Key: SUA_CHAVE_INDIVIDUAL`}
-                  </pre>
-                  <button
-                    type="button"
-                    className="code-block-copy-btn"
-                    onClick={() => copyText(`https://66cloud.vercel.app/v1\nglm-4-plus`)}
-                  >
-                    {copiedSnippet?.includes('glm-4-plus') ? (
-                      <>
-                        <Check size={14} />
-                        <span>Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                        <span>Copiar Parâmetros</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <span className="tutorial-footnote">
-                  O modelo conta com janela de 128k tokens para ler múltiplos arquivos de uma só vez.
-                </span>
-              </motion.div>
-            </div>
-          </div>
-        )}
-
-        {/* Aba 3: Terminal */}
-        {selectedApp === 'terminal' && (
-          <div className="tutorial-pane">
-            <motion.div
-              className="tutorial-intro-card"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-50px' }}
-              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <p>
-                Para rodar o <strong>GLM-4 Plus</strong> no terminal Windows, no <strong>Codex</strong> ou em scripts Python e Node.js,
-                configure as variáveis de ambiente com os comandos abaixo no Prompt de Comando (CMD):
-              </p>
-            </motion.div>
-
-            <div className="tutorial-codex-grid">
-              <div className="claude-step-card">
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 01</span>
-                  <h4>Configure a Base URL no Windows</h4>
-                </div>
-                <p>Execute no CMD para salvar a URL global compatível com qualquer biblioteca OpenAI:</p>
-                <div className="snippet-box">
-                  <code>setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"</code>
-                  <button
-                    type="button"
-                    className="btn-copy"
-                    onClick={() => copyText('setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"')}
-                  >
-                    {copiedSnippet === 'setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"' ? <Check /> : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                    )}
-                    <span>{copiedSnippet === 'setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"' ? 'Copiado!' : 'Copiar'}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="claude-step-card tutorial-step-large">
-                <div className="claude-step-top">
-                  <span className="claude-step-badge">Passo 02</span>
-                  <h4>Defina sua Chave Individual</h4>
-                </div>
-                <p>Substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua própria chave fornecida no WhatsApp:</p>
-                <div className="code-block-box">
-                  <pre>
-{`setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"
-setx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"
-setx OPENAI_MODEL "glm-4-plus"`}
-                  </pre>
-                  <button
-                    type="button"
-                    className="code-block-copy-btn"
-                    onClick={() => copyText(`setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"\nsetx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"\nsetx OPENAI_MODEL "glm-4-plus"`)}
-                  >
-                    {copiedSnippet?.includes('OPENAI_API_KEY') ? (
-                      <>
-                        <Check size={14} />
-                        <span>Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-                        <span>Copiar Comandos CMD</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <span className="tutorial-footnote">
-                  Após executar, feche e reabra o terminal para carregar as novas variáveis persistidas.
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </section>
 
       {/* Seção de Introdução ao Preço & Custos estilo AbacatePay */}
@@ -917,10 +656,10 @@ setx OPENAI_MODEL "glm-4-plus"`}
             <span className="eyebrow">Preço</span>
             <h2 className="claude-price-intro-title">
               Quanto custa usar o <br />
-              <span className="highlight-green-text">GLM-4 Plus?</span>
+              <span className="highlight-green-text">GLM 5?</span>
             </h2>
             <p className="claude-price-intro-sub">
-              A partir de <strong>R$ 79,99 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong> a cada poucas horas.
+              A partir de <strong>R$ 79,99 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>conforme cotas e disponibilidade</strong> a cada poucas horas.
               Diferente de assinar plataformas no cartão com IOF de 4,38% e taxa de câmbio abusiva, aqui o <strong>valor é previsível em Reais</strong>.
               Veja os <a href="#planos-glm">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>
@@ -1101,7 +840,7 @@ setx OPENAI_MODEL "glm-4-plus"`}
         </motion.div>
       </section>
 
-      {/* Planos Destacados para GLM-4 Plus */}
+      {/* Planos Destacados para GLM 5 */}
       <section className="plans-section shell" id="planos-glm">
         <motion.div
           className="plans-header"
@@ -1112,7 +851,7 @@ setx OPENAI_MODEL "glm-4-plus"`}
         >
           <span className="eyebrow">acesso imediato</span>
           <h2 className="plans-title">
-            Escolha seu plano para rodar <em>GLM-4 Plus.</em>
+            Escolha seu plano para rodar <em>GLM 5.</em>
           </h2>
           <p className="plans-subtitle">
             Teste gratuitamente por 7 dias ou garanta o acesso ilimitado com preço fixo no Pix.
@@ -1139,13 +878,13 @@ setx OPENAI_MODEL "glm-4-plus"`}
                 <span className="plan-val">0</span>
                 <span className="plan-period">/7 dias</span>
               </div>
-              <p className="plan-desc">Acesso total e irrestrito para testar o GLM-4 Plus na prática antes de decidir.</p>
+              <p className="plan-desc">Acesso total e irrestrito para testar o GLM 5 na prática antes de decidir.</p>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>GLM-4 Plus</strong>, <strong>Claude Fable 5.1</strong> e <strong>GPT Astra 6</strong></span></li>
+              <li><Check /> <span><strong>GLM 5</strong>, <strong>Claude Fable 5.1</strong> e <strong>GPT Astra 6</strong></span></li>
               <li><Check /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
-              <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
+              <li><Check /> <span><strong>Chave individual</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="plan-btn">
@@ -1200,10 +939,10 @@ setx OPENAI_MODEL "glm-4-plus"`}
             </div>
 
             <ul className="plan-features">
-              <li><Check size={14} /> <span><strong>GLM-4 Plus</strong> & <strong>GPT Astra 6</strong></span></li>
+              <li><Check size={14} /> <span><strong>GLM 5</strong> & <strong>GPT Astra 6</strong></span></li>
               {devWithApi ? (
                 <>
-                  <li><Check size={14} /> <span><strong>Chave de API oficial inclusa</strong> (+ R$ 15/mês)</span></li>
+                  <li><Check size={14} /> <span><strong>Chave de API individual</strong> (+ R$ 15/mês)</span></li>
                   <li><Check size={14} /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
                   <li><Check size={14} /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
                 </>
@@ -1219,14 +958,14 @@ setx OPENAI_MODEL "glm-4-plus"`}
                   <li><Check size={14} /> <span><strong>Ambiente próprio</strong> sem rateio</span></li>
                 </>
               )}
-              <li><Check size={14} /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
+              <li><Check size={14} /> <span><strong>Acesso ao gateway SixtySix</strong></span></li>
               <li><Check size={14} /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
             <a
               href={`https://wa.me/5511999999999?text=${encodeURIComponent(
                 devWithApi
-                  ? 'Olá! Quero assinar o plano Dev COM CHAVE DE API (R$ 94,99/mês) para o GLM-4 Plus.'
-                  : 'Olá! Quero assinar o plano Dev APENAS VIA SITE (R$ 79,99/mês) para o GLM-4 Plus.'
+                  ? 'Olá! Quero assinar o plano Dev COM CHAVE DE API (R$ 94,99/mês) para o GLM 5.'
+                  : 'Olá! Quero assinar o plano Dev APENAS VIA SITE (R$ 79,99/mês) para o GLM 5.'
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -1259,10 +998,10 @@ setx OPENAI_MODEL "glm-4-plus"`}
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM 5</strong></span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
-              <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
+              <li><Check /> <span><strong>Perfis de acesso</strong> (disponibilidade variável)</span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong>, <strong>VS Code</strong>, <strong>Codex</strong></span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> sem IOF via Pix</span></li>
             </ul>
@@ -1273,7 +1012,7 @@ setx OPENAI_MODEL "glm-4-plus"`}
         </div>
       </section>
 
-      {/* FAQ GLM-4 Plus */}
+      {/* FAQ GLM 5 */}
       <section className="faq shell" id="duvidas-glm">
         <motion.div
           className="faq-intro"
@@ -1284,10 +1023,10 @@ setx OPENAI_MODEL "glm-4-plus"`}
         >
           <h2 className="faq-title">
             <span className="faq-title-green">Dúvidas sobre</span><br />
-            o GLM-4 Plus.
+            o GLM 5.
           </h2>
           <p className="faq-subtitle">
-            Tudo o que você precisa saber para plugar o GLM-4 Plus no Cursor, VS Code ou Terminal hoje mesmo.
+            Tudo o que você precisa saber para plugar o GLM 5 no Cursor, VS Code ou Terminal hoje mesmo.
           </p>
           <div className="faq-action">
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="faq-support-btn">
@@ -1361,7 +1100,7 @@ setx OPENAI_MODEL "glm-4-plus"`}
         >
           <span className="eyebrow">comece agora</span>
           <h2 className="pre-footer-title">
-            Pronto para codar com GLM-4 Plus <span className="pre-footer-green">sem limites?</span>
+            Pronto para codar com GLM 5 <span className="pre-footer-green">sem limites?</span>
           </h2>
           <p className="pre-footer-sub">
             Crie sua conta em 1 minuto, receba sua chave oficial e teste no Cursor hoje mesmo.
@@ -1383,7 +1122,7 @@ setx OPENAI_MODEL "glm-4-plus"`}
           <div className="footer-col">
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
-              <li><Link to="/glm-4" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>GLM-4 Plus</Link></li>
+              <li><Link to="/glm-4" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>GLM 5</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
               <li><Link to="/claude-code">Claude Fable 5.1</Link></li>
             </ul>
@@ -1392,7 +1131,7 @@ setx OPENAI_MODEL "glm-4-plus"`}
           <div className="footer-col">
             <h4 className="footer-col-title">Produto</h4>
             <ul className="footer-link-list">
-              <li><Link to="/glm-4">GLM-4 Plus</Link></li>
+              <li><Link to="/glm-4">GLM 5</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
               <li><Link to="/claude-code">Claude Code CLI</Link></li>
               <li><a href="#como-conectar-glm">Integração no Cursor</a></li>
@@ -1460,4 +1199,3 @@ setx OPENAI_MODEL "glm-4-plus"`}
     </main>
   )
 }
-
