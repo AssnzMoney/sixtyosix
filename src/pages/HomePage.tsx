@@ -263,7 +263,7 @@ export default function App() {
               <div className="nav-mobile-drawer-inner">
                 <div className="nav-mobile-top-brand">
                   <a href="#top" onClick={() => setMobileMenuOpen(false)}>
-                    <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" style={{ height: '32px' }} />
+                    <img src="/assets/sidebar-logo.png" alt="SixtySix" className="sidebar-brand-logo" />
                   </a>
                 </div>
                 <div className="nav-mobile-group">
