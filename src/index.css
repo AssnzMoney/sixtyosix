@@ -4777,19 +4777,22 @@ h2 em {
    ========================================================================== */
 
 .login-page-wrap {
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   width: 100%;
   background: #fbfcfb;
   background-image: radial-gradient(rgba(31, 70, 71, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .login-split-grid {
   display: grid;
   grid-template-columns: 1fr 1.08fr;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   width: 100%;
   position: relative;
   background: #ffffff;
@@ -4802,10 +4805,11 @@ h2 em {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 50px 36px;
+  padding: 24px 36px;
   background: transparent;
   position: relative;
   z-index: 2;
+  overflow-y: auto;
 }
 
 .login-form-box {
@@ -5347,7 +5351,7 @@ h2 em {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 40px 0;
+  padding: 16px 0 20px;
   background: transparent;
   position: relative;
   overflow: hidden;
@@ -5371,23 +5375,23 @@ h2 em {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
   position: relative;
   z-index: 2;
 }
 
 .login-art-stage {
   width: 100%;
-  height: 480px;
+  height: clamp(340px, 46vh, 460px);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   position: relative;
-  margin: 0 0 10px;
+  margin: 0 0 4px;
 }
 
 .login-art-lady-left {
-  height: 425px;
+  height: clamp(300px, 41vh, 410px);
   width: auto;
   object-fit: contain;
   margin-left: -20px;
@@ -5400,11 +5404,11 @@ h2 em {
 }
 
 .login-art-lady-right {
-  height: 520px;
+  height: clamp(370px, 50vh, 500px);
   width: auto;
   object-fit: contain;
   margin-right: -80px;
-  margin-bottom: -35px;
+  margin-bottom: -32px;
   filter: drop-shadow(0 14px 30px rgba(0, 0, 0, 0.05));
   user-select: none;
   pointer-events: none;
@@ -5507,8 +5511,16 @@ h2 em {
 
 /* Responsividade da Tela de Login */
 @media (max-width: 960px) {
+  .login-page-wrap {
+    height: auto;
+    max-height: none;
+    overflow-y: auto;
+  }
+
   .login-split-grid {
     grid-template-columns: 1fr;
+    height: auto;
+    max-height: none;
   }
 
   .login-right-col {
