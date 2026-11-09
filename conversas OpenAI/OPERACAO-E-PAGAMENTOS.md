@@ -2,6 +2,19 @@
 
 Atualizado em 9 de novembro de 2026. Resumo técnico das decisões desta conversa. Não é uma transcrição integral. Credenciais, códigos de login, dados de clientes e chaves privadas foram excluídos.
 
+## Receptor Mercado Pago — implementação atual
+
+- URL de notificação: https://www.sixtysix.online/api/mercadopago/webhook.
+- Função independente api/mercadopago.ts, encaminhada pelo vercel.json antes do fallback da SPA.
+- GET/HEAD informa estado de configuração sem expor credenciais; POST exige assinatura HMAC, valida ID assinado e consulta a API autenticada do Mercado Pago.
+- Segredo privado obrigatório: MERCADOPAGO_WEBHOOK_SECRET. O MERCADOPAGO_ACCESS_TOKEN já foi salvo como segredo de produção na Vercel.
+- Eventos payment, subscription_preapproval, subscription_authorized_payment e subscription_preapproval_plan. Outros tópicos assinados são ignorados.
+- Recibos sanitizados e deduplicados em billing_webhook_events, com RLS e acesso exclusivo do servidor. Falha de consulta/persistência retorna 503 para permitir nova tentativa.
+- Migração: supabase/billing-webhook.sql. Não modifica clientes, chaves ou consumo existentes.
+- Receber eventos ainda não significa entregar chaves: esta etapa registra fatos verificados como awaiting_account_link. Checkout vinculado à conta, concessão, vigência e entrega automática precisam ser conectados e conferidos antes da ativação comercial automática. A rota declara automaticKeyDelivery=false até essa conclusão.
+- Antes de aceitar notificações reais, cadastrar a URL em produção no Mercado Pago, ativar Pagamentos e Planos e assinaturas, salvar e adicionar o segredo de assinatura na Vercel; publicar novamente. Não colocar o segredo no Git.
+- A documentação abaixo conserva as decisões e pendências de integração; esta seção descreve a implementação mais recente.
+
 ## O que está publicado
 
 - Site e painel: https://www.sixtysix.online.

@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/mercadopago/webhook", "destination": "/api/mercadopago" },
     { "source": "/api/account/:action", "destination": "/api/account?action=:action" },
     { "source": "/glm/:path*", "destination": "https://66cloud.vercel.app/glm/:path*" },
     { "source": "/v1/:path*", "destination": "https://66cloud.vercel.app/v1/:path*" },
