@@ -32,7 +32,7 @@ const astraFaqs = [
   ],
   [
     'Qual o endpoint de gateway e nome do modelo para configurar?',
-    'O endpoint base padrão compatível é https://66cloud.vercel.app/v1 e o identificador do modelo é gpt-astra-6. O passo a passo com instruções para Cursor, VS Code e Terminal está detalhado na seção acima.',
+    'O endpoint base padrão compatível é https://www.sixtysix.online/v1 e o identificador do modelo é gpt-astra-6. O passo a passo com instruções para Cursor, VS Code e Terminal está detalhado na seção acima.',
   ],
   [
     'A SixtySix impõe limites de mensagens a cada poucas horas como no ChatGPT Plus?',
@@ -667,16 +667,16 @@ export default function GptAstraPage() {
                 </div>
                 <p>Nas configurações do Cursor (ícone de engrenagem) &gt; <strong>Models</strong>, ative <strong>Override OpenAI Base URL</strong> e cole:</p>
                 <div className="snippet-box">
-                  <code>https://66cloud.vercel.app/v1</code>
+                  <code>https://www.sixtysix.online/v1</code>
                   <button
                     type="button"
                     className="btn-copy"
-                    onClick={() => copyText('https://66cloud.vercel.app/v1')}
+                    onClick={() => copyText('https://www.sixtysix.online/v1')}
                   >
-                    {copiedSnippet === 'https://66cloud.vercel.app/v1' ? <Check /> : (
+                    {copiedSnippet === 'https://www.sixtysix.online/v1' ? <Check /> : (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                     )}
-                    <span>{copiedSnippet === 'https://66cloud.vercel.app/v1' ? 'Copiado!' : 'Copiar'}</span>
+                    <span>{copiedSnippet === 'https://www.sixtysix.online/v1' ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                 </div>
               </motion.div>
@@ -696,7 +696,7 @@ export default function GptAstraPage() {
                 <div className="code-block-box">
                   <pre>
 {`Modelo: gpt-astra-6
-Base URL: https://66cloud.vercel.app/v1
+Base URL: https://www.sixtysix.online/v1
 OpenAI API Key: SUA_CHAVE_INDIVIDUAL`}
                   </pre>
                   <button
@@ -755,16 +755,16 @@ OpenAI API Key: SUA_CHAVE_INDIVIDUAL`}
                 </div>
                 <p>Nas configurações do assistente, altere o provedor para <strong>OpenAI-Compatible</strong> e defina o Base URL:</p>
                 <div className="snippet-box">
-                  <code>https://66cloud.vercel.app/v1</code>
+                  <code>https://www.sixtysix.online/v1</code>
                   <button
                     type="button"
                     className="btn-copy"
-                    onClick={() => copyText('https://66cloud.vercel.app/v1')}
+                    onClick={() => copyText('https://www.sixtysix.online/v1')}
                   >
-                    {copiedSnippet === 'https://66cloud.vercel.app/v1' ? <Check /> : (
+                    {copiedSnippet === 'https://www.sixtysix.online/v1' ? <Check /> : (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                     )}
-                    <span>{copiedSnippet === 'https://66cloud.vercel.app/v1' ? 'Copiado!' : 'Copiar'}</span>
+                    <span>{copiedSnippet === 'https://www.sixtysix.online/v1' ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                 </div>
               </motion.div>
@@ -784,14 +784,14 @@ OpenAI API Key: SUA_CHAVE_INDIVIDUAL`}
                 <div className="code-block-box">
                   <pre>
 {`API Provider: OpenAI-Compatible
-Base URL: https://66cloud.vercel.app/v1
+Base URL: https://www.sixtysix.online/v1
 Model ID: gpt-astra-6
 API Key: SUA_CHAVE_INDIVIDUAL`}
                   </pre>
                   <button
                     type="button"
                     className="code-block-copy-btn"
-                    onClick={() => copyText(`https://66cloud.vercel.app/v1\ngpt-astra-6`)}
+                    onClick={() => copyText(`https://www.sixtysix.online/v1\ngpt-astra-6`)}
                   >
                     {copiedSnippet?.includes('gpt-astra-6') ? (
                       <>
@@ -838,16 +838,16 @@ API Key: SUA_CHAVE_INDIVIDUAL`}
                 </div>
                 <p>Execute no CMD para salvar a URL global compatível com qualquer biblioteca OpenAI:</p>
                 <div className="snippet-box">
-                  <code>setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"</code>
+                  <code>setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"</code>
                   <button
                     type="button"
                     className="btn-copy"
-                    onClick={() => copyText('setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"')}
+                    onClick={() => copyText('setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"')}
                   >
-                    {copiedSnippet === 'setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"' ? <Check /> : (
+                    {copiedSnippet === 'setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"' ? <Check /> : (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
                     )}
-                    <span>{copiedSnippet === 'setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"' ? 'Copiado!' : 'Copiar'}</span>
+                    <span>{copiedSnippet === 'setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"' ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                 </div>
               </div>
@@ -860,14 +860,14 @@ API Key: SUA_CHAVE_INDIVIDUAL`}
                 <p>Substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua própria chave fornecida no WhatsApp:</p>
                 <div className="code-block-box">
                   <pre>
-{`setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"
+{`setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"
 setx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"
 setx OPENAI_MODEL "gpt-astra-6"`}
                   </pre>
                   <button
                     type="button"
                     className="code-block-copy-btn"
-                    onClick={() => copyText(`setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"\nsetx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"\nsetx OPENAI_MODEL "gpt-astra-6"`)}
+                    onClick={() => copyText(`setx OPENAI_BASE_URL "https://www.sixtysix.online/v1"\nsetx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"\nsetx OPENAI_MODEL "gpt-astra-6"`)}
                   >
                     {copiedSnippet?.includes('OPENAI_API_KEY') ? (
                       <>
