@@ -93,3 +93,12 @@ test('Pix checkout binds the verified customer, excludes cards and does not crea
  assert.ok(!calls.some(c=>c.url.pathname==='/preapproval'))
  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/billing_apply_payment')))
 })
+test('verified Pix notification grants only its own exact-value production order',async()=>{
+ const {service,calls}=fixture()
+ const payment={id:456,collector_id:99,external_reference:order,transaction_amount:94.99,currency_id:'BRL',live_mode:true,payment_method_id:'pix',status:'approved',date_approved:'2026-11-09T12:00:00Z',date_last_updated:'2026-11-09T12:01:00Z'}
+ assert.equal(await service.process('payment',payment),'processed')
+ const saved=calls.find(c=>c.url.pathname.endsWith('/billing_apply_payment'))!.body
+ assert.equal(saved.p_payment_id,'456');assert.equal(saved.p_invoice_id,'pix-456')
+ assert.equal(saved.p_end,'2026-12-09T12:00:00.000Z')
+ for(const change of [{payment_method_id:'visa'},{collector_id:123},{transaction_amount:1},{live_mode:false}])await assert.rejects(service.process('payment',{...payment,...change}),{status:403})
+})

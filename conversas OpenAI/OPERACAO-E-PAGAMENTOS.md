@@ -56,3 +56,9 @@ Segredos privados na Vercel: MERCADOPAGO_ACCESS_TOKEN, MERCADOPAGO_WEBHOOK_SECRE
 Schema: supabase/billing-lifecycle.sql. Verificação transacional: supabase/billing-checks.rollback.sql. Testes: server/billing.test.ts, server/access.test.ts, server/account.test.ts e server/mercadopago.test.ts. Verificam aprovação, duplicação, cancelamento, estorno, evento atrasado, renovação, propriedade, recuperação de chave, expiração e privacidade. Os dados QA são revertidos por rollback.
 
 Nenhuma cobrança real foi feita nesta validação. A primeira compra real deve ser acompanhada para confirmar o evento real de pagamento e a entrega. Testes controlados não equivalem a uma compra efetivamente paga.
+
+## Conferência após publicação
+
+Commit funcional: 1d831e3, publicado na Vercel em produção. Checkout Pix real abriu com Pix disponível e valor de R$94,99; checkout de assinatura abriu com cartão de crédito disponível. Nenhuma compra/cobrança foi concluída. Pedido pendente apareceu corretamente em /assinatura e não gerou chave. API de status sem sessão devolve 401; tabelas/views de cobrança são negadas à chave pública (401) e acessíveis ao servidor (200). A chave de teste grátis existente continuou acessando /v1/models (200). A documentação de operação fica excluída do pacote público pela .vercelignore.
+
+Cancelamento real do pedido pendente criado exclusivamente para QA: autorizado pelo proprietário e confirmado em /assinatura como cancelado. Não houve pagamento nem cobrança. Não foi cancelada assinatura de cliente.
