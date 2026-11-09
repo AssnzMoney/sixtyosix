@@ -1398,14 +1398,13 @@ export default function DashboardPage() {
                   )}
                   {tool === "desktop" && (
                     <>
-                      <GuideStep number="01" title="Confira a opção de gateway">
+                      <GuideStep number="01" title="Ative a conexão com terceiros">
                         <p>
-                          Nas configurações de conexão do Claude Desktop,
-                          procure a opção Gateway. Ela precisa estar disponível
-                          na sua versão do aplicativo.
+                          Abra o Claude Desktop atualizado e clique na engrenagem de Configurações. Procure Conexão ou Inferência de terceiros. Ative a opção de usar um provedor de terceiros, se ela aparecer, e escolha Gateway no campo Conexão. Os nomes podem variar conforme a versão. Esta configuração precisa ser feita no aplicativo: colar a chave no chat ou configurar um conector MCP não conecta o gateway de modelos.
                         </p>
                       </GuideStep>
                       <GuideStep number="02" title="Preencha as credenciais">
+                        <p>Em Credenciais de gateway, escolha Chave de API estática. Copie sua chave na aba Chaves de API deste painel e cole no campo Chave de API do gateway. Use a URL inteira abaixo, sem acrescentar /v1/messages. Em Esquema de autenticação, selecione x-api-key. O campo Origem do iframe de visualização de artefato é separado da conexão; deixe vazio se você não configurou uma origem de artefatos.</p>
                         <CodeBlock
                           code={`Tipo: Chave de API estática\nURL base: https://www.sixtysix.online\nChave: ${actualKey}\nAutenticação: x-api-key\nModelo: claude-fable-5-1`}
                           copy={copy}
@@ -1413,11 +1412,12 @@ export default function DashboardPage() {
                       </GuideStep>
                       <GuideStep number="03" title="Salve, reinicie e teste">
                         <p>
-                          Teste a conexão, salve as configurações e reinicie
-                          quando solicitado. Se sua versão não oferecer gateway
-                          personalizado, use o tutorial do Claude Code no
-                          terminal.
+                          Clique em Testar conexão. Depois clique em Salvar e Reiniciar e aguarde o aplicativo abrir novamente. Crie uma conversa nova na área Code, selecione Fable 5.1 e envie uma mensagem curta. Conversas antigas podem manter o modelo anterior. Se o teste ficar vermelho, confira a chave completa, a URL e x-api-key. Se aparecer Não foi possível atualizar as configurações salvas, o aplicativo ainda não salvou a conexão: feche e abra o Claude e tente salvar novamente. Se a opção de terceiros não existir na sua versão, use Claude Code no terminal, conforme a outra aba deste guia.
                         </p>
+                      </GuideStep>
+                      <GuideStep number="04" title="Usar GLM 5 pelo Claude">
+                        <p>Para o perfil GLM 5, use a conexão compatível com Anthropic abaixo. No Claude Code do terminal, configure ANTHROPIC_BASE_URL com a URL terminando em /glm e inicie com claude --model glm-5. No Desktop, isso depende de sua versão aceitar um identificador de modelo personalizado: selecione ou cadastre glm-5. Trocar somente o nome exibido ou deixar Fable selecionado não troca o perfil para GLM. Se o Desktop não permitir esse modelo, use o terminal ou o ZCode.</p>
+                        <CodeBlock code={`URL base: https://www.sixtysix.online/glm\nModelo: glm-5\nChave: ${actualKey}\nAutenticação: x-api-key`} copy={copy}/>
                       </GuideStep>
                     </>
                   )}
@@ -1515,11 +1515,11 @@ export default function DashboardPage() {
                   <span className="six-pill">
                     {demo ? "Plano ilustrativo" : "Minha assinatura"}
                   </span>
-                  <h2>{demo ? "Pro" : subscription?`${subscription.name}${subscription.active?'':subscription.status==='pending'?' · aguardando pagamento':' · período encerrado'}`:trial?.active ? "Teste grátis · 7 dias" : keys.some(k => k.active) ? "Acesso de teste ativo" : trial ? "Teste encerrado" : "Sem acesso vinculado"}</h2>
+                  <h2>{demo ? "Pro" : trial?.active&&!subscription?.active ? "Teste grátis · 7 dias" : subscription?`${subscription.name}${subscription.active?'':subscription.status==='pending'?' · aguardando pagamento':' · período encerrado'}`:trial?.active ? "Teste grátis · 7 dias" : keys.some(k => k.active) ? "Acesso de teste ativo" : trial ? "Teste encerrado" : "Sem acesso vinculado"}</h2>
                   {subscription&&<p>{subscription.expires?`Período pago até ${new Date(subscription.expires).toLocaleString('pt-BR')}.`:'Aguardando confirmação do pagamento.'} {subscription.status==='cancelled'?'Renovação cancelada.':''}</p>}
                   {trial&&<p>{trial.revoked?'Chave do teste revogada.':`Fim do teste: ${new Date(trial.expires).toLocaleString('pt-BR')}.`}</p>}
                   <p>
-                    {subscription?`Modelos do seu plano: ${subscription.models.map(model=>({'claude-fable-5-1':'Fable 5.1','gpt-6-astra':'Astra 6','glm-5':'GLM 5'}[model]||model)).join(', ')}.`:'Seu espaço para construir com Fable 5.1, Astra 6 e GLM 5.'}
+                    {trial?.active&&!subscription?.active?'Modelos liberados no teste: Fable 5.1, Astra 6 e GLM 5. Todos disponíveis durante os 7 dias.':subscription?`Modelos do seu plano: ${subscription.models.map(model=>({'claude-fable-5-1':'Fable 5.1','gpt-6-astra':'Astra 6','glm-5':'GLM 5'}[model]||model)).join(', ')}.`:'Seu espaço para construir com Fable 5.1, Astra 6 e GLM 5.'}
                   </p>
                   <div className="six-plan-price">
                     {demo ? <DashboardNumber value={119} format="money" replay={numberReplay} /> : subscription?<DashboardNumber value={subscription.amount} format="money" replay={numberReplay}/>:"—"}
@@ -1595,7 +1595,7 @@ export default function DashboardPage() {
                 {[
                   [
                     "Onde consigo minha chave?",
-                    "Sua chave individual é fornecida pelo administrador da SixtySix. O login no site não emite automaticamente uma chave do gateway. Use a seção Chaves de API para consultar o cadastro ou solicitar acesso.",
+                    "Ative o teste de 7 dias ou confirme um plano com API. A chave individual aparece na seção Chaves de API. No teste, Fable 5.1, Astra 6 e GLM 5 estão liberados. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
                   ],
                   [
                     "Deu erro 401. O que confiro?",
@@ -1692,3 +1692,4 @@ function GuideStep({
     </div>
   )
 }
+

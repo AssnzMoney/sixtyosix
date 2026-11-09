@@ -66,3 +66,9 @@ Cancelamento real do pedido pendente criado exclusivamente para QA: autorizado p
 ## Checkout padrão e atualização Pix
 
 O Pix não é pré-selecionado nem os cartões são excluídos; e-mail não é enviado na preferência. Assim, o cliente vê o fluxo regular do Mercado Pago e escolhe entre as opções disponíveis. As autorizações continuam vinculadas à SixtySix pelo identificador do pedido e validadas pelo webhook. O cartão recorrente segue no fluxo de assinatura separado. A função billing_begin_pix foi atualizada para renovar o link de um pedido Pix pendente, em vez de reutilizar o link antigo com filtros de método.
+
+## Administração privada
+
+/admin (ou /administracao) consulta clientes, planos, pagamentos, chaves, testes e consumo real. API GET /api/management valida a sessão no Supabase e exige e-mail confirmado e allowlist do servidor SIXTYSIX_ADMIN_EMAILS. Na ausência da variável, somente alisongeneral25@gmail.com entra. Não se usa user_metadata para conceder permissão. Não há nova permissão no banco nem escrita nos registros por este painel.
+
+Consulta paginada de 500 registros; o painel carrega até 10.000 por seção e avisa se atingir o limite. Consumo e pagamentos filtrados por datas UTC; CSV inclui todos os registros carregados da seção e respeita a busca. Chaves mostram somente prefixos. Nenhum hash, token cifrado ou segredo de autenticação é retornado. Receita exibida soma pagamentos registrados como aprovados no período, sem descontar taxas.

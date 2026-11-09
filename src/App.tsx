@@ -12,6 +12,7 @@ import OnboardingPage from './pages/OnboardingPage'
 import TrialPage from './pages/TrialPage'
 import CheckoutPage from './pages/CheckoutPage'
 import SubscriptionPage from './pages/SubscriptionPage'
+import AdminPage from './pages/AdminPage'
 
 function ScrollToTop() {
   const { pathname, hash, key } = useLocation()
@@ -44,6 +45,8 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/administracao" element={<AdminPage />} />
           <Route path="/" element={<HomePage />} />
           <Route path="/planos" element={<Navigate to="/#planos" replace />} />
           <Route path="/teste-gratis" element={<TrialPage />} />
