@@ -10,8 +10,10 @@ import {
   Sparkles,
   LogOut,
   Mail,
+  Lock,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import { isLocalhost } from '../lib/isLocalhost'
 
 const GoogleIcon = () => (
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -220,13 +222,37 @@ export default function LoginPage() {
                 </p>
 
                 <div className="login-logged-actions">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/dashboard')}
-                    className="login-submit-btn is-ready"
-                  >
-                    Acessar Plataforma
-                  </button>
+                  {isLocalhost() ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/dashboard')}
+                      className="login-submit-btn is-ready"
+                    >
+                      Acessar Plataforma
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                      <div style={{
+                        background: '#fef3c7',
+                        border: '1px solid #fde68a',
+                        borderRadius: '12px',
+                        padding: '10px 14px',
+                        fontSize: '12px',
+                        color: '#92400e',
+                        fontWeight: 700,
+                        textAlign: 'center'
+                      }}>
+                        🔒 Plataforma fora do ar no momento (apenas localhost)
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        className="login-submit-btn is-ready"
+                      >
+                        Voltar para o site
+                      </button>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => signOut()}

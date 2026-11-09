@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AuthProvider } from './lib/AuthContext'
+import { isLocalhost } from './lib/isLocalhost'
 import HomePage from './pages/HomePage'
 import ClaudeCodePage from './pages/ClaudeCode'
 import GptAstraPage from './pages/GptAstra'
@@ -9,6 +10,7 @@ import LoginPage from './pages/LoginPage'
 import AuthCallback from './pages/AuthCallback'
 import DashboardPage from './pages/DashboardPage'
 import OnboardingPage from './pages/OnboardingPage'
+import PlatformOfflineNotice from './pages/PlatformOfflineNotice'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -19,6 +21,8 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  const localEnv = isLocalhost()
+
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -32,10 +36,25 @@ export default function App() {
           <Route path="/glm" element={<Glm4Page />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/entrar" element={<LoginPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/app" element={<DashboardPage />} />
-          <Route path="/plataforma" element={<DashboardPage />} />
+          
+          {/* Rotas da Plataforma: liberadas estritamente em localhost */}
+          <Route
+            path="/onboarding"
+            element={localEnv ? <OnboardingPage /> : <PlatformOfflineNotice />}
+          />
+          <Route
+            path="/dashboard"
+            element={localEnv ? <DashboardPage /> : <PlatformOfflineNotice />}
+          />
+          <Route
+            path="/app"
+            element={localEnv ? <DashboardPage /> : <PlatformOfflineNotice />}
+          />
+          <Route
+            path="/plataforma"
+            element={localEnv ? <DashboardPage /> : <PlatformOfflineNotice />}
+          />
+
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
