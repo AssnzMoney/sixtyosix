@@ -2086,13 +2086,6 @@ h2 em {
 }
 
 .plan-api-seg-btn.is-active {
-  background: #ffffff;
-  color: #1f4647;
-  border-color: rgba(0, 0, 0, 0.08);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-
-.plan-api-seg-btn.is-active.is-api-btn {
   background: #1f4647;
   color: #ffffff;
   border-color: #1f4647;
