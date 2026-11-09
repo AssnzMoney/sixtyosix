@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { configuration, AccountError } from './account.ts'
+class AccountError extends Error { status:number; constructor(status:number,message:string){super(message);this.status=status} }
+function configuration(env:NodeJS.ProcessEnv){
+ const url=env.SUPABASE_URL?.replace(/\/+$/,''),secret=env.SUPABASE_SERVICE_ROLE_KEY,publicKey=env.VITE_SUPABASE_ANON_KEY||env.SUPABASE_PUBLISHABLE_KEY
+ if(!url?.startsWith('https://')||!secret||!publicKey)throw new AccountError(503,'Administração temporariamente indisponível.')
+ return {url,secret,publicKey}
+}
 type Row = Record<string, any>
 const resources:Record<string,string>={
  clients:'id,user_id,name,enabled,created_at,key_prefix',
@@ -49,5 +54,7 @@ export default async function handler(req:IncomingMessage,res:ServerResponse){
   res.statusCode=200;res.end(JSON.stringify(result))
  }catch(error){res.statusCode=error instanceof AccountError?error.status:503;res.end(JSON.stringify({error:error instanceof AccountError?error.message:'Administração temporariamente indisponível.'}))}
 }
+
+
 
 
