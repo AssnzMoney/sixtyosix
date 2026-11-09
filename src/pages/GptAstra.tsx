@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
-import { Plus, Minus, ChevronDown, Check, X, Terminal, ShieldCheck, Zap, DollarSign } from 'lucide-react'
-import NumberFlow from '@number-flow/react'
+import { Plus, Minus, ChevronDown, Check, X, Terminal, DollarSign } from 'lucide-react'
 import { Slider } from '@/components/ui/slider-number-flow'
 import NumberRoller from '@/components/ui/number-roller'
 import PlanCardWaves from '@/components/ui/plan-card-waves'
@@ -14,17 +13,10 @@ const Arrow = () => (
   </svg>
 )
 
-const Cross = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="cross-icon">
-    <line x1="18" y1="6" x2="6" y2="18" />
-    <line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-)
-
 const astraFaqs = [
   [
     'O que é o GPT Astra 6 e quais são seus diferenciais?',
-    'O GPT Astra 6 é o modelo de linguagem e visão de altíssima velocidade otimizado para desenvolvedores. Ele entrega respostas instantâneas, raciocínio avançado para engenharia de software e suporte nativo a leitura de imagens, mockups e interfaces, tudo conectado à sua chave SixtySix.',
+    'O GPT Astra 6 é o modelo de linguagem e visão multimodal de altíssima velocidade otimizado para desenvolvedores. Ele entrega respostas instantâneas, raciocínio avançado para engenharia de software e suporte nativo a leitura de imagens, mockups e interfaces, tudo conectado à sua chave SixtySix.',
   ],
   [
     'O GPT Astra 6 suporta entrada multimodal (visão e imagens)?',
@@ -40,7 +32,7 @@ const astraFaqs = [
   ],
   [
     'Qual o endpoint de gateway e nome do modelo para configurar?',
-    'O endpoint base padrão compatível é https://66cloud.vercel.app/v1 e o identificador do modelo é gpt-astra-6. O passo a passo com comandos para Cursor, VS Code e Terminal está detalhado na seção acima.',
+    'O endpoint base padrão compatível é https://66cloud.vercel.app/v1 e o identificador do modelo é gpt-astra-6. O passo a passo com instruções para Cursor, VS Code e Terminal está detalhado na seção acima.',
   ],
   [
     'A SixtySix impõe limites de mensagens a cada poucas horas como no ChatGPT Plus?',
@@ -55,15 +47,12 @@ const astraFaqs = [
 export default function GptAstraPage() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [megaMenuOpen, setMegaMenuOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [heroAction, setHeroAction] = useState<'primary' | 'secondary'>('primary')
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
   const [selectedApp, setSelectedApp] = useState<'cursor' | 'vscode' | 'terminal'>('cursor')
   const [calcUsd, setCalcUsd] = useState(100)
   const [devWithApi, setDevWithApi] = useState(false)
-
-  const formatBRL = (val: number) => {
-    return val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  }
 
   // Cotação real do Dólar no cartão (comercial + IOF + Spread bancário):
   const commercialDollar = 5.85
@@ -78,7 +67,6 @@ export default function GptAstraPage() {
   const savingsBRL = Math.max(0, totalAnthropicBRL - sixtySixCost)
   const savingsPercent = Math.round((savingsBRL / totalAnthropicBRL) * 100)
   const savingsMultiplier = (totalAnthropicBRL / sixtySixCost).toFixed(1)
-  const sixBarPercentage = Math.min(100, Math.max(12, Math.round((sixtySixCost / totalAnthropicBRL) * 100)))
 
   const presetLevels = [
     { label: 'US$ 30', value: 30 },
@@ -87,8 +75,6 @@ export default function GptAstraPage() {
     { label: 'US$ 150', value: 150 },
     { label: 'US$ 250', value: 250 },
   ]
-
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -111,7 +97,7 @@ export default function GptAstraPage() {
     }
   }, [])
 
-  const copyToClipboard = (text: string) => {
+  const copyText = (text: string) => {
     navigator.clipboard.writeText(text)
     setCopiedSnippet(text)
     setTimeout(() => {
@@ -121,6 +107,7 @@ export default function GptAstraPage() {
 
   return (
     <main>
+      {/* Top Navbar */}
       <header
         className={`nav-wrapper ${isScrolled ? 'nav-scrolled' : ''}`}
         onMouseLeave={() => setMegaMenuOpen(false)}
@@ -370,343 +357,568 @@ export default function GptAstraPage() {
                 </div>
               </div>
             </div>
+
+            <div className="mega-menu-footer">
+              <a href="#planos-astra" className="mega-footer-link" onClick={() => setMegaMenuOpen(false)}>
+                Ver todos os planos disponíveis <Arrow />
+              </a>
+              <a href="#calculadora-astra" className="mega-footer-link" onClick={() => setMegaMenuOpen(false)}>
+                Simular economia na calculadora de tokens <Arrow />
+              </a>
+            </div>
           </div>
         )}
       </header>
 
-      {/* Hero GPT Astra 6 */}
-      <section className="claude-hero-wrap shell">
-        <motion.div
-          className="claude-hero"
-          initial={{ opacity: 0, y: 35 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <span className="eyebrow">modelo oficial · velocidade extrema & multimodal</span>
-          <h1 className="claude-hero-title">
-            GPT Astra 6 sem limites. <br />
-            Velocidade recorde no <span className="highlight-green-text">Cursor e Terminal.</span>
-          </h1>
-          <p className="claude-hero-sub">
-            Desenvolva com inteligência multimodal ultra-rápida conectando sua chave individual SixtySix diretamente no <strong>Cursor</strong>, <strong>VS Code (Cline & Roo)</strong> ou <strong>Codex</strong>. Sem cortes de cotas a cada poucas horas e com preço fixo em Reais via Pix.
-          </p>
-
-          <div className="hero-action-slot">
-            <AnimatePresence mode="wait">
-              {heroAction === 'primary' ? (
-                <motion.div
-                  key="primary"
-                  className="hero-action-state"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: 'easeOut' }}
-                >
-                  <a href="#planos-astra" className="hero-cta-btn">
-                    Começar no Astra 6 <Arrow />
-                  </a>
-                  <p className="hero-footnote">
-                    Acesso imediato no Pix · Chave individual sem rateio
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="secondary"
-                  className="hero-action-state"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.18, ease: 'easeOut' }}
-                >
-                  <a href="#como-conectar-astra" className="hero-cta-btn hero-cta-btn-alt">
-                    Ver Tutorial de Conexão <Arrow />
-                  </a>
-                  <p className="hero-footnote">
-                    Configuração em 2 minutos no Cursor, VS Code e Terminal
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="hero-action-toggles">
-            <button
-              type="button"
-              className={`hero-toggle-pill ${heroAction === 'primary' ? 'is-active' : ''}`}
-              onClick={() => setHeroAction('primary')}
-            >
-              Garantir no Pix
-            </button>
-            <button
-              type="button"
-              className={`hero-toggle-pill ${heroAction === 'secondary' ? 'is-active' : ''}`}
-              onClick={() => setHeroAction('secondary')}
-            >
-              Ver Tutorial Passo a Passo
-            </button>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Grid de Diferenciais Astra 6 */}
-      <section className="claude-cards-section shell">
-        <div className="claude-cards-grid">
+      {/* Hero Section no Estilo Exato da AbacatePay */}
+      <section className="claude-hero-section shell">
+        <div className="claude-hero-grid">
+          {/* Coluna de Texto & Ações */}
           <motion.div
-            className="claude-feature-card"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+            className="claude-hero-content"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="claude-card-icon-wrap">
-              <Zap className="claude-card-icon" />
-            </div>
-            <h3 className="claude-card-title">Velocidade Instantânea</h3>
-            <p className="claude-card-desc">
-              Geração de tokens em alta velocidade com baixíssima latência. Perfeito para autocompletar código em tempo real no Cursor e refatorações instantâneas.
-            </p>
+            <motion.div
+              className="hero-abacate-badge"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <span className="hero-abacate-dot" />
+              <span>GPT Astra 6 Multimodal SixtySix</span>
+            </motion.div>
+
+            <h1 className="hero-abacate-title">
+              <motion.span
+                className="hero-title-block"
+                initial={{ opacity: 0, y: 22 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.0, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+              >
+                O poder total do <em>GPT Astra 6.</em>
+              </motion.span>
+              <motion.span
+                className="hero-title-block"
+                initial={{ opacity: 0, y: 22 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.0, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              >
+                Velocidade recorde no Cursor.
+              </motion.span>
+            </h1>
+
+            <motion.p
+              className="hero-abacate-subtitle"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.0, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            >
+              Desenvolva com inteligência multimodal ultra-rápida conectando sua chave individual SixtySix diretamente no <strong>Cursor</strong>, <strong>VS Code (Cline & Roo)</strong> ou <strong>Codex</strong>. Sem cortes de cotas a cada poucas horas e com preço fixo em Reais via Pix.
+            </motion.p>
+
+            <motion.div
+              className="hero-actions"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.95, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              onMouseLeave={() => setHeroAction('primary')}
+            >
+              <a
+                href="#planos-astra"
+                className={`hero-action-pill ${heroAction === 'primary' ? 'is-active' : ''}`}
+                onMouseEnter={() => setHeroAction('primary')}
+                onClick={() => setHeroAction('primary')}
+              >
+                {heroAction === 'primary' && (
+                  <motion.div
+                    layoutId="astra-hero-pill-indicator"
+                    className="hero-active-pill-bg"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                <span className="hero-pill-content">
+                  Começar no Pix <Arrow />
+                </span>
+              </a>
+
+              <a
+                href="#como-conectar-astra"
+                className={`hero-action-pill ${heroAction === 'secondary' ? 'is-active' : ''}`}
+                onMouseEnter={() => setHeroAction('secondary')}
+                onClick={() => setHeroAction('secondary')}
+              >
+                {heroAction === 'secondary' && (
+                  <motion.div
+                    layoutId="astra-hero-pill-indicator"
+                    className="hero-active-pill-bg"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  />
+                )}
+                <span className="hero-pill-content">
+                  Ver comandos <Arrow />
+                </span>
+              </a>
+            </motion.div>
+
+            <motion.p
+              className="hero-abacate-footnote"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1.0, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            >
+              Sem mensalidade surpresa. Chave própria com Zero Rateio.
+            </motion.p>
           </motion.div>
 
+          {/* Coluna da Arte & Badges Flutuantes (Estilo AbacatePay) */}
           <motion.div
-            className="claude-feature-card"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 1.1, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+            className="hero-abacate-art-col"
+            initial={{ opacity: 0, x: 80, scale: 0.93 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ duration: 1.2, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           >
-            <div className="claude-card-icon-wrap">
-              <ShieldCheck className="claude-card-icon" />
-            </div>
-            <h3 className="claude-card-title">Inteligência Multimodal</h3>
-            <p className="claude-card-desc">
-              Analise capturas de tela, designs do Figma e diagramas de arquitetura diretamente no prompt para transformar imagens em código funcional sem esforço.
-            </p>
-          </motion.div>
+            <div className="hero-art-stage">
+              {/* Anotação estilo manuscrito com seta curvada */}
+              <motion.div
+                className="hero-handwritten-wrap"
+                initial={{ opacity: 0, scale: 0.8, rotate: -4 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <span className="hero-handwritten-text">velocidade máxima:</span>
+                <svg
+                  className="hero-handwritten-arrow"
+                  width="36"
+                  height="46"
+                  viewBox="0 0 36 46"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M12 2 C 5 14, 7 28, 28 38"
+                    stroke="currentColor"
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M19 38 L 29 38 L 28 27"
+                    stroke="currentColor"
+                    strokeWidth="2.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </motion.div>
 
-          <motion.div
-            className="claude-feature-card"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 1.1, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="claude-card-icon-wrap">
-              <Terminal className="claude-card-icon" />
+              {/* Arte SixtySix */}
+              <motion.img
+                src="/assets/sixtysix-hand-logo.webp"
+                alt="SixtySix GPT Astra 6"
+                className="hero-abacate-artwork"
+                initial={{ opacity: 0, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1.15, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              />
+
+              {/* Badge Flutuante Esquerda */}
+              <motion.div
+                className="floating-badge floating-badge-left"
+                initial={{ opacity: 0, y: 30, scale: 0.85 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.85, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="floating-badge-icon badge-icon-check">
+                  <Check size={18} strokeWidth={2.5} />
+                </div>
+                <div className="floating-badge-copy">
+                  <span className="floating-badge-label">GPT Astra 6 · agora</span>
+                  <span className="floating-badge-val">
+                    <strong>100% Ilimitado</strong>
+                    <span className="badge-pill-green">Ativo</span>
+                  </span>
+                </div>
+              </motion.div>
+
+              {/* Badge Flutuante Direita */}
+              <motion.div
+                className="floating-badge floating-badge-right"
+                initial={{ opacity: 0, y: 30, scale: 0.85 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.85, delay: 0.75, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="floating-badge-icon badge-icon-pix">
+                  <DollarSign size={18} strokeWidth={2.4} />
+                </div>
+                <div className="floating-badge-copy">
+                  <span className="floating-badge-label">Preço fixo no Pix</span>
+                  <span className="floating-badge-val">
+                    <strong>Sem IOF cambial</strong>
+                  </span>
+                </div>
+              </motion.div>
             </div>
-            <h3 className="claude-card-title">Compatível com OpenAI SDK</h3>
-            <p className="claude-card-desc">
-              Integração transparente com qualquer ferramenta compatível com a API OpenAI: Cursor, Cline, Roo Code, Continue, scripts Python e automações no terminal.
-            </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Tutorial Passo a Passo com Abas Interativas */}
-      <section className="claude-tutorial-section shell" id="como-conectar-astra">
+      {/* Faixa de Métricas / Diferenciais estilo AbacatePay */}
+      <section className="abacate-stats-section shell">
         <motion.div
-          className="claude-tutorial-header"
+          className="abacate-stats-strip"
+          initial={{ opacity: 0, y: 40, filter: 'blur(6px)' }}
+          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {[
+            { val: 'Zero Rateio', desc: 'chave própria e individual' },
+            { val: 'Ultra-rápido', desc: 'baixa latência no Cursor e IDEs' },
+            { val: 'Multimodal', desc: 'leitura de imagens e visão nativa' },
+            { val: 'No Pix', desc: 'preço fixo sem sustos em Dólar' },
+          ].map((stat, i) => (
+            <motion.div
+              key={stat.val}
+              className="abacate-stat-col"
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.85, delay: i * 0.15, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <h3 className="abacate-stat-val">{stat.val}</h3>
+              <p className="abacate-stat-desc">{stat.desc}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* Guia Oficial de Conexão e Tutoriais */}
+      <section className="claude-steps-section shell" id="como-conectar-astra">
+        <motion.div
+          className="claude-section-header"
           initial={{ opacity: 0, y: 35 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
         >
-          <span className="eyebrow">tutorial de integração oficial</span>
-          <h2 className="claude-tutorial-title">
-            Como conectar o GPT Astra 6 no seu ambiente
+          <span className="eyebrow">instruções de conexão</span>
+          <h2 className="claude-section-title">
+            Como conectar o <em>GPT Astra 6</em> no seu editor.
           </h2>
-          <p className="claude-tutorial-sub">
-            Em menos de 2 minutos você aponta o gateway oficial da SixtySix na sua ferramenta favorita e começa a codificar com uso ilimitado.
+          <p className="claude-section-subtitle">
+            Em menos de 2 minutos você aponta o gateway oficial da SixtySix no Cursor, VS Code ou Terminal e começa a codificar com uso ilimitado.
           </p>
+        </motion.div>
 
-          <div className="claude-app-selector">
+        {/* Seletor de Aplicativo estilo Pílula */}
+        <motion.div
+          className="tutorial-tabs-wrap"
+          initial={{ opacity: 0, scale: 0.94 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.9, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="tutorial-tabs">
             <button
               type="button"
-              className={`claude-app-btn ${selectedApp === 'cursor' ? 'is-active' : ''}`}
+              className={`tutorial-tab-btn ${selectedApp === 'cursor' ? 'active' : ''}`}
               onClick={() => setSelectedApp('cursor')}
             >
-              Cursor IDE
+              <span>Cursor IDE</span>
             </button>
             <button
               type="button"
-              className={`claude-app-btn ${selectedApp === 'vscode' ? 'is-active' : ''}`}
+              className={`tutorial-tab-btn ${selectedApp === 'vscode' ? 'active' : ''}`}
               onClick={() => setSelectedApp('vscode')}
             >
-              VS Code (Cline / Roo)
+              <span>VS Code (Cline / Roo)</span>
             </button>
             <button
               type="button"
-              className={`claude-app-btn ${selectedApp === 'terminal' ? 'is-active' : ''}`}
+              className={`tutorial-tab-btn ${selectedApp === 'terminal' ? 'active' : ''}`}
               onClick={() => setSelectedApp('terminal')}
             >
-              Terminal & Scripts
+              <Terminal size={15} />
+              <span>Codex & Terminal</span>
             </button>
           </div>
         </motion.div>
 
-        {/* Conteúdo da Aba Selecionada */}
-        <div className="claude-tutorial-body">
-          {selectedApp === 'cursor' && (
+        {/* Aba 1: Cursor IDE */}
+        {selectedApp === 'cursor' && (
+          <div className="tutorial-pane">
             <motion.div
-              key="cursor"
-              className="claude-tutorial-steps"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="tutorial-intro-card"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 1</span>
-                <h4 className="claude-step-title">Abra as configurações de modelo no Cursor</h4>
-                <p className="claude-step-desc">
-                  No Cursor, clique no ícone de engrenagem no canto superior direito e selecione a aba <strong>Models</strong>.
-                </p>
-              </div>
+              <p>
+                No <strong>Cursor IDE</strong>, configure a Base URL customizada da OpenAI para apontar ao gateway oficial da SixtySix.
+                Assim você usa o modelo <code>gpt-astra-6</code> diretamente na aba de chat e no autocompletar de código sem cortes de cotas.
+              </p>
+            </motion.div>
 
-              <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 2</span>
-                <h4 className="claude-step-title">Configure a Base URL do Gateway SixtySix</h4>
-                <p className="claude-step-desc">
-                  Na seção <strong>OpenAI API Key</strong>, ative a opção <strong>Override OpenAI Base URL</strong> e insira o endereço do gateway:
-                </p>
-                <div className="claude-code-box">
+            <div className="tutorial-steps-grid">
+              <motion.div
+                className="claude-step-card"
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 01</span>
+                  <h4>Defina a Base URL do Gateway</h4>
+                </div>
+                <p>Nas configurações do Cursor (ícone de engrenagem) &gt; <strong>Models</strong>, ative <strong>Override OpenAI Base URL</strong> e cole:</p>
+                <div className="snippet-box">
                   <code>https://66cloud.vercel.app/v1</code>
                   <button
                     type="button"
-                    className="claude-copy-btn"
-                    onClick={() => copyToClipboard('https://66cloud.vercel.app/v1')}
+                    className="btn-copy"
+                    onClick={() => copyText('https://66cloud.vercel.app/v1')}
                   >
-                    {copiedSnippet === 'https://66cloud.vercel.app/v1' ? <Check size={14} /> : 'Copiar'}
+                    {copiedSnippet === 'https://66cloud.vercel.app/v1' ? <Check /> : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                    )}
+                    <span>{copiedSnippet === 'https://66cloud.vercel.app/v1' ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 3</span>
-                <h4 className="claude-step-title">Adicione o modelo e cole sua chave individual</h4>
-                <p className="claude-step-desc">
-                  Adicione o modelo com o nome exato <code>gpt-astra-6</code> e insira sua chave fornecida pela SixtySix no campo de chave. Clique em salvar e aproveite o modelo com velocidade máxima!
-                </p>
-              </div>
-            </motion.div>
-          )}
+              <motion.div
+                className="claude-step-card tutorial-step-large"
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 1.15, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 02</span>
+                  <h4>Adicione o Modelo e Cole sua Chave</h4>
+                </div>
+                <p>Insira sua chave individual no campo OpenAI API Key e adicione o modelo com o identificador exato abaixo:</p>
+                <div className="code-block-box">
+                  <pre>
+{`Modelo: gpt-astra-6
+Base URL: https://66cloud.vercel.app/v1
+OpenAI API Key: SUA_CHAVE_INDIVIDUAL`}
+                  </pre>
+                  <button
+                    type="button"
+                    className="code-block-copy-btn"
+                    onClick={() => copyText('gpt-astra-6')}
+                  >
+                    {copiedSnippet === 'gpt-astra-6' ? (
+                      <>
+                        <Check size={14} />
+                        <span>Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        <span>Copiar Nome do Modelo</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <span className="tutorial-footnote">
+                  Dica: clique em <strong>Verify</strong> no Cursor para testar a conexão com o gateway SixtySix.
+                </span>
+              </motion.div>
+            </div>
+          </div>
+        )}
 
-          {selectedApp === 'vscode' && (
+        {/* Aba 2: VS Code (Cline / Roo Code) */}
+        {selectedApp === 'vscode' && (
+          <div className="tutorial-pane">
             <motion.div
-              key="vscode"
-              className="claude-tutorial-steps"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="tutorial-intro-card"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 1</span>
-                <h4 className="claude-step-title">Abra as configurações do seu assistente (Cline ou Roo Code)</h4>
-                <p className="claude-step-desc">
-                  Na barra lateral do VS Code, abra o Cline ou Roo Code e clique no ícone de engrenagem para acessar as configurações do provedor de IA.
-                </p>
-              </div>
+              <p>
+                No <strong>VS Code</strong>, abra a extensão <strong>Cline</strong> ou <strong>Roo Code</strong>.
+                Selecione o provedor <strong>OpenAI Compatible</strong> para que você tenha autonomia total de edição de arquivos e inteligência multimodal de imagens.
+              </p>
+            </motion.div>
 
-              <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 2</span>
-                <h4 className="claude-step-title">Selecione o provedor OpenAI-Compatible</h4>
-                <p className="claude-step-desc">
-                  Selecione o provedor <strong>OpenAI Compatible</strong> e configure a URL base:
-                </p>
-                <div className="claude-code-box">
+            <div className="tutorial-steps-grid">
+              <motion.div
+                className="claude-step-card"
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 1.05, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 01</span>
+                  <h4>Selecione o Provedor</h4>
+                </div>
+                <p>Nas configurações do assistente, altere o provedor para <strong>OpenAI-Compatible</strong> e defina o Base URL:</p>
+                <div className="snippet-box">
                   <code>https://66cloud.vercel.app/v1</code>
                   <button
                     type="button"
-                    className="claude-copy-btn"
-                    onClick={() => copyToClipboard('https://66cloud.vercel.app/v1')}
+                    className="btn-copy"
+                    onClick={() => copyText('https://66cloud.vercel.app/v1')}
                   >
-                    {copiedSnippet === 'https://66cloud.vercel.app/v1' ? <Check size={14} /> : 'Copiar'}
+                    {copiedSnippet === 'https://66cloud.vercel.app/v1' ? <Check /> : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                    )}
+                    <span>{copiedSnippet === 'https://66cloud.vercel.app/v1' ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 3</span>
-                <h4 className="claude-step-title">Configure o Model ID como gpt-astra-6</h4>
-                <p className="claude-step-desc">
-                  Digite <code>gpt-astra-6</code> no campo Model ID e insira sua chave individual. Pronto! Suas tarefas de código rodarão sem paradas de cota.
-                </p>
-              </div>
-            </motion.div>
-          )}
+              <motion.div
+                className="claude-step-card tutorial-step-large"
+                initial={{ opacity: 0, x: 50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true, margin: '-50px' }}
+                transition={{ duration: 1.15, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 02</span>
+                  <h4>Insira o Model ID e Chave</h4>
+                </div>
+                <p>Preencha os campos com suas credenciais oficiais SixtySix:</p>
+                <div className="code-block-box">
+                  <pre>
+{`API Provider: OpenAI-Compatible
+Base URL: https://66cloud.vercel.app/v1
+Model ID: gpt-astra-6
+API Key: SUA_CHAVE_INDIVIDUAL`}
+                  </pre>
+                  <button
+                    type="button"
+                    className="code-block-copy-btn"
+                    onClick={() => copyText(`https://66cloud.vercel.app/v1\ngpt-astra-6`)}
+                  >
+                    {copiedSnippet?.includes('gpt-astra-6') ? (
+                      <>
+                        <Check size={14} />
+                        <span>Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        <span>Copiar Parâmetros</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <span className="tutorial-footnote">
+                  Importante: o modelo suporta upload de imagens e mockups diretamente pelo chat do VS Code.
+                </span>
+              </motion.div>
+            </div>
+          </div>
+        )}
 
-          {selectedApp === 'terminal' && (
+        {/* Aba 3: Terminal & Codex */}
+        {selectedApp === 'terminal' && (
+          <div className="tutorial-pane">
             <motion.div
-              key="terminal"
-              className="claude-tutorial-steps"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="tutorial-intro-card"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-50px' }}
+              transition={{ duration: 0.95, ease: [0.22, 1, 0.36, 1] }}
             >
+              <p>
+                Para rodar o <strong>GPT Astra 6</strong> no terminal Windows, no <strong>Codex</strong> ou em scripts Python e Node.js,
+                configure as variáveis de ambiente com os comandos abaixo no Prompt de Comando (CMD):
+              </p>
+            </motion.div>
+
+            <div className="tutorial-codex-grid">
               <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 1</span>
-                <h4 className="claude-step-title">Defina as variáveis no Prompt de Comando (Windows)</h4>
-                <p className="claude-step-desc">
-                  Abra o Prompt de Comando (CMD) e defina a Base URL e a chave da SixtySix:
-                </p>
-                <div className="claude-code-box">
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 01</span>
+                  <h4>Configure a Base URL no Windows</h4>
+                </div>
+                <p>Execute no CMD para salvar a URL global compatível com qualquer biblioteca OpenAI:</p>
+                <div className="snippet-box">
                   <code>setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"</code>
                   <button
                     type="button"
-                    className="claude-copy-btn"
-                    onClick={() => copyToClipboard('setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"')}
+                    className="btn-copy"
+                    onClick={() => copyText('setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"')}
                   >
-                    {copiedSnippet === 'setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"' ? <Check size={14} /> : 'Copiar'}
+                    {copiedSnippet === 'setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"' ? <Check /> : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                    )}
+                    <span>{copiedSnippet === 'setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"' ? 'Copiado!' : 'Copiar'}</span>
                   </button>
                 </div>
               </div>
 
-              <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 2</span>
-                <h4 className="claude-step-title">Configure a Chave Individual de API</h4>
-                <p className="claude-step-desc">
-                  Substitua pelo token exclusivo recebido no seu WhatsApp e execute:
-                </p>
-                <div className="claude-code-box">
-                  <code>setx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"</code>
+              <div className="claude-step-card tutorial-step-large">
+                <div className="claude-step-top">
+                  <span className="claude-step-badge">Passo 02</span>
+                  <h4>Defina sua Chave Individual</h4>
+                </div>
+                <p>Substitua <code>SUA_CHAVE_INDIVIDUAL</code> pela sua própria chave fornecida no WhatsApp:</p>
+                <div className="code-block-box">
+                  <pre>
+{`setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"
+setx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"
+setx OPENAI_MODEL "gpt-astra-6"`}
+                  </pre>
                   <button
                     type="button"
-                    className="claude-copy-btn"
-                    onClick={() => copyToClipboard('setx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"')}
+                    className="code-block-copy-btn"
+                    onClick={() => copyText(`setx OPENAI_BASE_URL "https://66cloud.vercel.app/v1"\nsetx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"\nsetx OPENAI_MODEL "gpt-astra-6"`)}
                   >
-                    {copiedSnippet === 'setx OPENAI_API_KEY "SUA_CHAVE_INDIVIDUAL"' ? <Check size={14} /> : 'Copiar'}
+                    {copiedSnippet?.includes('OPENAI_API_KEY') ? (
+                      <>
+                        <Check size={14} />
+                        <span>Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        <span>Copiar Comandos CMD</span>
+                      </>
+                    )}
                   </button>
                 </div>
+                <span className="tutorial-footnote">
+                  Após executar, feche e reabra o terminal para carregar as novas variáveis persistidas.
+                </span>
               </div>
-
-              <div className="claude-step-card">
-                <span className="claude-step-badge">Passo 3</span>
-                <h4 className="claude-step-title">Reabra o terminal e utilize com qualquer script ou CLI</h4>
-                <p className="claude-step-desc">
-                  Feche e reabra o terminal para carregar as variáveis. Agora você pode chamar o modelo <code>gpt-astra-6</code> em qualquer biblioteca oficial da OpenAI!
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* Bloco Simulador de Custos Dólar vs Pix */}
-      <section className="claude-price-intro-wrap shell" id="calculadora-astra">
-        <div className="claude-price-intro">
+      {/* Seção de Introdução ao Preço & Custos estilo AbacatePay */}
+      <section className="claude-calc-dark-section" id="calculadora-astra">
+        <div className="claude-price-intro-split">
           <motion.div
             className="claude-price-intro-col-left"
-            initial={{ opacity: 0, x: -75 }}
+            initial={{ opacity: 0, x: -60 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
           >
-            <span className="eyebrow">simulador de custos</span>
+            <span className="eyebrow">Preço</span>
             <h2 className="claude-price-intro-title">
               Quanto custa usar o <br />
               <span className="highlight-green-text">GPT Astra 6?</span>
             </h2>
             <p className="claude-price-intro-sub">
-              A partir de <strong>R$ 79,99 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong>.
-              Diferente de assinar plataformas no cartão com IOF e spread abusivo em Dólar, aqui você tem previsibilidade total.
+              A partir de <strong>R$ 79,99 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong> a cada poucas horas.
+              Diferente de assinar plataformas no cartão com IOF de 4,38% e taxa de câmbio abusiva, aqui o <strong>valor é previsível em Reais</strong>.
+              Veja os <a href="#planos-astra">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>
           </motion.div>
 
@@ -727,7 +939,7 @@ export default function GptAstraPage() {
           </motion.div>
         </div>
 
-        {/* Bloco Verde Preenchido da Calculadora */}
+        {/* Bloco Verde #1f4647 Preenchido com a Calculadora e Linhas Onduladas */}
         <motion.div
           className="claude-calc-dark-wrap"
           initial={{ opacity: 0, y: 40, scale: 0.97 }}
@@ -735,68 +947,107 @@ export default function GptAstraPage() {
           viewport={{ once: true, margin: '-70px' }}
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         >
+          {/* Linhas onduladas fluidas em branco estilo AbacatePay */}
+          <svg
+            className="claude-calc-waves-bg"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}
+            viewBox="0 0 1200 600"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M-40 480 C 220 380, 420 560, 720 440 C 960 340, 1100 420, 1240 370"
+              stroke="rgba(255, 255, 255, 0.12)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 515 C 240 410, 450 585, 760 465 C 1000 365, 1140 440, 1240 395"
+              stroke="rgba(255, 255, 255, 0.09)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 550 C 260 440, 480 610, 800 490 C 1040 390, 1170 460, 1240 420"
+              stroke="rgba(255, 255, 255, 0.07)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 440 C 190 350, 390 520, 680 410 C 920 310, 1060 390, 1240 340"
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M-40 400 C 160 320, 360 480, 640 380 C 880 280, 1020 360, 1240 310"
+              stroke="rgba(255, 255, 255, 0.05)"
+              strokeWidth="1.5"
+            />
+          </svg>
+
+          {/* Header dentro da caixa verde */}
           <div className="claude-calc-dark-header">
-            <span className="claude-calc-dark-badge">Simulação em Tempo Real</span>
-            <h3 className="claude-calc-dark-title">Quanto você gastaria na fatura em Dólar?</h3>
-            <p className="claude-calc-dark-sub">
-              Arraste o slider para simular seu consumo mensal ou escolha um patamar rápido:
+            <h2 className="claude-calc-dark-title">
+              Simule e veja quanto <br />
+              você <span className="highlight-green">economiza de verdade.</span>
+            </h2>
+            <p className="claude-calc-dark-subtitle">
+              Esqueça IOF de 4,38%, cotação oscilando e faturas surpresa no cartão de crédito. Compare os valores com a SixtySix no Pix.
             </p>
+
+            {/* Presets no estilo AbacatePay */}
+            <div className="claude-calc-dark-tabs">
+              {presetLevels.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  className={`claude-calc-dark-tab ${calcUsd === preset.value ? 'is-active' : ''}`}
+                  onClick={() => setCalcUsd(preset.value)}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="claude-calc-dark-presets">
-            {presetLevels.map((lvl) => (
-              <button
-                key={lvl.value}
-                type="button"
-                className={`claude-calc-dark-pill ${calcUsd === lvl.value ? 'is-active' : ''}`}
-                onClick={() => setCalcUsd(lvl.value)}
-              >
-                {lvl.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="claude-calc-dark-slider-box">
-            <div className="claude-calc-dark-slider-meta">
-              <span className="slider-label">Seu consumo mensal estimado em Dólar:</span>
-              <span className="slider-value">
+          <div className="claude-calc-dark-cards">
+            {/* Card 1: Quanto você gasta em Dólar */}
+            <div className="claude-glass-card">
+              <span className="claude-glass-card-label">Quanto você consome em APIs em Dólar por mês?</span>
+              <div className="claude-glass-big-val">
                 <NumberRoller value={calcUsd} prefix="US$ " decimals={2} duration={0.45} />
-                <span className="slider-brl">
-                  ≈{' '}
+                <span className="claude-glass-val-sep">/</span>
+                <span className="claude-glass-val-secondary">
                   <NumberRoller value={totalAnthropicBRL} prefix="R$ " decimals={2} duration={0.45} />
                 </span>
-              </span>
+              </div>
+
+              <div className="claude-glass-slider-wrap">
+                <Slider
+                  value={[calcUsd]}
+                  onValueChange={(val) => setCalcUsd(val[0])}
+                  min={20}
+                  max={400}
+                  step={10}
+                  aria-label="Consumo estimado em Dólar"
+                />
+              </div>
+
+              <div className="claude-glass-card-meta">
+                <span>Câmbio base: R$ {commercialDollar.toFixed(2)}</span>
+                <span>IOF: 4,38%</span>
+                <span>Spread cartão: ~4,5%</span>
+                <strong>Efetivo: R$ {effectiveDollarRate.toFixed(2)} / US$</strong>
+              </div>
             </div>
 
-            <Slider
-              value={[calcUsd]}
-              min={20}
-              max={300}
-              step={5}
-              onValueChange={(val) => setCalcUsd(val[0])}
-              className="claude-calc-slider-custom"
-            />
-          </div>
-
-          <div className="claude-calc-dark-cards-grid">
-            <div className="claude-calc-glass-card">
-              <div className="claude-glass-card-header">
-                <span className="glass-card-tag">Plano Recomendado</span>
-                <h4 className="glass-card-title">{sixtySixPlanName} SixtySix</h4>
+            {/* Card 2: Você paga na SixtySix & Economia */}
+            <div className="claude-glass-card">
+              <span className="claude-glass-card-label">Você paga no Pix na SixtySix</span>
+              <div className="claude-glass-big-val highlight-green">
+                <NumberRoller value={sixtySixCost} prefix="R$ " decimals={2} duration={0.45} />
               </div>
-
-              <div className="claude-glass-card-price">
-                <span className="glass-price-curr">R$</span>
-                <span className="glass-price-num">
-                  <NumberRoller value={sixtySixCost} prefix="R$ " decimals={2} duration={0.45} />
-                </span>
-                <span className="glass-price-period">/ mês no Pix</span>
-              </div>
-
-              <span className="glass-card-desc">
-                {calcUsd <= 60
-                  ? 'Acesso completo ao GPT Astra 6 e GLM-4 Plus com preço fixo sem surpresas cambiais.'
-                  : 'Acesso total e irrestrito ao GPT Astra 6, Claude Fable 5.1 e GLM-4 Plus.'}
+              <span className="claude-glass-card-sub">
+                Preço fixo no Pix ({sixtySixPlanName}) sem surpresas cambiais
               </span>
 
               <div className="claude-glass-card-divider" />
@@ -824,6 +1075,7 @@ export default function GptAstraPage() {
             </div>
           </div>
 
+          {/* Botão de Ação Verde Vibrante */}
           <div className="claude-calc-dark-action">
             <a href="#planos-astra" className="claude-calc-dark-btn">
               Garantir Preço Fixo no Pix <Arrow />
@@ -845,7 +1097,7 @@ export default function GptAstraPage() {
         </motion.div>
       </section>
 
-      {/* Planos Oficiais */}
+      {/* Planos Destacados para GPT Astra 6 */}
       <section className="plans-section shell" id="planos-astra">
         <motion.div
           className="plans-header"
@@ -854,12 +1106,12 @@ export default function GptAstraPage() {
           viewport={{ once: true, margin: '-60px' }}
           transition={{ duration: 1.1, ease: [0.22, 1, 0.36, 1] }}
         >
-          <span className="eyebrow">modelos oficiais · zero rateio</span>
+          <span className="eyebrow">acesso imediato</span>
           <h2 className="plans-title">
-            Planos com uso <em>100% ilimitado.</em>
+            Escolha seu plano para rodar <em>GPT Astra 6.</em>
           </h2>
           <p className="plans-subtitle">
-            Conecte sua chave no <strong>Cursor</strong>, <strong>VS Code</strong> ou <strong>Codex</strong> e programe com preço fixo no Pix, sem bloqueios de cota e sem oscilação cambial.
+            Teste gratuitamente por 7 dias ou garanta o acesso ilimitado com preço fixo no Pix.
           </p>
         </motion.div>
 
@@ -887,12 +1139,12 @@ export default function GptAstraPage() {
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>GPT Astra 6</strong>, <strong>Claude Fable</strong> e <strong>GLM-4</strong></span></li>
+              <li><Check /> <span><strong>GPT Astra 6</strong>, <strong>Claude Fable 5.1</strong> e <strong>GLM-4</strong></span></li>
               <li><Check /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
               <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
-            <a href="#duvidas-astra" className="plan-btn">
+            <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="plan-btn">
               Começar Teste Grátis <Arrow />
             </a>
           </motion.div>
@@ -924,7 +1176,7 @@ export default function GptAstraPage() {
               </div>
               <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
 
-              {/* Seletor de Opção de API */}
+              {/* Seletor Segmentado com rolagem e verde ativo */}
               <div className="plan-api-segmented">
                 <button
                   type="button"
@@ -944,27 +1196,27 @@ export default function GptAstraPage() {
             </div>
 
             <ul className="plan-features">
-              <li><Check /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
+              <li><Check size={14} /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
               {devWithApi ? (
                 <>
-                  <li><Check /> <span><strong>Chave de API oficial inclusa</strong> (+ R$ 15/mês)</span></li>
-                  <li><Check /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
-                  <li><Check /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
+                  <li><Check size={14} /> <span><strong>Chave de API oficial inclusa</strong> (+ R$ 15/mês)</span></li>
+                  <li><Check size={14} /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
+                  <li><Check size={14} /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
                 </>
               ) : (
                 <>
-                  <li><Check /> <span><strong>Acesso 100% via plataforma web</strong></span></li>
+                  <li><Check size={14} /> <span><strong>Acesso 100% via plataforma web</strong></span></li>
                   <li>
-                    <Cross />
+                    <X size={14} className="text-red" />
                     <span className="plan-feature-muted">
                       <strong>Sem chave de API</strong> (apenas via plataforma no site)
                     </span>
                   </li>
-                  <li><Check /> <span><strong>Ambiente próprio</strong> sem rateio</span></li>
+                  <li><Check size={14} /> <span><strong>Ambiente próprio</strong> sem rateio</span></li>
                 </>
               )}
-              <li><Check /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
-              <li><Check /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
+              <li><Check size={14} /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
+              <li><Check size={14} /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
             <a
               href={`https://wa.me/5511999999999?text=${encodeURIComponent(
@@ -1027,49 +1279,56 @@ export default function GptAstraPage() {
           transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
         >
           <h2 className="faq-title">
-            <span className="faq-title-green">Dúvidas sobre o GPT Astra 6?</span> <br />
-            Nós temos as respostas.
+            <span className="faq-title-green">Dúvidas sobre</span><br />
+            o GPT Astra 6.
           </h2>
           <p className="faq-subtitle">
-            Veja as respostas mais comuns sobre velocidade, tokens, visão multimodal e integração do Astra 6 com as IDEs.
+            Tudo o que você precisa saber para plugar o GPT Astra 6 no Cursor, VS Code ou Terminal hoje mesmo.
           </p>
           <div className="faq-action">
             <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className="faq-support-btn">
-              Falar no WhatsApp com Suporte <Arrow />
+              Falar conosco no WhatsApp
             </a>
-            <span className="faq-support-hint">Atendimento de Seg a Dom</span>
+            <span className="faq-footnote">Sem mensalidade surpresa. Ativação imediata.</span>
           </div>
         </motion.div>
-
         <motion.div
           className="faq-list"
           initial={{ opacity: 0, x: 60 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: '-60px' }}
-          transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 1.2, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
         >
-          <AccordionPrimitive.Root type="single" collapsible defaultValue="item-0">
-            {astraFaqs.map(([question, answer], idx) => (
-              <AccordionPrimitive.Item key={idx} value={`item-${idx}`} className="faq-item">
-                <AccordionPrimitive.Header>
-                  <AccordionPrimitive.Trigger className="faq-question">
-                    <span>{question}</span>
-                    <span className="faq-icon-box">
-                      <Plus className="faq-icon-plus" />
-                      <Minus className="faq-icon-minus" />
-                    </span>
-                  </AccordionPrimitive.Trigger>
-                </AccordionPrimitive.Header>
-                <AccordionPrimitive.Content className="faq-answer">
-                  <div className="faq-answer-inner">{answer}</div>
-                </AccordionPrimitive.Content>
-              </AccordionPrimitive.Item>
+          <AccordionPrimitive.Root type="single" collapsible className="faq-accordion-root">
+            {astraFaqs.map(([question, answer], index) => (
+              <motion.div
+                key={question}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.85, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <AccordionPrimitive.Item value={`item-${index}`} className="faq-accordion-item">
+                  <AccordionPrimitive.Header>
+                    <AccordionPrimitive.Trigger className="faq-accordion-trigger">
+                      <span>{question}</span>
+                      <span className="faq-accordion-icon-wrap" aria-hidden="true">
+                        <Plus className="faq-accordion-plus" size={19} strokeWidth={1.8} />
+                        <Minus className="faq-accordion-minus" size={19} strokeWidth={1.8} />
+                      </span>
+                    </AccordionPrimitive.Trigger>
+                  </AccordionPrimitive.Header>
+                  <AccordionPrimitive.Content className="faq-accordion-content animate-accordion-down data-[state=closed]:animate-accordion-up">
+                    <p>{answer}</p>
+                  </AccordionPrimitive.Content>
+                </AccordionPrimitive.Item>
+              </motion.div>
             ))}
           </AccordionPrimitive.Root>
         </motion.div>
       </section>
 
-      {/* Pre-Footer CTA */}
+      {/* Pre-Footer CTA com os Anjos */}
       <section className="pre-footer-cta-wrap">
         <motion.img
           src="/assets/cherub-left.webp"
@@ -1098,31 +1357,31 @@ export default function GptAstraPage() {
         >
           <span className="eyebrow">comece agora</span>
           <h2 className="pre-footer-title">
-            Você leu até aqui. <span className="pre-footer-green">Tá interessado né?</span>
+            Pronto para codar com GPT Astra 6 <span className="pre-footer-green">sem limites?</span>
           </h2>
           <p className="pre-footer-sub">
-            Cadastro leva 2 minutos, sem dificuldades, e você começa a codar hoje ainda.
+            Crie sua conta em 1 minuto, receba sua chave oficial e teste no Cursor hoje mesmo.
           </p>
           <div className="pre-footer-btn-wrap">
             <a href="#planos-astra" className="pre-footer-btn">
-              Vai, clica logo nesse botão
+              Começar Teste de 7 Dias Grátis
             </a>
           </div>
           <p className="pre-footer-footnote">
-            Preço fixo no Pix. Chave individual com Zero Rateio.
+            Sem cartão de crédito necessário. Ativação instantânea.
           </p>
         </motion.div>
       </section>
 
-      {/* Rodapé Oficial em 2 Colunas no Mobile */}
+      {/* Footer Padrão SixtySix */}
       <footer className="footer-wrap">
         <div className="shell footer-columns-grid">
           <div className="footer-col">
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
-              <li><Link to="/astra-6">GPT Astra 6</Link></li>
+              <li><Link to="/astra-6" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>GPT Astra 6</Link></li>
               <li><Link to="/claude-code">Claude Fable 5.1</Link></li>
-              <li><Link to="/">GLM-4 Plus</Link></li>
+              <li><a href="/#economia">GLM-4 Plus</a></li>
             </ul>
           </div>
 
@@ -1141,23 +1400,22 @@ export default function GptAstraPage() {
             <h4 className="footer-col-title">Suporte</h4>
             <ul className="footer-link-list">
               <li><a href="#duvidas-astra">Dúvidas Frequentes</a></li>
-              <li><a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer">Suporte no WhatsApp</a></li>
-              <li><a href="/#como-funciona">Status do Cluster</a></li>
+              <li><a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer">WhatsApp Oficial</a></li>
               <li><a href="mailto:suporte@sixtysix.dev">suporte@sixtysix.dev</a></li>
             </ul>
           </div>
 
           <div className="footer-col">
-            <h4 className="footer-col-title">Legal & Termos</h4>
+            <h4 className="footer-col-title">Legal</h4>
             <ul className="footer-link-list">
               <li><a href="/#duvidas">Termos de Uso</a></li>
               <li><a href="/#duvidas">Política de Privacidade</a></li>
-              <li><a href="/#duvidas">Garantia 7 Dias</a></li>
-              <li><a href="/#duvidas">CNPJ 69.864.497/0001-92</a></li>
+              <li><a href="/#duvidas">Segurança</a></li>
             </ul>
           </div>
         </div>
 
+        {/* Footer bottom bar */}
         <div className="shell footer-bottom-bar">
           <div className="footer-brand-meta">
             <Link className="brand footer-brand" to="/" aria-label="SixtySix, início">
@@ -1170,17 +1428,24 @@ export default function GptAstraPage() {
 
           <div className="footer-social-links">
             <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X" className="footer-social-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
             </a>
             <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="footer-social-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
               </svg>
             </a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="footer-social-link">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+              </svg>
+            </a>
             <a href="https://discord.com" target="_blank" rel="noopener noreferrer" aria-label="Discord" className="footer-social-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
               </svg>
             </a>
