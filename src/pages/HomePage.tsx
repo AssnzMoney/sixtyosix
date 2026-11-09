@@ -195,8 +195,8 @@ export default function App() {
       >
         <nav className="nav">
           <div className="nav-left">
-            <a className="brand" href="#top" aria-label="Six, início">
-              <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" />
+            <a className="brand" href="#top" aria-label="SixtySix, início">
+              <img src="/assets/sidebar-logo.png" alt="SixtySix" className="brand-logo-img" />
             </a>
             <div className="nav-links">
               <div
@@ -278,8 +278,8 @@ export default function App() {
                     </div>
                     <small>Raciocínio profundo e Claude Code ilimitado</small>
                   </Link>
-                  <a
-                    href="#planos"
+                  <Link
+                    to="/astra-6"
                     className="nav-mobile-item"
                     onClick={() => setMobileMenuOpen(false)}
                   >
@@ -287,7 +287,7 @@ export default function App() {
                       <strong>GPT Astra 6</strong>
                     </div>
                     <small>Velocidade ultra-rápida e inteligência multimodal</small>
-                  </a>
+                  </Link>
                   <a
                     href="#planos"
                     className="nav-mobile-item"
@@ -374,10 +374,10 @@ export default function App() {
                     <strong>Claude Fable 5.1</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
                   </Link>
-                  <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link to="/astra-6" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GPT Astra 6</strong>
                     <span>Velocidade ultra-rápida e inteligência multimodal.</span>
-                  </a>
+                  </Link>
                   <a href="#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GLM-4 Plus</strong>
                     <span>Excelente em refatoração, documentação e testes.</span>
@@ -1242,7 +1242,7 @@ export default function App() {
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
               <li><Link to="/claude-code">Claude Fable 5.1</Link></li>
-              <li><a href="#economia">GPT Astra 6</a></li>
+              <li><Link to="/astra-6">GPT Astra 6</Link></li>
               <li><a href="#economia">GLM-4 Plus</a></li>
             </ul>
           </div>
@@ -1279,8 +1279,8 @@ export default function App() {
         {/* Footer bottom bar */}
         <div className="shell footer-bottom-bar">
           <div className="footer-brand-meta">
-            <a className="brand footer-brand" href="#top" aria-label="Six, início">
-              <img src="/assets/logo-white.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
+            <a className="brand footer-brand" href="#top" aria-label="SixtySix, início">
+              <img src="/assets/sidebar-logo-white.png" alt="SixtySix" className="brand-logo-img brand-logo-footer" />
             </a>
             <span className="footer-copyright">
               © 2026 Sixtysix · CNPJ 69.864.497/0001-92 · Todos os direitos reservados.

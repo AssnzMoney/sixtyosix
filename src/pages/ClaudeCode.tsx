@@ -123,8 +123,8 @@ export default function ClaudeCodePage() {
       >
         <nav className="nav">
           <div className="nav-left">
-            <Link className="brand" to="/" aria-label="Six, início">
-              <img src="/assets/logo.webp" alt="Six" className="brand-logo-img" />
+            <Link className="brand" to="/" aria-label="SixtySix, início">
+              <img src="/assets/sidebar-logo.png" alt="SixtySix" className="brand-logo-img" />
             </Link>
             <div className="nav-links">
               <div
@@ -292,10 +292,10 @@ export default function ClaudeCodePage() {
                     <strong>Claude Fable 5.1</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
                   </Link>
-                  <a href="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                  <Link to="/astra-6" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GPT Astra 6</strong>
                     <span>Velocidade ultra-rápida e inteligência multimodal.</span>
-                  </a>
+                  </Link>
                   <a href="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GLM-4 Plus</strong>
                     <span>Excelente em refatoração, documentação e testes.</span>
@@ -1341,7 +1341,7 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
               <li><Link to="/claude-code" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Claude Fable 5.1</Link></li>
-              <li><a href="/#economia">GPT Astra 6</a></li>
+              <li><Link to="/astra-6">GPT Astra 6</Link></li>
               <li><a href="/#economia">GLM-4 Plus</a></li>
             </ul>
           </div>
@@ -1378,8 +1378,8 @@ model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
         {/* Footer bottom bar */}
         <div className="shell footer-bottom-bar">
           <div className="footer-brand-meta">
-            <Link className="brand footer-brand" to="/" aria-label="Six, início">
-              <img src="/assets/logo-white.webp" alt="Six" className="brand-logo-img brand-logo-footer" />
+            <Link className="brand footer-brand" to="/" aria-label="SixtySix, início">
+              <img src="/assets/sidebar-logo-white.png" alt="SixtySix" className="brand-logo-img brand-logo-footer" />
             </Link>
             <span className="footer-copyright">
               © 2026 Sixtysix · CNPJ 69.864.497/0001-92 · Todos os direitos reservados.
