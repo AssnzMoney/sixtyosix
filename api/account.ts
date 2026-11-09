@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { AccountError, configuration, createAccountService } from '../server/account.ts'
+import { AccountError, configuration, createAccountService } from '../server/account.js'
 
 export default async function handler(req: IncomingMessage & { body?: Record<string, unknown> }, res: ServerResponse) {
   res.setHeader('Cache-Control', 'private, no-store')
