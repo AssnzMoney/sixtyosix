@@ -17,7 +17,7 @@ Botões da LP abrem /comprar/dev, /comprar/devApi ou /comprar/pro. Antes do chec
 
 Cartão: POST /preapproval cria assinatura pendente sem plano associado, frequência mensal e external_reference igual ao UUID do pedido. Autorização sem pagamento aprovado não concede acesso. A cobrança segue mês de calendário, que pode ter 28 a 31 dias.
 
-Pix: POST /checkout/preferences cria checkout com Pix selecionado e cartões excluídos. Não cria débito automático. Cada pagamento aprovado libera 30 dias; renovação antecipada soma ao prazo restante sem trocar a chave. Pagamentos duplicados não somam novamente. A renovação é feita pelo cliente na página /assinatura.
+Pix/pagamento avulso: POST /checkout/preferences abre o Checkout Pro padrão, sem forçar Pix nem preencher o pagador. O Mercado Pago apresenta Pix, cartão e os outros meios disponíveis à conta/pagador. Não cria débito automático. Cada pagamento aprovado libera 30 dias; renovação antecipada soma ao prazo restante sem trocar a chave. Pagamentos duplicados não somam novamente. A renovação é feita pelo cliente na página /assinatura.
 
 O cliente paga no Mercado Pago. O webhook assinado consulta a API privada e valida recebedor, pedido conhecido, assinatura, moeda BRL, valor, ambiente real e aprovação. A URL de retorno e o corpo livre da notificação não autorizam acesso. A confirmação registra o pagamento e cria o acesso individual em uma transação idempotente. /assinatura entrega a chave aos planos com API, mostra pagamentos, vencimento e cancelamento.
 
@@ -62,3 +62,7 @@ Nenhuma cobrança real foi feita nesta validação. A primeira compra real deve 
 Commit funcional: 1d831e3, publicado na Vercel em produção. Checkout Pix real abriu com Pix disponível e valor de R$94,99; checkout de assinatura abriu com cartão de crédito disponível. Nenhuma compra/cobrança foi concluída. Pedido pendente apareceu corretamente em /assinatura e não gerou chave. API de status sem sessão devolve 401; tabelas/views de cobrança são negadas à chave pública (401) e acessíveis ao servidor (200). A chave de teste grátis existente continuou acessando /v1/models (200). A documentação de operação fica excluída do pacote público pela .vercelignore.
 
 Cancelamento real do pedido pendente criado exclusivamente para QA: autorizado pelo proprietário e confirmado em /assinatura como cancelado. Não houve pagamento nem cobrança. Não foi cancelada assinatura de cliente.
+
+## Checkout padrão e atualização Pix
+
+O Pix não é pré-selecionado nem os cartões são excluídos; e-mail não é enviado na preferência. Assim, o cliente vê o fluxo regular do Mercado Pago e escolhe entre as opções disponíveis. As autorizações continuam vinculadas à SixtySix pelo identificador do pedido e validadas pelo webhook. O cartão recorrente segue no fluxo de assinatura separado. A função billing_begin_pix foi atualizada para renovar o link de um pedido Pix pendente, em vez de reutilizar o link antigo com filtros de método.

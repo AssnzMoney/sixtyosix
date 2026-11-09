@@ -83,13 +83,13 @@ test('subscription authorization alone does not create a key or paid period',asy
  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/billing_apply_payment')))
  await assert.rejects(service.execute('key','Bearer valid',{id:order}),{status:403})
 })
-test('Pix checkout binds the verified customer, excludes cards and does not create recurring billing',async()=>{
+test('one-time checkout uses the regular payment selection and does not start recurring billing',async()=>{
  const {service,calls}=fixture();const result=await service.execute('checkout','Bearer verified',{plan:'devApi',method:'pix',amount:1})
  assert.ok('url' in result&&typeof result.url==='string');assert.match(result.url,/checkout\/v1/)
  const preference=calls.find(c=>c.url.pathname==='/checkout/preferences')!.body
  assert.equal(preference.external_reference,order);assert.equal(preference.items[0].unit_price,94.99)
- assert.equal(preference.payment_methods.default_payment_method_id,'pix')
- assert.ok(preference.payment_methods.excluded_payment_types.some((x:{id:string})=>x.id==='credit_card'))
+ assert.ok(!('payment_methods' in preference))
+ assert.ok(!('payer' in preference))
  assert.ok(!calls.some(c=>c.url.pathname==='/preapproval'))
  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/billing_apply_payment')))
 })
@@ -100,5 +100,6 @@ test('verified Pix notification grants only its own exact-value production order
  const saved=calls.find(c=>c.url.pathname.endsWith('/billing_apply_payment'))!.body
  assert.equal(saved.p_payment_id,'456');assert.equal(saved.p_invoice_id,'pix-456')
  assert.equal(saved.p_end,'2026-12-09T12:00:00.000Z')
- for(const change of [{payment_method_id:'visa'},{collector_id:123},{transaction_amount:1},{live_mode:false}])await assert.rejects(service.process('payment',{...payment,...change}),{status:403})
+ for(const change of [{collector_id:123},{transaction_amount:1},{live_mode:false}])await assert.rejects(service.process('payment',{...payment,...change}),{status:403})
+ await service.process('payment',{...payment,payment_method_id:'visa'})
 })

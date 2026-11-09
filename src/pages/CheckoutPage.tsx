@@ -26,13 +26,12 @@ export default function CheckoutPage(){
     <span className="six-trial-pill"><ShieldCheck size={15}/> Assinatura mensal</span>
     {!valid?<><h1>Plano não encontrado.</h1><Link to="/planos" className="six-trial-primary">Ver planos</Link></>:<>
       <h1>Seu próximo passo com o {planLabels[code]}.</h1>
-      <p><strong>{planAmounts[code].toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} por mês.</strong> {code==='dev'?'Uso pelo site.':'Uso pelo site e chave individual para ferramentas compatíveis.'}</p>
-      <p>O acesso começa após a confirmação do pagamento. Escolha Pix por 30 dias ou cartão com renovação mensal automática.</p>
+      <p><strong>{planAmounts[code].toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}{method==='pix'?' por 30 dias.':' por mês.'}</strong> {code==='dev'?'Uso pelo site.':'Uso pelo site e chave individual para ferramentas compatíveis.'}</p>
+      <p>O acesso começa após a confirmação. No pagamento único, o Checkout Pro mostra Pix, cartão e outras opções disponíveis. No cartão recorrente, a cobrança renova mensalmente.</p>
       {loading||!session||!user?.hasCompletedOnboarding?<p role="status">Conferindo sua conta…</p>:<form onSubmit={submit}>
-        <label className="six-trial-key"><span>Como você quer pagar?</span><select aria-label="Forma de pagamento" value={method} onChange={e=>setMethod(e.target.value as 'pix'|'card')} style={{width:'100%',padding:14,borderRadius:12,background:'#14271e',color:'#e7f1de',border:'1px solid #4c6351'}}><option value="pix">Pix · 30 dias, sem cobrança automática</option><option value="card">Cartão · assinatura mensal automática</option></select></label>
-        <p>{method==='pix'?'Cada Pix aprovado libera 30 dias. Para renovar, faça um novo pagamento.':'A renovação é mensal. Você pode cancelar as próximas cobranças e manter o período já pago.'}</p>
-        <label className="six-trial-key"><span>E-mail usado no Mercado Pago</span><div><input aria-label="E-mail usado no Mercado Pago" type="email" maxLength={254} required value={payer} onChange={e=>setPayer(e.target.value)}/></div></label>
-        <small>O e-mail de pagamento pode ser diferente do seu login. A assinatura ficará vinculada à conta SixtySix em que você está conectado.</small>
+        <label className="six-trial-key"><span>Escolha o tipo de cobrança</span><select aria-label="Forma de pagamento" value={method} onChange={e=>setMethod(e.target.value as 'pix'|'card')} style={{width:'100%',padding:14,borderRadius:12,background:'#14271e',color:'#e7f1de',border:'1px solid #4c6351'}}><option value="pix">Pagamento único · 30 dias (Pix e outras opções)</option><option value="card">Assinatura mensal automática</option></select></label>
+        <p>{method==='pix'?'O Mercado Pago apresenta as formas de pagamento disponíveis para você. Cada pagamento aprovado libera 30 dias; para renovar, faça um novo pagamento.':'A assinatura é renovada mensalmente no Mercado Pago. Você pode cancelar as próximas cobranças e manter o período já pago.'}</p>
+        <small>Você escolhe Pix, cartão ou outros meios disponíveis na tela segura do Mercado Pago. O acesso fica vinculado à sua conta SixtySix.</small>
         {error&&<p role="alert" className="six-trial-error">{error}</p>}
         <button disabled={busy} className="six-trial-primary" style={{marginTop:20}}>{busy?'Preparando pagamento…':'Continuar no Mercado Pago'} <ArrowRight size={17}/></button>
       </form>}

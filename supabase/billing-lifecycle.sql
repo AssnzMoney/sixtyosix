@@ -183,7 +183,12 @@ begin
   if exists(select 1 from public.billing_subscriptions where user_id=p_user_id and paid_until>now() and (billing_mode<>'pix' or plan_code<>p_plan)) then raise exception 'An active plan already exists'; end if;
   select * into item from public.billing_subscriptions where user_id=p_user_id and plan_code=p_plan and billing_mode='pix' order by created_at desc limit 1 for update;
   if found then
-    if item.checkout_url is not null then return item; end if;
+    -- Refresh the Checkout Pro link so pending orders also pick up current
+    -- payment options. Previously issued links remain bound to this same order.
+    if item.checkout_url is not null then
+      update public.billing_subscriptions set provider_id=null,merchant_id=null,checkout_url=null,provider_status='pending',checkout_lock_until=now()+interval '90 seconds' where id=item.id returning * into item;
+      return item;
+    end if;
     if item.checkout_lock_until>now() then raise exception 'Checkout in progress'; end if;
     update public.billing_subscriptions set checkout_lock_until=now()+interval '90 seconds' where id=item.id returning * into item;
     return item;

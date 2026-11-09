@@ -117,7 +117,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     return 'recorded'
   }
   async function processPix(payment:ObjectValue,item:Subscription){
-    if(String(payment.collector_id)!==await merchant()||payment.external_reference!==item.id||cents(payment.transaction_amount)!==item.amount_cents||payment.currency_id!=='BRL'||payment.live_mode!==true||payment.payment_method_id!=='pix')throw new WebhookError(403,'Pagamento Pix não corresponde ao pedido.')
+    if(String(payment.collector_id)!==await merchant()||payment.external_reference!==item.id||cents(payment.transaction_amount)!==item.amount_cents||payment.currency_id!=='BRL'||payment.live_mode!==true)throw new WebhookError(403,'Pagamento não corresponde ao pedido.')
     if(!item.provider_id||!secret)throw new WebhookError(503,'Pedido Pix indisponível.')
     const status=Number(payment.transaction_amount_refunded||0)>0?'refunded':String(payment.status)
     const approved=typeof payment.date_approved==='string'?payment.date_approved:null
@@ -150,7 +150,9 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
         if(item.checkout_url)return {id:item.id,url:item.checkout_url}
         if(pix){
           const back=`https://www.sixtysix.online/assinatura?order=${item.id}`
-          const remote=await mp('checkout/preferences','POST',{items:[{id:item.plan_code,title:`SixtySix ${billingPlans[item.plan_code].name} · 30 dias`,quantity:1,currency_id:'BRL',unit_price:item.amount_cents/100}],payer:{email:payer},external_reference:item.id,back_urls:{success:back,pending:back,failure:back},auto_return:'approved',notification_url:'https://www.sixtysix.online/api/mercadopago/webhook',payment_methods:{default_payment_method_id:'pix',excluded_payment_types:[{id:'credit_card'},{id:'debit_card'},{id:'prepaid_card'},{id:'ticket'},{id:'atm'}]}},item.id)
+          // Leave payment_methods and payer out: Checkout Pro then shows its
+          // regular Mercado Pago flow and lets the customer choose Pix/card.
+          const remote=await mp('checkout/preferences','POST',{items:[{id:item.plan_code,title:`SixtySix ${billingPlans[item.plan_code].name} · 30 dias`,quantity:1,currency_id:'BRL',unit_price:item.amount_cents/100}],external_reference:item.id,back_urls:{success:back,pending:back,failure:back},auto_return:'approved',notification_url:'https://www.sixtysix.online/api/mercadopago/webhook'},`pix-${item.id}-${randomBytes(8).toString('hex')}`)
           const checkout=new URL(String(remote.init_point)),merchantId=await merchant()
           if(String(remote.collector_id)!==merchantId||remote.external_reference!==item.id||checkout.protocol!=='https:'||checkout.hostname!=='www.mercadopago.com.br'||!checkout.pathname.startsWith('/checkout/'))throw new WebhookError(503,'Resposta de checkout Pix inconsistente.')
           await db('rpc/billing_link_checkout',{},'POST',{p_id:item.id,p_user_id:user.id,p_provider_id:identifier(remote.id),p_merchant_id:merchantId,p_url:checkout.toString(),p_modified:new Date().toISOString()})
