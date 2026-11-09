@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -60,6 +60,13 @@ export default function LoginPage() {
   const [activeSlide, setActiveSlide] = useState(0)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [showConfigModal, setShowConfigModal] = useState(false)
+
+  // Redireciona imediatamente para o onboarding se o usuário já estiver logado mas ainda não escolheu seu nome
+  useEffect(() => {
+    if (user && !user.hasCompletedOnboarding) {
+      navigate('/onboarding')
+    }
+  }, [user, navigate])
 
   const handleGoogleLogin = async () => {
     setErrorMsg(null)
@@ -134,9 +141,9 @@ export default function LoginPage() {
     const token = code.join('')
     if (!isConfigured) {
       setTimeout(() => {
-        demoLogin('google')
+        demoLogin('google', true)
         setLoading(false)
-        navigate('/')
+        navigate('/onboarding')
       }, 700)
       return
     }
@@ -146,7 +153,7 @@ export default function LoginPage() {
     if (error) {
       setErrorMsg(error.message)
     } else {
-      navigate('/')
+      navigate('/onboarding')
     }
   }
 
@@ -524,26 +531,26 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    demoLogin('google')
+                    demoLogin('google', true)
                     setShowConfigModal(false)
-                    navigate('/')
+                    navigate('/onboarding')
                   }}
                   className="login-google-btn"
                 >
                   <GoogleIcon />
-                  <span>Testar Login com Google</span>
+                  <span>Novo Usuário Google (Ver Escolha de Nome)</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    demoLogin('discord')
+                    demoLogin('discord', true)
                     setShowConfigModal(false)
-                    navigate('/')
+                    navigate('/onboarding')
                   }}
                   className="login-discord-btn"
                 >
                   <DiscordIcon />
-                  <span>Testar Login com Discord</span>
+                  <span>Novo Usuário Discord (Ver Escolha de Nome)</span>
                 </button>
               </div>
             </motion.div>

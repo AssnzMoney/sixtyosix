@@ -23,11 +23,28 @@ export default function AuthCallback() {
         }
 
         if (data?.session) {
-          navigate('/')
+          const user = data.session.user
+          const meta = user.user_metadata || {}
+          const localOnboarding = localStorage.getItem(`sixtysix_onboarding_${user.id}`) === 'true'
+          const localCustomName = localStorage.getItem(`sixtysix_custom_name_${user.id}`)
+
+          const hasCompletedOnboarding = Boolean(
+            meta.has_completed_onboarding ||
+            localOnboarding ||
+            meta.custom_name ||
+            localCustomName
+          )
+
+          // Se é novo usuário (ou não escolheu o nome ainda), leva para onboarding
+          if (!hasCompletedOnboarding) {
+            navigate('/onboarding')
+          } else {
+            navigate('/dashboard')
+          }
         } else {
           // Aguarda brevemente se o hash ainda estiver sendo parseado
           const timeout = setTimeout(() => {
-            navigate('/')
+            navigate('/dashboard')
           }, 1500)
           return () => clearTimeout(timeout)
         }
@@ -46,25 +63,26 @@ export default function AuthCallback() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#fbfcfb',
+      background: '#0e1117',
+      color: '#f8fafc',
       padding: '24px',
       fontFamily: 'Manrope, sans-serif'
     }}>
       {errorMsg ? (
         <div style={{
-          background: '#fff',
-          border: '1.5px solid #fee2e2',
+          background: '#161c24',
+          border: '1.5px solid #ef4444',
           padding: '32px',
           borderRadius: '20px',
           maxWidth: '420px',
           textAlign: 'center',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.05)'
+          boxShadow: '0 10px 30px rgba(0,0,0,0.4)'
         }}>
           <AlertCircle size={40} color="#ef4444" style={{ margin: '0 auto 16px' }} />
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1f4647', marginBottom: '8px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#f8fafc', marginBottom: '8px' }}>
             Erro de Autenticação
           </h2>
-          <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px', lineHeight: 1.5 }}>
+          <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '20px', lineHeight: 1.5 }}>
             {errorMsg}
           </p>
           <button
@@ -72,8 +90,8 @@ export default function AuthCallback() {
             style={{
               padding: '12px 24px',
               borderRadius: '9999px',
-              background: '#1f4647',
-              color: '#ffffff',
+              background: '#9eea6c',
+              color: '#0e1117',
               fontWeight: 700,
               border: 'none',
               cursor: 'pointer'
@@ -88,25 +106,24 @@ export default function AuthCallback() {
             width: '64px',
             height: '64px',
             borderRadius: '18px',
-            background: '#ffffff',
-            border: '1.5px solid #eef2f1',
+            background: '#161c24',
+            border: '1.5px solid #232d3b',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 20px',
-            boxShadow: '0 4px 14px rgba(0,0,0,0.04)'
+            boxShadow: '0 4px 14px rgba(0,0,0,0.3)'
           }}>
-            <Loader2 size={30} color="#1f4647" className="animate-spin" />
+            <Loader2 size={30} color="#9eea6c" className="animate-spin" />
           </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1f4647', marginBottom: '8px' }}>
-            Conectando à SixtySix...
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#f8fafc', marginBottom: '6px' }}>
+            Conectando com segurança...
           </h2>
-          <p style={{ fontSize: '14px', color: '#64748b' }}>
-            Validando sua sessão com o provedor OAuth.
+          <p style={{ fontSize: '14px', color: '#94a3b8' }}>
+            Validando suas credenciais oficiais SixtySix.
           </p>
         </div>
       )}
     </div>
   )
 }
-

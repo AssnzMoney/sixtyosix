@@ -5,9 +5,14 @@ import type { User as SupabaseUser, Session } from '@supabase/supabase-js'
 export interface UserProfile {
   id: string
   email: string
-  name: string
+  name: string // Nome preferido escolhido pelo usuário para ser chamado
+  rawName?: string // Nome original retornado pelo Google/Discord
+  customName?: string
+  hasCompletedOnboarding: boolean // Se já passou pela tela de escolha de nome
   avatarUrl?: string
   provider: 'google' | 'discord' | 'email' | 'demo'
+  hasActivePlan: boolean // Se tem plano ativo (Pro) ou gratuito
+  planName: string // 'Pro Dev' | 'Gratuito'
 }
 
 interface AuthContextType {
@@ -20,7 +25,9 @@ interface AuthContextType {
   signInWithEmail: (email: string) => Promise<{ error: Error | null }>
   verifyEmailOtp: (email: string, token: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
-  demoLogin: (provider: 'google' | 'discord') => void
+  demoLogin: (provider: 'google' | 'discord', asNewUser?: boolean) => void
+  updateDisplayName: (chosenName: string) => Promise<void>
+  toggleSubscriptionPlan: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -65,12 +72,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       provider = 'email'
     }
 
+    const rawName = meta.full_name || meta.name || meta.user_name || (su.email ? su.email.split('@')[0] : 'Desenvolvedor')
+    const localCustomName = localStorage.getItem(`sixtysix_custom_name_${su.id}`)
+    const localOnboarding = localStorage.getItem(`sixtysix_onboarding_${su.id}`) === 'true'
+    const hasPlanSaved = localStorage.getItem(`sixtysix_has_plan_${su.id}`) === 'true'
+
+    const customName = meta.custom_name || meta.display_name || localCustomName || ''
+    const hasCompletedOnboarding = Boolean(
+      meta.has_completed_onboarding ||
+      localOnboarding ||
+      (customName && customName.trim().length > 0)
+    )
+
+    const finalName = hasCompletedOnboarding && customName.trim() ? customName.trim() : rawName
+
     return {
       id: su.id,
       email: su.email || '',
-      name: meta.full_name || meta.name || meta.user_name || (su.email ? su.email.split('@')[0] : 'Desenvolvedor'),
+      name: finalName,
+      rawName,
+      customName: customName || undefined,
+      hasCompletedOnboarding,
       avatarUrl: meta.avatar_url || meta.picture || '',
       provider,
+      hasActivePlan: meta.has_active_plan ?? hasPlanSaved,
+      planName: (meta.has_active_plan ?? hasPlanSaved) ? 'Pro Dev' : 'Gratuito',
     }
   }
 
@@ -111,6 +137,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       subscription.unsubscribe()
     }
   }, [])
+
+  const updateDisplayName = async (chosenName: string) => {
+    const cleanName = chosenName.trim()
+    if (!cleanName || !user) return
+
+    const updated: UserProfile = {
+      ...user,
+      name: cleanName,
+      customName: cleanName,
+      hasCompletedOnboarding: true,
+    }
+    setUser(updated)
+    localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updated))
+    localStorage.setItem(`sixtysix_custom_name_${user.id}`, cleanName)
+    localStorage.setItem(`sixtysix_onboarding_${user.id}`, 'true')
+
+    if (supabase && isSupabaseConfigured && session?.user) {
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            custom_name: cleanName,
+            display_name: cleanName,
+            has_completed_onboarding: true,
+          },
+        })
+        await supabase.from('profiles').upsert({
+          id: user.id,
+          email: user.email,
+          name: cleanName,
+          custom_name: cleanName,
+          avatar_url: user.avatarUrl,
+          provider: user.provider,
+          updated_at: new Date().toISOString(),
+        })
+      } catch (err) {
+        console.warn('Sincronização com Supabase Profiles:', err)
+      }
+    }
+  }
+
+  const toggleSubscriptionPlan = () => {
+    if (!user) return
+    const nextState = !user.hasActivePlan
+    const updated: UserProfile = {
+      ...user,
+      hasActivePlan: nextState,
+      planName: nextState ? 'Pro Dev' : 'Gratuito',
+    }
+    setUser(updated)
+    localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updated))
+    localStorage.setItem(`sixtysix_has_plan_${user.id}`, String(nextState))
+  }
 
   const signInWithGoogle = async () => {
     if (!supabase || !isSupabaseConfigured) {
@@ -186,15 +264,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(LOCAL_STORAGE_USER_KEY)
   }
 
-  const demoLogin = (provider: 'google' | 'discord') => {
+  const demoLogin = (provider: 'google' | 'discord', asNewUser: boolean = false) => {
+    const rawName = provider === 'google' ? 'Alysson Medeiros' : 'alysson_dev'
+    const savedName = localStorage.getItem('sixtysix_custom_name_demo-user-123')
+    const hasCompleted = asNewUser ? false : (localStorage.getItem('sixtysix_onboarding_demo-user-123') === 'true')
+    const hasPlanSaved = localStorage.getItem('sixtysix_has_plan_demo-user-123') === 'true'
+
     const demoUser: UserProfile = {
       id: 'demo-user-123',
-      email: provider === 'google' ? 'dev.alysson@gmail.com' : 'alysson#6666',
-      name: 'Alysson Developer',
+      email: provider === 'google' ? 'alyssonmedeiros02007@gmail.com' : 'alysson#6666',
+      name: (hasCompleted && savedName) ? savedName : rawName,
+      rawName,
+      customName: (hasCompleted && savedName) ? savedName : undefined,
+      hasCompletedOnboarding: hasCompleted,
       avatarUrl: provider === 'google' 
         ? 'https://lh3.googleusercontent.com/a/default-user' 
         : 'https://cdn.discordapp.com/embed/avatars/0.png',
       provider,
+      hasActivePlan: hasPlanSaved,
+      planName: hasPlanSaved ? 'Pro Dev' : 'Gratuito',
     }
     setUser(demoUser)
     localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(demoUser))
@@ -213,6 +301,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyEmailOtp,
         signOut,
         demoLogin,
+        updateDisplayName,
+        toggleSubscriptionPlan,
       }}
     >
       {children}
@@ -227,4 +317,3 @@ export const useAuth = () => {
   }
   return context
 }
-
