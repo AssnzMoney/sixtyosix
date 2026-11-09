@@ -24,3 +24,4 @@ export const isLocalhost = (): boolean => {
 
   return false
 }
+
