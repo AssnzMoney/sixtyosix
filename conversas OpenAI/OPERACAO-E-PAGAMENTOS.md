@@ -17,7 +17,7 @@ Botões da LP abrem /comprar/dev, /comprar/devApi ou /comprar/pro. Antes do chec
 
 Cartão: POST /preapproval cria assinatura pendente sem plano associado, frequência mensal e external_reference igual ao UUID do pedido. Autorização sem pagamento aprovado não concede acesso. A cobrança segue mês de calendário, que pode ter 28 a 31 dias.
 
-Pix/pagamento avulso: POST /checkout/preferences abre o Checkout Pro padrão, sem forçar Pix nem preencher o pagador. O Mercado Pago apresenta Pix, cartão e os outros meios disponíveis à conta/pagador. Não cria débito automático. Cada pagamento aprovado libera 30 dias; renovação antecipada soma ao prazo restante sem trocar a chave. Pagamentos duplicados não somam novamente. A renovação é feita pelo cliente na página /assinatura.
+Pix/pagamento avulso: POST /checkout/preferences abre o Checkout Pro com Pix pré-selecionado, preservando o checkout do Mercado Pago e a possibilidade de trocar o meio. Não cria débito automático. Cada pagamento aprovado libera 30 dias; renovação antecipada soma ao prazo restante sem trocar a chave. Pagamentos duplicados não somam novamente. A renovação é feita pelo cliente na página /assinatura.
 
 O cliente paga no Mercado Pago. O webhook assinado consulta a API privada e valida recebedor, pedido conhecido, assinatura, moeda BRL, valor, ambiente real e aprovação. A URL de retorno e o corpo livre da notificação não autorizam acesso. A confirmação registra o pagamento e cria o acesso individual em uma transação idempotente. /assinatura entrega a chave aos planos com API, mostra pagamentos, vencimento e cancelamento.
 

@@ -83,12 +83,12 @@ test('subscription authorization alone does not create a key or paid period',asy
  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/billing_apply_payment')))
  await assert.rejects(service.execute('key','Bearer valid',{id:order}),{status:403})
 })
-test('one-time checkout uses the regular payment selection and does not start recurring billing',async()=>{
+test('one-time checkout opens with Pix selected and does not start recurring billing',async()=>{
  const {service,calls}=fixture();const result=await service.execute('checkout','Bearer verified',{plan:'devApi',method:'pix',amount:1})
  assert.ok('url' in result&&typeof result.url==='string');assert.match(result.url,/checkout\/v1/)
  const preference=calls.find(c=>c.url.pathname==='/checkout/preferences')!.body
  assert.equal(preference.external_reference,order);assert.equal(preference.items[0].unit_price,94.99)
- assert.ok(!('payment_methods' in preference))
+ assert.equal(preference.payment_methods.default_payment_method_id,'pix')
  assert.ok(!('payer' in preference))
  assert.ok(!calls.some(c=>c.url.pathname==='/preapproval'))
  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/billing_apply_payment')))
