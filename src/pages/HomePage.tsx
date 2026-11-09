@@ -10,9 +10,9 @@ import PlanCardWaves from '@/components/ui/plan-card-waves'
 import { useAuth } from '../lib/AuthContext'
 
 const paymentLinks = {
-  dev: 'https://mpago.la/1ERx2oZ',
-  devApi: 'https://www.mercadopago.com.br/checkout/v1/payment/redirect/4cfcb710-0ce5-4fd9-8a32-1ff6ca36972f/payment-option-form/?source=link&router-request-id=a08b5478-9721-4db4-84f1-f120e0620efc&preference-id=3385620854-582e4225-91c6-44e0-83f2-84d56ced584f&p=75f00389995c0cad9dc0cd6bb45962ea',
-  pro: 'https://mpago.la/1W2DipL',
+  dev: 'https://mpago.la/1FmQuD5',
+  devApi: 'https://mpago.la/2Rqf1Et',
+  pro: 'https://mpago.la/1zCF7KR',
 }
 
 const Arrow = () => (
@@ -1152,7 +1152,7 @@ export default function App() {
               <h3 className="plan-name">Pro Ilimitado</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
-                <span className="plan-val">119</span>
+                <span className="plan-val">119,99</span>
                 <span className="plan-period">/mês</span>
               </div>
               <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
