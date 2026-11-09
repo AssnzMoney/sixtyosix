@@ -358,6 +358,7 @@ export default function LoginPage() {
 
         {/* Coluna Direita: Showcase com Arte Renascentista estilo AbacatePay */}
         <div className="login-right-col">
+          <div className="login-right-edge-fade" />
           <div className="login-showcase-panel">
             {/* Palco Artístico com as Donzelas Renascentistas (Fotos 3 e 4) */}
             <div className="login-art-stage">
