@@ -152,6 +152,14 @@ export default function LoginPage() {
   return (
     <div className="login-page-wrap">
       <div className="login-split-grid">
+        {/* Esfumado verde na borda final inferior pegando toda a área da página de ponta a ponta */}
+        <img
+          src="/assets/login-bottom-glow.webp"
+          alt=""
+          className="login-bottom-glow"
+          aria-hidden="true"
+        />
+
         {/* Coluna Esquerda: Formulário de Autenticação */}
         <div className="login-left-col">
           <div className="login-form-box">
@@ -358,14 +366,6 @@ export default function LoginPage() {
 
         {/* Coluna Direita: Showcase com Arte Renascentista estilo AbacatePay */}
         <div className="login-right-col">
-          {/* Esfumado verde na borda final inferior pegando toda a largura e subindo nas laterais */}
-          <img
-            src="/assets/login-bottom-glow.webp"
-            alt=""
-            className="login-bottom-glow"
-            aria-hidden="true"
-          />
-
           <div className="login-showcase-panel">
             {/* Palco Artístico com as Donzelas Renascentistas (Fotos 3 e 4) */}
             <div className="login-art-stage">

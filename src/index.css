@@ -4791,6 +4791,9 @@ h2 em {
   grid-template-columns: 1fr 1.08fr;
   min-height: 100vh;
   width: 100%;
+  position: relative;
+  background: #ffffff;
+  overflow: hidden;
 }
 
 /* Coluna Esquerda: Formulário */
@@ -4800,7 +4803,9 @@ h2 em {
   justify-content: center;
   align-items: center;
   padding: 50px 36px;
-  background: #ffffff;
+  background: transparent;
+  position: relative;
+  z-index: 2;
 }
 
 .login-form-box {
@@ -5343,18 +5348,19 @@ h2 em {
   justify-content: center;
   align-items: center;
   padding: 40px 0;
-  background: #ffffff;
+  background: transparent;
   position: relative;
   overflow: hidden;
+  z-index: 2;
 }
 
-/* Esfumado verde na borda final inferior (pega toda a largura e sobe nos cantos laterais) */
+/* Esfumado verde na borda final inferior (pega toda a extensão da tela de ponta a ponta e sobe nos cantos laterais) */
 .login-bottom-glow {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 330px;
+  height: 290px;
   object-fit: fill;
   pointer-events: none;
   z-index: 1;
@@ -5386,6 +5392,8 @@ h2 em {
   object-fit: contain;
   margin-left: -20px;
   margin-bottom: -10px;
+  -webkit-mask-image: linear-gradient(to left, black 76%, rgba(0, 0, 0, 0.4) 90%, transparent 100%);
+  mask-image: linear-gradient(to left, black 76%, rgba(0, 0, 0, 0.4) 90%, transparent 100%);
   filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.05));
   user-select: none;
   pointer-events: none;
