@@ -15,13 +15,13 @@ const Arrow = () => (
 )
 
 const claudeFaqs = [
-  ['Como funciona o acesso ao Claude Code pela SixtySix?', 'O Claude Code conecta ao perfil Fable 5.1 pelo gateway SixtySix. O ID usado é claude-fable-5-1; ele identifica o perfil e não garante um modelo upstream específico. Cotas e disponibilidade são compartilhadas e podem variar.'],
+  ['Como funciona o acesso ao Claude Code pela SixtySix?', 'O Claude Code conecta ao perfil Fable 5.1 pelo gateway SixtySix. O ID usado é claude-fable-5-1. Cotas e disponibilidade podem variar.'],
   ['Como consigo minha chave?', 'A chave individual é fornecida pela SixtySix para identificar suas chamadas. Guarde-a em segredo e não a envie em prints ou mensagens públicas.'],
   ['Em quais terminais posso rodar o Claude Code?', 'Use o Claude Code CLI em um terminal compatível, configurando as variáveis mostradas no tutorial. No Windows, a página apresenta comandos para o CMD.'],
   ['Posso usar no Claude.ai pelo navegador?', 'Não. O site claude.ai não permite apontar a conexão para este gateway. Claude Desktop só funciona quando a versão instalada oferece configuração de gateway personalizado.'],
   ['Qual URL e ID devo configurar?', 'Use https://www.sixtysix.online como URL base e claude-fable-5-1 como ID do perfil. O gateway atual espera a chave no cabeçalho x-api-key.'],
   ['Posso usar GLM 5 ou GPT Astra 6 nesta página?', 'Esta página configura o perfil Fable. Para GPT Astra 6 no Codex, abra o tutorial Astra. Para GLM 5, use o tutorial GLM 5 no ZCode; essa rota não aparece no catálogo do Codex.'],
-  ['Por que posso receber erro ou indisponibilidade?', 'O gateway usa um pool upstream compartilhado, que pode atingir limites ou ficar temporariamente indisponível. Confira URL, ID do perfil e chave. Ao pedir suporte, informe horário e código HTTP, nunca a chave.'],
+  ['Por que posso receber erro ou indisponibilidade?', 'O gateway pode ficar temporariamente indisponível. Confira URL, ID do perfil e chave. Ao pedir suporte, informe horário e código HTTP, nunca a chave.'],
 ]
 
 export default function ClaudeCodePage() {
