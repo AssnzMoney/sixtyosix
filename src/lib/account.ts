@@ -11,8 +11,9 @@ export async function accountRequest<T>(path: string, body?: Record<string, unkn
     method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}), signal,
   })
+  if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('A conexão do painel está sendo atualizada. Tente novamente em instantes.')
   const data = await response.json().catch(() => ({ error: 'A conexão do painel ainda não está disponível.' }))
-  if (!response.ok) throw new Error(data.error || 'Não foi possível consultar sua conta.')
+  if (!response.ok || data.error) throw new Error(data.error || 'Não foi possível consultar sua conta.')
   return data as T
 }
 export async function accountSummary(from: string, to: string, signal?: AbortSignal): Promise<AccountSummary> {

@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import accountHandler from './api/account/[...path].ts'
+import accountHandler from './api/account.ts'
 import siteConfiguration from './.figma/make/site.json'
 
 

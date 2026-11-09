@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { AccountError, configuration, createAccountService } from '../../server/account.ts'
+import { AccountError, configuration, createAccountService } from '../server/account.ts'
 
 export default async function handler(req: IncomingMessage & { body?: Record<string, unknown> }, res: ServerResponse) {
   res.setHeader('Cache-Control', 'private, no-store')
@@ -7,7 +7,7 @@ export default async function handler(req: IncomingMessage & { body?: Record<str
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   try {
     const url = new URL(req.url || '/', 'http://localhost')
-    const path = url.pathname.replace(/^\/api\/account\//, '')
+    const path = url.searchParams.get('action') || url.pathname.replace(/^\/api\/account\//, '')
     if (!['GET','POST'].includes(req.method || '')) throw new AccountError(405, 'Operação não disponível.')
     let body = req.body
     if (!body && req.method === 'POST') {

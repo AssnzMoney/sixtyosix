@@ -16,7 +16,7 @@
 
 1. Revisar/aplicar `supabase/account-portal.sql` no projeto já utilizado pelo gateway. É aditivo: não troca token_hash, não remove clientes nem chamadas.
 2. No servidor do site, configurar `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_PUBLISHABLE_KEY` (ou a chave pública `VITE_SUPABASE_ANON_KEY`). O endereço deve ser o mesmo projeto da autenticação e do gateway.
-3. Publicar o site com a função `/api/account/[...path].ts`. O gateway existente e suas rotas continuam em outro deploy.
+3. Publicar o site com a função `/api/account.ts` e o encaminhamento `/api/account/:action` do `vercel.json`. O gateway existente e suas rotas continuam em outro deploy.
 4. Entrar na conta pelo Google/Discord. Em Chaves de API, vincular a chave individual de teste atual. Não usar a chave administrativa nesse campo.
 5. Fazer uma chamada pelo aplicativo já configurado e conferir o histórico. O painel atualiza a cada 30 segundos e permite atualização manual.
 
