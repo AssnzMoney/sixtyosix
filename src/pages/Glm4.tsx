@@ -16,7 +16,7 @@ const Arrow = () => (
 const glmFaqs = [
   [
     'O que é o GLM 5 e quais seus pontos fortes?',
-    'GLM 5 é o nome do perfil disponível no ZCode. A rota usa um pool compartilhado de modelos compatíveis; a execução de um modelo GLM upstream não é garantida e a disponibilidade pode variar.',
+    'GLM 5 é o perfil disponível no ZCode. Use o identificador glm-5 e as configurações deste tutorial.',
   ],
   [
     'Em quais IDEs e editores posso conectar o GLM 5?',
@@ -632,7 +632,7 @@ Model ID: glm-5`}</pre></div>
             <div className="claude-step-card">
               <div className="claude-step-top"><span className="claude-step-badge">Passo 02</span><h4>Ative e selecione GLM 5</h4></div>
               <p>Salve o provedor, ative-o e selecione <strong>GLM 5</strong> na lista de modelos. Use a chave individual fornecida para sua conta.</p>
-              <p className="tutorial-footnote">O identificador aceito é <code>glm-5</code>. A rota GLM é independente dos catálogos Claude e Codex. A disponibilidade e o modelo upstream podem variar.</p>
+              <p className="tutorial-footnote">O identificador aceito é <code>glm-5</code>. A rota GLM é independente dos catálogos Claude e Codex. </p>
             </div>
             <div className="claude-step-card">
               <div className="claude-step-top"><span className="claude-step-badge">Codex</span><h4>GLM não aparece no Codex</h4></div>
