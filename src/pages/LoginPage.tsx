@@ -88,7 +88,7 @@ export default function LoginPage() {
                 >
                   <h1 className="login-title">Boas vindas à SixtySix</h1>
                   <p className="login-sub">
-                    Conecte sua chave individual e desenvolva sem travas. Sem taxa de adesão, sem burocracia.
+                    Acesse sua chave individual e programe sem travas diárias. Todos os seus modelos oficiais conectados em um só lugar.
                   </p>
 
                   {/* Botão Entrar com Google */}
@@ -329,11 +329,11 @@ export default function LoginPage() {
                     transition={{ duration: 0.3 }}
                   >
                     <h2 className="showcase-headline">
-                      Gerencie seu cluster inteiro, <br />
-                      <span className="showcase-green">não só os pagamentos</span>
+                      Codifique sem cortes de cota, <br />
+                      <span className="showcase-green">direto na sua IDE favorita</span>
                     </h2>
                     <p className="showcase-sub">
-                      Controle as principais métricas do seu negócio e modelos em tempo real.
+                      Conecte sua chave própria no Cursor, Claude Code ou VS Code com latência mínima e preço fixo no Pix.
                     </p>
                   </motion.div>
                 ) : (
@@ -346,10 +346,10 @@ export default function LoginPage() {
                   >
                     <h2 className="showcase-headline">
                       Três modelos de ponta, <br />
-                      <span className="showcase-green">um só ecossistema no Pix</span>
+                      <span className="showcase-green">zero rateio de chave</span>
                     </h2>
                     <p className="showcase-sub">
-                      Claude Fable 5.1, GPT Astra 6 e GLM-4 Plus sem limites e com latência recorde.
+                      Claude Fable 5.1, GPT Astra 6 e GLM-4 Plus com estabilidade de 99.9% e sem surpresas na fatura em Dólar.
                     </p>
                   </motion.div>
                 )}
@@ -377,3 +377,4 @@ export default function LoginPage() {
     </div>
   )
 }
+
