@@ -37,11 +37,11 @@ const claudeFaqs = [
   ],
   [
     'Qual endereço (URL do gateway) e modelo devo configurar para o Claude?',
-    'O endereço base oficial é https://66cloud.vercel.app e o identificador do modelo é claude-fable-5-1. O passo a passo completo com os comandos prontos para colar no seu Prompt de Comando está disponível na seção de tutorial passo a passo acima.',
+    'O endereço base oficial é https://www.sixtysix.online e o identificador do modelo é claude-fable-5-1. O passo a passo completo com os comandos prontos para colar no seu Prompt de Comando está disponível na seção de tutorial passo a passo acima.',
   ],
   [
     'A chave não funcionou no Claude Code. O que devo verificar?',
-    'Verifique 5 pontos simples: 1) Se o endereço base é exatamente https://66cloud.vercel.app; 2) Se o modelo foi digitado como claude-fable-5-1; 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis foram aplicadas na mesma janela aberta do CMD; 5) Se a sua chave continua ativa com o administrador. Se precisar de ajuda, nosso suporte está disponível via WhatsApp.',
+    'Verifique 5 pontos simples: 1) Se o endereço base é exatamente https://www.sixtysix.online; 2) Se o modelo foi digitado como claude-fable-5-1; 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis foram aplicadas na mesma janela aberta do CMD; 5) Se a sua chave continua ativa com o administrador. Se precisar de ajuda, nosso suporte está disponível via WhatsApp.',
   ],
 ]
 
@@ -707,7 +707,7 @@ export default function ClaudeCodePage() {
                 <p>Execute exatamente o bloco de comandos abaixo na sua janela do Prompt de Comando (CMD):</p>
                 <div className="code-block-box">
                   <pre>
-{`set ANTHROPIC_BASE_URL=https://66cloud.vercel.app
+{`set ANTHROPIC_BASE_URL=https://www.sixtysix.online
 set ANTHROPIC_API_KEY=SUA_CHAVE_INDIVIDUAL
 set ANTHROPIC_MODEL=claude-fable-5-1
 claude --model claude-fable-5-1`}
@@ -715,7 +715,7 @@ claude --model claude-fable-5-1`}
                   <button
                     type="button"
                     className="code-block-copy-btn"
-                    onClick={() => copyText(`set ANTHROPIC_BASE_URL=https://66cloud.vercel.app\nset ANTHROPIC_API_KEY=SUA_CHAVE_INDIVIDUAL\nset ANTHROPIC_MODEL=claude-fable-5-1\nclaude --model claude-fable-5-1`)}
+                    onClick={() => copyText(`set ANTHROPIC_BASE_URL=https://www.sixtysix.online\nset ANTHROPIC_API_KEY=SUA_CHAVE_INDIVIDUAL\nset ANTHROPIC_MODEL=claude-fable-5-1\nclaude --model claude-fable-5-1`)}
                   >
                     {copiedSnippet?.includes('set ANTHROPIC_BASE_URL') ? (
                       <>
@@ -750,7 +750,7 @@ claude --model claude-fable-5-1`}
             <div className="tutorial-desktop-grid">
               <div className="desktop-param-card">
                 <span className="desktop-param-label">Endereço Base (Base URL)</span>
-                <code className="desktop-param-val">https://66cloud.vercel.app</code>
+                <code className="desktop-param-val">https://www.sixtysix.online</code>
               </div>
               <div className="desktop-param-card">
                 <span className="desktop-param-label">Autenticação</span>
@@ -821,16 +821,16 @@ web_search = "disabled"
 
 [model_providers.sixtysix]
 name = "Gateway"
-base_url = "https://66cloud.vercel.app/v1"
+base_url = "https://www.sixtysix.online/v1"
 wire_api = "responses"
 requires_openai_auth = false
 env_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }
-model_catalog_url = "https://66cloud.vercel.app/api/codex/models"`}
+model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
                   </pre>
                   <button
                     type="button"
                     className="code-block-copy-btn"
-                    onClick={() => copyText(`model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://66cloud.vercel.app/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://66cloud.vercel.app/api/codex/models"`)}
+                    onClick={() => copyText(`model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://www.sixtysix.online/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://www.sixtysix.online/api/codex/models"`)}
                   >
                     {copiedSnippet?.includes('model = "gpt-6-astra"') ? (
                       <>
