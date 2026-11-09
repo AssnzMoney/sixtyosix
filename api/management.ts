@@ -30,7 +30,7 @@ export function createAdminService(env=process.env,request:typeof fetch=fetch){
   let url:string
   if(resource==='users')url=`${config.url}/auth/v1/admin/users?page=${Math.floor(offset/500)+1}&per_page=500`
   else{
-   const params=new URLSearchParams({select:resources[resource],limit:'500',offset:String(offset),order:resource==='usage'?'created_at.desc,id.desc':resource==='payments'?'recorded_at.desc,id.desc':resource==='keys'?'created_at.desc,subscription_id':'created_at.desc,id.desc'})
+   const params=new URLSearchParams({select:resources[resource],limit:'500',offset:String(offset),order:resource==='usage'?'created_at.desc,id.desc':resource==='payments'?'recorded_at.desc,id.desc':resource==='keys'?'created_at.desc,subscription_id':resource==='trials'?'created_at.desc,user_id':'created_at.desc,id.desc'})
    if(['usage','payments'].includes(resource)){
     const from=query.get('from')||new Date(Date.now()-29*86400000).toISOString().slice(0,10),to=query.get('to')||new Date().toISOString().slice(0,10)
     if(![from,to].every(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x)||from>to||Date.parse(to)-Date.parse(from)>365*86400000)throw new AccountError(400,'Escolha um período de até 366 dias.')
@@ -54,6 +54,7 @@ export default async function handler(req:IncomingMessage,res:ServerResponse){
   res.statusCode=200;res.end(JSON.stringify(result))
  }catch(error){res.statusCode=error instanceof AccountError?error.status:503;res.end(JSON.stringify({error:error instanceof AccountError?error.message:'Administração temporariamente indisponível.'}))}
 }
+
 
 
 

@@ -9,3 +9,5 @@ test('admin user list excludes authentication secrets',async()=>{const f=fixture
 test('admin only accepts allowlisted resources, valid dates and bounded pages',async()=>{for(const params of [{resource:'billing_access'},{resource:'usage',from:'bad'},{resource:'clients',offset:'-1'}]){const f=fixture();await assert.rejects(f.run('Bearer token',new URLSearchParams(params as unknown as Record<string,string>)),{status:400});assert.equal(f.calls.length,1)}const f=fixture();await f.run('Bearer token',new URLSearchParams({resource:'keys'}));assert.ok(!decodeURIComponent(f.calls[1]).includes('encrypted_'));assert.ok(!decodeURIComponent(f.calls[1]).includes('token_hash'))})
 
 
+
+test('trial pagination orders by its existing user_id primary key',async()=>{const f=fixture();await f.run('Bearer token',new URLSearchParams({resource:'trials'}));const q=new URL(f.calls[1]).searchParams;assert.equal(q.get('order'),'created_at.desc,user_id')})

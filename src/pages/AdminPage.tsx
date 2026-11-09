@@ -27,9 +27,9 @@ export default function AdminPage(){
    const first=await fetchPage('users',0);result.users=first.rows
    async function rest(resource:string,initial?:any){let page=initial,offset=initial?500:0;const rows:Row[]=initial?[...initial.rows]:[];while(!initial||page.hasMore){page=await fetchPage(resource,offset);rows.push(...page.rows);offset+=500;initial=page;if(!page.hasMore)break;if(offset>=10000){capped=true;break}}result[resource]=rows}
    await rest('users',first)
-   await Promise.all(['clients',...Object.keys(labels).filter(x=>x!=='users')].map(x=>rest(x)))
+   const failed:string[]=[];await Promise.all(['clients',...Object.keys(labels).filter(x=>x!=='users')].map(async x=>{try{await rest(x)}catch(e){if(controller.signal.aborted)throw e;result[x]=[];failed.push(labels[x]||'Vínculo das chaves')}}))
    const known=new Set([...result.keys,...result.trials].map(x=>x.gateway_client_id));result.keys.push(...result.clients.filter(x=>!known.has(x.id)).map(x=>({...x,gateway_client_id:x.id,token_prefix:x.key_prefix,entitled:x.enabled,api_enabled:true})));
-   if(alive){setData(result);setUpdated(new Date().toLocaleTimeString('pt-BR'));if(capped)setNotice('Exibindo até 10.000 registros por seção. Reduza o período para consultar o consumo em partes.')}
+   if(alive){setData(result);setUpdated(new Date().toLocaleTimeString('pt-BR'));setNotice([capped?'Exibindo até 10.000 registros por seção. Reduza o período para consultar o consumo em partes.':'',failed.length?'Dados indisponíveis: '+failed.join(', ')+'. Os totais dessas seções estão incompletos; clique em Atualizar para tentar novamente.':''].filter(Boolean).join(' '))}
   }
   load().catch(e=>{if(alive&&e.name!=='AbortError')setError(e.message)}).finally(()=>{if(alive)setBusy(false)})
   return()=>{alive=false;controller.abort()}
@@ -53,5 +53,6 @@ export default function AdminPage(){
  </>}
  </main>
 }
+
 
 
