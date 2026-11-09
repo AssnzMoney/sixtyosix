@@ -81,3 +81,4 @@ ALTER TABLE public.pix_transactions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Usuários visualizam suas próprias transações Pix"
   ON public.pix_transactions FOR SELECT
   USING (auth.uid() = user_id);
+

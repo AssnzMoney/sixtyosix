@@ -132,3 +132,4 @@ export const revokeApiKey = async (userId: string, keyId: string): Promise<void>
     // vazio
   }
 }
+
