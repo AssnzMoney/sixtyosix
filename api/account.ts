@@ -30,7 +30,8 @@ export function createAccountService(config: Config, request: typeof fetch = fet
       if (code.code === 'P0001') throw new AccountError(403, 'Acesso não disponível. Confira sua chave ou solicite a liberação do teste.')
       throw new AccountError(503, 'Não foi possível consultar sua conta. Tente novamente.')
     }
-    return response.json() as Promise<T>
+    const text = await response.text()
+    return (text ? JSON.parse(text) : null) as T
   }
   async function identity(authorization: string | undefined) {
     if (!authorization?.startsWith('Bearer ') || authorization.length > 16000) throw new AccountError(401, 'Entre na sua conta para continuar.')

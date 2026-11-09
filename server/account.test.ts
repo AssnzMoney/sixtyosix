@@ -62,3 +62,9 @@ test('rejects malformed periods and does not silently truncate to first page',as
   await service.execute('GET','summary','Bearer verified',{},new URLSearchParams({from:'2026-01-01',to:'2026-01-02',offset:'1000'}))
   assert.equal(calls.find(c=>c.url.pathname.endsWith('/gateway_usage'))!.url.searchParams.get('offset'),'1000')
 })
+test('accepts the empty 204 response returned by a successful key claim',async()=>{
+  const fake = async (input: string | URL | Request) => String(input).includes('/auth/v1/user')
+    ? Response.json({id:uid}) : new Response(null,{status:204})
+  const service=createAccountService(config,fake as typeof fetch)
+  assert.deepEqual(await service.execute('POST','claim','Bearer verified',{key:'sk-flg-'+'a'.repeat(43)}),{ok:true})
+})
