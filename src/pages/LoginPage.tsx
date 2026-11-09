@@ -4,12 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft,
   Check,
-  TrendingUp,
-  Cpu,
-  Key,
-  ShieldCheck,
-  Zap,
-  Activity,
   AlertCircle,
   X,
   ExternalLink,
@@ -362,104 +356,26 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Coluna Direita: Showcase com Mockup do Dashboard */}
+        {/* Coluna Direita: Showcase com Arte Renascentista estilo AbacatePay */}
         <div className="login-right-col">
           <div className="login-showcase-panel">
-            {/* Mockup do Dashboard estilo AbacatePay */}
+            {/* Pill superior estilo AbacatePay */}
+            <div className="login-art-pill">
+              Sem mensalidade em Dólar. Aprovação imediata no Pix.
+            </div>
+
+            {/* Composição Clássica estilo AbacatePay (As duas donzelas com a SixtySix) */}
             <motion.div
-              className="mockup-window"
-              initial={{ opacity: 0, y: 25, scale: 0.96 }}
+              className="login-art-stage"
+              initial={{ opacity: 0, y: 22, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
             >
-              {/* Mini Sidebar */}
-              <div className="mockup-sidebar">
-                <div className="mockup-sidebar-logo">
-                  <div className="mockup-logo-dot" />
-                </div>
-                <div className="mockup-nav-icon active"><Activity size={16} /></div>
-                <div className="mockup-nav-icon"><Cpu size={16} /></div>
-                <div className="mockup-nav-icon"><Key size={16} /></div>
-                <div className="mockup-nav-icon"><Zap size={16} /></div>
-                <div className="mockup-nav-icon"><ShieldCheck size={16} /></div>
-              </div>
-
-              {/* Área Principal do Dashboard */}
-              <div className="mockup-main">
-                {/* Abas Superiores */}
-                <div className="mockup-top-tabs">
-                  <span className="mockup-tab">Hoje</span>
-                  <span className="mockup-tab active">Esse Mês</span>
-                  <span className="mockup-tab">Últimos 30 dias</span>
-                  <span className="mockup-tab">Personalizar</span>
-                </div>
-
-                {/* Grid de KPIs Principais */}
-                <div className="mockup-kpis-grid">
-                  {/* Card 1: Requisições */}
-                  <div className="mockup-kpi-card">
-                    <span className="mockup-kpi-label">Requisições</span>
-                    <div className="mockup-kpi-val-row">
-                      <span className="mockup-kpi-val">8.940</span>
-                      <span className="mockup-kpi-badge"><TrendingUp size={12} /> +5%</span>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Economia no Pix com Moedas 3D */}
-                  <div className="mockup-kpi-card mockup-kpi-card-cash">
-                    <img src="/assets/plan-cash.webp" alt="Cash" className="mockup-cash-icon" />
-                    <div>
-                      <span className="mockup-kpi-label">Economia no Pix</span>
-                      <div className="mockup-kpi-val-row">
-                        <span className="mockup-kpi-val highlight-green">R$ 3.500<small>,00</small></span>
-                        <span className="mockup-kpi-badge"><TrendingUp size={12} /> +5%</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Faixa Secundária de Métricas */}
-                <div className="mockup-metrics-strip">
-                  <div className="mockup-mini-metric">
-                    <span className="mini-metric-label">Total de Prompts</span>
-                    <strong className="mini-metric-val">10 <span className="mini-badge">+5%</span></strong>
-                  </div>
-                  <div className="mockup-mini-metric">
-                    <span className="mini-metric-label">Novos Modelos</span>
-                    <strong className="mini-metric-val">5 <span className="mini-badge">+5%</span></strong>
-                  </div>
-                  <div className="mockup-mini-metric">
-                    <span className="mini-metric-label">Plano mais usado</span>
-                    <strong className="mini-metric-val">Pro Ilimitado</strong>
-                  </div>
-                  <div className="mockup-mini-metric">
-                    <span className="mini-metric-label">Uptime</span>
-                    <strong className="mini-metric-val">99.9%</strong>
-                  </div>
-                  <div className="mockup-mini-metric">
-                    <span className="mini-metric-label">Latência</span>
-                    <strong className="mini-metric-val">25ms</strong>
-                  </div>
-                </div>
-
-                {/* Mini Gráfico / Indicadores de Desempenho */}
-                <div className="mockup-graph-card">
-                  <div className="mockup-graph-header">
-                    <span>Desempenho de requisições</span>
-                    <span className="mockup-graph-tag">Em tempo real</span>
-                  </div>
-                  <div className="mockup-bars-wrap">
-                    {[38, 52, 45, 68, 62, 85, 78, 92, 88, 100, 94, 98].map((h, i) => (
-                      <div key={i} className="mockup-bar-col">
-                        <div
-                          className="mockup-bar"
-                          style={{ height: `${h}%`, opacity: i >= 8 ? 1 : 0.45 }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <img
+                src="/assets/login-artwork-composite.webp"
+                alt="Composição Renascentista SixtySix"
+                className="login-art-composite-img"
+              />
             </motion.div>
 
             {/* Texto de Impacto Inferior com Slides */}
