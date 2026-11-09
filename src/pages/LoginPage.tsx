@@ -367,7 +367,7 @@ export default function LoginPage() {
         {/* Coluna Direita: Showcase com Arte Renascentista estilo AbacatePay */}
         <div className="login-right-col">
           <div className="login-showcase-panel">
-            {/* Palco Artístico com as Donzelas Renascentistas (Fotos 3 e 4) */}
+            {/* Palco Artístico com as Donzelas Renascentistas e Mascote Caindo de Paraquedas */}
             <div className="login-art-stage">
               <motion.img
                 src="/assets/login-art-lady-left.webp"
@@ -377,6 +377,30 @@ export default function LoginPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
               />
+
+              {/* Mascote SixtySix Caindo de Paraquedas */}
+              <motion.div
+                className="login-art-parachute-wrap"
+                initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                animate={{
+                  opacity: 1,
+                  y: [0, 8, 0],
+                  rotate: [-2, 2, -2],
+                  scale: 1,
+                }}
+                transition={{
+                  opacity: { duration: 0.8, delay: 0.15 },
+                  scale: { duration: 0.8, delay: 0.15 },
+                  y: { duration: 4.6, repeat: Infinity, ease: 'easeInOut' },
+                  rotate: { duration: 5.2, repeat: Infinity, ease: 'easeInOut' },
+                }}
+              >
+                <img
+                  src="/assets/sixtysix-parachute.webp"
+                  alt="SixtySix Paraquedas"
+                  className="login-art-parachute-img"
+                />
+              </motion.div>
 
               <motion.img
                 src="/assets/login-art-lady-right.webp"

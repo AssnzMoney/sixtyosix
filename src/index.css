@@ -5431,6 +5431,29 @@ h2 em {
   pointer-events: none;
 }
 
+/* Mascote SixtySix Caindo de Paraquedas */
+.login-art-parachute-wrap {
+  position: absolute;
+  top: 37%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.login-art-parachute-img {
+  width: clamp(105px, 12vw, 140px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 24px rgba(31, 70, 71, 0.16));
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
 @media (max-height: 850px) {
   .login-bottom-glow {
     height: 270px;
@@ -5448,6 +5471,9 @@ h2 em {
     margin-right: -75px;
     margin-bottom: -25px;
   }
+  .login-art-parachute-img {
+    width: clamp(90px, 11vw, 115px);
+  }
 }
 
 @media (max-width: 1100px) {
@@ -5464,6 +5490,9 @@ h2 em {
   .login-art-lady-right {
     height: 400px;
     margin-right: -60px;
+  }
+  .login-art-parachute-img {
+    width: clamp(80px, 10vw, 105px);
   }
 }
 
