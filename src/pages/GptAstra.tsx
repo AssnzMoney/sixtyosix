@@ -473,7 +473,7 @@ export default function GptAstraPage() {
             <div className="hero-art-stage">
               {/* Anotação estilo manuscrito com seta curvada */}
               <motion.div
-                className="hero-handwritten-wrap"
+                className="hero-handwritten-wrap hero-handwritten-astra"
                 initial={{ opacity: 0, scale: 0.8, rotate: -4 }}
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
