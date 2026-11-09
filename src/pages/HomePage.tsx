@@ -1295,7 +1295,7 @@ export default function App() {
             <h4 className="footer-col-title">Legal</h4>
             <ul className="footer-link-list">
               <li><a href="#duvidas">Termos de Uso</a></li>
-              <li><a href="#duvidas">Política de Privacidade</a></li>
+              <li><a href="/privacidade.html">Política de Privacidade</a></li>
               <li><a href="#duvidas">Segurança</a></li>
             </ul>
           </div>
