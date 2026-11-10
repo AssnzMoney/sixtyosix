@@ -13,6 +13,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  CircleAlert,
   CircleHelp,
   Copy,
   CreditCard,
@@ -26,7 +27,6 @@ import {
   Search,
   Settings2,
   ShieldCheck,
-  Sparkles,
   Terminal,
   X,
   Zap,
@@ -34,20 +34,19 @@ import {
   CircleCheck,
   MessageSquare,
 } from "lucide-react"
+import { motion, useInView } from "framer-motion"
 import { useAuth } from "../lib/AuthContext"
 import { accountRequest, accountSummary, type AccountTrial, type AccountSubscription } from "../lib/account"
-import SiteChat from '../components/SiteChat'
+import SiteChat from "../components/SiteChat"
 import NumberRoller from "../components/ui/number-roller"
-import { useInView } from "framer-motion"
 import "./dashboard.css"
-import './billing.css'
+import "./billing.css"
 
 type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help" | "chat"
-type Model = string
 type RequestRow = {
   id: string
   date: string
-  model: Model
+  model: string
   input: number
   output: number
   duration: number
@@ -59,9 +58,20 @@ type KeyRow = {
   prefix: string
   active: boolean
   created: string
-  managed?:boolean
+  managed?: boolean
 }
-const models: Model[] = ["Fable 5.1", "Astra 6", "GLM 5"]
+type GatewayStatus = "checking" | "ready" | "down" | "unknown"
+
+// Nomes de exibição dos perfis já usados pelo gateway e pelos guias.
+const MODEL_LABELS: Record<string, string> = {
+  "claude-fable-5-1": "Fable 5.1",
+  "claude-fable-5-2": "Fable 5.2",
+  "gpt-6-astra": "Astra 6",
+  "glm-5": "GLM 5",
+}
+const KNOWN_MODELS = Object.values(MODEL_LABELS)
+const ALL_MODELS = "Todos os modelos"
+
 const nav = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "usage", label: "Meu consumo", icon: Activity },
@@ -70,57 +80,92 @@ const nav = [
   { id: "guides", label: "Como conectar", icon: Terminal },
   { id: "plan", label: "Plano e assinatura", icon: CreditCard },
 ] as const
+
+const headings: Record<Tab, { eyebrow: string; title: string; accent: string; description: string }> = {
+  overview: {
+    eyebrow: "painel do cliente",
+    title: "",
+    accent: "Bom te ver por aqui.",
+    description: "Seu consumo, suas chaves e o passo a passo para conectar suas ferramentas, em um só lugar.",
+  },
+  usage: {
+    eyebrow: "consumo",
+    title: "Meu",
+    accent: "consumo.",
+    description: "Cada solicitação registrada pelo gateway nas chaves da sua conta.",
+  },
+  chat: {
+    eyebrow: "conversar no site",
+    title: "Converse",
+    accent: "direto no site.",
+    description: "Suas ideias, seu código e suas conversas em um só lugar.",
+  },
+  keys: {
+    eyebrow: "integração",
+    title: "Chaves",
+    accent: "de API.",
+    description: "O ponto de partida para conectar suas ferramentas. Não compartilhe sua chave.",
+  },
+  guides: {
+    eyebrow: "integração nativa",
+    title: "Como",
+    accent: "conectar.",
+    description: "Da sua chave à primeira resposta, sem complicação.",
+  },
+  plan: {
+    eyebrow: "assinatura",
+    title: "Plano e",
+    accent: "assinatura.",
+    description: "Seu acesso, seus pagamentos e os próximos passos.",
+  },
+  help: {
+    eyebrow: "central de ajuda",
+    title: "Respostas para",
+    accent: "continuar criando.",
+    description: "O essencial sobre a sua conexão.",
+  },
+}
+
 const n = (v: number) => new Intl.NumberFormat("pt-BR").format(v)
 const compact = (v: number) =>
   new Intl.NumberFormat("pt-BR", {
     notation: "compact",
     maximumFractionDigits: 2,
   }).format(v)
-const money = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+const money = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 const dayKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-const dateLabel = (date: string) =>
-  new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+const dateLabel = (date: string) => new Date(date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+const modelIcon = (model: string) =>
+  model.startsWith("Fable") ? "claude" : model === "Astra 6" ? "openai" : model.startsWith("GLM") ? "glm" : ""
 
-function demoRequests(): RequestRow[] {
-  const result: RequestRow[] = []
-  for (let d = 29; d >= 0; d--) {
-    const count = 6 + ((d * 7) % 13)
-    for (let i = 0; i < count; i++) {
-      const date = new Date()
-      date.setDate(date.getDate() - d)
-      date.setHours(8 + (i % 13), (i * 13) % 60, 0, 0)
-      if (date.getTime() > Date.now()) date.setTime(Date.now() - i * 60000)
-      const model = models[(i + d) % 5 < 3 ? 0 : (i + d) % 5 === 3 ? 1 : 2]
-      result.push({
-        id: `demo-${d}-${i}`,
-        date: date.toISOString(),
-        model,
-        input: 18000 + ((i * 6329 + d * 4127) % 62000),
-        output: 1200 + ((i * 451 + d * 317) % 6200),
-        duration: 1.2 + ((i + d) % 28) / 10,
-        success: (d * 13 + i) % 43 !== 0,
-      })
-    }
-  }
-  return result.sort((a, b) => b.date.localeCompare(a.date))
+function niceCeil(value: number) {
+  if (value <= 0) return 1
+  const magnitude = 10 ** Math.floor(Math.log10(value))
+  const step = value / magnitude
+  return (step <= 1 ? 1 : step <= 2 ? 2 : step <= 5 ? 5 : 10) * magnitude
 }
 
-function CodeBlock({
-  code,
-  copy,
-}: {
-  code: string
-  copy: (text: string) => void
-}) {
+/** Status real do gateway pelo endpoint público `/api/health` (rewrite em vercel.json). */
+async function fetchGatewayStatus(): Promise<GatewayStatus> {
+  try {
+    const response = await fetch("/api/health", { cache: "no-store" })
+    if (!response.headers.get("content-type")?.includes("application/json")) return "unknown"
+    const body = await response.json()
+    return response.ok && body?.status === "ready" ? "ready" : "down"
+  } catch {
+    return "unknown"
+  }
+}
+
+function CodeBlock({ code, copy, label = "Configuração" }: { code: string; copy: (text: string) => void; label?: string }) {
   return (
     <div className="six-code">
-      <div>
+      <div className="six-code-head">
         <span>
-          <Terminal size={13} /> Configuração
+          <Terminal size={13} /> {label}
         </span>
-        <button onClick={() => copy(code)}>
+        <button type="button" onClick={() => copy(code)}>
           <Copy size={13} /> Copiar
         </button>
       </div>
@@ -131,33 +176,114 @@ function CodeBlock({
   )
 }
 
-
-function DashboardNumber({ value, format = "compact" }: { value: number; format?: "compact" | "money" | "percent" | "integer" | "decimal"; replay?: string }) {
-  // Explicit dashboard animation preference requested by the user.
+function DashboardNumber({
+  value,
+  format = "compact",
+}: {
+  value: number
+  format?: "compact" | "money" | "percent" | "integer" | "decimal"
+}) {
+  // Preferência explícita de animação pedida para o painel.
   const reducedMotion = false
   const target = useRef<HTMLSpanElement>(null)
   const visible = useInView(target, { amount: 0.3 })
   const divisor = format === "compact" ? (value >= 1000000 ? 1000000 : value >= 1000 ? 1000 : 1) : 1
   const suffix = format === "percent" ? "%" : divisor === 1000000 ? " mi" : divisor === 1000 ? " mil" : ""
   const decimals = format === "money" ? 2 : format === "percent" || format === "decimal" ? 1 : divisor > 1 ? 2 : 0
-  const label = format === "money" ? money(value) : format === "percent" ? value.toFixed(1).replace(".", ",") + "%" : format === "integer" ? n(value) : format === "decimal" ? value.toFixed(1).replace(".", ",") : compact(value)
-  return <span ref={target} className="six-animated-number" role="img" aria-label={label}><span aria-hidden="true"><NumberRoller key={String(visible)} animateOnMount={!reducedMotion && visible} value={value / divisor} decimals={decimals} prefix={format === "money" ? "R$ " : ""} suffix={suffix} duration={reducedMotion ? 0 : 1.6} /></span></span>
+  const label =
+    format === "money"
+      ? money(value)
+      : format === "percent"
+        ? value.toFixed(1).replace(".", ",") + "%"
+        : format === "integer"
+          ? n(value)
+          : format === "decimal"
+            ? value.toFixed(1).replace(".", ",")
+            : compact(value)
+  return (
+    <span ref={target} className="six-animated-number" role="img" aria-label={label}>
+      <span aria-hidden="true">
+        <NumberRoller
+          key={String(visible)}
+          animateOnMount={!reducedMotion && visible}
+          value={value / divisor}
+          decimals={decimals}
+          prefix={format === "money" ? "R$ " : ""}
+          suffix={suffix}
+          duration={reducedMotion ? 0 : 1.6}
+        />
+      </span>
+    </span>
+  )
+}
+
+function DailyChart({ days }: { days: Array<{ date: string; tokens: number; requests: number }> }) {
+  const top = niceCeil(Math.max(0, ...days.map((d) => d.tokens)))
+  const labelIndexes = new Set([0, Math.floor((days.length - 1) / 2), days.length - 1])
+  const label = (date: string) => dateLabel(`${date}T12:00:00`)
+  return (
+    <div className="six-chart" role="group" aria-label="Tokens por dia no período">
+      <div className="six-chart-yaxis" aria-hidden="true">
+        {[top, top / 2, 0].map((t) => (
+          <span key={t}>{compact(t)}</span>
+        ))}
+      </div>
+      <div className="six-chart-area">
+        <div className="six-chart-plot">
+          <div className="six-chart-lines" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="six-chart-bars">
+            {days.map((d, i) => (
+              <div
+                key={d.date}
+                className={`six-chart-col ${i < 3 ? "is-start" : i > days.length - 4 ? "is-end" : ""}`}
+                tabIndex={0}
+                aria-label={`${label(d.date)}: ${n(d.tokens)} tokens em ${n(d.requests)} solicitações`}
+              >
+                <span
+                  className={`six-chart-bar ${d.tokens > 0 ? "has-value" : ""}`}
+                  style={{ height: `${(d.tokens / top) * 100}%` }}
+                />
+                <span className="six-chart-tip" role="tooltip">
+                  <strong>{label(d.date)}</strong>
+                  <span>{n(d.tokens)} tokens</span>
+                  <span>{n(d.requests)} solicitações</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="six-chart-xaxis" aria-hidden="true">
+          {days.map((d, i) => (
+            <span key={d.date}>{labelIndexes.has(i) ? label(d.date) : ""}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function DashboardPage() {
   const { user, session, signOut } = useAuth()
-  const [theme, setTheme] = useState(() => localStorage.getItem("six-dashboard-theme") || "dark")
-  useEffect(() => { localStorage.setItem("six-dashboard-theme", theme) }, [theme])
+  const [theme, setTheme] = useState(() => localStorage.getItem("six-dashboard-theme-v2") || "light")
+  useEffect(() => {
+    localStorage.setItem("six-dashboard-theme-v2", theme)
+  }, [theme])
   const [tab, setTab] = useState<Tab>("overview")
-  const allowDemo = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-  const [demo, setDemo] = useState(() => allowDemo && new URLSearchParams(window.location.search).get("demo") === "1")
+  // Sem sessão, a rota só abre no localhost (`?demo=1`) para revisar o layout. Nenhum dado é simulado.
+  const preview = !session
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("six-sidebar-collapsed") === "true")
-  useEffect(() => { localStorage.setItem("six-sidebar-collapsed", String(collapsed)) }, [collapsed])
+  useEffect(() => {
+    localStorage.setItem("six-sidebar-collapsed", String(collapsed))
+  }, [collapsed])
   const [drawer, setDrawer] = useState(false)
   const [period, setPeriod] = useState("30")
   const [from, setFrom] = useState(dayKey(new Date(Date.now() - 29 * 86400000)))
   const [to, setTo] = useState(dayKey(new Date()))
-  const [modelFilter, setModelFilter] = useState("Todos os modelos")
+  const [modelFilter, setModelFilter] = useState(ALL_MODELS)
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const [toast, setToast] = useState("")
@@ -165,28 +291,39 @@ export default function DashboardPage() {
   const [os, setOs] = useState("powershell")
   const [clientKey, setClientKey] = useState("")
   const [reveal, setReveal] = useState(false)
-  const [accountData, setAccountData] = useState<{ owner: string; keys: KeyRow[]; rows: RequestRow[]; trial:AccountTrial|null;subscription:AccountSubscription|null } | null>(null)
-  const keys = accountData?.owner === session?.user.id ? accountData?.keys || [] : []
-  const trial = accountData?.owner === session?.user.id ? accountData?.trial : null
-  const subscription=accountData?.owner===session?.user.id?accountData?.subscription:null
+  const [accountData, setAccountData] = useState<{
+    owner: string
+    keys: KeyRow[]
+    rows: RequestRow[]
+    trial: AccountTrial | null
+    subscription: AccountSubscription | null
+  } | null>(null)
+  const ownData = accountData?.owner === session?.user.id ? accountData : null
+  const keys = ownData?.keys || []
+  const trial = ownData?.trial ?? null
+  const subscription = ownData?.subscription ?? null
   const [accountError, setAccountError] = useState("")
   const [busy, setBusy] = useState(false)
   const [newKeyName, setNewKeyName] = useState("")
   const [claimKey, setClaimKey] = useState("")
   const [issuedKey, setIssuedKey] = useState("")
   const [revokeId, setRevokeId] = useState("")
-  const [keyState, setKeyState] =
-    useState<"idle" | "loading" | "loaded" | "error">("idle")
+  const [keyState, setKeyState] = useState<"idle" | "loading" | "loaded" | "error">("idle")
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [refresh, setRefresh] = useState(0)
-  const [inputRate, setInputRate] = useState(15)
-  const [outputRate, setOutputRate] = useState(75)
-  const [formula, setFormula] = useState(false)
+  const [gateway, setGateway] = useState<GatewayStatus>("checking")
   const [faq, setFaq] = useState<number | null>(0)
-  const demoRows = useMemo(demoRequests, [])
-  const rows = demo ? demoRows : accountData?.owner === session?.user.id ? accountData?.rows || [] : []
-  const metricsReady = demo || (keyState === "loaded" && accountData?.owner === session?.user.id)
-  const name = user?.name || (demo ? "Alysson" : "dev")
+  const rows = ownData?.rows || []
+  const metricsReady = !preview && keyState === "loaded" && Boolean(ownData)
+  const name = user?.name || "dev"
 
+  useEffect(() => {
+    const previous = document.body.style.backgroundColor
+    document.body.style.backgroundColor = theme === "dark" ? "#102b2c" : "#fbf9f4"
+    return () => {
+      document.body.style.backgroundColor = previous
+    }
+  }, [theme])
   useEffect(() => {
     if (!toast) return
     const timer = setTimeout(() => setToast(""), 3000)
@@ -200,14 +337,22 @@ export default function DashboardPage() {
     setClientKey("")
     setClaimKey("")
     setRevokeId("")
-  }, [session?.user.id, demo])
+  }, [session?.user.id])
   useEffect(() => {
-    if (demo || !session?.user.id) { setKeyState("idle"); setAccountData(null); return }
+    fetchGatewayStatus().then(setGateway)
+  }, [refresh])
+  useEffect(() => {
+    if (!session?.user.id) {
+      setKeyState("idle")
+      setAccountData(null)
+      return
+    }
     const controller = new AbortController()
     const owner = session.user.id
     let pending = false
     const now = new Date()
-    const first = period === "custom" ? from : dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - Number(period) + 1))
+    const first =
+      period === "custom" ? from : dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - Number(period) + 1))
     const last = period === "custom" ? to : dayKey(now)
     setKeyState("loading")
     async function load() {
@@ -216,152 +361,180 @@ export default function DashboardPage() {
       try {
         const data = await accountSummary(first, last, controller.signal)
         if (controller.signal.aborted) return
-        const labels: Record<string,string> = { "claude-fable-5-1": "Fable 5.1", "claude-fable-5-2": "Fable 5.2", "gpt-6-astra": "Astra 6", "glm-5": "GLM 5" }
-        setAccountData({ owner, keys: data.keys, trial:data.trial||null,subscription:data.subscription, rows: data.usage.map(r => ({ id: String(r.id), date: r.created_at, model: labels[r.requested_alias] || r.requested_alias, input: r.input_tokens, output: r.output_tokens, duration: r.latency_ms / 1000, success: r.status_code >= 200 && r.status_code < 400 })) })
+        setAccountData({
+          owner,
+          keys: data.keys,
+          trial: data.trial || null,
+          subscription: data.subscription,
+          rows: data.usage.map((r) => ({
+            id: String(r.id),
+            date: r.created_at,
+            model: MODEL_LABELS[r.requested_alias] || r.requested_alias,
+            input: r.input_tokens,
+            output: r.output_tokens,
+            duration: r.latency_ms / 1000,
+            success: r.status_code >= 200 && r.status_code < 400,
+          })),
+        })
         setAccountError("")
         setKeyState("loaded")
+        setUpdatedAt(new Date())
       } catch (error) {
         if (controller.signal.aborted) return
         setAccountError(error instanceof Error ? error.message : "Não foi possível carregar sua conta.")
         setKeyState("error")
-      } finally { pending = false }
+      } finally {
+        pending = false
+      }
     }
     load()
     const timer = setInterval(load, 30000)
-    return () => { controller.abort(); clearInterval(timer) }
-  }, [demo, session?.user.id, period, from, to, refresh])
+    return () => {
+      controller.abort()
+      clearInterval(timer)
+    }
+  }, [session?.user.id, period, from, to, refresh])
+
   async function replaceTrialKey() {
     if (!session || busy) return
-    setBusy(true); setAccountError("")
+    setBusy(true)
+    setAccountError("")
     try {
-      const response = await fetch('/api/access?action=trial&replace=1', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
+      const response = await fetch("/api/access?action=trial&replace=1", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
       const result = await response.json()
-      if (!response.ok || !result.key) throw new Error(result.error || 'Não foi possível substituir a chave.')
-      setIssuedKey(result.key); setClientKey(result.key); setRefresh(v => v + 1)
-      setToast('Nova chave de teste criada. O vencimento continua o mesmo.')
-    } catch (error) { setAccountError(error instanceof Error ? error.message : 'Não foi possível substituir a chave.') }
-    finally { setBusy(false) }
+      if (!response.ok || !result.key) throw new Error(result.error || "Não foi possível substituir a chave.")
+      setIssuedKey(result.key)
+      setClientKey(result.key)
+      setRefresh((v) => v + 1)
+      setToast("Nova chave de teste criada. O vencimento continua o mesmo.")
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "Não foi possível substituir a chave.")
+    } finally {
+      setBusy(false)
+    }
   }
 
-  async function mutateAccount(action: "claim" | "keys" | "revoke", payload: Record<string,unknown>) {
-    setBusy(true); setAccountError("")
+  async function mutateAccount(action: "claim" | "keys" | "revoke", payload: Record<string, unknown>) {
+    setBusy(true)
+    setAccountError("")
     try {
       const result = await accountRequest<{ key?: string }>(action, payload)
-      if (result.key) { setIssuedKey(result.key); setClientKey(result.key); setNewKeyName("") }
+      if (result.key) {
+        setIssuedKey(result.key)
+        setClientKey(result.key)
+        setNewKeyName("")
+      }
       if (action === "claim") setClaimKey("")
       setRevokeId("")
-      setRefresh(v => v + 1)
-      setToast(action === "keys" ? "Chave criada. Copie e guarde agora." : action === "claim" ? "Chave vinculada à sua conta." : "Chave revogada.")
-    } catch (error) { setAccountError(error instanceof Error ? error.message : "Não foi possível concluir.") }
-    finally { setBusy(false) }
+      setRefresh((v) => v + 1)
+      setToast(
+        action === "keys"
+          ? "Chave criada. Copie e guarde agora."
+          : action === "claim"
+            ? "Chave vinculada à sua conta."
+            : "Chave revogada.",
+      )
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "Não foi possível concluir.")
+    } finally {
+      setBusy(false)
+    }
   }
 
+  const modelOptions = useMemo(
+    () => [ALL_MODELS, ...new Set([...KNOWN_MODELS, ...rows.map((r) => r.model)])],
+    [rows],
+  )
   const filtered = useMemo(() => {
     const cutoff = new Date()
     cutoff.setHours(0, 0, 0, 0)
-    if (period !== "custom")
-      cutoff.setDate(cutoff.getDate() - (Number(period) - 1))
+    if (period !== "custom") cutoff.setDate(cutoff.getDate() - (Number(period) - 1))
     return rows.filter((r) => {
-          const day = dayKey(new Date(r.date))
-          const within =
-            period === "custom"
-              ? day >= from && day <= to
-              : new Date(r.date) >= cutoff
-          return (
-            within &&
-            (modelFilter === "Todos os modelos" || r.model === modelFilter) &&
-            `${r.model} ${r.id}`.toLowerCase().includes(search.toLowerCase())
-          )
-        })
-  }, [rows, demo, period, from, to, modelFilter, search])
+      const day = dayKey(new Date(r.date))
+      const within = period === "custom" ? day >= from && day <= to : new Date(r.date) >= cutoff
+      return (
+        within &&
+        (modelFilter === ALL_MODELS || r.model === modelFilter) &&
+        `${r.model} ${r.id}`.toLowerCase().includes(search.toLowerCase())
+      )
+    })
+  }, [rows, period, from, to, modelFilter, search])
   const input = filtered.reduce((sum, row) => sum + row.input, 0)
   const output = filtered.reduce((sum, row) => sum + row.output, 0)
-  const success = filtered.length
-    ? (filtered.filter((r) => r.success).length / filtered.length) * 100
-    : 0
-  const average = filtered.length
-    ? filtered.reduce((s, r) => s + r.duration, 0) / filtered.length
-    : 0
-  const byModel = models.map((model) => ({
-    model,
-    tokens: filtered
-      .filter((r) => r.model === model)
-      .reduce((sum, r) => sum + r.input + r.output, 0),
-  }))
+  const total = input + output
+  const success = filtered.length ? (filtered.filter((r) => r.success).length / filtered.length) * 100 : 0
+  const average = filtered.length ? filtered.reduce((s, r) => s + r.duration, 0) / filtered.length : 0
+  const byModel = useMemo(() => {
+    const totals = new Map<string, { tokens: number; requests: number }>()
+    for (const r of filtered) {
+      const entry = totals.get(r.model) ?? { tokens: 0, requests: 0 }
+      entry.tokens += r.input + r.output
+      entry.requests += 1
+      totals.set(r.model, entry)
+    }
+    return [...totals.entries()].map(([model, v]) => ({ model, ...v })).sort((a, b) => b.tokens - a.tokens)
+  }, [filtered])
   const chartDays = useMemo(() => {
-    const start =
-      period === "custom" ? new Date(`${from}T00:00:00`) : new Date()
+    const start = period === "custom" ? new Date(`${from}T00:00:00`) : new Date()
     if (period !== "custom") {
       start.setHours(0, 0, 0, 0)
       start.setDate(start.getDate() - Number(period) + 1)
     }
     const end = period === "custom" ? new Date(`${to}T23:59:59`) : new Date()
-    const days: Array<{ date: string; tokens: number }> = []
+    const perDay = new Map<string, { tokens: number; requests: number }>()
+    for (const r of filtered) {
+      const key = dayKey(new Date(r.date))
+      const entry = perDay.get(key) ?? { tokens: 0, requests: 0 }
+      entry.tokens += r.input + r.output
+      entry.requests += 1
+      perDay.set(key, entry)
+    }
+    const days: Array<{ date: string; tokens: number; requests: number }> = []
     const cursor = new Date(start)
     while (cursor <= end && days.length < 366) {
       const date = dayKey(cursor)
-      days.push({
-        date,
-        tokens: filtered
-          .filter((r) => dayKey(new Date(r.date)) === date)
-          .reduce((s, r) => s + r.input + r.output, 0),
-      })
+      days.push({ date, ...(perDay.get(date) ?? { tokens: 0, requests: 0 }) })
       cursor.setDate(cursor.getDate() + 1)
     }
     return days
   }, [period, from, to, filtered])
-  const [hoverDay, setHoverDay] = useState<number | null>(null)
-  const maximum = Math.max(...chartDays.map((d) => d.tokens), 1)
-  const points = chartDays
-    .map(
-      (d, i) =>
-        `${36 + (i / Math.max(chartDays.length - 1, 1)) * 704},${190 - (d.tokens / maximum) * 155}`,
-    )
-    .join(" ")
-  const numberReplay = `${tab}-${period}-${from}-${to}-${modelFilter}-${demo}`
-  const inputCost = input / 1000000 * inputRate
-  const outputCost = output / 1000000 * outputRate
-  const reference = inputCost + outputCost
-  const planCost = demo ? 119 : subscription?.active?subscription.amount:keys.some(k => k.active) ? 0 : null
-  const canEstimate = metricsReady && planCost !== null
-  const saving = Math.max(0, reference - (planCost ?? 0))
+
   const switchTab = (next: Tab) => {
     setTab(next)
     setDrawer(false)
     setSearch("")
-    setModelFilter("Todos os modelos")
+    setModelFilter(ALL_MODELS)
+    window.scrollTo({ top: 0 })
   }
   async function copy(text: string) {
     try {
       await navigator.clipboard.writeText(text)
       setToast("Copiado para a área de transferência")
     } catch {
-      setToast(
-        "Não foi possível copiar. Selecione o texto e copie manualmente.",
-      )
+      setToast("Não foi possível copiar. Selecione o texto e copie manualmente.")
     }
   }
   function exportCsv() {
     const csv =
-      "\uFEFF" +
+      String.fromCharCode(0xfeff) +
       [
-        "demonstracao;data;modelo;tokens_entrada;tokens_saida;duracao_s;resultado",
+        "data;modelo;tokens_entrada;tokens_saida;duracao_s;resultado",
         ...filtered.map(
           (r) =>
-            `${demo ? "sim" : "nao"};${r.date};${r.model};${r.input};${r.output};${r.duration.toFixed(1)};${
-              r.success ? "concluida" : "falhou"
-            }`,
+            `${r.date};${r.model};${r.input};${r.output};${r.duration.toFixed(1)};${r.success ? "concluida" : "falhou"}`,
         ),
       ].join("\n")
-    const url = URL.createObjectURL(
-      new Blob([csv], { type: "text/csv;charset=utf-8" }),
-    )
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }))
     const a = document.createElement("a")
     a.href = url
-    a.download = demo ? "sixtysix-demonstracao-consumo.csv" : "sixtysix-consumo.csv"
+    a.download = "sixtysix-consumo.csv"
     a.click()
     URL.revokeObjectURL(url)
   }
+
   const actualKey = clientKey.trim() || "SUA_CHAVE_INDIVIDUAL"
   const shellKey =
     os === "bash"
@@ -376,180 +549,300 @@ export default function DashboardPage() {
         ? `set ANTHROPIC_BASE_URL=https://www.sixtysix.online\nset "ANTHROPIC_API_KEY=${actualKey.replace(/[\r\n"]/g, "")}"\nset ANTHROPIC_MODEL=claude-fable-5-1\nclaude --model claude-fable-5-1`
         : `export ANTHROPIC_BASE_URL='https://www.sixtysix.online'\nexport ANTHROPIC_API_KEY=${shellKey}\nexport ANTHROPIC_MODEL='claude-fable-5-1'\nclaude --model claude-fable-5-1`
   const codexConfig = `model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://www.sixtysix.online/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://www.sixtysix.online/api/codex/models"`
-  const sectionTitle =
-    nav.find((v) => v.id === tab)?.label || "Central de ajuda"
+  const osLabel = os === "powershell" ? "PowerShell" : os === "cmd" ? "CMD" : "Terminal"
+  const sectionTitle = nav.find((v) => v.id === tab)?.label || "Central de ajuda"
+  const heading = headings[tab]
+
   const empty = (title: string, description: string, action?: ReactNode) => (
     <div className="six-empty">
       <span>
-        <Activity size={25} />
+        <Activity size={22} />
       </span>
       <h3>{title}</h3>
       <p>{description}</p>
       {action}
     </div>
   )
+  const metricHint = preview
+    ? "Entre na sua conta para ver"
+    : keyState === "error"
+      ? "Indisponível no momento"
+      : "Carregando…"
+  const noDataTitle = preview ? "Entre para ver seu consumo" : "Nenhuma solicitação no período"
+  const noDataText = preview
+    ? "Esta é uma pré-visualização local, sem conta conectada. Nenhum dado é simulado."
+    : metricsReady
+      ? "Use sua chave em uma ferramenta ou mude o período e o modelo do filtro."
+      : keyState === "error"
+        ? "Não foi possível carregar seus dados agora. Tente atualizar."
+        : "Consultando os dados da sua conta."
+
   const table = (limit = 8) => (
     <>
-      <div className="six-table-scroll">
-        <table className="six-table">
-          <thead>
-            <tr>
-              <th>Modelo / solicitação</th>
-              <th>Data e hora</th>
-              <th>Entrada</th>
-              <th>Saída</th>
-              <th>Duração</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered
-              .slice(
-                (tab === "usage" ? page - 1 : 0) * limit,
-                (tab === "usage" ? page : 1) * limit,
-              )
-              .map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <span
-                      className={`six-model-icon ${
-                        r.model === "Astra 6"
-                          ? "astra"
-                          : r.model === "GLM 5"
-                            ? "glm"
-                            : ""
-                      }`}
-                    >
-                      <img
-                        src={`/assets/brands/${
-                          r.model.startsWith("Fable")
-                            ? "claude"
-                            : r.model === "Astra 6"
-                              ? "openai"
-                              : "glm"
-                        }.svg`}
-                        alt=""
-                      />
-                    </span>
-                    <span>
-                      <strong>{r.model}</strong>
-                      <small>{r.id}</small>
-                    </span>
-                  </td>
-                  <td>
-                    {dateLabel(r.date)}
-                    <small>
-                      {new Date(r.date).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </small>
-                  </td>
-                  <td>{<DashboardNumber value={r.input} format="integer" replay={numberReplay} />}</td>
-                  <td>{<DashboardNumber value={r.output} format="integer" replay={numberReplay} />}</td>
-                  <td><DashboardNumber value={r.duration} format="decimal" replay={numberReplay} /> s</td>
-                  <td>
-                    <span className={`six-status ${r.success ? "" : "failed"}`}>
-                      {r.success ? <Check size={11} /> : <X size={11} />}
-                      {r.success ? "Concluída" : "Falhou"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
-      {!filtered.length &&
-        empty(
-          demo
-            ? "Nenhuma solicitação neste filtro"
-            : "Seu histórico aparecerá aqui",
-          demo
-            ? "Experimente outro período ou modelo."
-            : "O histórico de consumo ainda precisa ser conectado à sua conta.",
-        )}
+      {filtered.length > 0 && (
+        <div className="six-table-scroll">
+          <table className="six-table">
+            <thead>
+              <tr>
+                <th>Modelo / solicitação</th>
+                <th>Data e hora</th>
+                <th>Entrada</th>
+                <th>Saída</th>
+                <th>Duração</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered
+                .slice((tab === "usage" ? page - 1 : 0) * limit, (tab === "usage" ? page : 1) * limit)
+                .map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <span className="six-model-cell">
+                        <span className="six-model-icon">
+                          {modelIcon(r.model) ? (
+                            <img src={`/assets/brands/${modelIcon(r.model)}.svg`} alt="" />
+                          ) : (
+                            <Zap size={14} />
+                          )}
+                        </span>
+                        <span>
+                          <strong>{r.model}</strong>
+                          <small>{r.id}</small>
+                        </span>
+                      </span>
+                    </td>
+                    <td>
+                      {dateLabel(r.date)}
+                      <small>{new Date(r.date).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</small>
+                    </td>
+                    <td>
+                      <DashboardNumber value={r.input} format="integer" />
+                    </td>
+                    <td>
+                      <DashboardNumber value={r.output} format="integer" />
+                    </td>
+                    <td>
+                      <DashboardNumber value={r.duration} format="decimal" /> s
+                    </td>
+                    <td>
+                      <span className={`six-status ${r.success ? "" : "failed"}`}>
+                        {r.success ? <Check size={11} /> : <X size={11} />}
+                        {r.success ? "Concluída" : "Falhou"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {!filtered.length && empty(noDataTitle, noDataText)}
     </>
   )
 
+  const filters = (
+    <>
+      <div className="six-filters">
+        <div className="six-segmented" role="tablist" aria-label="Período">
+          {[
+            ["1", "Hoje"],
+            ["7", "7 dias"],
+            ["30", "Últimos 30 dias"],
+            ["custom", "Personalizar"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={period === value}
+              className={period === value ? "selected" : ""}
+              onClick={() => setPeriod(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <label className="six-select">
+          <Settings2 size={14} />
+          <select aria-label="Filtrar por modelo" value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}>
+            {modelOptions.map((m) => (
+              <option key={m}>{m}</option>
+            ))}
+          </select>
+          <ChevronDown size={14} />
+        </label>
+      </div>
+      {period === "custom" && (
+        <div className="six-date-range">
+          <label>
+            De <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+          </label>
+          <label>
+            Até{" "}
+            <input type="date" value={to} min={from} max={dayKey(new Date())} onChange={(e) => setTo(e.target.value)} />
+          </label>
+          <span>{from > to ? "Selecione um intervalo válido." : "Intervalos de até 366 dias."}</span>
+        </div>
+      )}
+    </>
+  )
+
+  const stats = (
+    <div className="six-stats">
+      <article className="six-stat">
+        <span className="six-stat-label">
+          <Zap size={15} /> Tokens consumidos
+        </span>
+        <strong className="six-stat-value">
+          {metricsReady ? <DashboardNumber value={total} /> : "—"}
+          <small>tokens</small>
+        </strong>
+        <p>
+          {metricsReady ? (
+            <>
+              <DashboardNumber value={filtered.length} format="integer" /> solicitações no período
+            </>
+          ) : (
+            metricHint
+          )}
+        </p>
+      </article>
+      <article className="six-stat">
+        <span className="six-stat-label">
+          <ArrowDownLeft size={15} /> Tokens de entrada
+        </span>
+        <strong className="six-stat-value">
+          {metricsReady ? <DashboardNumber value={input} /> : "—"}
+          <small>tokens</small>
+        </strong>
+        <p>Contexto enviado pelas suas ferramentas</p>
+      </article>
+      <article className="six-stat">
+        <span className="six-stat-label">
+          <ArrowUpRight size={15} /> Tokens de saída
+        </span>
+        <strong className="six-stat-value">
+          {metricsReady ? <DashboardNumber value={output} /> : "—"}
+          <small>tokens</small>
+        </strong>
+        <p>Respostas geradas no período</p>
+      </article>
+      <article className="six-stat">
+        <span className="six-stat-label">
+          <CircleCheck size={15} /> Solicitações concluídas
+        </span>
+        <strong className="six-stat-value">
+          {metricsReady && filtered.length ? <DashboardNumber value={success} format="percent" /> : "—"}
+        </strong>
+        <p>
+          {metricsReady && filtered.length ? (
+            <>
+              Tempo médio de <DashboardNumber value={average} format="decimal" /> s por resposta
+            </>
+          ) : metricsReady ? (
+            "Sem solicitações no período"
+          ) : (
+            metricHint
+          )}
+        </p>
+      </article>
+    </div>
+  )
+
+  const planTitle = subscription
+    ? `${subscription.name}${subscription.active ? "" : subscription.status === "pending" ? " · aguardando pagamento" : " · período encerrado"}`
+    : trial?.active
+      ? "Teste grátis · 7 dias"
+      : keys.some((k) => k.active)
+        ? "Acesso de teste ativo"
+        : trial
+          ? "Teste encerrado"
+          : "Sem acesso vinculado"
+
   return (
     <div className="six-dashboard" data-theme={theme} data-collapsed={collapsed}>
-      {drawer && (
-        <button
-          className="six-overlay"
-          aria-label="Fechar menu"
-          onClick={() => setDrawer(false)}
-        />
-      )}
-      <aside className={`six-sidebar ${drawer ? "open" : ""}`}>
-        <button className="six-sidebar-toggle" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"} title={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}>{collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}</button>
-        <Link to="/" className="six-brand">
-          <span className="six-brand-mark"><img src="/assets/sx-crown.png" alt="SixtySix SX com coroa dourada" /></span>
-          <span className="six-brand-word">
-            SixtySix<span>workspace</span>
-          </span>
-        </Link>
-        <div className="six-workspace">
-          <span className="six-workspace-icon">
-            {name.charAt(0).toUpperCase()}
-          </span>
-          <span>
-            <strong>Meu workspace</strong>
-            <small>Conta individual</small>
-          </span>
-          <ShieldCheck size={15} />
+      {drawer && <button type="button" className="six-overlay" aria-label="Fechar menu" onClick={() => setDrawer(false)} />}
+
+      <aside className={`six-sidebar ${drawer ? "open" : ""}`} aria-label="Menu do painel">
+        <div className="six-sidebar-top">
+          <Link to="/" className="six-brand" aria-label="SixtySix, página inicial">
+            <img src="/assets/sidebar-logo.png" alt="SixtySix" />
+          </Link>
+          <button
+            type="button"
+            className="six-sidebar-toggle"
+            onClick={() => (drawer ? setDrawer(false) : setCollapsed(!collapsed))}
+            aria-label={drawer ? "Fechar menu" : collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
+            title={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
+          >
+            {drawer ? <X size={17} /> : collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+          </button>
         </div>
-        <div className="six-nav-label">PLATAFORMA</div>
-        <nav aria-label="Navegação do dashboard">
+
+        <div className="six-nav-label">Plataforma</div>
+        <nav aria-label="Navegação do painel">
           {nav.map((item) => (
             <button
               key={item.id}
+              type="button"
               title={item.label}
               aria-label={item.label}
+              aria-current={tab === item.id ? "page" : undefined}
               className={tab === item.id ? "active" : ""}
               onClick={() => switchTab(item.id)}
             >
+              {tab === item.id && (
+                <motion.span
+                  layoutId="six-nav-indicator"
+                  className="six-nav-indicator"
+                  transition={{ type: "spring", stiffness: 450, damping: 34 }}
+                />
+              )}
               <item.icon size={18} />
               <span>{item.label}</span>
-              {item.id === "guides" && <span className="six-nav-count">4</span>}
+              {item.id === "keys" && keys.length > 0 && <span className="six-nav-count">{keys.length}</span>}
             </button>
           ))}
         </nav>
+
         <div className="six-sidebar-bottom">
           <div className="six-help-card">
-            <span>
-              <Sparkles size={17} /> Pronto para criar?
-            </span>
+            <strong>Pronto para criar?</strong>
             <p>Sua próxima ideia começa com uma boa conexão.</p>
-            <button onClick={() => switchTab("guides")}>
+            <button type="button" onClick={() => switchTab("guides")}>
               Conectar minha IDE <ArrowUpRight size={15} />
             </button>
           </div>
-          <button className="six-help-link" onClick={() => switchTab("help")}>
-            <CircleHelp size={18} /> Central de ajuda <ArrowUpRight size={14} />
+          <button type="button" className="six-help-link" onClick={() => switchTab("help")} title="Central de ajuda">
+            <CircleHelp size={18} />
+            <span>Central de ajuda</span>
           </button>
           <div className="six-profile">
             <span className="six-avatar">
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="" />
-              ) : (
-                name.charAt(0)
-              )}
+              {user?.avatarUrl ? <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" /> : name.charAt(0).toUpperCase()}
             </span>
-            <span>
+            <span className="six-profile-text">
               <strong title={name}>{name}</strong>
-              <small>
-                {demo
-                  ? "Workspace de demonstração"
-                  : user?.email || "Entre na sua conta"}
-              </small>
+              <small>{preview ? "Pré-visualização local" : user?.email}</small>
             </span>
-            {session && <Link to="/onboarding?edit=true" className="six-profile-edit" aria-label="Editar nome de exibição" title="Editar meu nome"><Settings2 size={16} /></Link>}
+            {session && (
+              <Link
+                to="/onboarding?edit=true"
+                className="six-profile-action"
+                aria-label="Editar nome de exibição"
+                title="Editar meu nome"
+              >
+                <Settings2 size={16} />
+              </Link>
+            )}
             <button
+              type="button"
+              className="six-profile-action"
               aria-label={session ? "Sair da conta" : "Ir para login"}
+              title={session ? "Sair da conta" : "Entrar"}
               onClick={() =>
-                session
-                  ? signOut().then(() => window.location.assign("/login"))
-                  : window.location.assign("/login")
+                session ? signOut().then(() => window.location.assign("/login")) : window.location.assign("/login")
               }
             >
               <LogOut size={16} />
@@ -557,97 +850,104 @@ export default function DashboardPage() {
           </div>
         </div>
       </aside>
+
       <div className="six-main-shell">
         <header className="six-topbar">
-          <div>
-            <button
-              className="six-mobile-menu"
-              aria-label="Abrir menu"
-              onClick={() => setDrawer(true)}
-            >
+          <div className="six-topbar-left">
+            <button type="button" className="six-mobile-menu" aria-label="Abrir menu" onClick={() => setDrawer(true)}>
               <Menu size={20} />
             </button>
-            <span>Workspace</span>
-            <ChevronRight size={13} />
-            <strong>{sectionTitle}</strong>
-          </div>
-          <div>
-            <button className="six-theme-toggle" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"} title="Alternar aparência">{theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}</button>
-            <span className="six-connection">
-              <span /> Gateway SixtySix
+            <Link to="/" className="six-mobile-brand" aria-label="SixtySix, página inicial">
+              <img src="/assets/sidebar-logo.png" alt="SixtySix" />
+            </Link>
+            <span className="six-crumb">
+              Workspace <ChevronRight size={13} /> <strong>{sectionTitle}</strong>
             </span>
-            <a
-              href="https://www.sixtysix.online/claude-code#passo-a-passo"
-              target="_blank"
-              rel="noreferrer"
+          </div>
+          <div className="six-topbar-right">
+            {gateway === "ready" && (
+              <span className="six-connection" title="Verificado em /api/health">
+                <span className="six-connection-dot" /> Gateway disponível
+              </span>
+            )}
+            {gateway === "down" && (
+              <span className="six-connection is-down" title="Verificado em /api/health">
+                <CircleAlert size={14} /> Gateway indisponível
+              </span>
+            )}
+            <button
+              type="button"
+              className="six-icon-button"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+              title="Alternar aparência"
             >
+              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            <Link to="/claude-code#passo-a-passo" className="six-doc-link">
               <BookOpen size={16} />
               <span>Documentação</span>
-              <ArrowUpRight size={13} />
-            </a>
+            </Link>
           </div>
         </header>
+
         <main className="six-main">
-          <div className="six-demo-bar">
-            <span>
-              <span className="six-demo-dot" />
-              {demo ? "Você está explorando uma demonstração" : "Seu workspace"}
-              <small>
-                {demo
-                  ? "Consumo, valores e plano são ilustrativos."
-                  : session ? "Dados vinculados à sua conta autenticada." : "Entre para vincular os dados da sua conta."}
-              </small>
-            </span>
-            {allowDemo && <button
-              onClick={() => {
-                setDemo(!demo)
-                setClientKey("")
-              }}
-            >
-              {demo ? "Ver minha conta" : "Explorar demonstração"}
-              <ArrowRight size={14} />
-            </button>}
-          </div>
-          {!demo && <div className="six-account-status" role="status">{!session ? <><span>Entre para acompanhar seu consumo real.</span><Link to="/login">Entrar</Link></> : accountError ? <><span>{accountError}</span><button onClick={() => setRefresh(v => v + 1)}>Tentar novamente</button></> : keyState === "loading" ? "Atualizando sua conta…" : <><span>Consumo real · atualização automática a cada 30 segundos</span><button onClick={() => setRefresh(v => v + 1)}>Atualizar</button></>}</div>}
+          {preview ? (
+            <div className="six-account-status is-preview" role="status">
+              <span>
+                <CircleAlert size={15} /> Pré-visualização local, sem conta conectada. Nenhum dado de consumo, chave ou plano
+                é simulado.
+              </span>
+              <Link to="/login">Entrar</Link>
+            </div>
+          ) : (
+            <div className={`six-account-status ${keyState === "error" ? "is-error" : ""}`} role="status">
+              {accountError ? (
+                <>
+                  <span>
+                    <CircleAlert size={15} /> {accountError}
+                  </span>
+                  <button type="button" onClick={() => setRefresh((v) => v + 1)}>
+                    Tentar novamente
+                  </button>
+                </>
+              ) : keyState === "loading" && !updatedAt ? (
+                <span>
+                  <RefreshCw size={14} className="six-spin" /> Carregando sua conta…
+                </span>
+              ) : (
+                <>
+                  <span>
+                    <span className="six-live-dot" />
+                    <span>
+                      Dados reais da sua conta
+                      <span className="six-hide-mobile"> · atualização automática a cada 30 segundos</span>
+                      {updatedAt &&
+                        ` · atualizado às ${updatedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`}
+                    </span>
+                  </span>
+                  <button type="button" onClick={() => setRefresh((v) => v + 1)}>
+                    <RefreshCw size={14} /> Atualizar
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="six-heading">
             <div>
-              <p className="six-kicker">SEU ESPAÇO PARA CONSTRUIR</p>
+              <span className="six-eyebrow">{heading.eyebrow}</span>
               <h1>
-                {tab === "overview"
-                  ? `Tudo certo por aqui, ${name}.`
-                  : sectionTitle}
-                <span className="six-heading-dot">
-                  {tab === "overview" ? "✳" : ""}
-                </span>
+                {tab === "overview" ? `Olá, ${name}.` : heading.title} <em>{heading.accent}</em>
               </h1>
-              <p>
-                {tab === "overview"
-                  ? "Mais clareza sobre seu uso. Mais tempo para suas ideias."
-                  : tab === "guides"
-                    ? "Da sua chave à primeira resposta, sem complicação."
-                    : tab === "usage"
-                      ? "Cada solicitação, cada token. Tudo em um só lugar."
-                      : tab === "keys"
-                        ? "O ponto de partida para conectar suas ferramentas."
-                        : tab === 'chat'?'Suas ideias, seu código e suas conversas em um só lugar.':tab === "plan"
-                          ? "Seu acesso, seus benefícios e os próximos passos."
-                          : "Vamos colocar suas ferramentas para funcionar."}
-              </p>
+              <p>{heading.description}</p>
             </div>
             {tab === "overview" ? (
-              <button
-                className="six-primary"
-                onClick={() => switchTab("guides")}
-              >
-                <PlusIcon />
-                Conectar ferramenta
+              <button type="button" className="six-primary" onClick={() => switchTab("guides")}>
+                <Terminal size={16} /> Conectar ferramenta
               </button>
             ) : tab === "usage" ? (
-              <button
-                className="six-secondary"
-                disabled={!metricsReady || !filtered.length}
-                onClick={exportCsv}
-              >
+              <button type="button" className="six-secondary" disabled={!metricsReady || !filtered.length} onClick={exportCsv}>
                 <Download size={15} /> Exportar CSV
               </button>
             ) : null}
@@ -655,404 +955,92 @@ export default function DashboardPage() {
 
           {(tab === "overview" || tab === "usage") && (
             <>
-              <div className="six-filters">
-                <div className="six-periods">
-                  {[
-                    ["1", "Hoje"],
-                    ["7", "7 dias"],
-                    ["30", "Últimos 30 dias"],
-                    ["custom", "Personalizar"],
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      className={period === value ? "selected" : ""}
-                      onClick={() => setPeriod(value)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <label className="six-select">
-                  <Settings2 size={14} />
-                  <select
-                    aria-label="Filtrar por modelo"
-                    value={modelFilter}
-                    onChange={(e) => setModelFilter(e.target.value)}
-                  >
-                    {["Todos os modelos", ...models].map((m) => (
-                      <option key={m}>{m}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={13} />
-                </label>
-              </div>
-              {period === "custom" && (
-                <div className="six-date-range">
-                  <label>
-                    De{" "}
-                    <input
-                      type="date"
-                      value={from}
-                      max={to}
-                      onChange={(e) => setFrom(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Até{" "}
-                    <input
-                      type="date"
-                      value={to}
-                      min={from}
-                      max={dayKey(new Date())}
-                      onChange={(e) => setTo(e.target.value)}
-                    />
-                  </label>
-                  <span>
-                    {from > to
-                      ? "Selecione um intervalo válido."
-                      : "Intervalos de até 366 dias."}
-                  </span>
-                </div>
-              )}
-              <div className="six-stats">
-                <article className="six-stat">
-                  <span>
-                    <Zap size={16} />
-                    Tokens consumidos
-                  </span>
-                  <strong>
-                    {metricsReady ? <DashboardNumber value={input + output} replay={numberReplay} /> : "—"}
-                    <small>tokens</small>
-                  </strong>
-                  <p>
-                    <span className="six-dot emerald" />
-                    {metricsReady
-                      ? <><DashboardNumber value={filtered.length} format="integer" replay={numberReplay} /> solicitações no período</>
-                      : "Aguardando integração do consumo"}
-                  </p>
-                  <div className="six-mini-bars">
-                    {[3, 5, 4, 8, 6, 9, 7, 11, 8, 13, 11, 16].map((h, i) => (
-                      <i key={i} style={{ height: metricsReady ? h * 2 : 3 }} />
-                    ))}
-                  </div>
-                </article>
-                <article className="six-stat">
-                  <span>
-                    <ArrowDownLeft size={16} />
-                    Tokens de entrada
-                  </span>
-                  <strong>
-                    {metricsReady ? <DashboardNumber value={input} replay={numberReplay} /> : "—"}
-                    <small>tokens</small>
-                  </strong>
-                  <p>Contexto enviado às suas ferramentas</p>
-                </article>
-                <article className="six-stat">
-                  <span>
-                    <ArrowUpRight size={16} />
-                    Tokens de saída
-                  </span>
-                  <strong>
-                    {metricsReady ? <DashboardNumber value={output} replay={numberReplay} /> : "—"}
-                    <small>tokens</small>
-                  </strong>
-                  <p>Respostas geradas no período</p>
-                </article>
-                <article className="six-stat">
-                  <span>
-                    <CircleCheck size={16} />
-                    Solicitações concluídas
-                  </span>
-                  <strong>
-                    {metricsReady ? <DashboardNumber value={success} format="percent" replay={numberReplay} /> : "—"}
-                  </strong>
-                  <p>
-                    {metricsReady
-                      ? <>Tempo médio de <DashboardNumber value={average} format="decimal" replay={numberReplay} /> s por resposta</>
-                      : "Sem métricas disponíveis"}
-                  </p>
-                </article>
-              </div>
+              {filters}
+              {stats}
+
               {tab === "overview" && (
                 <div className="six-chart-grid">
-                  <section className="six-panel six-consumption">
+                  <section className="six-panel">
                     <div className="six-panel-head">
                       <div>
-                        <h2>
-                          <Activity size={16} /> Seu ritmo de criação
-                        </h2>
-                        <p>Consumo de tokens ao longo do período</p>
+                        <h2>Seu ritmo de criação</h2>
+                        <p>Tokens por dia no período</p>
                       </div>
-                      <span className="six-legend">
-                        <i /> Tokens totais
-                      </span>
                     </div>
-                    {metricsReady && chartDays.length ? (
-                      <div className="six-chart">
-                        <div className="six-chart-value">
-                          {<DashboardNumber value={input + output} replay={numberReplay} />}
-                          <span>tokens no período</span>
-                        </div>
-                        <svg
-                          viewBox="0 0 780 220"
-                          role="img"
-                          aria-label="Gráfico demonstrativo de consumo de tokens por dia"
-                          onMouseLeave={() => setHoverDay(null)}
-                          onMouseMove={(event) => {
-                            const rect =
-                              event.currentTarget.getBoundingClientRect()
-                            setHoverDay(
-                              Math.max(
-                                0,
-                                Math.min(
-                                  chartDays.length - 1,
-                                  Math.round(
-                                    ((((event.clientX - rect.left) /
-                                      rect.width) *
-                                      780 -
-                                      36) /
-                                      704) *
-                                      (chartDays.length - 1),
-                                  ),
-                                ),
-                              ),
-                            )
-                          }}
-                        >
-                          <defs>
-                            <linearGradient
-                              id="six-area"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
-                              <stop
-                                offset="0%"
-                                stopColor="#25a879"
-                                stopOpacity=".2"
-                              />
-                              <stop
-                                offset="100%"
-                                stopColor="#25a879"
-                                stopOpacity="0"
-                              />
-                            </linearGradient>
-                          </defs>
-                          {[35, 87, 139, 190].map((y, i) => (
-                            <g key={y}>
-                              <line
-                                x1="36"
-                                x2="740"
-                                y1={y}
-                                y2={y}
-                                stroke="#e9eeeb"
-                                strokeDasharray="4 5"
-                              />
-                              <text
-                                x="0"
-                                y={y + 4}
-                                fontSize="10"
-                                fill="#8a9992"
-                              >
-                                {compact((maximum * (3 - i)) / 3)}
-                              </text>
-                            </g>
-                          ))}
-                          <polygon
-                            points={`36,190 ${points} ${
-                              chartDays.length === 1 ? "740,190" : "740,190"
-                            }`}
-                            fill="url(#six-area)"
-                          />
-                          <polyline
-                            points={points}
-                            fill="none"
-                            stroke="#249f75"
-                            strokeWidth="2.5"
-                            strokeLinejoin="round"
-                          />
-                          {chartDays.length === 1 && (
-                            <circle
-                              cx="36"
-                              cy={190 - (chartDays[0].tokens / maximum) * 155}
-                              r="4"
-                              fill="#249f75"
-                            />
-                          )}
-                          {hoverDay !== null && chartDays[hoverDay] && (
-                            <g>
-                              <line
-                                x1={
-                                  36 +
-                                  (hoverDay /
-                                    Math.max(chartDays.length - 1, 1)) *
-                                    704
-                                }
-                                x2={
-                                  36 +
-                                  (hoverDay /
-                                    Math.max(chartDays.length - 1, 1)) *
-                                    704
-                                }
-                                y1="25"
-                                y2="190"
-                                stroke="#7fa996"
-                                strokeDasharray="3 3"
-                              />
-                              <circle
-                                cx={
-                                  36 +
-                                  (hoverDay /
-                                    Math.max(chartDays.length - 1, 1)) *
-                                    704
-                                }
-                                cy={
-                                  190 -
-                                  (chartDays[hoverDay].tokens / maximum) * 155
-                                }
-                                r="4"
-                                fill="#fff"
-                                stroke="#249f75"
-                                strokeWidth="2"
-                              />
-                            </g>
-                          )}
-                        </svg>
-                        <div className="six-chart-labels">
-                          {chartDays
-                            .filter(
-                              (_, i) =>
-                                i %
-                                  Math.max(
-                                    1,
-                                    Math.floor(chartDays.length / 5),
-                                  ) ===
-                                0,
-                            )
-                            .slice(0, 6)
-                            .map((d) => (
-                              <span key={d.date}>
-                                {dateLabel(d.date + "T12:00:00")}
-                              </span>
-                            ))}
-                        </div>
-                        <p className="six-chart-hover" aria-live="polite">
-                          {hoverDay !== null && chartDays[hoverDay]
-                            ? `${dateLabel(chartDays[hoverDay].date + "T12:00:00")} · ${n(chartDays[hoverDay].tokens)} tokens`
-                            : "Passe pelo gráfico para ver os detalhes de cada dia."}
-                        </p>
-                      </div>
-                    ) : (
-                      empty(
-                        "Seu consumo, em perspectiva",
-                        "Assim que o histórico estiver conectado, você poderá acompanhar seu ritmo por aqui.",
-                      )
-                    )}
+                    {metricsReady && filtered.length ? <DailyChart days={chartDays} /> : empty(noDataTitle, noDataText)}
                   </section>
-                  <section className="six-panel six-models">
+                  <section className="six-panel">
                     <div className="six-panel-head">
                       <div>
                         <h2>Seus modelos</h2>
-                        <p>Participação no consumo</p>
-                      </div>
-                      <span className="six-soft-icon">
-                        <Sparkles size={17} />
-                      </span>
-                    </div>
-                    <div
-                      className="six-donut"
-                      style={{
-                        background:
-                          metricsReady && input + output > 0
-                            ? `conic-gradient(#247e61 0 ${(byModel[0].tokens / (input + output)) * 100}%, #a5d9a3 0 ${((byModel[0].tokens + byModel[1].tokens) / (input + output)) * 100}%, #e2edb2 0 100%)`
-                            : "#eef2ef",
-                      }}
-                    >
-                      <div>
-                        <strong>{metricsReady ? <DashboardNumber value={input + output} replay={numberReplay} /> : "—"}</strong>
-                        <span>tokens totais</span>
+                        <p>Participação nos tokens</p>
                       </div>
                     </div>
-                    <div className="six-model-list">
-                      {byModel.map((m, i) => (
-                        <div key={m.model}>
-                          <span>
-                            <i
-                              style={{
-                                background: ["#247e61", "#a5d9a3", "#e2edb2"][
-                                  i
-                                ],
-                              }}
-                            />
-                            {m.model}
-                          </span>
-                          <strong>
-                            {metricsReady
-                              ? <DashboardNumber value={Math.round(input + output ? m.tokens / (input + output) * 100 : 0)} format="percent" replay={numberReplay} />
-                              : "—"}
-                          </strong>
-                        </div>
-                      ))}
-                    </div>
+                    {metricsReady && total > 0 ? (
+                      <ul className="six-meter-list">
+                        {byModel.map((m) => {
+                          const share = (m.tokens / total) * 100
+                          return (
+                            <li key={m.model}>
+                              <div className="six-meter-head">
+                                <span className="six-meter-name">
+                                  {modelIcon(m.model) && <img src={`/assets/brands/${modelIcon(m.model)}.svg`} alt="" />}
+                                  {m.model}
+                                </span>
+                                <span className="six-meter-figure">
+                                  {compact(m.tokens)} · {share.toFixed(1).replace(".", ",")}%
+                                </span>
+                              </div>
+                              <div
+                                className="six-meter-track"
+                                role="img"
+                                aria-label={`${m.model}: ${n(m.tokens)} tokens, ${share.toFixed(1).replace(".", ",")}% do total, ${n(m.requests)} solicitações`}
+                                title={`${n(m.tokens)} tokens · ${n(m.requests)} solicitações`}
+                              >
+                                <span style={{ width: `${Math.max(share, 1.5)}%` }} />
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    ) : (
+                      empty(
+                        preview ? "Entre para ver seus modelos" : "Sem consumo por modelo",
+                        preview
+                          ? "A divisão por modelo usa os registros reais da sua conta."
+                          : "A divisão aparece quando houver tokens no período.",
+                      )
+                    )}
                   </section>
                 </div>
               )}
+
               {tab === "overview" && (
-                <div className="six-bottom-grid">
-                  <section className="six-savings">
-                    <div>
-                      <span className="six-pill">
-                        <Sparkles size={12} /> Economia estimada
-                      </span>
-                      <h2>Mais espaço para criar.<br />Menos custo no mês.</h2>
-                      <div className="six-saving-total"><strong>{canEstimate ? <DashboardNumber value={saving} format="money" replay={numberReplay} /> : "—"}<small>de economia estimada no consumo selecionado</small></strong><span>{canEstimate && reference > (planCost ?? 0) ? <>−<DashboardNumber value={Math.round(saving / reference * 100)} format="percent" replay={numberReplay} /></> : "—"}</span></div>
-                      <div className="six-cost-comparison">
-                        <div><span>Custo de referência por tokens</span><b>{metricsReady ? <DashboardNumber value={reference} format="money" replay={numberReplay} /> : "—"}</b><i><em style={{width:"100%"}} /></i></div>
-                        <div><span>{demo||subscription?.active ? "SixtySix · mensalidade integral" : "SixtySix · teste sem cobrança"}</span><b>{canEstimate ? <DashboardNumber value={planCost ?? 0} format="money" replay={numberReplay} /> : "—"}</b><i><em style={{width: canEstimate ? `${Math.min(100,(planCost ?? 0) / Math.max(1, reference) * 100)}%` : "0%"}} /></i></div>
-                      </div>
-                      <div className="six-token-costs"><span>Entrada <b><DashboardNumber value={inputCost} format="money" replay={numberReplay} /></b><small><DashboardNumber value={input} replay={numberReplay} /> tokens</small></span><span>Saída <b><DashboardNumber value={outputCost} format="money" replay={numberReplay} /></b><small><DashboardNumber value={output} replay={numberReplay} /> tokens</small></span></div>
-                      <p>{demo ? "Simulação por tokens, com tarifas ilustrativas editáveis. Compara o consumo filtrado com a mensalidade integral de R$ 119, sem rateio." : canEstimate ? "Estimativa com seus tokens reais e preços de referência editáveis. Seu acesso de teste não tem cobrança." : "Vincule sua chave de teste para calcular a estimativa com seu consumo."}</p>
-                      <button onClick={() => setFormula(!formula)}>
-                        Como calculamos <ArrowUpRight size={14} />
-                      </button>
-                    </div>
-                    <img
-                      src="/assets/plan-cash.webp"
-                      alt="Ilustração de notas verdes"
-                    />
-                    {formula && (
-                      <div className="six-formula">
-                        <div className="six-rate-fields"><label>Entrada · R$ por 1 milhão<input type="number" min="0" max="100000" step="0.01" value={inputRate} onChange={e => setInputRate(Math.min(100000, Math.max(0, Number(e.target.value) || 0)))} /></label><label>Saída · R$ por 1 milhão<input type="number" min="0" max="100000" step="0.01" value={outputRate} onChange={e => setOutputRate(Math.min(100000, Math.max(0, Number(e.target.value) || 0)))} /></label></div>
-                        <p>({n(input)} ÷ 1.000.000 × {money(inputRate)}) + ({n(output)} ÷ 1.000.000 × {money(outputRate)}) = {money(reference)}. Economia = máximo entre zero e esse custo menos {money(planCost ?? 0)}. Os preços são hipóteses da simulação, aplicados aos modelos filtrados; não são uma tabela oficial. Mude-os para a referência que deseja comparar.</p>
-                      </div>
-                    )}
-                  </section>
-                  <section className="six-panel six-quickstart">
-                    <div className="six-panel-head">
-                      <div>
-                        <h2>Sua próxima conexão</h2>
-                        <p>Escolha uma ferramenta e comece a construir.</p>
-                      </div>
-                      <Terminal size={19} />
-                    </div>
+                <section className="six-feature" aria-labelledby="six-feature-title">
+                  <svg className="six-feature-waves" viewBox="0 0 800 320" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M-10 210 C 160 140, 330 290, 520 210 S 760 150, 820 190" />
+                    <path d="M-10 250 C 180 190, 320 330, 540 250 S 760 200, 820 235" />
+                    <path d="M-10 290 C 200 240, 340 360, 560 290 S 770 250, 820 280" />
+                  </svg>
+                  <div className="six-feature-copy">
+                    <span className="six-eyebrow is-light">integração nativa</span>
+                    <h2 id="six-feature-title">
+                      Sua próxima conexão <em>em poucos minutos.</em>
+                    </h2>
+                    <p>Escolha uma ferramenta e siga o passo a passo com a URL oficial e a sua chave individual.</p>
+                    <button type="button" className="six-primary" onClick={() => switchTab("guides")}>
+                      Ver todos os guias <ArrowRight size={15} />
+                    </button>
+                  </div>
+                  <div className="six-feature-tools">
                     {[
-                      [
-                        "claude",
-                        "Claude Code",
-                        "No seu terminal, do seu jeito.",
-                        "claude",
-                      ],
-                      [
-                        "codex",
-                        "Codex",
-                        "Seu workspace com Astra 6.",
-                        "openai",
-                      ],
-                      ["glm", "Claude Code", "Conecte o perfil GLM 5.", "glm"],
+                      ["claude", "Claude Code", "Fable 5.1 ou 5.2 no seu terminal", "claude"],
+                      ["codex", "Codex", "Astra 6 no seu workspace", "openai"],
+                      ["glm", "Claude Code", "Perfil GLM 5", "glm"],
                     ].map(([id, title, desc, icon]) => (
                       <button
                         key={id}
+                        type="button"
                         onClick={() => {
                           setTool(id)
                           switchTab("guides")
@@ -1068,26 +1056,18 @@ export default function DashboardPage() {
                         <ArrowUpRight size={17} />
                       </button>
                     ))}
-                  </section>
-                </div>
+                  </div>
+                </section>
               )}
-              <section className="six-panel six-history">
+
+              <section className="six-panel">
                 <div className="six-panel-head">
                   <div>
-                    <h2>
-                      Atividade {tab === "overview" ? "recente" : "do período"}
-                    </h2>
-                    <p>
-                      {demo
-                        ? "Solicitações ilustrativas do seu workspace de demonstração"
-                        : "Acompanhe o uso da sua chave individual"}
-                    </p>
+                    <h2>Atividade {tab === "overview" ? "recente" : "do período"}</h2>
+                    <p>Solicitações feitas com as chaves da sua conta</p>
                   </div>
                   {tab === "overview" ? (
-                    <button
-                      className="six-text-button"
-                      onClick={() => switchTab("usage")}
-                    >
+                    <button type="button" className="six-text-button" onClick={() => switchTab("usage")}>
                       Ver todo o consumo <ArrowRight size={14} />
                     </button>
                   ) : (
@@ -1095,6 +1075,7 @@ export default function DashboardPage() {
                       <Search size={15} />
                       <input
                         placeholder="Buscar modelo ou solicitação"
+                        aria-label="Buscar modelo ou solicitação"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                       />
@@ -1105,17 +1086,14 @@ export default function DashboardPage() {
                 {tab === "usage" && filtered.length > 0 && (
                   <div className="six-pagination">
                     <span>
-                      {n(filtered.length)} solicitações · página {page} de{" "}
-                      {Math.ceil(filtered.length / 10)}
+                      {n(filtered.length)} solicitações · página {page} de {Math.ceil(filtered.length / 10)}
                     </span>
                     <div>
-                      <button
-                        disabled={page === 1}
-                        onClick={() => setPage(page - 1)}
-                      >
+                      <button type="button" disabled={page === 1} onClick={() => setPage(page - 1)}>
                         Anterior
                       </button>
                       <button
+                        type="button"
                         disabled={page >= Math.ceil(filtered.length / 10)}
                         onClick={() => setPage(page + 1)}
                       >
@@ -1131,59 +1109,156 @@ export default function DashboardPage() {
           {tab === "keys" && (
             <>
               <section className="six-panel six-key-intro">
-                <span className="six-key-large">
-                  <KeyRound size={26} />
+                <span className="six-soft-icon is-large">
+                  <KeyRound size={24} />
                 </span>
                 <div>
                   <h2>Uma chave sua. Todas as suas ferramentas.</h2>
-                  <p>
-                    Use sua chave individual para configurar os perfis
-                    disponíveis no seu acesso.
-                  </p>
+                  <p>Use sua chave individual para configurar os perfis disponíveis no seu acesso.</p>
                 </div>
-                <button
-                  className="six-primary"
-                  onClick={() => switchTab("guides")}
-                >
+                <button type="button" className="six-primary" onClick={() => switchTab("guides")}>
                   Configurar ferramenta <ArrowRight size={15} />
                 </button>
               </section>
-              {!demo && session && <section className="six-panel six-account-key-actions">
-                {trial?<><h2>{trial.active?'Seu teste de 7 dias está ativo':Date.parse(trial.expires)>Date.now()?'Gere uma chave para continuar seu teste':'Teste de 7 dias encerrado'}</h2><p>{trial.revoked?'Chave revogada. ':''}Prazo: {new Date(trial.expires).toLocaleString('pt-BR')}.</p>{trial.revoked && Date.parse(trial.expires)>Date.now() && <button className="six-primary" disabled={busy} onClick={replaceTrialKey}>{busy?'Gerando…':'Gerar nova chave de teste'}</button>}<Link className="six-primary" to={trial.active?'/teste-gratis':'/planos'}>{trial.active?'Consultar minha chave de teste':'Ver planos'}</Link></>:<><h2>Comece seu teste grátis</h2><p>Ative uma chave individual por 7 dias, sem cartão.</p><Link className="six-primary" to="/teste-gratis">Ativar meus 7 dias</Link></>}
-                <h2>Já tem uma chave de teste?</h2><p>Vincule sua chave atual para consultar o histórico. A chave continua funcionando nos seus aplicativos.</p>
-                <form onSubmit={e => { e.preventDefault(); mutateAccount("claim", { key: claimKey }) }}><input type="password" autoComplete="off" aria-label="Chave de teste existente" placeholder="Cole sua chave individual sk-flg-…" value={claimKey} onChange={e => setClaimKey(e.target.value)} /><button className="six-primary" disabled={busy || !claimKey.trim()}>Vincular chave</button></form>
-                <h2>Criar outra chave</h2><p>Acessos anteriores vinculados podem criar até 10 chaves ativas. O teste automático usa uma chave para todas as suas ferramentas.</p>
-                <form onSubmit={e => { e.preventDefault(); mutateAccount("keys", { name: newKeyName }) }}><input aria-label="Nome da nova chave" maxLength={80} placeholder="Ex.: meu notebook" value={newKeyName} onChange={e => setNewKeyName(e.target.value)} /><button className="six-secondary" disabled={busy || !newKeyName.trim() || !keys.some(k => k.active&&!k.managed)}>Criar chave</button></form>
-                {issuedKey && <div className="six-issued-key"><strong>Copie agora. Esta chave só é exibida nesta sessão.</strong><code>{issuedKey}</code><button onClick={() => copy(issuedKey)}>Copiar chave</button><button onClick={() => setIssuedKey("")}>Já guardei</button></div>}
-              </section>}
+
+              {session && (
+                <div className="six-key-grid">
+                  <section className="six-panel six-key-card">
+                    <span className="six-step-badge">Teste grátis</span>
+                    {trial ? (
+                      <>
+                        <h2>
+                          {trial.active
+                            ? "Seu teste de 7 dias está ativo"
+                            : Date.parse(trial.expires) > Date.now()
+                              ? "Gere uma chave para continuar seu teste"
+                              : "Teste de 7 dias encerrado"}
+                        </h2>
+                        <p>
+                          {trial.revoked ? "Chave revogada. " : ""}Prazo: {new Date(trial.expires).toLocaleString("pt-BR")}.
+                        </p>
+                        <div className="six-key-actions">
+                          {trial.revoked && Date.parse(trial.expires) > Date.now() && (
+                            <button type="button" className="six-primary" disabled={busy} onClick={replaceTrialKey}>
+                              {busy ? "Gerando…" : "Gerar nova chave de teste"}
+                            </button>
+                          )}
+                          <Link className={trial.revoked ? "six-secondary" : "six-primary"} to={trial.active ? "/teste-gratis" : "/planos"}>
+                            {trial.active ? "Consultar minha chave de teste" : "Ver planos"}
+                          </Link>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h2>Comece seu teste grátis</h2>
+                        <p>Ative uma chave individual por 7 dias, sem cartão.</p>
+                        <div className="six-key-actions">
+                          <Link className="six-primary" to="/teste-gratis">
+                            Ativar meus 7 dias
+                          </Link>
+                        </div>
+                      </>
+                    )}
+                  </section>
+
+                  <section className="six-panel six-key-card">
+                    <span className="six-step-badge">Vincular</span>
+                    <h2>Já tem uma chave de teste?</h2>
+                    <p>Vincule sua chave atual para consultar o histórico. A chave continua funcionando nos seus aplicativos.</p>
+                    <form
+                      className="six-inline-form"
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        mutateAccount("claim", { key: claimKey })
+                      }}
+                    >
+                      <input
+                        type="password"
+                        autoComplete="off"
+                        aria-label="Chave de teste existente"
+                        placeholder="Cole sua chave individual sk-flg-…"
+                        value={claimKey}
+                        onChange={(e) => setClaimKey(e.target.value)}
+                      />
+                      <button type="submit" className="six-primary" disabled={busy || !claimKey.trim()}>
+                        Vincular chave
+                      </button>
+                    </form>
+                  </section>
+
+                  <section className="six-panel six-key-card">
+                    <span className="six-step-badge">Nova chave</span>
+                    <h2>Criar outra chave</h2>
+                    <p>
+                      Acessos anteriores vinculados podem criar até 10 chaves ativas. O teste automático usa uma chave para
+                      todas as suas ferramentas.
+                    </p>
+                    <form
+                      className="six-inline-form"
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        mutateAccount("keys", { name: newKeyName })
+                      }}
+                    >
+                      <input
+                        aria-label="Nome da nova chave"
+                        maxLength={80}
+                        placeholder="Ex.: meu notebook"
+                        value={newKeyName}
+                        onChange={(e) => setNewKeyName(e.target.value)}
+                      />
+                      <button
+                        type="submit"
+                        className="six-secondary"
+                        disabled={busy || !newKeyName.trim() || !keys.some((k) => k.active && !k.managed)}
+                      >
+                        Criar chave
+                      </button>
+                    </form>
+                  </section>
+                </div>
+              )}
+
+              {accountError && session && (
+                <p className="six-inline-notice is-error" role="alert">
+                  <CircleAlert size={15} /> {accountError}
+                </p>
+              )}
+
+              {issuedKey && (
+                <div className="six-issued-key">
+                  <strong>Copie agora. Esta chave só é exibida nesta sessão.</strong>
+                  <code>{issuedKey}</code>
+                  <div>
+                    <button type="button" className="six-primary" onClick={() => copy(issuedKey)}>
+                      <Copy size={15} /> Copiar chave
+                    </button>
+                    <button type="button" className="six-secondary" onClick={() => setIssuedKey("")}>
+                      Já guardei
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <section className="six-panel">
                 <div className="six-panel-head">
                   <div>
                     <h2>Minhas chaves</h2>
-                    <p>
-                      {demo
-                        ? "Exemplo visual. Esta chave não autentica solicitações."
-                        : "Chaves cadastradas para sua conta"}
-                    </p>
+                    <p>Chaves cadastradas para a sua conta</p>
                   </div>
-                  <button
-                    className="six-icon-button"
-                    aria-label="Atualizar chaves"
-                    onClick={() => setRefresh(refresh + 1)}
-                  >
-                    <RefreshCw size={16} />
-                  </button>
+                  {session && (
+                    <button
+                      type="button"
+                      className="six-icon-button"
+                      aria-label="Atualizar chaves"
+                      title="Atualizar chaves"
+                      onClick={() => setRefresh(refresh + 1)}
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+                  )}
                 </div>
-                {demo ? (
-                  <div className="six-demo-key">
-                    <KeyRound size={20} />
-                    <div>
-                      <strong>Minha chave de desenvolvimento</strong>
-                      <code>DEMO •••••••• ••••••••</code>
-                    </div>
-                    <span className="six-pill">Ilustrativa</span>
-                  </div>
-                ) : !session ? (
+                {!session ? (
                   empty(
                     "Entre para ver suas chaves",
                     "Seu cadastro e suas chaves ficam associados à sua conta.",
@@ -1191,74 +1266,73 @@ export default function DashboardPage() {
                       Entrar na SixtySix <ArrowRight size={14} />
                     </Link>,
                   )
-                ) : keyState === "loading" ? (
-                  empty(
-                    "Carregando suas chaves",
-                    "Consultando os dados da sua conta.",
-                  )
-                ) : keyState === "error" ? (
+                ) : keyState === "loading" && !ownData ? (
+                  empty("Carregando suas chaves", "Consultando os dados da sua conta.")
+                ) : keyState === "error" && !ownData ? (
                   empty(
                     "Não foi possível carregar as chaves",
                     "Tente novamente. Se persistir, entre em contato com o suporte.",
-                    <button
-                      className="six-secondary"
-                      onClick={() => setRefresh(refresh + 1)}
-                    >
+                    <button type="button" className="six-secondary" onClick={() => setRefresh(refresh + 1)}>
                       Tentar novamente
                     </button>,
                   )
                 ) : keys.length ? (
-                  <div className="six-table-scroll">
-                    <table className="six-table">
-                      <thead>
-                        <tr>
-                          <th>Nome</th>
-                          <th>Prefixo</th>
-                          <th>Criada em</th>
-                          <th>Status</th>
-                          <th>Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {keys.map((k) => (
-                          <tr key={k.id}>
-                            <td>
-                              <strong>{k.name}</strong>
-                            </td>
-                            <td>
-                              <code>{k.prefix}••••••••</code>
-                            </td>
-                            <td>{dateLabel(k.created)}</td>
-                            <td>
-                              <span className="six-status">
-                                {k.active ? "Ativa" : "Inativa"}
-                              </span>
-                            </td>
-                            <td>{k.active && (revokeId === k.id ? <span><button disabled={busy} onClick={() => mutateAccount("revoke", { id: k.id })}>Confirmar revogação</button> <button onClick={() => setRevokeId("")}>Cancelar</button></span> : <button onClick={() => setRevokeId(k.id)}>Revogar</button>)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <ul className="six-key-list">
+                    {keys.map((k) => (
+                      <li key={k.id} className="six-key-row">
+                        <div className="six-key-main">
+                          <strong>{k.name}</strong>
+                          <code>{k.prefix.startsWith("sk-") ? `${k.prefix}••••••••` : k.prefix}</code>
+                        </div>
+                        <div className="six-key-meta">
+                          <span>Criada em</span>
+                          <strong>{dateLabel(k.created)}</strong>
+                        </div>
+                        <span className={`six-status ${k.active ? "" : "muted"}`}>
+                          {k.active ? <Check size={11} /> : <X size={11} />}
+                          {k.active ? "Ativa" : "Inativa"}
+                        </span>
+                        <div className="six-key-row-actions">
+                          {k.active &&
+                            (revokeId === k.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="six-danger"
+                                  disabled={busy}
+                                  onClick={() => mutateAccount("revoke", { id: k.id })}
+                                >
+                                  Confirmar revogação
+                                </button>
+                                <button type="button" className="six-text-button" onClick={() => setRevokeId("")}>
+                                  Cancelar
+                                </button>
+                              </>
+                            ) : (
+                              <button type="button" className="six-text-button is-danger" onClick={() => setRevokeId(k.id)}>
+                                Revogar
+                              </button>
+                            ))}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
                   empty(
                     "Sua chave começa aqui",
                     "Vincule sua chave de teste no formulário acima. Se ainda não recebeu uma, solicite ao suporte.",
-                    <a
-                      className="six-primary"
-                      href="mailto:alisongeneral25@gmail.com?subject=Chave%20individual%20SixtySix"
-                    >
+                    <a className="six-primary" href="mailto:alisongeneral25@gmail.com?subject=Chave%20individual%20SixtySix">
                       Solicitar minha chave <ArrowUpRight size={14} />
                     </a>,
                   )
                 )}
               </section>
+
               <div className="six-note">
                 <ShieldCheck size={18} />
                 <p>
-                  O segredo completo de uma chave não pode ser recuperado a
-                  partir do prefixo. Use a chave entregue a você e guarde-a em
-                  local seguro.
+                  O segredo completo de uma chave não pode ser recuperado a partir do prefixo. Use a chave entregue a você e
+                  guarde-a em local seguro.
                 </p>
               </div>
             </>
@@ -1275,13 +1349,15 @@ export default function DashboardPage() {
                 ].map(([id, title, desc, icon]) => (
                   <button
                     key={id}
+                    type="button"
+                    aria-pressed={tool === id}
                     className={tool === id ? "selected" : ""}
                     onClick={() => setTool(id)}
                   >
                     <img src={`/assets/brands/${icon}.svg`} alt="" />
                     <strong>{title}</strong>
                     <span>{desc}</span>
-                    {tool === id && <CircleCheck size={15} />}
+                    {tool === id && <CircleCheck size={16} className="six-choice-check" />}
                   </button>
                 ))}
               </div>
@@ -1289,7 +1365,7 @@ export default function DashboardPage() {
                 <section className="six-panel six-guide">
                   <div className="six-panel-head">
                     <div>
-                      <span className="six-kicker">PASSO A PASSO</span>
+                      <span className="six-step-badge">Passo a passo</span>
                       <h2>
                         {tool === "claude"
                           ? "Fable 5.1 ou 5.2 no seu terminal"
@@ -1300,21 +1376,19 @@ export default function DashboardPage() {
                               : "GLM 5 no Claude Code"}
                       </h2>
                     </div>
-                    <span className="six-pill">
-                      {tool === "codex" ? "Responses" : "Anthropic"}
-                    </span>
+                    <span className="six-pill">{tool === "codex" ? "Responses" : "Anthropic"}</span>
                   </div>
-                  {(tool === "claude" || tool === "codex") && (
-                    <div
-                      className="six-os-tabs"
-                      aria-label="Sistema ou terminal"
-                    >
+                  {(tool === "claude" || tool === "codex" || tool === "glm") && (
+                    <div className="six-segmented is-compact" role="tablist" aria-label="Sistema ou terminal">
                       {[
                         ["powershell", "Windows · PowerShell"],
                         ["cmd", "Windows · CMD"],
                         ["bash", "macOS / Linux"],
                       ].map(([id, label]) => (
                         <button
+                          type="button"
+                          role="tab"
+                          aria-selected={os === id}
                           className={os === id ? "selected" : ""}
                           key={id}
                           onClick={() => setOs(id)}
@@ -1327,43 +1401,26 @@ export default function DashboardPage() {
                   {tool === "claude" && (
                     <>
                       <GuideStep number="01" title="Instale o Claude Code">
-                        <p>
-                          Com Node.js e npm instalados, abra o terminal e
-                          execute:
-                        </p>
-                        <CodeBlock
-                          code="npm install -g @anthropic-ai/claude-code"
-                          copy={copy}
-                        />
+                        <p>Com Node.js e npm instalados, abra o terminal e execute:</p>
+                        <CodeBlock code="npm install -g @anthropic-ai/claude-code" copy={copy} label="Terminal" />
                       </GuideStep>
-                      <GuideStep
-                        number="02"
-                        title="Configure sua chave e inicie"
-                      >
+                      <GuideStep number="02" title="Configure sua chave e inicie">
                         <p>
-                          Os comandos abaixo valem para a janela atual. Use sua
-                          chave individual no lugar do campo indicado.
+                          Os comandos abaixo valem para a janela atual. Use sua chave individual no lugar do campo indicado.
                         </p>
-                        <CodeBlock code={claudeCode} copy={copy} />
+                        <CodeBlock code={claudeCode} copy={copy} label={osLabel} />
                       </GuideStep>
-                      <GuideStep
-                        number="03"
-                        title="Faça sua primeira solicitação"
-                      >
+                      <GuideStep number="03" title="Faça sua primeira solicitação">
                         <p>
-                          Ao abrir o Claude Code, envie uma mensagem curta. Caso
-                          apareça uma tela de login da Anthropic, confira as
-                          variáveis na mesma janela e reinicie o comando.
+                          Ao abrir o Claude Code, envie uma mensagem curta. Caso apareça uma tela de login da Anthropic, confira
+                          as variáveis na mesma janela e reinicie o comando.
                         </p>
                       </GuideStep>
                     </>
                   )}
                   {tool === "codex" && (
                     <>
-                      <GuideStep
-                        number="01"
-                        title="Salve sua chave no ambiente"
-                      >
+                      <GuideStep number="01" title="Salve sua chave no ambiente">
                         <p>
                           {os === "bash"
                             ? "Configure a variável nesta sessão do terminal."
@@ -1378,33 +1435,20 @@ export default function DashboardPage() {
                                 : `export SIXTYSIX_GATEWAY_API_KEY=${shellKey}`
                           }
                           copy={copy}
+                          label={osLabel}
                         />
                       </GuideStep>
-                      <GuideStep
-                        number="02"
-                        title="Edite a configuração do Codex"
-                      >
+                      <GuideStep number="02" title="Edite a configuração do Codex">
                         <p>
-                          Abra{" "}
-                          <code>
-                            {os === "bash"
-                              ? "~/.codex/config.toml"
-                              : "%USERPROFILE%\\.codex\\config.toml"}
-                          </code>
-                          . Mescle os campos se o provedor já existir; evite
-                          repetir a mesma tabela.
+                          Abra <code>{os === "bash" ? "~/.codex/config.toml" : "%USERPROFILE%\\.codex\\config.toml"}</code>.
+                          Mescle os campos se o provedor já existir; evite repetir a mesma tabela.
                         </p>
-                        <CodeBlock code={codexConfig} copy={copy} />
+                        <CodeBlock code={codexConfig} copy={copy} label="config.toml" />
                       </GuideStep>
-                      <GuideStep
-                        number="03"
-                        title="Abra o Codex e selecione Astra 6"
-                      >
+                      <GuideStep number="03" title="Abra o Codex e selecione Astra 6">
                         <p>
-                          Reinicie o aplicativo a partir do ambiente
-                          configurado. O identificador deste perfil é{" "}
-                          <code>gpt-6-astra</code>. GLM 5 usa outra
-                          configuração, no Claude Code.
+                          Reinicie o aplicativo a partir do ambiente configurado. O identificador deste perfil é{" "}
+                          <code>gpt-6-astra</code>. GLM 5 usa outra configuração, no Claude Code.
                         </p>
                       </GuideStep>
                     </>
@@ -1413,49 +1457,75 @@ export default function DashboardPage() {
                     <>
                       <GuideStep number="01" title="Ative a conexão com terceiros">
                         <p>
-                          Abra o Claude Desktop atualizado e clique na engrenagem de Configurações. Procure Conexão ou Inferência de terceiros. Ative a opção de usar um provedor de terceiros, se ela aparecer, e escolha Gateway no campo Conexão. Os nomes podem variar conforme a versão. Esta configuração precisa ser feita no aplicativo: colar a chave no chat ou configurar um conector MCP não conecta o gateway de modelos.
+                          Abra o Claude Desktop atualizado e clique na engrenagem de Configurações. Procure Conexão ou
+                          Inferência de terceiros. Ative a opção de usar um provedor de terceiros, se ela aparecer, e escolha
+                          Gateway no campo Conexão. Os nomes podem variar conforme a versão. Esta configuração precisa ser feita
+                          no aplicativo: colar a chave no chat ou configurar um conector MCP não conecta o gateway de modelos.
                         </p>
                       </GuideStep>
                       <GuideStep number="02" title="Preencha as credenciais">
-                        <p>Em Credenciais de gateway, escolha Chave de API estática. Copie sua chave na aba Chaves de API deste painel e cole no campo Chave de API do gateway. Use a URL inteira abaixo, sem acrescentar /v1/messages. Em Esquema de autenticação, selecione x-api-key. O campo Origem do iframe de visualização de artefato é separado da conexão; deixe vazio se você não configurou uma origem de artefatos.</p>
+                        <p>
+                          Em Credenciais de gateway, escolha Chave de API estática. Copie sua chave na aba Chaves de API deste
+                          painel e cole no campo Chave de API do gateway. Use a URL inteira abaixo, sem acrescentar
+                          /v1/messages. Em Esquema de autenticação, selecione x-api-key. O campo Origem do iframe de
+                          visualização de artefato é separado da conexão; deixe vazio se você não configurou uma origem de
+                          artefatos.
+                        </p>
                         <CodeBlock
                           code={`Tipo: Chave de API estática\nURL base: https://www.sixtysix.online\nChave: ${actualKey}\nAutenticação: x-api-key\nModelo: claude-fable-5-1`}
                           copy={copy}
+                          label="Claude Desktop"
                         />
                       </GuideStep>
                       <GuideStep number="03" title="Salve, reinicie e teste">
                         <p>
-                          Clique em Testar conexão. Depois clique em Salvar e Reiniciar e aguarde o aplicativo abrir novamente. Crie uma conversa nova na área Code e escolha Fable 5.1 ou Fable 5.2 no seletor de modelos. Conversas antigas podem manter o modelo anterior. Se o teste ficar vermelho, confira a chave completa, a URL e x-api-key. Se aparecer Não foi possível atualizar as configurações salvas, o aplicativo ainda não salvou a conexão: feche e abra o Claude e tente salvar novamente. Se a opção de terceiros não existir na sua versão, use Claude Code no terminal, conforme a outra aba deste guia.
+                          Clique em Testar conexão. Depois clique em Salvar e Reiniciar e aguarde o aplicativo abrir novamente.
+                          Crie uma conversa nova na área Code e escolha Fable 5.1 ou Fable 5.2 no seletor de modelos. Conversas
+                          antigas podem manter o modelo anterior. Se o teste ficar vermelho, confira a chave completa, a URL e
+                          x-api-key. Se aparecer Não foi possível atualizar as configurações salvas, o aplicativo ainda não
+                          salvou a conexão: feche e abra o Claude e tente salvar novamente. Se a opção de terceiros não existir
+                          na sua versão, use Claude Code no terminal, conforme a outra aba deste guia.
                         </p>
                       </GuideStep>
                       <GuideStep number="04" title="Usar GLM 5 pelo Claude">
-                        <p>Para o perfil GLM 5, use a conexão compatível com Anthropic abaixo. No Claude Code do terminal, configure ANTHROPIC_BASE_URL com a URL terminando em /glm e inicie com claude --model glm-5. No Desktop, isso depende de sua versão aceitar um identificador de modelo personalizado: selecione ou cadastre glm-5. Trocar somente o nome exibido ou deixar Fable selecionado não troca o perfil para GLM. Se o Desktop não permitir esse modelo, use o Claude Code no terminal.</p>
-                        <CodeBlock code={`URL base: https://www.sixtysix.online/glm\nModelo: glm-5\nChave: ${actualKey}\nAutenticação: x-api-key`} copy={copy}/>
+                        <p>
+                          Para o perfil GLM 5, use a conexão compatível com Anthropic abaixo. No Claude Code do terminal,
+                          configure ANTHROPIC_BASE_URL com a URL terminando em /glm e inicie com claude --model glm-5. No
+                          Desktop, isso depende de sua versão aceitar um identificador de modelo personalizado: selecione ou
+                          cadastre glm-5. Trocar somente o nome exibido ou deixar Fable selecionado não troca o perfil para GLM.
+                          Se o Desktop não permitir esse modelo, use o Claude Code no terminal.
+                        </p>
+                        <CodeBlock
+                          code={`URL base: https://www.sixtysix.online/glm\nModelo: glm-5\nChave: ${actualKey}\nAutenticação: x-api-key`}
+                          copy={copy}
+                          label="Perfil GLM 5"
+                        />
                       </GuideStep>
                     </>
                   )}
                   {tool === "glm" && (
                     <>
-                      <GuideStep
-                        number="01"
-                        title="Adicione um provedor personalizado"
-                      >
+                      <GuideStep number="01" title="Adicione um provedor personalizado">
                         <p>
-                          Abra o terminal e instale com npm install -g @anthropic-ai/claude-code.
-                          Execute os comandos abaixo na mesma janela. Eles já usam a opção de sistema selecionada neste guia e sua chave individual.
+                          Abra o terminal e instale com npm install -g @anthropic-ai/claude-code. Execute os comandos abaixo na
+                          mesma janela. Eles já usam a opção de sistema selecionada neste guia e sua chave individual.
                         </p>
                       </GuideStep>
                       <GuideStep number="02" title="Configure o perfil GLM 5">
                         <CodeBlock
-                          code={claudeCode.split("https://www.sixtysix.online").join("https://www.sixtysix.online/glm").split("claude-fable-5-1").join("glm-5")}
+                          code={claudeCode
+                            .split("https://www.sixtysix.online")
+                            .join("https://www.sixtysix.online/glm")
+                            .split("claude-fable-5-1")
+                            .join("glm-5")}
                           copy={copy}
+                          label={osLabel}
                         />
                       </GuideStep>
                       <GuideStep number="03" title="Ative o provedor e teste">
                         <p>
-                          Inicie com claude --model glm-5 na mesma janela e envie uma mensagem curta.
-                          Esta configuração é para o Claude Code; ela não adiciona GLM
-                          ao catálogo atual do Codex.
+                          Inicie com claude --model glm-5 na mesma janela e envie uma mensagem curta. Esta configuração é para
+                          o Claude Code; ela não adiciona GLM ao catálogo atual do Codex.
                         </p>
                       </GuideStep>
                     </>
@@ -1475,42 +1545,29 @@ export default function DashboardPage() {
                         autoComplete="off"
                         value={clientKey}
                         placeholder="Cole sua chave individual"
-                        onChange={(e) =>
-                          setClientKey(e.target.value.replace(/[\r\n]/g, ""))
-                        }
+                        onChange={(e) => setClientKey(e.target.value.replace(/[\r\n]/g, ""))}
                       />
-                      <button
-                        aria-label={reveal ? "Ocultar chave" : "Mostrar chave"}
-                        onClick={() => setReveal(!reveal)}
-                      >
+                      <button type="button" aria-label={reveal ? "Ocultar chave" : "Mostrar chave"} onClick={() => setReveal(!reveal)}>
                         {reveal ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
                     </label>
-                    <small>
-                      O preenchimento fica apenas na memória desta tela. Os
-                      comandos copiados conterão sua chave.
-                    </small>
+                    <small>O preenchimento fica apenas na memória desta tela. Os comandos copiados conterão sua chave.</small>
                     {clientKey && (
-                      <button
-                        className="six-text-button"
-                        onClick={() => setClientKey("")}
-                      >
+                      <button type="button" className="six-text-button" onClick={() => setClientKey("")}>
                         Limpar chave
                       </button>
                     )}
                   </section>
                   <section className="six-panel">
-                    <ShieldCheck size={21} />
+                    <span className="six-soft-icon">
+                      <ShieldCheck size={20} />
+                    </span>
                     <h3>Não conectou?</h3>
                     <p>
-                      Confira a URL, o identificador do modelo e se a chave está
-                      completa. Não envie o segredo da chave ao compartilhar um
-                      erro.
+                      Confira a URL, o identificador do modelo e se a chave está completa. Não envie o segredo da chave ao
+                      compartilhar um erro.
                     </p>
-                    <button
-                      className="six-text-button"
-                      onClick={() => switchTab("help")}
-                    >
+                    <button type="button" className="six-text-button" onClick={() => switchTab("help")}>
                       Abrir central de ajuda <ArrowRight size={14} />
                     </button>
                   </section>
@@ -1519,32 +1576,58 @@ export default function DashboardPage() {
             </>
           )}
 
-          {tab === "chat" && <SiteChat key={session?.user.id||'guest'} models={demo?[]:subscription?.active?subscription.models:trial?.active?['claude-fable-5-1','claude-fable-5-2','gpt-6-astra','glm-5']:[]}/>}
+          {tab === "chat" && (
+            <SiteChat
+              key={session?.user.id || "guest"}
+              models={
+                subscription?.active
+                  ? subscription.models
+                  : trial?.active
+                    ? ["claude-fable-5-1", "claude-fable-5-2", "gpt-6-astra", "glm-5"]
+                    : []
+              }
+            />
+          )}
 
           {tab === "plan" && (
             <>
               <div className="six-plan-grid">
                 <section className="six-panel six-plan-main">
-                  <span className="six-pill">
-                    {demo ? "Plano ilustrativo" : "Minha assinatura"}
-                  </span>
-                  <h2>{demo ? "Pro" : trial?.active&&!subscription?.active ? "Teste grátis · 7 dias" : subscription?`${subscription.name}${subscription.active?'':subscription.status==='pending'?' · aguardando pagamento':' · período encerrado'}`:trial?.active ? "Teste grátis · 7 dias" : keys.some(k => k.active) ? "Acesso de teste ativo" : trial ? "Teste encerrado" : "Sem acesso vinculado"}</h2>
-                  {subscription&&<p>{subscription.expires?`Período pago até ${new Date(subscription.expires).toLocaleString('pt-BR')}.`:'Aguardando confirmação do pagamento.'} {subscription.status==='cancelled'?'Renovação cancelada.':''}</p>}
-                  {trial&&<p>{trial.revoked?'Chave do teste revogada.':`Fim do teste: ${new Date(trial.expires).toLocaleString('pt-BR')}.`}</p>}
-                  <p>
-                    {trial?.active&&!subscription?.active?'Modelos liberados no teste: Fable 5.1, Fable 5.2, Astra 6 e GLM 5. Todos disponíveis durante os 7 dias.':subscription?`Modelos do seu plano: ${subscription.models.map(model=>({'claude-fable-5-1':'Fable 5.1','claude-fable-5-2':'Fable 5.2','gpt-6-astra':'Astra 6','glm-5':'GLM 5'}[model]||model)).join(', ')}.`:'Seu espaço para construir com Fable 5.1, Fable 5.2, Astra 6 e GLM 5.'}
-                  </p>
+                  <span className="six-step-badge">Minha assinatura</span>
+                  <h2>{preview ? "Entre para ver seu plano" : planTitle}</h2>
+                  {subscription && (
+                    <p>
+                      {subscription.expires
+                        ? `Período pago até ${new Date(subscription.expires).toLocaleString("pt-BR")}.`
+                        : "Aguardando confirmação do pagamento."}{" "}
+                      {subscription.status === "cancelled" ? "Renovação cancelada." : ""}
+                    </p>
+                  )}
+                  {trial && (
+                    <p>{trial.revoked ? "Chave do teste revogada." : `Fim do teste: ${new Date(trial.expires).toLocaleString("pt-BR")}.`}</p>
+                  )}
+                  {!preview && (
+                    <p>
+                      {trial?.active && !subscription?.active
+                        ? "Modelos liberados no teste: Fable 5.1, Fable 5.2, Astra 6 e GLM 5. Todos disponíveis durante os 7 dias."
+                        : subscription
+                          ? `Modelos do seu plano: ${subscription.models.map((model) => MODEL_LABELS[model] || model).join(", ")}.`
+                          : "Seu espaço para construir com Fable 5.1, Fable 5.2, Astra 6 e GLM 5."}
+                    </p>
+                  )}
                   <div className="six-plan-price">
-                    {demo ? <DashboardNumber value={119} format="money" replay={numberReplay} /> : subscription?<DashboardNumber value={subscription.amount} format="money" replay={numberReplay}/>:"—"}
+                    {subscription ? <DashboardNumber value={subscription.amount} format="money" /> : <strong>—</strong>}
                     <span>
-                      {demo
-                        ? "/ mês · exemplo"
-                        : subscription?(subscription.mode==='pix'?'/ 30 dias · pagamento com Pix':'/ mês · renovação pelo Mercado Pago'):"Sem cobrança ativa"}
+                      {subscription
+                        ? subscription.mode === "pix"
+                          ? "/ 30 dias · pagamento com Pix"
+                          : "/ mês · renovação pelo Mercado Pago"
+                        : "Sem cobrança ativa"}
                     </span>
                   </div>
                   <div className="six-plan-benefits">
                     {[
-                      subscription&&!subscription.api?"Uso somente pelo site":"Chave individual de acesso",
+                      subscription && !subscription.api ? "Uso somente pelo site" : "Chave individual de acesso",
                       "Configuração nas ferramentas compatíveis",
                       "Histórico e consumo por perfil",
                       "Tutoriais organizados em um só lugar",
@@ -1555,29 +1638,24 @@ export default function DashboardPage() {
                       </span>
                     ))}
                   </div>
-                  <Link className="six-primary" to="/planos">
-                    Ver planos disponíveis <ArrowUpRight size={15} />
-                  </Link>
-                  {!demo&&<Link className="six-secondary" style={{marginTop:12}} to="/assinatura">Pagamentos, chave e cancelamento <ArrowRight size={15}/></Link>}
+                  <div className="six-plan-actions">
+                    <Link className="six-primary" to="/planos">
+                      Ver planos disponíveis <ArrowUpRight size={15} />
+                    </Link>
+                    {session && (
+                      <Link className="six-secondary" to="/assinatura">
+                        Pagamentos, chave e cancelamento <ArrowRight size={15} />
+                      </Link>
+                    )}
+                  </div>
                 </section>
                 <section className="six-plan-note">
-                  <img
-                    src="/assets/plan-trial.webp"
-                    alt="Ilustração de presente"
-                  />
+                  <img src="/assets/plan-trial.webp" alt="" />
                   <h2>
-                    Uma boa ideia
-                    <br />
-                    merece um começo.
+                    Uma boa ideia <em>merece um começo.</em>
                   </h2>
-                  <p>
-                    Os acessos, valores e limites devem ser confirmados no seu
-                    plano contratado.
-                  </p>
-                  <button
-                    className="six-secondary"
-                    onClick={() => switchTab("guides")}
-                  >
+                  <p>Os acessos, valores e limites devem ser confirmados no seu plano contratado.</p>
+                  <button type="button" className="six-secondary" onClick={() => switchTab("guides")}>
                     Preparar minha ferramenta <ArrowRight size={15} />
                   </button>
                 </section>
@@ -1588,9 +1666,20 @@ export default function DashboardPage() {
                     <h2>Cobranças e recibos</h2>
                     <p>Seu histórico de assinatura</p>
                   </div>
-                  <CreditCard size={18} />
                 </div>
-                {subscription?<><p>Consulte a situação de cada pagamento e a data do período contratado.</p><Link className="six-primary" to="/assinatura">Ver meus pagamentos</Link></>:empty("Nenhuma cobrança disponível","Você ainda não contratou um plano nesta conta.")}
+                {subscription ? (
+                  <div className="six-panel-row">
+                    <p>Consulte a situação de cada pagamento e a data do período contratado.</p>
+                    <Link className="six-primary" to="/assinatura">
+                      Ver meus pagamentos
+                    </Link>
+                  </div>
+                ) : (
+                  empty(
+                    "Nenhuma cobrança disponível",
+                    preview ? "Entre na sua conta para ver suas cobranças." : "Você ainda não contratou um plano nesta conta.",
+                  )
+                )}
               </section>
             </>
           )}
@@ -1598,13 +1687,6 @@ export default function DashboardPage() {
           {tab === "help" && (
             <div className="six-help-layout">
               <section className="six-panel six-faq">
-                <div className="six-panel-head">
-                  <div>
-                    <h2>Respostas para continuar criando</h2>
-                    <p>O essencial sobre sua conexão</p>
-                  </div>
-                  <CircleHelp size={21} />
-                </div>
                 {[
                   [
                     "Onde consigo minha chave?",
@@ -1622,16 +1704,9 @@ export default function DashboardPage() {
                     "O Claude Desktop não salva a conexão.",
                     "Confira se sua versão oferece gateway personalizado, use autenticação x-api-key e salve e reinicie. Se o erro persistir, informe o aplicativo, a versão e a mensagem ao suporte, sem enviar sua chave.",
                   ],
-                  [
-                    "Como funciona a economia exibida?",
-                    "Na demonstração, multiplicamos os tokens de entrada e saída do filtro por tarifas editáveis por milhão e subtraímos R$ 119 de mensalidade integral, sem rateio. Os preços iniciais são ilustrativos. A economia mínima exibida é zero.",
-                  ],
                 ].map(([q, a], i) => (
                   <div className="six-faq-row" key={q}>
-                    <button
-                      aria-expanded={faq === i}
-                      onClick={() => setFaq(faq === i ? null : i)}
-                    >
+                    <button type="button" aria-expanded={faq === i} onClick={() => setFaq(faq === i ? null : i)}>
                       {q}
                       <ChevronDown size={16} />
                     </button>
@@ -1641,33 +1716,28 @@ export default function DashboardPage() {
               </section>
               <section className="six-panel six-support">
                 <span className="six-soft-icon">
-                  <CircleHelp size={24} />
+                  <CircleHelp size={22} />
                 </span>
-                <h2>Vamos resolver juntos.</h2>
+                <h2>
+                  Vamos resolver <em>juntos.</em>
+                </h2>
                 <p>
-                  Envie o nome da ferramenta, seu sistema e a mensagem de erro.
-                  Assim conseguimos entender o problema mais rápido.
+                  Envie o nome da ferramenta, seu sistema e a mensagem de erro. Assim conseguimos entender o problema mais
+                  rápido.
                 </p>
-                <a
-                  className="six-primary"
-                  href="mailto:alisongeneral25@gmail.com?subject=Suporte%20SixtySix"
-                >
+                <a className="six-primary" href="mailto:alisongeneral25@gmail.com?subject=Suporte%20SixtySix">
                   Falar com o suporte <ArrowUpRight size={15} />
                 </a>
-                <button
-                  className="six-text-button"
-                  onClick={() => switchTab("guides")}
-                >
+                <button type="button" className="six-text-button" onClick={() => switchTab("guides")}>
                   Revisar configuração <ArrowRight size={14} />
                 </button>
               </section>
             </div>
           )}
+
           <footer className="six-dashboard-footer">
             <span>Feito para suas próximas grandes ideias.</span>
             <span>
-              <span className="six-dot emerald" /> SixtySix workspace{" "}
-              <span className="six-footer-separator">/</span>
               <a href="/privacidade.html">Privacidade</a>
               <a href="/termos.html">Termos</a>
               <a href="/reembolso.html">Reembolso</a>
@@ -1675,6 +1745,7 @@ export default function DashboardPage() {
           </footer>
         </main>
       </div>
+
       {toast && (
         <div className="six-toast" role="status">
           <Check size={17} />
@@ -1685,18 +1756,7 @@ export default function DashboardPage() {
   )
 }
 
-function PlusIcon() {
-  return <span className="six-plus">+</span>
-}
-function GuideStep({
-  number,
-  title,
-  children,
-}: {
-  number: string
-  title: string
-  children: ReactNode
-}) {
+function GuideStep({ number, title, children }: { number: string; title: string; children: ReactNode }) {
   return (
     <div className="six-guide-step">
       <span>{number}</span>
@@ -1707,7 +1767,3 @@ function GuideStep({
     </div>
   )
 }
-
-
-
-

@@ -1,0 +1,31 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8443
+    },
+    {
+      "name": "site-demo-local",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 8444,
+      "env": {
+        "PORT": "8444",
+        "VITE_SUPABASE_URL": "https://placeholder.supabase.co",
+        "VITE_SUPABASE_ANON_KEY": "placeholder"
+      }
+    },
+    {
+      "name": "site-prod-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "preview", "--port", "8445", "--strictPort"],
+      "port": 8445,
+      "env": {
+        "PORT": "8445"
+      }
+    }
+  ]
+}
