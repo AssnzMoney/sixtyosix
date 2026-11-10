@@ -1,3 +1,4 @@
+import LegalNotice from '../components/LegalNotice'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -1347,6 +1348,7 @@ export default function App() {
 
         {/* Legal Disclaimer */}
         <div className="shell footer-legal-wrap">
+          <LegalNotice dark />
           <p className="footer-legal-copy">
             A Sixtysix é uma plataforma de tecnologia que gerencia tokens e provê infraestrutura de modelos de IA de fronteira para desenvolvedores. Cobrança transparente em Reais com previsibilidade total via Pix.
           </p>

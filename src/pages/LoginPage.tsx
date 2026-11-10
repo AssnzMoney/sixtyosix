@@ -1,3 +1,4 @@
+import LegalNotice from '../components/LegalNotice'
 import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -246,6 +247,8 @@ export default function LoginPage() {
                       {isCreating ? 'Comece com Google, Discord ou e-mail. Depois, escolha como quer ser chamado no seu painel.' : 'Entre para acompanhar seu consumo e gerenciar suas chaves. Se você já acessou neste navegador, sua sessão será recuperada.'}
                     </p>
 
+                    <LegalNotice login />
+
                     {/* Botões Sociais: Google & Discord */}
                     <div className="login-social-group">
                       <button
@@ -367,10 +370,6 @@ export default function LoginPage() {
               </AnimatePresence>
             )}
 
-            <p className="login-footer-terms">
-              Ao criar uma conta, você concorda com nossos{' '}
-              <a href="/termos.html" target="_blank" rel="noopener noreferrer">termos e condições</a>.
-            </p>
 
             <div className="login-return-box">
               <Link to="/" className="login-return-link">
