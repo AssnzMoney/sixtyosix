@@ -45,7 +45,7 @@ const features = [
 const faqs = [
   [
     'Como funciona o acesso da SixtySix?',
-    'A SixtySix fornece uma conexão dedicada e de alta velocidade para desenvolvedores utilizarem os modelos líderes (Claude Fable 5.1 e GPT Astra 6) no terminal (Claude Code), no VS Code e no Codex, com preço fixo em Reais pago via Pix, sem IOF e sem rateio.',
+    'A SixtySix fornece uma conexão dedicada e de alta velocidade para desenvolvedores utilizarem os modelos líderes (Fable 5.1 e 5.2 para Claude Code e GPT Astra 6) no terminal (Claude Code), no VS Code e no Codex, com preço fixo em Reais pago via Pix, sem IOF e sem rateio.',
   ],
   [
     'Como funciona o teste de 7 dias grátis?',
@@ -65,11 +65,11 @@ const faqs = [
   ],
   [
     'Qual endereço (URL do gateway) e modelo devo configurar?',
-    'O endereço base oficial do gateway é https://www.sixtysix.online para Claude Code e Claude Desktop (com modelo claude-fable-5-1). Para o Codex, a configuração aponta para https://www.sixtysix.online/v1 (com modelo gpt-6-astra).',
+    'O endereço base oficial do gateway é https://www.sixtysix.online para Claude Code e Claude Desktop (com modelo claude-fable-5-1 ou claude-fable-5-2). Para o Codex, a configuração aponta para https://www.sixtysix.online/v1 (com modelo gpt-6-astra).',
   ],
   [
     'A chave não funcionou ou deu erro. O que devo verificar?',
-    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://www.sixtysix.online; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate nosso suporte.',
+    'Verifique 5 pontos essenciais: 1) Se o endereço base está exatamente https://www.sixtysix.online; 2) Se o ID do modelo foi digitado corretamente (claude-fable-5-1 ou claude-fable-5-2 para Claude ou gpt-6-astra para Codex); 3) Se copiou a chave completa sem espaços antes ou depois; 4) Se as variáveis de ambiente foram aplicadas na janela aberta do CMD ou no sistema; 5) Se a sua chave continua ativa com o administrador. Se persistir, contate nosso suporte.',
   ],
 ]
 
@@ -306,7 +306,7 @@ export default function App() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <div className="nav-mobile-item-head">
-                      <strong>Claude Fable 5.1</strong>
+                      <strong>Fable 5.1 e 5.2 para Claude Code</strong>
                     </div>
                     <small>Raciocínio profundo e Claude Code ilimitado</small>
                   </Link>
@@ -403,7 +403,7 @@ export default function App() {
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                   >
-                    <strong>Claude Fable 5.1</strong>
+                    <strong>Fable 5.1 e 5.2 para Claude Code</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
                   </Link>
                   <Link to="/astra-6" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
@@ -1053,7 +1053,7 @@ export default function App() {
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4</strong></span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
               <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
@@ -1160,7 +1160,7 @@ export default function App() {
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
@@ -1273,7 +1273,7 @@ export default function App() {
           <div className="footer-col">
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
-              <li><Link to="/claude-code">Claude Fable 5.1</Link></li>
+              <li><Link to="/claude-code">Fable 5.1 e 5.2 para Claude Code</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
               <li><Link to="/glm-4">GLM-4 Plus</Link></li>
             </ul>

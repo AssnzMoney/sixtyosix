@@ -195,7 +195,7 @@ export default function GptAstraPage() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <div className="nav-mobile-item-head">
-                      <strong>Claude Fable 5.1</strong>
+                      <strong>Fable 5.1 e 5.2 para Claude Code</strong>
                     </div>
                     <small>Raciocínio profundo e Claude Code ilimitado</small>
                   </Link>
@@ -292,7 +292,7 @@ export default function GptAstraPage() {
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                   >
-                    <strong>Claude Fable 5.1</strong>
+                    <strong>Fable 5.1 e 5.2 para Claude Code</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
                   </Link>
                   <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
@@ -877,7 +877,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>GPT Astra 6</strong>, <strong>Claude Fable 5.1</strong> e <strong>GLM-4</strong></span></li>
+              <li><Check /> <span><strong>GPT Astra 6</strong>, <strong>Fable 5.1 e 5.2 para Claude Code</strong> e <strong>GLM-4</strong></span></li>
               <li><Check /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
               <li><Check /> <span><strong>Chave individual</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
@@ -993,7 +993,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Claude Fable 5.1</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
               <li><Check /> <span><strong>Uso conforme cotas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Perfis de acesso</strong> (disponibilidade variável)</span></li>
@@ -1118,7 +1118,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
               <li><Link to="/astra-6" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>GPT Astra 6</Link></li>
-              <li><Link to="/claude-code">Claude Fable 5.1</Link></li>
+              <li><Link to="/claude-code">Fable 5.1 e 5.2 para Claude Code</Link></li>
               <li><Link to="/glm-4">GLM-4 Plus</Link></li>
             </ul>
           </div>
