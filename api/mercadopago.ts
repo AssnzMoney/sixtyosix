@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { withFableVariants } from '../server/model-aliases.js'
 
 type ObjectValue = Record<string, unknown>
 type Env = Record<string, string | undefined>
@@ -8,7 +9,7 @@ type PaidAccess = {subscription_id:string;user_id:string;gateway_client_id:strin
 export const billingPlans = {
   dev:{name:'Dev',amount:7999,api:false,models:['gpt-6-astra','glm-5']},
   devApi:{name:'Dev + API',amount:9499,api:true,models:['gpt-6-astra','glm-5']},
-  pro:{name:'Pro',amount:11999,api:true,models:['claude-fable-5-1','gpt-6-astra','glm-5']},
+  pro:{name:'Pro',amount:11999,api:true,models:['claude-fable-5-1','claude-fable-5-2','gpt-6-astra','glm-5']},
 } as const
 const validUuid=(value:unknown):value is string=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 function cryptoKey(secret:string){return createHash('sha256').update(`sixtysix-trial-v1\0${secret}`).digest()}
@@ -216,7 +217,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
         const rows=await db<PaidAccess[]>('billing_key_access',{user_id:`eq.${user.id}`,entitled:'eq.true',paid_until:`gt.${new Date().toISOString()}`,revoked_at:'is.null',select:'*',order:'paid_until.desc',limit:'1'}),access=rows[0]
         if(!secret)throw new WebhookError(503,'Conexão indisponível.')
         let allowed:string[],upstream:string
-        if(access){allowed=access.models;upstream=decrypt(access.encrypted_upstream,secret,`${user.id}:paid:${access.subscription_id}:upstream`)}
+        if(access){allowed=withFableVariants(access.models);upstream=decrypt(access.encrypted_upstream,secret,`${user.id}:paid:${access.subscription_id}:upstream`)}
         else{
           const trials=await db<{encrypted_upstream:string;expires_at:string;revoked_at:string|null}[]>('gateway_trials',{user_id:`eq.${user.id}`,select:'encrypted_upstream,expires_at,revoked_at',limit:'1'}),trial=trials[0]
           if(!trial||trial.revoked_at||Date.parse(trial.expires_at)<=Date.now())throw new WebhookError(403,'Ative um plano ou um teste grátis para conversar pelo site.')

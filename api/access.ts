@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { withFableVariants } from '../server/model-aliases.js'
 
 type Env = Record<string,string|undefined>
 type Trial = { user_id:string; gateway_client_id:string; token_hash:string; token_prefix:string; encrypted_token:string; encrypted_upstream:string; created_at:string; expires_at:string; revoked_at:string|null }
@@ -78,9 +79,10 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
       if(!access)throw new AccessError(401,'Chave de acesso inválida.')
       if(!access.entitled||access.revoked_at||!access.paid_until||Date.parse(access.paid_until)<=Date.now())throw new AccessError(403,'O período pago terminou ou a chave foi revogada. Confira sua assinatura no painel.')
       if(!access.api_enabled)throw new AccessError(403,'Seu plano permite uso pelo site. Para usar uma chave externa, escolha um plano com API.')
-      if(model&&!access.models.includes(model))throw new AccessError(403,'Este modelo não está incluído no seu plano.')
+      const models=withFableVariants(access.models)
+      if(model&&!models.includes(model))throw new AccessError(403,'Este modelo não está incluído no seu plano.')
       if(!secret)throw new AccessError(503,'Conexão indisponível.')
-      return {token:unseal(access.encrypted_upstream,secret,`${access.user_id}:paid:${access.subscription_id}:upstream`),models:access.models}
+      return {token:unseal(access.encrypted_upstream,secret,`${access.user_id}:paid:${access.subscription_id}:upstream`),models}
     },
   }
 }

@@ -216,7 +216,7 @@ export default function DashboardPage() {
       try {
         const data = await accountSummary(first, last, controller.signal)
         if (controller.signal.aborted) return
-        const labels: Record<string,string> = { "claude-fable-5-1": "Fable 5.1", "gpt-6-astra": "Astra 6", "glm-5": "GLM 5" }
+        const labels: Record<string,string> = { "claude-fable-5-1": "Fable 5.1", "claude-fable-5-2": "Fable 5.2", "gpt-6-astra": "Astra 6", "glm-5": "GLM 5" }
         setAccountData({ owner, keys: data.keys, trial:data.trial||null,subscription:data.subscription, rows: data.usage.map(r => ({ id: String(r.id), date: r.created_at, model: labels[r.requested_alias] || r.requested_alias, input: r.input_tokens, output: r.output_tokens, duration: r.latency_ms / 1000, success: r.status_code >= 200 && r.status_code < 400 })) })
         setAccountError("")
         setKeyState("loaded")
@@ -409,7 +409,7 @@ export default function DashboardPage() {
                     >
                       <img
                         src={`/assets/brands/${
-                          r.model === "Fable 5.1"
+                          r.model.startsWith("Fable")
                             ? "claude"
                             : r.model === "Astra 6"
                               ? "openai"
@@ -1279,11 +1279,11 @@ export default function DashboardPage() {
                       <span className="six-kicker">PASSO A PASSO</span>
                       <h2>
                         {tool === "claude"
-                          ? "Fable 5.1 no seu terminal"
+                          ? "Fable 5.1 ou 5.2 no seu terminal"
                           : tool === "codex"
                             ? "Astra 6 no Codex"
                             : tool === "desktop"
-                              ? "Fable 5.1 no Claude Desktop"
+                              ? "Fable 5.1 ou 5.2 no Claude Desktop"
                               : "GLM 5 no Claude Code"}
                       </h2>
                     </div>
@@ -1412,7 +1412,7 @@ export default function DashboardPage() {
                       </GuideStep>
                       <GuideStep number="03" title="Salve, reinicie e teste">
                         <p>
-                          Clique em Testar conexão. Depois clique em Salvar e Reiniciar e aguarde o aplicativo abrir novamente. Crie uma conversa nova na área Code, selecione Fable 5.1 e envie uma mensagem curta. Conversas antigas podem manter o modelo anterior. Se o teste ficar vermelho, confira a chave completa, a URL e x-api-key. Se aparecer Não foi possível atualizar as configurações salvas, o aplicativo ainda não salvou a conexão: feche e abra o Claude e tente salvar novamente. Se a opção de terceiros não existir na sua versão, use Claude Code no terminal, conforme a outra aba deste guia.
+                          Clique em Testar conexão. Depois clique em Salvar e Reiniciar e aguarde o aplicativo abrir novamente. Crie uma conversa nova na área Code e escolha Fable 5.1 ou Fable 5.2 no seletor de modelos. Conversas antigas podem manter o modelo anterior. Se o teste ficar vermelho, confira a chave completa, a URL e x-api-key. Se aparecer Não foi possível atualizar as configurações salvas, o aplicativo ainda não salvou a conexão: feche e abra o Claude e tente salvar novamente. Se a opção de terceiros não existir na sua versão, use Claude Code no terminal, conforme a outra aba deste guia.
                         </p>
                       </GuideStep>
                       <GuideStep number="04" title="Usar GLM 5 pelo Claude">
@@ -1506,7 +1506,7 @@ export default function DashboardPage() {
             </>
           )}
 
-          {tab === "chat" && <SiteChat key={session?.user.id||'guest'} models={demo?[]:subscription?.active?subscription.models:trial?.active?['claude-fable-5-1','gpt-6-astra','glm-5']:[]}/>}
+          {tab === "chat" && <SiteChat key={session?.user.id||'guest'} models={demo?[]:subscription?.active?subscription.models:trial?.active?['claude-fable-5-1','claude-fable-5-2','gpt-6-astra','glm-5']:[]}/>}
 
           {tab === "plan" && (
             <>
@@ -1519,7 +1519,7 @@ export default function DashboardPage() {
                   {subscription&&<p>{subscription.expires?`Período pago até ${new Date(subscription.expires).toLocaleString('pt-BR')}.`:'Aguardando confirmação do pagamento.'} {subscription.status==='cancelled'?'Renovação cancelada.':''}</p>}
                   {trial&&<p>{trial.revoked?'Chave do teste revogada.':`Fim do teste: ${new Date(trial.expires).toLocaleString('pt-BR')}.`}</p>}
                   <p>
-                    {trial?.active&&!subscription?.active?'Modelos liberados no teste: Fable 5.1, Astra 6 e GLM 5. Todos disponíveis durante os 7 dias.':subscription?`Modelos do seu plano: ${subscription.models.map(model=>({'claude-fable-5-1':'Fable 5.1','gpt-6-astra':'Astra 6','glm-5':'GLM 5'}[model]||model)).join(', ')}.`:'Seu espaço para construir com Fable 5.1, Astra 6 e GLM 5.'}
+                    {trial?.active&&!subscription?.active?'Modelos liberados no teste: Fable 5.1, Fable 5.2, Astra 6 e GLM 5. Todos disponíveis durante os 7 dias.':subscription?`Modelos do seu plano: ${subscription.models.map(model=>({'claude-fable-5-1':'Fable 5.1','claude-fable-5-2':'Fable 5.2','gpt-6-astra':'Astra 6','glm-5':'GLM 5'}[model]||model)).join(', ')}.`:'Seu espaço para construir com Fable 5.1, Fable 5.2, Astra 6 e GLM 5.'}
                   </p>
                   <div className="six-plan-price">
                     {demo ? <DashboardNumber value={119} format="money" replay={numberReplay} /> : subscription?<DashboardNumber value={subscription.amount} format="money" replay={numberReplay}/>:"—"}
@@ -1595,7 +1595,7 @@ export default function DashboardPage() {
                 {[
                   [
                     "Onde consigo minha chave?",
-                    "Ative o teste de 7 dias ou confirme um plano com API. A chave individual aparece na seção Chaves de API. No teste, Fable 5.1, Astra 6 e GLM 5 estão liberados. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
+                    "Ative o teste de 7 dias ou confirme um plano com API. A chave individual aparece na seção Chaves de API. No teste, Fable 5.1, Fable 5.2, Astra 6 e GLM 5 estão liberados. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
                   ],
                   [
                     "Deu erro 401. O que confiro?",

@@ -16,11 +16,11 @@ const Arrow = () => (
 )
 
 const claudeFaqs = [
-  ['Como funciona o acesso ao Claude Code pela SixtySix?', 'O Claude Code conecta ao perfil Fable 5.1 pelo gateway SixtySix. O ID usado é claude-fable-5-1. Cotas e disponibilidade podem variar.'],
+  ['Como funciona o acesso ao Claude Code pela SixtySix?', 'O Claude Code conecta aos perfis Fable 5.1 e Fable 5.2 pelo gateway SixtySix. Use claude-fable-5-1 ou claude-fable-5-2 para escolher a versão. Cotas e disponibilidade podem variar.'],
   ['Como consigo minha chave?', 'A chave individual é fornecida pela SixtySix para identificar suas chamadas. Guarde-a em segredo e não a envie em prints ou mensagens públicas.'],
   ['Em quais terminais posso rodar o Claude Code?', 'Use o Claude Code CLI em um terminal compatível, configurando as variáveis mostradas no tutorial. No Windows, a página apresenta comandos para o CMD.'],
   ['Posso usar no Claude.ai pelo navegador?', 'Não. O site claude.ai não permite apontar a conexão para este gateway. Claude Desktop só funciona quando a versão instalada oferece configuração de gateway personalizado.'],
-  ['Qual URL e ID devo configurar?', 'Use https://www.sixtysix.online como URL base e claude-fable-5-1 como ID do perfil. O gateway atual espera a chave no cabeçalho x-api-key.'],
+  ['Qual URL e ID devo configurar?', 'Use https://www.sixtysix.online como URL base e escolha claude-fable-5-1 (Fable 5.1) ou claude-fable-5-2 (Fable 5.2). O gateway atual espera a chave no cabeçalho x-api-key.'],
   ['Posso usar GLM 5 ou GPT Astra 6 nesta página?', 'Esta página configura o perfil Fable. Para GPT Astra 6 no Codex, abra o tutorial Astra. Para GLM 5, use o tutorial GLM 5 no Claude Code; essa rota não aparece no catálogo do Codex.'],
   ['Por que posso receber erro ou indisponibilidade?', 'O gateway pode ficar temporariamente indisponível. Confira URL, ID do perfil e chave. Ao pedir suporte, informe horário e código HTTP, nunca a chave.'],
 ]
@@ -207,7 +207,7 @@ export default function ClaudeCodePage() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <div className="nav-mobile-item-head">
-                      <strong>Claude Fable 5.1</strong>
+                      <strong>Claude Fable 5.1 e 5.2</strong>
                     </div>
                     <small>Perfil Fable no Claude Code</small>
                   </Link>
@@ -219,7 +219,7 @@ export default function ClaudeCodePage() {
                     <div className="nav-mobile-item-head">
                       <strong>Todos os Modelos</strong>
                     </div>
-                    <small>Astra 6, GLM 5 e Fable 5.1</small>
+                    <small>Astra 6, GLM 5 e Fable 5.1/5.2</small>
                   </Link>
                 </div>
 
@@ -293,7 +293,7 @@ export default function ClaudeCodePage() {
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                   >
-                    <strong>Claude Fable 5.1</strong>
+                    <strong>Claude Fable 5.1 e 5.2</strong>
                     <span>Perfil selecionável no Claude Code.</span>
                   </Link>
                   <Link to="/astra-6" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
@@ -713,13 +713,13 @@ export default function ClaudeCodePage() {
                   <pre>
 {`set ANTHROPIC_BASE_URL=https://www.sixtysix.online
 set ANTHROPIC_API_KEY=SUA_CHAVE_INDIVIDUAL
-set ANTHROPIC_MODEL=claude-fable-5-1
-claude --model claude-fable-5-1`}
+set ANTHROPIC_MODEL=claude-fable-5-2
+claude --model claude-fable-5-2`}
                   </pre>
                   <button
                     type="button"
                     className="code-block-copy-btn"
-                    onClick={() => copyText(`set ANTHROPIC_BASE_URL=https://www.sixtysix.online\nset ANTHROPIC_API_KEY=SUA_CHAVE_INDIVIDUAL\nset ANTHROPIC_MODEL=claude-fable-5-1\nclaude --model claude-fable-5-1`)}
+                    onClick={() => copyText(`set ANTHROPIC_BASE_URL=https://www.sixtysix.online\nset ANTHROPIC_API_KEY=SUA_CHAVE_INDIVIDUAL\nset ANTHROPIC_MODEL=claude-fable-5-2\nclaude --model claude-fable-5-2`)}
                   >
                     {copiedSnippet?.includes('set ANTHROPIC_BASE_URL') ? (
                       <>
@@ -766,12 +766,12 @@ claude --model claude-fable-5-1`}
               </div>
               <div className="desktop-param-card">
                 <span className="desktop-param-label">Identificador do Modelo</span>
-                <code className="desktop-param-val">claude-fable-5-1</code>
+                <code className="desktop-param-val">claude-fable-5-2</code>
               </div>
             </div>
 
             <div className="tutorial-notice-box">
-              <strong>Atenção:</strong> Essa configuração é exclusiva para o aplicativo Claude Desktop. No site claude.ai tradicional via navegador comum não é possível alterar o endpoint da API.
+              <strong>Modelo:</strong> No seletor de conversas do Claude Desktop, escolha Fable 5.1 ou Fable 5.2. Essa configuração é exclusiva para o aplicativo Claude Desktop; no site claude.ai pelo navegador não é possível alterar o endpoint da API.
             </div>
           </div>
         )}
@@ -1104,7 +1104,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>Fable 5.1</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>Claude Code</strong></span></li>
               <li><Check /> <span><strong>Chave individual</strong></span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
@@ -1220,7 +1220,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Fable 5.1</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
               <li><Check /> <span><strong>Uso conforme cotas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Chave individual</strong> (chave individual)</span></li>
               <li><Check /> <span><strong>Perfis SixtySix</strong> (disponibilidade variável)</span></li>
@@ -1344,7 +1344,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
           <div className="footer-col">
             <h4 className="footer-col-title">Modelos</h4>
             <ul className="footer-link-list">
-              <li><Link to="/claude-code" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Claude Fable 5.1</Link></li>
+              <li><Link to="/claude-code" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Claude Fable 5.1 e 5.2</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
               <li><Link to="/glm-4">GLM 5</Link></li>
             </ul>
