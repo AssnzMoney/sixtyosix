@@ -230,6 +230,19 @@ export default function DashboardPage() {
     const timer = setInterval(load, 30000)
     return () => { controller.abort(); clearInterval(timer) }
   }, [demo, session?.user.id, period, from, to, refresh])
+  async function replaceTrialKey() {
+    if (!session || busy) return
+    setBusy(true); setAccountError("")
+    try {
+      const response = await fetch('/api/access?action=trial&replace=1', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
+      const result = await response.json()
+      if (!response.ok || !result.key) throw new Error(result.error || 'Não foi possível substituir a chave.')
+      setIssuedKey(result.key); setClientKey(result.key); setRefresh(v => v + 1)
+      setToast('Nova chave de teste criada. O vencimento continua o mesmo.')
+    } catch (error) { setAccountError(error instanceof Error ? error.message : 'Não foi possível substituir a chave.') }
+    finally { setBusy(false) }
+  }
+
   async function mutateAccount(action: "claim" | "keys" | "revoke", payload: Record<string,unknown>) {
     setBusy(true); setAccountError("")
     try {
@@ -1136,7 +1149,7 @@ export default function DashboardPage() {
                 </button>
               </section>
               {!demo && session && <section className="six-panel six-account-key-actions">
-                {trial?<><h2>{trial.active?'Seu teste de 7 dias está ativo':'Teste de 7 dias encerrado'}</h2><p>{trial.revoked?'Chave revogada.':`Prazo: ${new Date(trial.expires).toLocaleString('pt-BR')}.`}</p><Link className="six-primary" to={trial.active?'/teste-gratis':'/planos'}>{trial.active?'Consultar minha chave de teste':'Ver planos'}</Link></>:<><h2>Comece seu teste grátis</h2><p>Ative uma chave individual por 7 dias, sem cartão.</p><Link className="six-primary" to="/teste-gratis">Ativar meus 7 dias</Link></>}
+                {trial?<><h2>{trial.active?'Seu teste de 7 dias está ativo':Date.parse(trial.expires)>Date.now()?'Gere uma chave para continuar seu teste':'Teste de 7 dias encerrado'}</h2><p>{trial.revoked?'Chave revogada. ':''}Prazo: {new Date(trial.expires).toLocaleString('pt-BR')}.</p>{trial.revoked && Date.parse(trial.expires)>Date.now() && <button className="six-primary" disabled={busy} onClick={replaceTrialKey}>{busy?'Gerando…':'Gerar nova chave de teste'}</button>}<Link className="six-primary" to={trial.active?'/teste-gratis':'/planos'}>{trial.active?'Consultar minha chave de teste':'Ver planos'}</Link></>:<><h2>Comece seu teste grátis</h2><p>Ative uma chave individual por 7 dias, sem cartão.</p><Link className="six-primary" to="/teste-gratis">Ativar meus 7 dias</Link></>}
                 <h2>Já tem uma chave de teste?</h2><p>Vincule sua chave atual para consultar o histórico. A chave continua funcionando nos seus aplicativos.</p>
                 <form onSubmit={e => { e.preventDefault(); mutateAccount("claim", { key: claimKey }) }}><input type="password" autoComplete="off" aria-label="Chave de teste existente" placeholder="Cole sua chave individual sk-flg-…" value={claimKey} onChange={e => setClaimKey(e.target.value)} /><button className="six-primary" disabled={busy || !claimKey.trim()}>Vincular chave</button></form>
                 <h2>Criar outra chave</h2><p>Acessos anteriores vinculados podem criar até 10 chaves ativas. O teste automático usa uma chave para todas as suas ferramentas.</p>

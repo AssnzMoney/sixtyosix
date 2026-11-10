@@ -51,12 +51,12 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
     return user.id
   }
   return {
-    async start(authorization?:string){
+    async start(authorization?:string,replace=false){
       const userId=await identity(authorization)
       if(!secret)throw new AccessError(503,'Conexão indisponível.')
       const token=`sk-sx-${randomBytes(32).toString('base64url')}`
       const upstream=`sk-flg-${randomBytes(32).toString('base64url')}`
-      const result=await db<Trial|Trial[]>('rpc/account_start_trial',{}, {
+      const result=await db<Trial|Trial[]>(replace?'rpc/account_replace_trial_key':'rpc/account_start_trial',{}, {
         p_user_id:userId,p_hash:sha(token),p_prefix:token.slice(0,14),p_encrypted_token:seal(token,secret,`${userId}:public`),
         p_upstream_hash:sha(upstream),p_encrypted_upstream:seal(upstream,secret,`${userId}:upstream`),
       })
@@ -110,7 +110,7 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     if(action==='trial'){
       if(req.method!=='POST')throw new AccessError(405,'Use POST para ativar seu teste.')
       res.setHeader('Content-Type','application/json; charset=utf-8')
-      res.end(JSON.stringify(await service.start(req.headers.authorization)));return
+      res.end(JSON.stringify(await service.start(req.headers.authorization,url.searchParams.get('replace')==='1')));return
     }
     if(action!=='proxy')throw new AccessError(404,'Operação não encontrada.')
     if(!['GET','HEAD','POST','OPTIONS'].includes(req.method||''))throw new AccessError(405,'Método não permitido.')
