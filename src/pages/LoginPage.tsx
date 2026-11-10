@@ -369,7 +369,7 @@ export default function LoginPage() {
 
             <p className="login-footer-terms">
               Ao criar uma conta, você concorda com nossos{' '}
-              <a href="/#duvidas" target="_blank" rel="noopener noreferrer">termos e condições</a>.
+              <a href="/termos.html" target="_blank" rel="noopener noreferrer">termos e condições</a>.
             </p>
 
             <div className="login-return-box">

@@ -1669,6 +1669,8 @@ export default function DashboardPage() {
               <span className="six-dot emerald" /> SixtySix workspace{" "}
               <span className="six-footer-separator">/</span>
               <a href="/privacidade.html">Privacidade</a>
+              <a href="/termos.html">Termos</a>
+              <a href="/reembolso.html">Reembolso</a>
             </span>
           </footer>
         </main>

@@ -1292,17 +1292,18 @@ export default function App() {
             <h4 className="footer-col-title">Suporte</h4>
             <ul className="footer-link-list">
               <li><a href="#duvidas">Dúvidas Frequentes</a></li>
-              <li><a href="mailto:suporte@sixtysix.dev">Falar com Suporte</a></li>
-              <li><a href="mailto:suporte@sixtysix.dev">suporte@sixtysix.dev</a></li>
+              <li><a href="/reembolso.html">Falar com Suporte</a></li>
+              <li><a href="/reembolso.html">Atendimento e privacidade</a></li>
             </ul>
           </div>
 
           <div className="footer-col">
             <h4 className="footer-col-title">Legal</h4>
             <ul className="footer-link-list">
-              <li><a href="#duvidas">Termos de Uso</a></li>
-              <li><a href="/privacidade.html">Política de Privacidade</a></li>
-              <li><a href="#duvidas">Segurança</a></li>
+              <li><a href="/termos.html">Termos de Uso</a></li>
+              <li><a href="/privacidade.html">Privacidade e LGPD</a></li>
+              <li><a href="/reembolso.html">Cancelamento e Reembolso</a></li>
+              <li><a href="/seguranca.html">Segurança</a></li>
             </ul>
           </div>
         </div>

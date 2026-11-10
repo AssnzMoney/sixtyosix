@@ -33,6 +33,7 @@ export default function CheckoutPage(){
         <p>{method==='pix'?'O checkout seguro do Mercado Pago abrirá com Pix selecionado. Cada pagamento aprovado libera 30 dias; para renovar, faça um novo pagamento.':'A assinatura é renovada mensalmente no Mercado Pago. Você pode cancelar as próximas cobranças e manter o período já pago.'}</p>
         <small>O acesso fica vinculado à sua conta SixtySix e é liberado após a confirmação do pagamento.</small>
         {error&&<p role="alert" className="six-trial-error">{error}</p>}
+        <p style={{fontSize:13,marginTop:18}}>Antes de contratar, consulte os <a href="/termos.html" target="_blank" rel="noopener noreferrer">Termos de uso</a>, a <a href="/privacidade.html" target="_blank" rel="noopener noreferrer">Política de privacidade</a> e as regras de <a href="/reembolso.html" target="_blank" rel="noopener noreferrer">cancelamento e reembolso</a>.</p>
         <button disabled={busy} className="six-trial-primary" style={{marginTop:20}}>{busy?'Preparando pagamento…':'Continuar no Mercado Pago'} <ArrowRight size={17}/></button>
       </form>}
       <Link to="/assinatura" className="six-trial-secondary">Já paguei / ver minha assinatura</Link>
