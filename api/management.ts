@@ -29,7 +29,7 @@ async function requireAdmin(env:NodeJS.ProcessEnv,request:typeof fetch,authoriza
  const identity=await request(`${config.url}/auth/v1/user`,{headers:{apikey:config.publicKey,Authorization:authorization},signal:AbortSignal.timeout(10000)})
  if(!identity.ok)throw new AccountError(401,'Entre novamente para continuar.')
  const user=await identity.json() as Row
- const allowed=(env.SIXTYSIX_ADMIN_EMAILS||'alisongeneral25@gmail.com').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean)
+ const allowed=(env.SIXTYSIX_ADMIN_EMAILS||'alissonmedeiroz007@gmail.com').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean)
  if(!user.id||user.is_anonymous||!user.email_confirmed_at||!allowed.includes(String(user.email||'').toLowerCase()))throw new AccountError(403,'Esta área é exclusiva da administração.')
  return {config,email:String(user.email).toLowerCase()}
 }

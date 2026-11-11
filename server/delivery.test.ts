@@ -65,7 +65,7 @@ test('confirmação de credencial substituída, de outro cliente ou repetida', a
   assert.ok(!already.calls.some((c) => c.url.pathname.includes('/rpc/')), 'não regrava a confirmação')
 })
 
-function adminFixture(email = 'alisongeneral25@gmail.com', rpcResult: unknown = deliveryId) {
+function adminFixture(email = 'alissonmedeiroz007@gmail.com', rpcResult: unknown = deliveryId) {
   const calls: Call[] = []
   const fake = async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = new URL(String(input))
@@ -98,7 +98,7 @@ test('registrar entrega grava o e-mail do admin e recusa a chave inteira', async
   const { calls, actions } = adminFixture()
   assert.deepEqual(await actions('Bearer ok', { action: 'register-delivery', delivery }), { id: deliveryId })
   const args = JSON.parse(String(calls.find((c) => c.url.pathname.endsWith('/rpc/admin_register_delivery'))!.init.body))
-  assert.equal(args.p_created_by, 'alisongeneral25@gmail.com')
+  assert.equal(args.p_created_by, 'alissonmedeiroz007@gmail.com')
   assert.equal(args.p_key_hint, '9f3a')
   await assert.rejects(actions('Bearer ok', { action: 'register-delivery', delivery: { ...delivery, key_hint: 'sk-ant-api03-AbCdEf0123456789XyZ' } }), { status: 400 })
   await assert.rejects(adminFixture(undefined, null).actions('Bearer ok', { action: 'register-delivery', delivery: { ...delivery, replaces: '33333333-3333-4333-8333-333333333333' } }), { status: 409 })
