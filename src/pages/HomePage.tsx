@@ -86,12 +86,6 @@ const partners = [
     logo: '/assets/brands/openai.svg',
   },
   {
-    id: 'glm-1',
-    name: 'GLM',
-    caption: 'Z.ai',
-    logo: '/assets/brands/glm.svg',
-  },
-  {
     id: 'vscode-1',
     name: 'VS Code',
     caption: 'Microsoft',
@@ -108,12 +102,6 @@ const partners = [
     name: 'GPT',
     caption: 'OpenAI',
     logo: '/assets/brands/openai.svg',
-  },
-  {
-    id: 'glm-2',
-    name: 'GLM',
-    caption: 'Z.ai',
-    logo: '/assets/brands/glm.svg',
   },
   {
     id: 'vscode-2',
@@ -319,16 +307,6 @@ export default function App() {
                     </div>
                     <small>Velocidade ultra-rápida e inteligência multimodal</small>
                   </Link>
-                  <Link
-                    to="/glm-4"
-                    className="nav-mobile-item"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <div className="nav-mobile-item-head">
-                      <strong>GLM-4 Plus</strong>
-                    </div>
-                    <small>Refatoração avançada e geração de código</small>
-                  </Link>
                 </div>
 
                 <div className="nav-mobile-links">
@@ -409,10 +387,6 @@ export default function App() {
                     <strong>GPT Astra 6</strong>
                     <span>Velocidade ultra-rápida e inteligência multimodal.</span>
                   </Link>
-                  <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>GLM-4 Plus</strong>
-                    <span>Excelente em refatoração, documentação e testes.</span>
-                  </Link>
                   <a href="#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Conexão Direta Oficial</strong>
                     <span>Sem intermediários, sem compressão e sem erros 429.</span>
@@ -491,7 +465,6 @@ export default function App() {
         <div className="hero-trust-badge">
           <div className="trust-badges-row">
             <div className="trust-badge badge-claude"><img src="/assets/brands/claude.svg" alt="Claude" /></div>
-            <div className="trust-badge badge-glm"><img src="/assets/brands/glm.svg" alt="GLM" /></div>
             <div className="trust-badge badge-openai"><img src="/assets/brands/openai.svg" alt="GPT" /></div>
             <div className="trust-badge badge-vscode"><img src="/assets/brands/vscode.svg" alt="VS Code" /></div>
           </div>
@@ -548,7 +521,7 @@ export default function App() {
           <Marquee pauseOnHover speed={22} className="partners-marquee">
             {partners.map((partner) => (
               <div className="partner-item" key={partner.id}>
-                <span className={`partner-mark ${partner.name.toLowerCase() === 'glm' ? 'partner-glm' : ''}`}>
+                <span className="partner-mark">
                   <img src={partner.logo} alt="" />
                 </span>
                 <span className="partner-copy">
@@ -721,9 +694,6 @@ export default function App() {
               <div className="badges-row">
                 <div className="badge-circle badge-claude" title="Claude (Anthropic)">
                   <img src="/assets/brands/claude.svg" alt="Claude" />
-                </div>
-                <div className="badge-circle badge-glm" title="GLM (Z.ai)">
-                  <img src="/assets/brands/glm.svg" alt="GLM" />
                 </div>
                 <div className="badge-circle badge-openai" title="GPT (OpenAI)">
                   <img src="/assets/brands/openai.svg" alt="GPT" />
@@ -1052,7 +1022,7 @@ export default function App() {
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>Fable 5.1 e 5.2 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2 para Claude Code</strong> e <strong>GPT Astra 6</strong></span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
               <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
@@ -1109,7 +1079,7 @@ export default function App() {
             </div>
 
             <ul className="plan-features">
-              <li><Check /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>GPT Astra 6</strong></span></li>
               {devWithApi ? (
                 <>
                   <li><Check /> <span><strong>Chave de API oficial inclusa</strong> (+ R$ 15/mês)</span></li>
@@ -1159,7 +1129,7 @@ export default function App() {
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Fable 5.1 e 5.2 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>GLM-4 Plus</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2 para Claude Code</strong> e <strong>GPT Astra 6</strong></span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
@@ -1274,7 +1244,6 @@ export default function App() {
             <ul className="footer-link-list">
               <li><Link to="/claude-code">Fable 5.1 e 5.2 para Claude Code</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
-              <li><Link to="/glm-4">GLM-4 Plus</Link></li>
             </ul>
           </div>
 
