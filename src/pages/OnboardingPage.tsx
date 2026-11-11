@@ -5,6 +5,7 @@ import { User, Mail, ShieldCheck, Check } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { accountDestination } from '../lib/authDestination'
 import AuthShowcase from '../components/AuthShowcase'
+import { accountRequest } from '../lib/account'
 import { formatWhatsapp, maskWhatsappInput, normalizeWhatsapp } from '../lib/whatsapp'
 import './onboarding.css'
 
@@ -102,6 +103,8 @@ export default function OnboardingPage() {
     setSubmitting(true)
     try {
       await updateProfile({ name: displayName, whatsapp: phoneDigits })
+      // Boas-vindas por e-mail (uma vez só, o servidor confere). Não trava a navegação.
+      if (!isEditing) void accountRequest('welcome', {}).catch(() => undefined)
       navigate(isEditing ? '/dashboard' : accountDestination(true))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível salvar seus dados.')

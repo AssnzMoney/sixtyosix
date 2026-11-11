@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { withPlanModels } from '../server/model-aliases.js'
 import { CONFIRMATION_TEXT_VERSION, deliveryConfirmationText, deliveryState, type DeliveryRow } from '../src/lib/deliveries.js'
+import { emailConfig, type EmailConfig } from '../server/email.js'
+import { createNotifier, userFromAuth } from '../server/notifications.js'
 
 type Config = { url: string; secret: string; publicKey: string;billingConnected?:boolean }
 type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean }
@@ -23,7 +25,7 @@ export function configuration(env = process.env): Config {
   return { url, secret, publicKey,billingConnected:Boolean(env.MERCADOPAGO_ACCESS_TOKEN&&env.MERCADOPAGO_WEBHOOK_SECRET) }
 }
 
-export function createAccountService(config: Config, request: typeof fetch = fetch) {
+export function createAccountService(config: Config, request: typeof fetch = fetch, email: EmailConfig | null = null) {
   const headers = { apikey: config.secret, ...(!config.secret.startsWith('sb_secret_') ? { Authorization: `Bearer ${config.secret}` } : {}), 'Content-Type': 'application/json' }
   async function db<T>(resource: string, query: Record<string, string> = {}, method = 'GET', body?: unknown): Promise<T> {
     const response = await request(`${config.url}/rest/v1/${resource}?${new URLSearchParams(query)}`, {
@@ -145,6 +147,16 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         if (!confirmed) throw new AccountError(409, 'Esta credencial não está mais ativa. Atualize o painel.')
         return { confirmed_at: confirmed }
       }
+      // E-mail de boas-vindas ao concluir o cadastro (nome e WhatsApp). Enviado uma vez só.
+      if (method === 'POST' && path === 'welcome') {
+        const response = await request(`${config.url}/auth/v1/user`, {
+          headers: { apikey: config.publicKey, Authorization: authorization! }, signal: AbortSignal.timeout(10000),
+        })
+        if (!response.ok) throw new AccountError(401, 'Sua sessão não pôde ser validada. Entre novamente.')
+        const user = userFromAuth(await response.json())
+        if (user.id !== userId) throw new AccountError(401, 'Sua sessão não pôde ser validada. Entre novamente.')
+        return { email: await createNotifier(config, email, request).welcome(user) }
+      }
       throw new AccountError(405, 'Operação não disponível.')
     },
   }
@@ -172,7 +184,7 @@ export default async function handler(req: IncomingMessage & { body?: Record<str
     if (body && (typeof body !== 'object' || Array.isArray(body))) throw new AccountError(400, 'Solicitação inválida.')
     const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
     const meta = { ip: String(req.headers['x-real-ip'] || forwarded || ''), userAgent: String(req.headers['user-agent'] || '') }
-    const data = await createAccountService(configuration()).execute(req.method!, path, req.headers.authorization, body, url.searchParams, meta)
+    const data = await createAccountService(configuration(), fetch, emailConfig()).execute(req.method!, path, req.headers.authorization, body, url.searchParams, meta)
     res.statusCode = 200
     res.end(JSON.stringify(data))
   } catch (error) {

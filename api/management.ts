@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { normalizeWhatsapp } from '../src/lib/whatsapp.js'
-import { isUuid, validateDeliveryInput } from '../src/lib/deliveries.js'
+import { credentialTitle, isUuid, validateDeliveryInput } from '../src/lib/deliveries.js'
+import { emailConfig } from '../server/email.js'
+import { createNotifier, userFromAuth, type NotifyResult } from '../server/notifications.js'
 class AccountError extends Error { status:number; constructor(status:number,message:string){super(message);this.status=status} }
 function configuration(env:NodeJS.ProcessEnv){
  const url=env.SUPABASE_URL?.replace(/\/+$/,''),secret=env.SUPABASE_SERVICE_ROLE_KEY,publicKey=env.VITE_SUPABASE_ANON_KEY||env.SUPABASE_PUBLISHABLE_KEY
@@ -82,7 +84,14 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    try{input=validateDeliveryInput(body.delivery&&typeof body.delivery==='object'?body.delivery:{})}catch(error){throw new AccountError(400,error instanceof Error?error.message:'Entrega inválida.')}
    const id=await rpc<string|null>('admin_register_delivery',{p_id:input.id,p_user_id:input.user_id,p_subscription_id:input.subscription_id,p_product:input.product,p_supplier:input.supplier,p_key_hint:input.key_hint,p_base_url:input.base_url,p_model_id:input.model_id,p_notes:input.notes,p_expires_at:input.expires_at,p_replaces:input.replaces,p_created_by:email})
    if(!id)throw new AccountError(409,'Não foi possível registrar: a credencial a substituir ou a assinatura não pertence a este cliente.')
-   return {id}
+   // Avisa o cliente por e-mail (sem a chave). Falha no e-mail nunca desfaz a entrega.
+   let notice:NotifyResult='skipped'
+   const mail=emailConfig(env)
+   if(mail)try{
+    const found=await request(`${config.url}/auth/v1/admin/users/${input.user_id}`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(10000)})
+    if(found.ok)notice=await createNotifier(config,mail,request).delivery(userFromAuth(await found.json()),{id:input.id,title:credentialTitle(input),key_hint:input.key_hint})
+   }catch{notice='failed'}
+   return {id,email:notice}
   }
   if(action==='revoke-delivery'){
    if(!isUuid(body.id))throw new AccountError(400,'Credencial inválida.')

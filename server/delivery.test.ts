@@ -96,7 +96,7 @@ test('ações do admin exigem administrador e ação explícita', async () => {
 
 test('registrar entrega grava o e-mail do admin e recusa a chave inteira', async () => {
   const { calls, actions } = adminFixture()
-  assert.deepEqual(await actions('Bearer ok', { action: 'register-delivery', delivery }), { id: deliveryId })
+  assert.deepEqual(await actions('Bearer ok', { action: 'register-delivery', delivery }), { id: deliveryId, email: 'skipped' })
   const args = JSON.parse(String(calls.find((c) => c.url.pathname.endsWith('/rpc/admin_register_delivery'))!.init.body))
   assert.equal(args.p_created_by, 'alissonmedeiroz007@gmail.com')
   assert.equal(args.p_key_hint, '9f3a')

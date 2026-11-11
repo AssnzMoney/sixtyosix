@@ -164,6 +164,7 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false)
   const [savedDelivery, setSavedDelivery] = useState<DeliveryDraft | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
+  const [deliveryEmail, setDeliveryEmail] = useState('')
 
   useEffect(() => {
     if (!session) return
@@ -445,7 +446,8 @@ export default function AdminPage() {
     // Produto deduzido do modelo; numa rotação sem modelo, mantém o da credencial anterior.
     const product = draft.model_id.trim() ? productForModel(draft.model_id) : draft.product
     try {
-      await adminAction({ action: 'register-delivery', delivery: { ...draft, product } })
+      const result = await adminAction<{ id: string; email?: string }>({ action: 'register-delivery', delivery: { ...draft, product } })
+      setDeliveryEmail(result.email || '')
       setSavedDelivery(draft)
     } catch (err) {
       setDraftError(err instanceof Error ? err.message : 'Não foi possível registrar.')
@@ -1045,6 +1047,11 @@ export default function AdminPage() {
                   <Check size={16} /> A credencial …{savedDelivery.key_hint} já aparece na dashboard do cliente para confirmação.
                 </p>
                 <p>Agora envie a chave pelo WhatsApp. A mensagem abre pronta; cole a chave no lugar indicado.</p>
+                {deliveryEmail === 'sent' && (
+                  <p>
+                    <Check size={16} /> Também avisamos o cliente por e-mail para olhar o WhatsApp e confirmar (sem a chave).
+                  </p>
+                )}
                 <div className="sx-actions">
                   {whatsappButton(
                     draftCustomer,
