@@ -18,13 +18,15 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
-import { confirmationReminder, customerGreeting, deliveryMessage, formatWhatsapp, whatsappLink } from '../lib/whatsapp'
+import { confirmationReminder, customerGreeting, deliveryMessage, formatWhatsapp, shortOrder, whatsappLink } from '../lib/whatsapp'
 import {
-  DELIVERY_PRODUCTS,
   PRODUCT_LABELS,
   STATE_LABELS,
+  MODEL_NAMES,
+  credentialTitle,
   deliveryState,
   isActiveDelivery,
+  productForModel,
   validBaseUrl,
   validKeyHint,
   type DeliveryProduct,
@@ -55,7 +57,7 @@ const resourceLabels: Record<string, string> = {
 }
 const columns: Record<string, string[]> = {
   users: ['name', 'whatsapp', 'email', 'service_status', 'provider', 'created_at', 'last_sign_in_at'],
-  deliveries: ['customer', 'product', 'supplier', 'key_hint', 'base_url', 'model_id', 'delivered_at', 'expires_at', 'state', 'confirmed_at', 'created_by'],
+  deliveries: ['customer', 'plan_code', 'model_id', 'supplier', 'key_hint', 'base_url', 'delivered_at', 'expires_at', 'state', 'confirmed_at', 'created_by'],
   subscriptions: ['customer', 'plan_code', 'amount_cents', 'provider_status', 'entitled', 'paid_until', 'billing_mode'],
   keys: ['customer', 'token_prefix', 'api_enabled', 'entitled', 'paid_until', 'revoked_at'],
   trials: ['customer', 'token_prefix', 'created_at', 'expires_at', 'revoked_at'],
@@ -76,6 +78,16 @@ const titles: Record<string, string> = {
   confirm_user_agent: 'Navegador da confirmação', confirm_text: 'Texto confirmado', notes: 'Observação',
 }
 const planNames: Record<string, string> = { dev: 'Dev', devApi: 'Dev + API', pro: 'Pro' }
+const paymentLabels: Record<string, string> = {
+  approved: 'Aprovado',
+  pending: 'Pendente',
+  in_process: 'Em análise',
+  authorized: 'Autorizado',
+  rejected: 'Recusado',
+  cancelled: 'Cancelado',
+  refunded: 'Estornado',
+  charged_back: 'Contestado',
+}
 const money = (n: number) => (n / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const number = (n: number) => n.toLocaleString('pt-BR')
 const shortDate = (value: string | null | undefined) =>
@@ -89,11 +101,32 @@ function format(key: string, value: any) {
   if (key === 'product') return PRODUCT_LABELS[value as DeliveryProduct] || String(value)
   if (key === 'state') return STATE_LABELS[value as keyof typeof STATE_LABELS] || String(value)
   if (key === 'key_hint') return `…${value}`
+  if (key === 'model_id') return MODEL_NAMES[value] ? `${MODEL_NAMES[value]} (${value})` : String(value)
+  if (key === 'status' && paymentLabels[value]) return paymentLabels[value]
   if (key.endsWith('_at') || ['paid_until', 'period_end'].includes(key)) return new Date(value).toLocaleString('pt-BR')
   if (typeof value === 'number') return number(value)
   return String(value)
 }
 const inDays = (days: number) => new Date(Date.now() + days * 86400000).toISOString().slice(0, 10)
+const fullDate = (value: string | null | undefined) =>
+  value ? new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+/** Data (AAAA-MM-DD) no horário de Brasília, para o campo "Válida até". */
+const brDate = (value: string) => new Date(value).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
+/** "há 3 h", "em 5 dias"… */
+function relative(value: string | null | undefined, now = Date.now()) {
+  if (!value) return ''
+  const diff = Date.parse(value) - now
+  const abs = Math.abs(diff)
+  const hours = Math.round(abs / 3600000)
+  const days = Math.round(abs / 86400000)
+  const text = abs < 3600000 ? 'menos de 1 h' : abs < 86400000 ? `${hours} h` : `${days} ${days === 1 ? 'dia' : 'dias'}`
+  return diff >= 0 ? `em ${text}` : `há ${text}`
+}
+const subscriptionActive = (s: Row, now = Date.now()) => Boolean(s.entitled && s.paid_until && Date.parse(s.paid_until) > now)
+const subscriptionLabel = (s: Row) =>
+  `${planNames[s.plan_code] || s.plan_code} · ${money(Number(s.amount_cents || 0))} · ${
+    subscriptionActive(s) ? `pago até ${fullDate(s.paid_until)}` : s.paid_until ? `venceu em ${fullDate(s.paid_until)}` : 'aguardando pagamento'
+  }`
 
 type DeliveryDraft = {
   id: string
@@ -130,6 +163,7 @@ export default function AdminPage() {
   const [hintNotice, setHintNotice] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedDelivery, setSavedDelivery] = useState<DeliveryDraft | null>(null)
+  const [profileId, setProfileId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!session) return
@@ -210,6 +244,13 @@ export default function AdminPage() {
     }
   }, [session?.access_token, from, to, revision])
 
+  useEffect(() => {
+    if (!profileId) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setProfileId(null)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [profileId])
+
   async function adminAction<T>(body: Row): Promise<T> {
     const response = await fetch('/api/management', {
       method: 'POST',
@@ -246,6 +287,17 @@ export default function AdminPage() {
     (subscriptionsByUser.get(userId) || []).find((s) => s.entitled && Date.parse(s.paid_until) > now)
   const activeDeliveries = (userId: string) => (deliveriesByUser.get(userId) || []).filter((d) => isActiveDelivery(d as DeliveryRow))
   const deliveriesReady = !failed.includes('deliveries')
+  const subscriptionsById = useMemo(() => new Map((data.subscriptions || []).map((s) => [s.id, s])), [data.subscriptions])
+  const paymentsBySubscription = useMemo(() => {
+    const map = new Map<string, Row[]>()
+    for (const p of data.payments || []) map.set(p.subscription_id, [...(map.get(p.subscription_id) || []), p])
+    for (const list of map.values()) list.sort((a, b) => String(b.approved_at || b.recorded_at).localeCompare(String(a.approved_at || a.recorded_at)))
+    return map
+  }, [data.payments])
+  /** Quando o plano foi pago: último pagamento aprovado, ou a criação do pedido. */
+  const paidAt = (s: Row) => (paymentsBySubscription.get(s.id) || []).find((p) => p.status === 'approved' && p.approved_at)?.approved_at || s.created_at
+  const userSubscriptions = (userId: string) =>
+    [...(subscriptionsByUser.get(userId) || [])].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
 
   /* ------------------------------ Filas ------------------------------ */
   const queues = useMemo(() => {
@@ -254,7 +306,7 @@ export default function AdminPage() {
     const paidWaiting = users
       .map((u) => ({ user: u, subscription: activeSubscription(u.id) }))
       .filter((x) => x.subscription && (!deliveriesReady || activeDeliveries(x.user.id).length === 0))
-      .sort((a, b) => String(b.subscription!.created_at).localeCompare(String(a.subscription!.created_at)))
+      .sort((a, b) => String(paidAt(a.subscription!)).localeCompare(String(paidAt(b.subscription!))))
     const awaitingConfirmation = deliveries.filter((d) => d.state === 'pending')
     const rotation = deliveries
       .filter((d) => !d.replaced_at && !d.revoked_at && d.expires_at && Date.parse(d.expires_at) <= soon)
@@ -266,7 +318,7 @@ export default function AdminPage() {
       .filter((s, i, list) => list.findIndex((x) => x.user_id === s.user_id) === i)
     const noWhatsapp = users.filter((u) => !u.whatsapp)
     return { paidWaiting, awaitingConfirmation, rotation, endedWithKey, pendingPayment, noWhatsapp }
-  }, [data, deliveries, deliveriesByUser, subscriptionsByUser, deliveriesReady])
+  }, [data, deliveries, deliveriesByUser, subscriptionsByUser, deliveriesReady, paymentsBySubscription])
 
   const serviceStatus = (userId: string) => {
     if (activeDeliveries(userId).some((d) => d.state === 'pending')) return 'Aguardando confirmação'
@@ -348,24 +400,34 @@ export default function AdminPage() {
   /* ------------------------ Registrar entrega ------------------------ */
   function openDelivery(userId: string, options: { replaces?: Row } = {}) {
     const previous = options.replaces
+    // A entrega fica presa à assinatura: a ativa, senão a mais recente. A validade vem do fim do período pago.
+    const subscription = activeSubscription(userId) || userSubscriptions(userId)[0]
     setDraftCustomer(customer(userId))
     setDraftError('')
     setHintNotice('')
     setSavedDelivery(null)
+    setProfileId(null)
     setDraft({
       id: crypto.randomUUID(),
       user_id: userId,
-      subscription_id: activeSubscription(userId)?.id || '',
+      subscription_id: subscription?.id || '',
       replaces: previous?.id || '',
-      product: (previous?.product as DeliveryProduct) || 'claude',
-      supplier: previous?.supplier || '',
+      product: (previous?.product as DeliveryProduct) || 'outro',
+      supplier: previous?.supplier && previous.supplier !== 'Não informado' ? previous.supplier : '',
       key_hint: '',
       base_url: previous?.base_url || '',
       model_id: previous?.model_id || '',
-      expires_at: '',
+      expires_at: subscription?.paid_until && subscriptionActive(subscription) ? brDate(subscription.paid_until) : '',
       notes: '',
     })
   }
+  const pickSubscription = (id: string) => {
+    if (!draft) return
+    const s = subscriptionsById.get(id)
+    setDraft({ ...draft, subscription_id: id, expires_at: s?.paid_until && subscriptionActive(s) ? brDate(s.paid_until) : draft.expires_at })
+  }
+  const draftSubscription = draft?.subscription_id ? subscriptionsById.get(draft.subscription_id) : undefined
+  const expiresFromPlan = Boolean(draftSubscription?.paid_until && draft?.expires_at === brDate(draftSubscription.paid_until))
   const closeDelivery = () => {
     setDraft(null)
     setSavedDelivery(null)
@@ -378,11 +440,12 @@ export default function AdminPage() {
     if (!draft) return
     if (!validKeyHint(draft.key_hint)) return setDraftError('Informe o final da chave com 2 a 8 caracteres.')
     if (!validBaseUrl(draft.base_url)) return setDraftError('Informe a URL base com https://, sem parâmetros.')
-    if (!draft.supplier.trim()) return setDraftError('Informe o fornecedor.')
     setSaving(true)
     setDraftError('')
+    // Produto deduzido do modelo; numa rotação sem modelo, mantém o da credencial anterior.
+    const product = draft.model_id.trim() ? productForModel(draft.model_id) : draft.product
     try {
-      await adminAction({ action: 'register-delivery', delivery: draft })
+      await adminAction({ action: 'register-delivery', delivery: { ...draft, product } })
       setSavedDelivery(draft)
     } catch (err) {
       setDraftError(err instanceof Error ? err.message : 'Não foi possível registrar.')
@@ -406,7 +469,9 @@ export default function AdminPage() {
   }
   const who = (c: Customer) => (
     <div className="sx-who">
-      <strong>{c.name}</strong>
+      <button type="button" className="sx-who-name" onClick={() => setProfileId(c.id)} title="Abrir ficha do cliente">
+        {c.name}
+      </button>
       <span>{c.email}</span>
       <span className={c.whatsapp ? 'sx-phone' : 'sx-phone is-missing'}>{c.whatsapp ? formatWhatsapp(c.whatsapp) : 'sem WhatsApp'}</span>
     </div>
@@ -429,6 +494,21 @@ export default function AdminPage() {
     const s = activeSubscription(userId)
     return s ? planNames[s.plan_code] || s.plan_code : ''
   }
+
+  /* ------------------------- Ficha do cliente ------------------------ */
+  const profile = profileId
+    ? {
+        customer: customer(profileId),
+        user: usersById.get(profileId),
+        active: activeSubscription(profileId),
+        subscriptions: userSubscriptions(profileId),
+        credentials: [...(deliveriesByUser.get(profileId) || [])].sort((a, b) => String(b.delivered_at).localeCompare(String(a.delivered_at))),
+        payments: userSubscriptions(profileId)
+          .flatMap((s) => (paymentsBySubscription.get(s.id) || []).map((p): Row => ({ ...p, plan_code: s.plan_code })))
+          .sort((a, b) => String(b.approved_at || b.recorded_at).localeCompare(String(a.approved_at || a.recorded_at))),
+        trial: (data.trials || []).find((t) => t.user_id === profileId),
+      }
+    : null
 
   const metrics: Array<[string, ReactNode, string]> = [
     [deliveriesReady ? 'Pagou, aguarda entrega' : 'Pagantes ativos', queues.paidWaiting.length, queues.paidWaiting.length ? 'alert' : ''],
@@ -546,8 +626,13 @@ export default function AdminPage() {
                     <li key={user.id}>
                       {who(c)}
                       <div className="sx-context">
-                        <strong>{planNames[subscription!.plan_code] || subscription!.plan_code}</strong>
-                        <span>Pago até {shortDate(subscription!.paid_until)}</span>
+                        <strong>
+                          {planNames[subscription!.plan_code] || subscription!.plan_code} · {money(Number(subscription!.amount_cents || 0))}
+                        </strong>
+                        <span className={now - Date.parse(paidAt(subscription!)) > 2 * 3600000 ? 'is-late' : 'is-fresh'}>
+                          Pagou {relative(paidAt(subscription!), now)}
+                        </span>
+                        <span>Acesso até {fullDate(subscription!.paid_until)}</span>
                       </div>
                       <div className="sx-actions">
                         {whatsappButton(c, customerGreeting({ name: c.name, plan: planNames[subscription!.plan_code] }))}
@@ -572,9 +657,10 @@ export default function AdminPage() {
                       {who(c)}
                       <div className="sx-context">
                         <strong>
-                          {PRODUCT_LABELS[d.product as DeliveryProduct] || d.product} · …{d.key_hint}
+                          {credentialTitle(d)} · …{d.key_hint}
                         </strong>
-                        <span>Enviada em {shortDate(d.delivered_at)}</span>
+                        <span className={now - Date.parse(d.delivered_at) > 86400000 ? 'is-late' : ''}>Enviada {relative(d.delivered_at, now)}</span>
+                        <span>{planOf(d.user_id) ? `Plano ${planOf(d.user_id)}` : 'Sem plano ativo'}</span>
                       </div>
                       <div className="sx-actions">
                         {whatsappButton(c, confirmationReminder({ name: c.name, hint: d.key_hint }), 'Lembrar')}
@@ -597,10 +683,14 @@ export default function AdminPage() {
                       {who(c)}
                       <div className="sx-context">
                         <strong>
-                          {PRODUCT_LABELS[d.product as DeliveryProduct] || d.product} · …{d.key_hint}
+                          {credentialTitle(d)} · …{d.key_hint}
                         </strong>
-                        <span className={expired ? 'is-late' : ''}>
-                          {expired ? 'Venceu em' : 'Vence em'} {shortDate(d.expires_at)}
+                        <span className={expired ? 'is-late' : 'is-soon'}>
+                          {expired ? 'Venceu' : 'Vence'} {relative(d.expires_at, now)}
+                        </span>
+                        <span>
+                          {fullDate(d.expires_at)}
+                          {planOf(d.user_id) ? ` · plano ${planOf(d.user_id)}` : ' · sem plano ativo'}
                         </span>
                       </div>
                       <div className="sx-actions">
@@ -626,9 +716,14 @@ export default function AdminPage() {
                       {who(c)}
                       <div className="sx-context">
                         <strong>
-                          {PRODUCT_LABELS[d.product as DeliveryProduct] || d.product} · …{d.key_hint}
+                          {credentialTitle(d)} · …{d.key_hint}
                         </strong>
-                        <span>{d.expires_at ? `Válida até ${shortDate(d.expires_at)}` : 'Sem validade registrada'}</span>
+                        <span className="is-late">
+                          {userSubscriptions(u.id)[0]?.paid_until
+                            ? `Plano venceu ${relative(userSubscriptions(u.id)[0].paid_until, now)}`
+                            : 'Sem plano (teste ou cortesia)'}
+                        </span>
+                        <span>{d.expires_at ? `Chave válida até ${fullDate(d.expires_at)}` : 'Chave sem validade registrada'}</span>
                       </div>
                       <div className="sx-actions">
                         {whatsappButton(c, `Olá, ${c.name}! Aqui é da SixtySix. Seu acesso não está ativo no momento. Quer renovar?`)}
@@ -652,8 +747,10 @@ export default function AdminPage() {
                     <li key={s.id}>
                       {who(c)}
                       <div className="sx-context">
-                        <strong>{planNames[s.plan_code] || s.plan_code}</strong>
-                        <span>Iniciado em {shortDate(s.created_at)}</span>
+                        <strong>
+                          {planNames[s.plan_code] || s.plan_code} · {money(Number(s.amount_cents || 0))}
+                        </strong>
+                        <span>Começou {relative(s.created_at, now)}</span>
                       </div>
                       <div className="sx-actions">
                         {whatsappButton(c, `Olá, ${c.name}! Aqui é da SixtySix. Vi que você começou a contratar o plano ${planNames[s.plan_code] || ''}. Posso ajudar a concluir?`)}
@@ -672,7 +769,7 @@ export default function AdminPage() {
                   <li key={u.id}>
                     {who(customer(u.id))}
                     <div className="sx-context">
-                      <span>Último acesso {shortDate(u.last_sign_in_at)}</span>
+                      <span>{u.last_sign_in_at ? `Último acesso ${relative(u.last_sign_in_at, now)}` : 'Nunca acessou'}</span>
                     </div>
                   </li>
                 )),
@@ -731,6 +828,9 @@ export default function AdminPage() {
                         {tab === 'users' && (
                           <td>
                             <div className="sx-actions">
+                              <button type="button" className="sx-btn" onClick={() => setProfileId(row.id)}>
+                                <UserRound size={15} /> Ficha
+                              </button>
                               {whatsappButton(customer(row.id), customerGreeting({ name: row.name, plan: planOf(row.id) }))}
                               {deliveriesReady && (
                                 <button type="button" className="sx-btn" onClick={() => openDelivery(row.id)}>
@@ -780,6 +880,155 @@ export default function AdminPage() {
         </>
       )}
 
+      {profileId && profile && (
+        <div className="sx-drawer-backdrop" onClick={() => setProfileId(null)}>
+          <aside className="sx-drawer" role="dialog" aria-modal="true" aria-labelledby="sx-drawer-title" onClick={(e) => e.stopPropagation()}>
+            <header className="sx-drawer-head">
+              <div>
+                <span className="sx-eyebrow">ficha do cliente</span>
+                <h2 id="sx-drawer-title">{profile.customer.name}</h2>
+                <p>{profile.customer.email}</p>
+                <p className={profile.customer.whatsapp ? 'sx-phone' : 'sx-phone is-missing'}>
+                  {profile.customer.whatsapp ? formatWhatsapp(profile.customer.whatsapp) : 'Sem WhatsApp cadastrado'}
+                </p>
+              </div>
+              <button type="button" className="sx-icon" onClick={() => setProfileId(null)} aria-label="Fechar ficha">
+                <X size={18} />
+              </button>
+            </header>
+
+            <div className="sx-drawer-status">
+              <span className={`sx-state ${profile.active ? 'is-confirmed' : 'is-pending'}`}>{serviceStatus(profileId)}</span>
+              <span>
+                Conta criada {relative(profile.user?.created_at, now)}
+                {profile.user?.provider ? ` · entra com ${profile.user.provider}` : ''}
+              </span>
+              <span>{profile.user?.last_sign_in_at ? `Último acesso ${relative(profile.user.last_sign_in_at, now)}` : 'Nunca acessou'}</span>
+            </div>
+
+            <div className="sx-actions sx-drawer-actions">
+              {whatsappButton(profile.customer, customerGreeting({ name: profile.customer.name, plan: planOf(profileId) }), 'Chamar no WhatsApp')}
+              {deliveriesReady && (
+                <button type="button" className="sx-btn is-primary" onClick={() => openDelivery(profileId)}>
+                  <KeyRound size={15} /> Registrar entrega
+                </button>
+              )}
+            </div>
+
+            <section className="sx-drawer-section">
+              <h3>Assinaturas</h3>
+              {profile.subscriptions.length ? (
+                <ul className="sx-drawer-list">
+                  {profile.subscriptions.map((s) => (
+                    <li key={s.id}>
+                      <div>
+                        <strong>
+                          {planNames[s.plan_code] || s.plan_code} · {money(Number(s.amount_cents || 0))}
+                        </strong>
+                        <span>
+                          {s.billing_mode === 'pix' ? 'Pix (30 dias)' : 'Cartão (mensal)'} · pedido {shortOrder(String(s.id))}
+                        </span>
+                      </div>
+                      <span className={`sx-state ${subscriptionActive(s, now) ? 'is-confirmed' : s.paid_until ? 'is-expired' : 'is-pending'}`}>
+                        {subscriptionActive(s, now)
+                          ? `Ativo até ${fullDate(s.paid_until)}`
+                          : s.paid_until
+                            ? `Venceu em ${fullDate(s.paid_until)}`
+                            : 'Aguardando pagamento'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="sx-drawer-empty">Nenhuma assinatura.</p>
+              )}
+            </section>
+
+            <section className="sx-drawer-section">
+              <h3>Credenciais entregues</h3>
+              {!deliveriesReady ? (
+                <p className="sx-drawer-empty">Aplique a migração supabase/whatsapp-delivery.sql para ver as entregas.</p>
+              ) : profile.credentials.length ? (
+                <ul className="sx-drawer-list">
+                  {profile.credentials.map((d) => (
+                    <li key={d.id}>
+                      <div>
+                        <strong>
+                          {credentialTitle(d)} · …{d.key_hint}
+                        </strong>
+                        <span>
+                          Enviada em {fullDate(d.delivered_at)}
+                          {d.expires_at ? ` · válida até ${fullDate(d.expires_at)}` : ''}
+                        </span>
+                        {d.confirmed_at && (
+                          <span>
+                            Confirmada em {shortDate(d.confirmed_at)}
+                            {d.confirm_ip ? ` · IP ${d.confirm_ip}` : ''}
+                          </span>
+                        )}
+                      </div>
+                      <div className="sx-drawer-item-actions">
+                        <span className={`sx-state is-${d.state}`}>{STATE_LABELS[d.state as keyof typeof STATE_LABELS] || d.state}</span>
+                        {d.state === 'pending' && whatsappButton(profile.customer, confirmationReminder({ name: profile.customer.name, hint: d.key_hint }), 'Lembrar')}
+                        {['pending', 'confirmed', 'expired'].includes(d.state) && (
+                          <button type="button" className="sx-btn" onClick={() => openDelivery(d.user_id, { replaces: d })}>
+                            <RefreshCw size={15} /> Rotação
+                          </button>
+                        )}
+                        {!d.revoked_at && !d.replaced_at && (
+                          <button type="button" className="sx-btn is-danger" onClick={() => void revokeDelivery(d)}>
+                            <X size={15} /> Revogar
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="sx-drawer-empty">Nenhuma credencial entregue ainda.</p>
+              )}
+            </section>
+
+            <section className="sx-drawer-section">
+              <h3>Pagamentos</h3>
+              {profile.payments.length ? (
+                <ul className="sx-drawer-list">
+                  {profile.payments.slice(0, 12).map((p) => (
+                    <li key={p.id}>
+                      <div>
+                        <strong>{money(Number(p.amount_cents || 0))}</strong>
+                        <span>
+                          {planNames[p.plan_code] || p.plan_code || 'Plano'} · {fullDate(p.approved_at || p.recorded_at)}
+                        </span>
+                      </div>
+                      <span className={`sx-state ${p.status === 'approved' ? 'is-confirmed' : ['rejected', 'cancelled', 'refunded', 'charged_back'].includes(p.status) ? 'is-expired' : 'is-pending'}`}>
+                        {paymentLabels[p.status] || p.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="sx-drawer-empty">Nenhum pagamento no período carregado.</p>
+              )}
+            </section>
+
+            {profile.trial && (
+              <section className="sx-drawer-section">
+                <h3>Teste grátis</h3>
+                <p className="sx-drawer-empty">
+                  Pedido em {fullDate(profile.trial.created_at)} ·{' '}
+                  {profile.trial.revoked_at
+                    ? 'revogado'
+                    : Date.parse(profile.trial.expires_at) > now
+                      ? `ativo até ${fullDate(profile.trial.expires_at)}`
+                      : `terminou em ${fullDate(profile.trial.expires_at)}`}
+                </p>
+              </section>
+            )}
+          </aside>
+        </div>
+      )}
+
       {draft && draftCustomer && (
         <div className="sx-modal-backdrop" onClick={closeDelivery}>
           <div className="sx-modal" role="dialog" aria-modal="true" aria-labelledby="sx-modal-title" onClick={(e) => e.stopPropagation()}>
@@ -810,34 +1059,30 @@ export default function AdminPage() {
             ) : (
               <form onSubmit={saveDelivery} className="sx-form">
                 <p className="sx-form-who">
-                  {draftCustomer.email} · {draftCustomer.whatsapp ? formatWhatsapp(draftCustomer.whatsapp) : 'sem WhatsApp'}
+                  {draftCustomer.email} ·{' '}
+                  <span className={draftCustomer.whatsapp ? 'sx-phone' : 'sx-phone is-missing'}>
+                    {draftCustomer.whatsapp ? formatWhatsapp(draftCustomer.whatsapp) : 'sem WhatsApp'}
+                  </span>{' '}
+                  · {serviceStatus(draftCustomer.id)}
                 </p>
                 <div className="sx-form-grid">
-                  <label>
-                    Produto
-                    <select value={draft.product} onChange={(e) => setDraft({ ...draft, product: e.target.value as DeliveryProduct })}>
-                      {DELIVERY_PRODUCTS.map((p) => (
-                        <option key={p} value={p}>
-                          {PRODUCT_LABELS[p]}
+                  <label className="is-wide">
+                    Assinatura
+                    <select value={draft.subscription_id} onChange={(e) => pickSubscription(e.target.value)}>
+                      {userSubscriptions(draft.user_id).map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {subscriptionLabel(s)}
                         </option>
                       ))}
+                      <option value="">Sem assinatura (teste grátis ou cortesia)</option>
                     </select>
-                  </label>
-                  <label>
-                    Fornecedor
-                    <input
-                      list="sx-suppliers"
-                      maxLength={60}
-                      value={draft.supplier}
-                      onChange={(e) => setDraft({ ...draft, supplier: e.target.value })}
-                      placeholder="Nome do fornecedor"
-                      required
-                    />
-                    <datalist id="sx-suppliers">
-                      {suggestions('supplier').map((v) => (
-                        <option key={v} value={v} />
-                      ))}
-                    </datalist>
+                    <small>
+                      {draftSubscription
+                        ? subscriptionActive(draftSubscription)
+                          ? 'A validade da chave acompanha o fim do período pago.'
+                          : 'Esta assinatura não está ativa. Confira o pagamento antes de entregar.'
+                        : 'A entrega fica registrada sem plano. Defina a validade abaixo.'}
+                    </small>
                   </label>
                   <label>
                     Final da chave
@@ -864,6 +1109,15 @@ export default function AdminPage() {
                     Válida até
                     <input type="date" value={draft.expires_at} onChange={(e) => setDraft({ ...draft, expires_at: e.target.value })} />
                     <span className="sx-quick">
+                      {draftSubscription?.paid_until && subscriptionActive(draftSubscription) && (
+                        <button
+                          type="button"
+                          className={expiresFromPlan ? 'is-on' : ''}
+                          onClick={() => setDraft({ ...draft, expires_at: brDate(draftSubscription.paid_until) })}
+                        >
+                          Fim do plano
+                        </button>
+                      )}
                       {[7, 30].map((d) => (
                         <button key={d} type="button" onClick={() => setDraft({ ...draft, expires_at: inDays(d) })}>
                           +{d} dias
@@ -895,10 +1149,13 @@ export default function AdminPage() {
                       placeholder="Ex.: claude-fable-5-1"
                     />
                     <datalist id="sx-models">
-                      {suggestions('model_id').map((v) => (
-                        <option key={v} value={v} />
+                      {[...new Set([...Object.keys(MODEL_NAMES), ...suggestions('model_id')])].map((v) => (
+                        <option key={v} value={v}>
+                          {MODEL_NAMES[v] || v}
+                        </option>
                       ))}
                     </datalist>
+                    <small>{draft.model_id && MODEL_NAMES[draft.model_id] ? `Aparece para o cliente como ${MODEL_NAMES[draft.model_id]}.` : 'Ex.: argon-4, claude-fable-5-1, gpt-6-astra.'}</small>
                   </label>
                   <label>
                     Substitui a credencial
@@ -906,12 +1163,29 @@ export default function AdminPage() {
                       <option value="">Nenhuma (nova chave)</option>
                       {activeDeliveries(draft.user_id).map((d) => (
                         <option key={d.id} value={d.id}>
-                          {PRODUCT_LABELS[d.product as DeliveryProduct] || d.product} · …{d.key_hint}
+                          {credentialTitle(d)} · …{d.key_hint}
                         </option>
                       ))}
                     </select>
                   </label>
-                  <label className="is-wide">
+                  <label>
+                    Fornecedor (opcional)
+                    <input
+                      list="sx-suppliers"
+                      maxLength={60}
+                      value={draft.supplier}
+                      onChange={(e) => setDraft({ ...draft, supplier: e.target.value })}
+                      placeholder="De onde veio a chave"
+                    />
+                    <datalist id="sx-suppliers">
+                      {suggestions('supplier')
+                        .filter((v) => v !== 'Não informado')
+                        .map((v) => (
+                          <option key={v} value={v} />
+                        ))}
+                    </datalist>
+                  </label>
+                  <label>
                     Observação (opcional)
                     <textarea
                       maxLength={500}

@@ -10,6 +10,33 @@ export const PRODUCT_LABELS: Record<DeliveryProduct, string> = {
   outro: 'Outro',
 }
 
+/** Nomes dos modelos vendidos, para exibir a credencial pelo modelo em vez do produto. */
+export const MODEL_NAMES: Record<string, string> = {
+  'claude-fable-5-1': 'Fable 5.1',
+  'argon-4': 'Argon 4',
+  'gpt-6-astra': 'Astra 6',
+  'glm-5': 'GLM 5',
+}
+
+/** Produto gravado no banco, deduzido do modelo (o admin não escolhe mais). */
+export function productForModel(model: string | null | undefined): DeliveryProduct {
+  const id = (model || '').trim().toLowerCase()
+  if (id.startsWith('claude')) return 'claude'
+  if (id.startsWith('gpt')) return 'gpt'
+  if (id.startsWith('glm')) return 'glm'
+  return 'outro'
+}
+
+/** Título da credencial: nome do modelo, ou o produto, ou um nome genérico. */
+export function credentialTitle(row: { product?: string | null; model_id?: string | null }) {
+  if (row.model_id && MODEL_NAMES[row.model_id]) return MODEL_NAMES[row.model_id]
+  if (row.product && row.product !== 'outro' && PRODUCT_LABELS[row.product as DeliveryProduct]) return PRODUCT_LABELS[row.product as DeliveryProduct]
+  return row.model_id || 'Credencial SixtySix'
+}
+
+/** Fornecedor é opcional no painel; o banco exige um texto, então vazio vira este. */
+export const SUPPLIER_UNKNOWN = 'Não informado'
+
 /** Versão do texto que o cliente aceita ao confirmar. Mude ao alterar a frase. */
 export const CONFIRMATION_TEXT_VERSION = 'v1-2026-11-11'
 
@@ -92,10 +119,13 @@ export function validateDeliveryInput(input: Record<string, unknown>): DeliveryI
   if (subscription !== null && !isUuid(subscription)) fail('Assinatura inválida.')
   const replaces = input.replaces == null || input.replaces === '' ? null : input.replaces
   if (replaces !== null && !isUuid(replaces)) fail('Credencial a substituir inválida.')
-  if (!DELIVERY_PRODUCTS.includes(input.product as DeliveryProduct)) fail('Escolha o produto da chave.')
+  // Sem produto, ele é deduzido do modelo.
+  const product =
+    input.product == null || input.product === '' ? productForModel(typeof input.model_id === 'string' ? input.model_id : '') : input.product
+  if (!DELIVERY_PRODUCTS.includes(product as DeliveryProduct)) fail('Escolha o produto da chave.')
 
-  const supplier = typeof input.supplier === 'string' ? input.supplier.trim().replace(/\s+/g, ' ') : ''
-  if (!supplier || supplier.length > 60 || CONTROL.test(supplier)) fail('Informe o fornecedor com até 60 caracteres.')
+  const supplier = (typeof input.supplier === 'string' ? input.supplier.trim().replace(/\s+/g, ' ') : '') || SUPPLIER_UNKNOWN
+  if (supplier.length > 60 || CONTROL.test(supplier)) fail('O fornecedor pode ter até 60 caracteres.')
   if (LOOKS_LIKE_SECRET.test(supplier)) fail('O campo fornecedor parece conter uma chave. Use só o nome do fornecedor.')
 
   const keyHint = validKeyHint(input.key_hint)
@@ -130,7 +160,7 @@ export function validateDeliveryInput(input: Record<string, unknown>): DeliveryI
     id: input.id as string,
     user_id: input.user_id as string,
     subscription_id: subscription as string | null,
-    product: input.product as DeliveryProduct,
+    product: product as DeliveryProduct,
     supplier,
     key_hint: keyHint as string,
     base_url: baseUrl as string,

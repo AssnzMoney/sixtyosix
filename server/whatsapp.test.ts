@@ -17,6 +17,8 @@ import {
   deliveryState,
   isActiveDelivery,
   deliveryConfirmationText,
+  credentialTitle,
+  productForModel,
 } from '../src/lib/deliveries.ts'
 
 test('normaliza números brasileiros em vários formatos', () => {
@@ -116,4 +118,19 @@ test('estado calculado pelas datas', () => {
   assert.equal(isActiveDelivery({ ...base, confirmed_at: 'x' }, now), true)
   assert.equal(isActiveDelivery({ ...base, revoked_at: 'x' }, now), false)
   assert.equal(deliveryConfirmationText('9f3a', 'https://api.x.com'), 'Confirmo que recebi pelo WhatsApp a chave terminada em …9f3a e a URL https://api.x.com.')
+})
+
+test('fornecedor vazio vira "Não informado" e o produto sai do modelo', () => {
+  const out = validateDeliveryInput({ ...valid, supplier: '', product: undefined, model_id: 'argon-4' })
+  assert.equal(out.supplier, 'Não informado')
+  assert.equal(out.product, 'outro')
+  assert.equal(validateDeliveryInput({ ...valid, product: '', model_id: 'claude-fable-5-1' }).product, 'claude')
+  assert.equal(validateDeliveryInput({ ...valid, product: undefined, model_id: '' }).product, 'outro')
+})
+
+test('título da credencial usa o nome do modelo', () => {
+  assert.equal(credentialTitle({ product: 'outro', model_id: 'argon-4' }), 'Argon 4')
+  assert.equal(credentialTitle({ product: 'claude', model_id: null }), 'Claude')
+  assert.equal(credentialTitle({ product: 'outro', model_id: null }), 'Credencial SixtySix')
+  assert.equal(productForModel('GPT-6-astra'), 'gpt')
 })

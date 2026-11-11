@@ -47,7 +47,7 @@ import {
   type AccountCredential,
 } from "../lib/account"
 import { purchaseMessage, supportWhatsappLink } from "../lib/whatsapp"
-import { PRODUCT_LABELS, STATE_LABELS, deliveryConfirmationText, type DeliveryProduct } from "../lib/deliveries"
+import { STATE_LABELS, credentialTitle, deliveryConfirmationText, type DeliveryProduct } from "../lib/deliveries"
 import SiteChat from "../components/SiteChat"
 import NumberRoller from "../components/ui/number-roller"
 import "./dashboard.css"
@@ -863,7 +863,7 @@ export default function DashboardPage() {
   const credentialCard = (c: AccountCredential) => (
     <article key={c.id} className={`six-credential is-${c.state}`}>
       <div className="six-credential-head">
-        <span className="six-step-badge">{PRODUCT_LABELS[c.product as DeliveryProduct] || c.product}</span>
+        <span className="six-step-badge">{credentialTitle(c)}</span>
         <span className={`six-status ${c.state === "pending" ? "is-pending" : ""}`}>
           {c.state === "confirmed" ? <Check size={11} /> : <CircleAlert size={11} />}
           {STATE_LABELS[c.state]}
@@ -1417,7 +1417,7 @@ export default function DashboardPage() {
                       {pastCredentials.map((c) => (
                         <li key={c.id}>
                           <span>
-                            {PRODUCT_LABELS[c.product as DeliveryProduct] || c.product} · ••••{c.key_hint}
+                            {credentialTitle(c)} · ••••{c.key_hint}
                           </span>
                           <span className="six-status is-muted">{STATE_LABELS[c.state]}</span>
                           <small>
