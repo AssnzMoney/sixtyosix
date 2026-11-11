@@ -211,6 +211,12 @@ export default function ClaudeCodePage() {
                     </div>
                     <small>Perfil Fable no Claude Code</small>
                   </Link>
+                  <Link to="/#planos" className="nav-mobile-item" onClick={() => setMobileMenuOpen(false)}>
+                    <div className="nav-mobile-item-head">
+                      <strong>Argon 4 (Gemini)</strong>
+                    </div>
+                    <small>Para Cline e OpenCode, no plano Pro</small>
+                  </Link>
                   <Link
                     to="/"
                     className="nav-mobile-item"
@@ -303,6 +309,10 @@ export default function ClaudeCodePage() {
                   <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GLM 5</strong>
                     <span>Configure no Claude Code com o ID glm-5.</span>
+                  </Link>
+                  <Link to="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Argon 4 (Gemini)</strong>
+                    <span>Para Cline e OpenCode, no plano Pro.</span>
                   </Link>
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Acesso pelo gateway SixtySix</strong>

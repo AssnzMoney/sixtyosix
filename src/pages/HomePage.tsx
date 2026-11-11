@@ -87,6 +87,12 @@ const partners = [
     logo: '/assets/brands/openai.svg',
   },
   {
+    id: 'gemini-1',
+    name: 'Gemini',
+    caption: 'Google',
+    logo: '/assets/brands/gemini.svg',
+  },
+  {
     id: 'vscode-1',
     name: 'VS Code',
     caption: 'Microsoft',
@@ -103,6 +109,12 @@ const partners = [
     name: 'GPT',
     caption: 'OpenAI',
     logo: '/assets/brands/openai.svg',
+  },
+  {
+    id: 'gemini-2',
+    name: 'Gemini',
+    caption: 'Google',
+    logo: '/assets/brands/gemini.svg',
   },
   {
     id: 'vscode-2',
@@ -308,6 +320,12 @@ export default function App() {
                     </div>
                     <small>Velocidade ultra-rápida e inteligência multimodal</small>
                   </Link>
+                  <Link to="/#planos" className="nav-mobile-item" onClick={() => setMobileMenuOpen(false)}>
+                    <div className="nav-mobile-item-head">
+                      <strong>Argon 4 (Gemini)</strong>
+                    </div>
+                    <small>Para Cline e OpenCode, no plano Pro</small>
+                  </Link>
                 </div>
 
                 <div className="nav-mobile-links">
@@ -387,6 +405,10 @@ export default function App() {
                   <Link to="/astra-6" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>GPT Astra 6</strong>
                     <span>Velocidade ultra-rápida e inteligência multimodal.</span>
+                  </Link>
+                  <Link to="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Argon 4 (Gemini)</strong>
+                    <span>Para Cline e OpenCode, no plano Pro.</span>
                   </Link>
                   <a href="#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Conexão Direta Oficial</strong>

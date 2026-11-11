@@ -227,6 +227,12 @@ export default function Glm4Page() {
                     </div>
                     <small>Raciocínio profundo e Claude Code ilimitado</small>
                   </Link>
+                  <Link to="/#planos" className="nav-mobile-item" onClick={() => setMobileMenuOpen(false)}>
+                    <div className="nav-mobile-item-head">
+                      <strong>Argon 4 (Gemini)</strong>
+                    </div>
+                    <small>Para Cline e OpenCode, no plano Pro</small>
+                  </Link>
                   <Link
                     to="/"
                     className="nav-mobile-item"
@@ -333,6 +339,10 @@ export default function Glm4Page() {
                   >
                     <strong>Fable 5.1 para Claude Code</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
+                  </Link>
+                  <Link to="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
+                    <strong>Argon 4 (Gemini)</strong>
+                    <span>Para Cline e OpenCode, no plano Pro.</span>
                   </Link>
                   <a href="/#recursos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Conexão pelo Gateway</strong>
