@@ -88,6 +88,15 @@ const ALL_MODELS = "Todos os modelos"
 const supportLink = (message: string) => supportWhatsappLink(message)
 
 // Planos e preços como publicados na página inicial (#planos). A contratação é feita pelo WhatsApp.
+const TRIAL_CARD = {
+  name: "Teste Grátis",
+  price: "0",
+  period: "/3 horas",
+  desc: "Teste na prática antes de decidir, com velocidade reduzida.",
+  note: "Sem cartão · uma vez por conta",
+  icon: "/assets/plan-trial.webp",
+}
+
 const PLANS: Array<{
   name: string
   price: string
@@ -827,7 +836,7 @@ export default function DashboardPage() {
   const planTitle = subscription
     ? `${subscription.name}${subscription.active ? "" : subscription.status === "pending" ? " · aguardando pagamento" : " · período encerrado"}`
     : trial?.active
-      ? "Teste grátis · 7 dias"
+      ? "Teste grátis · 3 horas"
       : keys.some((k) => k.active)
         ? "Acesso de teste ativo"
         : trial
@@ -1839,7 +1848,7 @@ export default function DashboardPage() {
                   {!preview && (
                     <p>
                       {trial?.active && !subscription?.active
-                        ? "Modelos liberados no teste: Fable 5.1, Argon 4, Astra 6 e GLM 5. Todos disponíveis durante os 7 dias."
+                        ? "Modelos liberados no teste: Fable 5.1, Argon 4, Astra 6 e GLM 5. Todos disponíveis durante as 3 horas, com velocidade reduzida."
                         : subscription
                           ? `Modelos do seu plano: ${subscription.models.map((model) => MODEL_LABELS[model] || model).join(", ")}.`
                           : "Seu espaço para construir com Fable 5.1, Argon 4, Astra 6 e GLM 5."}
@@ -1886,6 +1895,24 @@ export default function DashboardPage() {
                   <p>Contrate aqui mesmo, por Pix ou cartão. Depois do pagamento, sua chave chega pelo WhatsApp.</p>
                 </div>
                 <div className="six-plans-grid">
+                  {!subscription?.active && (
+                    <article className="six-plan-card">
+                      <img src={TRIAL_CARD.icon} alt="" aria-hidden="true" />
+                      <h3>{TRIAL_CARD.name}</h3>
+                      <div className="six-plan-card-price">
+                        <span>R$</span>
+                        <strong>{TRIAL_CARD.price}</strong>
+                        <small>{TRIAL_CARD.period}</small>
+                      </div>
+                      <p>{TRIAL_CARD.desc}</p>
+                      <span className="six-plan-card-note">
+                        <Check size={14} aria-hidden="true" /> {TRIAL_CARD.note}
+                      </span>
+                      <Link className="six-primary" to="/teste-gratis">
+                        {trial ? (trial.active ? "Ver meu teste" : "Teste já usado") : "Ativar teste de 3 horas"} <ArrowRight size={15} />
+                      </Link>
+                    </article>
+                  )}
                   {PLANS.map((plan) => {
                     // Dev pode ir com ou sem chave de API, como na página inicial.
                     const code = plan.code === "dev" && devWithApi ? "devApi" : plan.code

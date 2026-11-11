@@ -33,14 +33,16 @@ test('trial activation validates the session and confirmed email before generati
   await assert.rejects(service.start('Bearer valid'),{status:403});assert.equal(calls,1)
 })
 test('activation stores encrypted credentials and hashes; the private bridge token is never returned',async()=>{
-  let saved:Record<string,string>={}
+  let saved:Record<string,string>={},rpcPath=''
   const service=createAccessService(env,(async(url:string|URL|Request,init?:RequestInit)=>{
     if(String(url).endsWith('/auth/v1/user'))return Response.json({id:uid,email_confirmed_at:new Date().toISOString()})
+    rpcPath=new URL(String(url)).pathname
     saved=JSON.parse(String(init?.body))
     return Response.json({user_id:uid,gateway_client_id:'client-id',encrypted_token:saved.p_encrypted_token,created_at:new Date().toISOString(),expires_at:new Date(Date.now()+7*86400000).toISOString(),revoked_at:null})
   }) as typeof fetch)
   const result=await service.start('Bearer verified')
   assert.match(result.key!,/^sk-sx-[A-Za-z0-9_-]{43}$/)
+  assert.equal(rpcPath,'/rest/v1/rpc/account_start_trial_3h','teste novo de 3 horas')
   assert.equal(saved.p_user_id,uid)
   assert.equal(saved.p_hash,hash(result.key!))
   assert.ok(!JSON.stringify(saved).includes(result.key!))

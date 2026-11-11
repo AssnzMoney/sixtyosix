@@ -195,6 +195,7 @@ const keyHint = (key: string) => '…' + key.slice(-4)
 const CLIENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const GUARD_MISSING = 'Aplique a migração supabase/gateway-guard.sql no Supabase para usar a proteção e o controle de IP.'
 const IPS_MISSING = 'Aplique a migração supabase/gateway-guard-ips.sql no Supabase para usar o máximo de IPs por chave.'
+const TRIAL_MISSING = 'Aplique a migração supabase/trial-3h.sql no Supabase para ajustar o ritmo do teste grátis.'
 
 /** Operações da aba Roteador. Só é chamado depois de requireAdmin (api/management.ts). */
 export function createRouterAdmin(db: { url: string; secret: string }, request: typeof fetch, adminEmail: string) {
@@ -226,19 +227,23 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       // Proteção contra sobrecarga (supabase/gateway-guard.sql). Sem a migração, guard = null e o resto segue.
       let guard: Row | null = null
       // Com supabase/gateway-guard-ips.sql vem também o máximo de IPs (ipLimit = true).
-      const loadGuard = async (withIps: boolean) => {
+      // Com trial-3h.sql vêm também os limites do teste (trialLimit = true).
+      const loadGuard = async (withIps: boolean, withTrial: boolean) => {
         const extra = withIps ? ',max_ips' : ''
         const [settings, blocks, controls] = await Promise.all([
-          rest<Row[]>(`gateway_settings?select=rpm,concurrency${extra}&limit=1`),
+          rest<Row[]>(`gateway_settings?select=rpm,concurrency${extra}${withTrial ? ',trial_rpm,trial_concurrency' : ''}&limit=1`),
           rest<Row[]>('gateway_ip_blocks?select=network,reason,created_by,created_at&order=created_at.desc&limit=500'),
           rest<Row[]>(`gateway_controls?select=client_id,rpm,concurrency${extra}&limit=5000`),
         ])
-        return { settings: settings[0] || { rpm: null, concurrency: null, max_ips: null }, blocks, controls, ipLimit: withIps }
+        return { settings: settings[0] || { rpm: null, concurrency: null, max_ips: null }, blocks, controls, ipLimit: withIps, trialLimit: withTrial }
       }
-      try {
-        guard = await loadGuard(true)
-      } catch {
-        guard = await loadGuard(false).catch(() => null)
+      for (const [withIps, withTrial] of [[true, true], [true, false], [false, false]] as const) {
+        try {
+          guard = await loadGuard(withIps, withTrial)
+          break
+        } catch {
+          guard = null
+        }
       }
       return { providers, models, keys, guard }
     },
@@ -250,12 +255,31 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       if (concurrency === undefined) throw new RouterError(400, 'Respostas simultâneas: use um número de 1 a 1000, ou deixe vazio para sem limite.')
       const maxIps = body.max_ips === undefined ? undefined : validLimit(body.max_ips, 100)
       if (body.max_ips !== undefined && maxIps === undefined) throw new RouterError(400, 'Máximo de IPs: use um número de 1 a 100, ou deixe vazio para sem limite.')
+      const hasTrial = body.trial_rpm !== undefined || body.trial_concurrency !== undefined
+      const trialRpm = validLimit(body.trial_rpm, 100000), trialConcurrency = validLimit(body.trial_concurrency, 1000)
+      if (hasTrial && (trialRpm === undefined || trialConcurrency === undefined)) throw new RouterError(400, 'Teste grátis: use números inteiros positivos, ou deixe vazio para sem limite.')
       await rest('gateway_settings?on_conflict=id', {
         method: 'POST',
         headers: { Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ id: true, rpm, concurrency, ...(maxIps !== undefined ? { max_ips: maxIps } : {}), updated_at: new Date().toISOString() }),
-      }, maxIps !== undefined ? IPS_MISSING : GUARD_MISSING)
-      return { rpm, concurrency, max_ips: maxIps ?? null }
+        body: JSON.stringify({
+          id: true, rpm, concurrency,
+          ...(maxIps !== undefined ? { max_ips: maxIps } : {}),
+          ...(hasTrial ? { trial_rpm: trialRpm, trial_concurrency: trialConcurrency } : {}),
+          updated_at: new Date().toISOString(),
+        }),
+      }, hasTrial ? TRIAL_MISSING : maxIps !== undefined ? IPS_MISSING : GUARD_MISSING)
+      // O ritmo novo do teste vale também para os testes que estão rodando agora.
+      if (hasTrial) {
+        const active = await rest<Row[]>('gateway_trials?' + new URLSearchParams({ select: 'gateway_client_id', revoked_at: 'is.null', expires_at: 'gt.' + new Date().toISOString(), limit: '5000' })).catch(() => [] as Row[])
+        if (active.length) {
+          await rest('gateway_controls?on_conflict=client_id', {
+            method: 'POST',
+            headers: { Prefer: 'resolution=merge-duplicates' },
+            body: JSON.stringify(active.map((t) => ({ client_id: t.gateway_client_id, rpm: trialRpm ?? null, concurrency: trialConcurrency ?? null, updated_at: new Date().toISOString() }))),
+          }).catch(() => undefined)
+        }
+      }
+      return { rpm, concurrency, max_ips: maxIps ?? null, ...(hasTrial ? { trial_rpm: trialRpm, trial_concurrency: trialConcurrency } : {}) }
     },
 
     /** Bloqueia (ou libera) um IP ou faixa em todas as chaves. */

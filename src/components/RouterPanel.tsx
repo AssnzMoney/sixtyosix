@@ -12,8 +12,8 @@ type Row = Record<string, any>
 type Provider = { id: string; name: string; base_url: string; key_hint: string; enabled: boolean; created_at: string }
 type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean }
 type RouterKey = { id: string; gateway_client_id: string; name: string; contact: string | null; token_prefix: string; models: string[] | null; expires_at: string; revoked_at: string | null; created_at: string }
-type Limits = { rpm: number | null; concurrency: number | null; max_ips?: number | null }
-type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[]; ipLimit?: boolean }
+type Limits = { rpm: number | null; concurrency: number | null; max_ips?: number | null; trial_rpm?: number | null; trial_concurrency?: number | null }
+type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[]; ipLimit?: boolean; trialLimit?: boolean }
 type Overview = { providers: Provider[]; models: Model[]; keys: RouterKey[]; guard: Guard | null }
 type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: number; blocked_at: string | null; accepted?: boolean }
 type EditForm = { name: string; contact: string; expires: string; all: boolean; models: string[] }
@@ -75,7 +75,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   const [modalError, setModalError] = useState('')
   const [keyForm, setKeyForm] = useState<KeyForm | null>(null)
   const [created, setCreated] = useState<{ key: string; message: string } | null>(null)
-  const [guardForm, setGuardForm] = useState<{ rpm: string; concurrency: string; max_ips: string } | null>(null)
+  const [guardForm, setGuardForm] = useState<{ rpm: string; concurrency: string; max_ips: string; trial_rpm: string; trial_concurrency: string } | null>(null)
   const [blockForm, setBlockForm] = useState({ network: '', reason: '' })
   const [ipsFor, setIpsFor] = useState<RouterKey | null>(null)
   const [ipsData, setIpsData] = useState<{ ips: SeenIp[]; controls: Limits; ipLimit?: boolean } | null>(null)
@@ -269,11 +269,11 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   const settings = guard?.settings || { rpm: null, concurrency: null }
   const customLimits = useMemo(() => new Map((guard?.controls || []).map((c) => [c.client_id, c])), [guard])
   const asText = (value: number | null | undefined) => (value == null ? '' : String(value))
-  const form = guardForm || { rpm: asText(settings.rpm), concurrency: asText(settings.concurrency), max_ips: asText(settings.max_ips) }
+  const form = guardForm || { rpm: asText(settings.rpm), concurrency: asText(settings.concurrency), max_ips: asText(settings.max_ips), trial_rpm: asText(settings.trial_rpm), trial_concurrency: asText(settings.trial_concurrency) }
 
   async function saveGuard() {
     await run('guard', async () => {
-      await call({ action: 'router-guard-save', rpm: limitText(form.rpm), concurrency: limitText(form.concurrency), ...(guard?.ipLimit ? { max_ips: limitText(form.max_ips) } : {}) })
+      await call({ action: 'router-guard-save', rpm: limitText(form.rpm), concurrency: limitText(form.concurrency), ...(guard?.ipLimit ? { max_ips: limitText(form.max_ips) } : {}), ...(guard?.trialLimit ? { trial_rpm: limitText(form.trial_rpm), trial_concurrency: limitText(form.trial_concurrency) } : {}) })
       setGuardForm(null)
       return 'Proteção salva. Vale para novas chamadas na hora.'
     })
@@ -480,6 +480,16 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                 Máximo de IPs por chave
                 <input type="number" min={1} max={100} inputMode="numeric" placeholder="Sem limite" disabled={!guard.ipLimit} value={form.max_ips} onChange={(e) => setGuardForm({ ...form, max_ips: e.target.value })} />
                 <small>{guard.ipLimit ? 'Passou disso, o IP novo fica aguardando você aceitar. IP parado há 7 dias libera a vaga.' : 'Aplique supabase/gateway-guard-ips.sql no Supabase para ligar.'}</small>
+              </label>
+              <label>
+                Teste grátis: chamadas por minuto
+                <input type="number" min={1} max={100000} inputMode="numeric" placeholder="Sem limite" disabled={!guard.trialLimit} value={form.trial_rpm} onChange={(e) => setGuardForm({ ...form, trial_rpm: e.target.value })} />
+                <small>{guard.trialLimit ? 'Mais lento que os pagantes. Vale para os testes que estão rodando e para os próximos.' : 'Aplique supabase/trial-3h.sql no Supabase para ligar.'}</small>
+              </label>
+              <label>
+                Teste grátis: respostas ao mesmo tempo
+                <input type="number" min={1} max={1000} inputMode="numeric" placeholder="Sem limite" disabled={!guard.trialLimit} value={form.trial_concurrency} onChange={(e) => setGuardForm({ ...form, trial_concurrency: e.target.value })} />
+                <small>O teste dura 3 horas e é uma vez por conta.</small>
               </label>
               <div className="sx-router-modal-actions is-wide">
                 <button type="submit" className="sx-btn is-primary" disabled={working === 'guard' || !guardForm}>

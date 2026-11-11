@@ -260,3 +260,59 @@
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+/* Área do teste grátis de 3 horas */
+.six-trial-facts {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(31, 70, 71, 0.1);
+  border-radius: 14px;
+  background: #fbf9f4;
+  text-align: left;
+}
+
+.six-trial-facts div {
+  display: grid;
+  gap: 2px;
+}
+
+.six-trial-facts dt {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4e6b68;
+}
+
+.six-trial-facts dd {
+  margin: 0;
+  font-size: 13.5px;
+  color: #1f4647;
+  overflow-wrap: anywhere;
+}
+
+.six-trial-note,
+.six-trial-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #4e6b68;
+  text-align: left;
+}
+
+.six-trial-note svg,
+.six-trial-list svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #15803d;
+}
+
+.six-trial-list {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 16px;
+  padding: 0;
+  list-style: none;
+}

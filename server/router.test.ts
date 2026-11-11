@@ -350,3 +350,20 @@ test('IP além do limite da chave recebe aviso de liberação pelo WhatsApp', as
     assert.equal(calls.length, 0)
   })
 })
+
+test('admin: ritmo do teste grátis vale também para os testes rodando agora', async () => {
+  const calls: { method: string; url: string; body: any }[] = []
+  const request = (async (input: string, init: RequestInit = {}) => {
+    calls.push({ method: init.method || 'GET', url: String(input), body: init.body ? JSON.parse(String(init.body)) : undefined })
+    if (String(input).includes('/gateway_trials')) return Response.json([{ gateway_client_id: '66666666-6666-4666-8666-666666666666' }])
+    return new Response(null, { status: 201 })
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
+  await admin.saveGuardSettings({ rpm: 60, concurrency: 4, trial_rpm: 6, trial_concurrency: 1 })
+  const settings = calls.find((c) => c.url.includes('/gateway_settings'))!
+  assert.equal(settings.body.trial_rpm, 6)
+  assert.equal(settings.body.trial_concurrency, 1)
+  const controls = calls.find((c) => c.url.includes('/gateway_controls'))!
+  assert.deepEqual(controls.body.map((c: any) => [c.client_id, c.rpm, c.concurrency]), [['66666666-6666-4666-8666-666666666666', 6, 1]])
+  await assert.rejects(admin.saveGuardSettings({ rpm: 60, concurrency: 4, trial_rpm: 0, trial_concurrency: 1 }), /Teste grátis/)
+})

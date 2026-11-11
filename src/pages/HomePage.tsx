@@ -48,12 +48,12 @@ const faqs = [
     'A SixtySix fornece uma conexão dedicada e de alta velocidade para desenvolvedores utilizarem os modelos líderes (Fable 5.1 para Claude Code, GPT Astra 6 e Argon 4) no terminal (Claude Code), no VS Code, no Codex, no Cline e no OpenCode, com preço fixo em Reais pago via Pix, sem IOF e sem rateio.',
   ],
   [
-    'Como funciona o teste de 7 dias grátis?',
-    'Clique em Começar Teste Grátis, entre ou crie sua conta e escolha como deseja ser chamado. Sua chave individual é liberada automaticamente por 7 dias, sem cartão e sem cobrança automática. Cada conta pode ativar o teste uma vez.',
+    'Como funciona o teste grátis de 3 horas?',
+    'Clique em Começar Teste Grátis, entre ou crie sua conta e escolha como deseja ser chamado. Na área de teste você ativa uma chave que vale por 3 horas, sem cartão e sem cobrança automática. No teste a velocidade é reduzida; nos planos pagos é bem mais rápido. Cada conta pode ativar o teste uma vez.',
   ],
   [
     'Onde consigo minha chave individual de acesso?',
-    'No teste grátis, sua chave é criada automaticamente e fica disponível na página do teste. O painel reúne suas chaves e o consumo da sua conta. Durante os 7 dias, você pode consultar a chave novamente para configurar suas ferramentas.',
+    'No teste grátis, sua chave é criada automaticamente e fica disponível na página do teste. O painel reúne suas chaves e o consumo da sua conta. Durante as 3 horas, você pode consultar a chave novamente para configurar suas ferramentas.',
   ],
   [
     'Posso usar no terminal, no VS Code e no Codex?',
@@ -820,7 +820,7 @@ export default function App() {
               <span className="highlight-green-text">Claude Code?</span>
             </h2>
             <p className="claude-price-intro-sub">
-              A partir de <strong>R$ 79,00 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong> a cada 5 horas.
+              A partir de <strong>R$ 79,00 fixos no Pix</strong> (ou <strong>teste grátis de 3 horas</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong> a cada 5 horas.
               Diferente da Anthropic que cobra em Dólar com IOF de 4,38% e taxa de câmbio abusiva no cartão, aqui o <strong>valor é previsível em Reais</strong>.
               Veja os <a href="#planos">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>
@@ -1039,25 +1039,20 @@ export default function App() {
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
                 <span className="plan-val">0</span>
-                <span className="plan-period">/7 dias</span>
+                <span className="plan-period">/3 horas</span>
               </div>
-              <p className="plan-desc">Acesso total e irrestrito para testar tudo na prática antes de decidir.</p>
+              <p className="plan-desc">Teste na prática antes de decidir, com velocidade reduzida.</p>
             </div>
             <ul className="plan-features">
-              <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
+              <li><Check /> <span><strong>Chave na hora</strong>, vale por 3 horas</span></li>
               <li><Check /> <span><strong>Fable 5.1 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>Argon 4</strong></span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
               <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
-            <a
-              href={supportWhatsappLink('Olá! Quero fazer o teste grátis de 7 dias da SixtySix.')}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="plan-btn"
-            >
+            <Link to="/teste-gratis" className="plan-btn">
               Começar Teste Grátis <Arrow />
-            </a>
+            </Link>
           </motion.div>
 
           {/* Dev */}

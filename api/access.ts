@@ -60,7 +60,7 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
       if(!secret)throw new AccessError(503,'Conexão indisponível.')
       const token=`sk-sx-${randomBytes(32).toString('base64url')}`
       const upstream=`sk-flg-${randomBytes(32).toString('base64url')}`
-      const result=await db<Trial|Trial[]>(replace?'rpc/account_replace_trial_key':'rpc/account_start_trial',{}, {
+      const result=await db<Trial|Trial[]>(replace?'rpc/account_replace_trial_key':'rpc/account_start_trial_3h',{}, {
         p_user_id:userId,p_hash:sha(token),p_prefix:token.slice(0,14),p_encrypted_token:seal(token,secret,`${userId}:public`),
         p_upstream_hash:sha(upstream),p_encrypted_upstream:seal(upstream,secret,`${userId}:upstream`),
       })
@@ -153,8 +153,8 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     const service=createAccessService()
     if(action==='trial'){
       if(req.method!=='POST')throw new AccessError(405,'Use POST para ativar seu teste.')
-      // O teste grátis é pedido pelo WhatsApp e a chave sai do Roteador. SIXTYSIX_SELF_TRIAL=1 religa o teste automático.
-      if(process.env.SIXTYSIX_SELF_TRIAL!=='1')throw new AccessError(410,'O teste grátis agora é pedido pelo WhatsApp: (81) 99237-6036.')
+      // Teste grátis de 3 horas, um por conta, mais lento que os planos pagos (supabase/trial-3h.sql). SIXTYSIX_SELF_TRIAL=0 pausa.
+      if(process.env.SIXTYSIX_SELF_TRIAL==='0')throw new AccessError(410,'O teste grátis está pausado no momento. Fale com a gente no WhatsApp: (81) 99237-6036.')
       res.setHeader('Content-Type','application/json; charset=utf-8')
       res.end(JSON.stringify(await service.start(req.headers.authorization,url.searchParams.get('replace')==='1')));return
     }
