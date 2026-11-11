@@ -32,10 +32,6 @@
       "destination": "/api/access?action=proxy&path=/glm/v1/:path*"
     },
     {
-      "source": "/glm/:path*",
-      "destination": "https://66cloud.vercel.app/glm/:path*"
-    },
-    {
       "source": "/v1/:path*",
       "destination": "/api/access?action=proxy&path=/v1/:path*"
     },
@@ -45,11 +41,7 @@
     },
     {
       "source": "/api/health",
-      "destination": "https://66cloud.vercel.app/api/health"
-    },
-    {
-      "source": "/api/admin/:path*",
-      "destination": "https://66cloud.vercel.app/api/admin/:path*"
+      "destination": "/api/access?action=health"
     },
     {
       "source": "/(.*)",

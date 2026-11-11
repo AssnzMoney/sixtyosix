@@ -136,7 +136,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     const ids=rows.map(item=>item.id)
     const router=await loadRouter(env,request)
     const payments=ids.length?await db<ObjectValue[]>('billing_payments',{subscription_id:`in.(${ids.join(',')})`,select:'id,subscription_id,status,amount_cents,currency,approved_at,period_start,period_end',order:'period_end.desc',limit:'100'}):[]
-    return {subscriptions:rows.map(item=>({id:item.id,plan:item.plan_code,name:billingPlans[item.plan_code].name,amount:item.amount_cents/100,api:item.api_enabled,models:withPlanModels(item.models,router.proAliases),mode:item.billing_mode||'recurring',active:subscriptionActive(item),expires:item.paid_until,status:item.provider_status,created:item.created_at,keyRevoked:Boolean(accesses.find(a=>a.subscription_id===item.id)?.revoked_at),checkoutUrl:item.provider_status==='pending'||item.billing_mode==='pix'?item.checkout_url:null})),payments}
+    return {subscriptions:rows.map(item=>({id:item.id,plan:item.plan_code,name:billingPlans[item.plan_code].name,amount:item.amount_cents/100,api:item.api_enabled,models:withPlanModels(item.models,router.proAliases).filter(alias=>router.routes.has(alias)),mode:item.billing_mode||'recurring',active:subscriptionActive(item),expires:item.paid_until,status:item.provider_status,created:item.created_at,keyRevoked:Boolean(accesses.find(a=>a.subscription_id===item.id)?.revoked_at),checkoutUrl:item.provider_status==='pending'||item.billing_mode==='pix'?item.checkout_url:null})),payments}
   }
   return {
     process:processEvent,
@@ -222,12 +222,12 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
         const rows=await db<PaidAccess[]>('billing_key_access',{user_id:`eq.${user.id}`,entitled:'eq.true',paid_until:`gt.${new Date().toISOString()}`,revoked_at:'is.null',select:'*',order:'paid_until.desc',limit:'1'}),access=rows[0]
         if(!secret)throw new WebhookError(503,'Conexão indisponível.')
         const router=await loadRouter(env,request)
-        let allowed:string[],upstream:string,clientId:string
-        if(access){allowed=withPlanModels(access.models,router.proAliases);upstream=decrypt(access.encrypted_upstream,secret,`${user.id}:paid:${access.subscription_id}:upstream`);clientId=access.gateway_client_id}
+        let allowed:string[],clientId:string
+        if(access){allowed=withPlanModels(access.models,router.proAliases);clientId=access.gateway_client_id}
         else{
           const trials=await db<{gateway_client_id:string;encrypted_upstream:string;expires_at:string;revoked_at:string|null}[]>('gateway_trials',{user_id:`eq.${user.id}`,select:'gateway_client_id,encrypted_upstream,expires_at,revoked_at',limit:'1'}),trial=trials[0]
           if(!trial||trial.revoked_at||Date.parse(trial.expires_at)<=Date.now())throw new WebhookError(403,'Ative um plano ou um teste grátis para conversar pelo site.')
-          allowed=withPlanModels(billingPlans.pro.models,router.proAliases);upstream=decrypt(trial.encrypted_upstream,secret,`${user.id}:upstream`);clientId=trial.gateway_client_id
+          allowed=withPlanModels(billingPlans.pro.models,router.proAliases);clientId=trial.gateway_client_id
         }
         const model=typeof body.model==='string'?body.model:''
         if(!allowed.includes(model))throw new WebhookError(403,'Este modelo não está incluído no seu plano.')
@@ -247,12 +247,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
           if(!reply)throw new WebhookError(503,'A resposta veio vazia. Tente novamente.')
           return {reply}
         }
-        const response=await request('https://66cloud.vercel.app/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':upstream,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:4096,messages}),signal:AbortSignal.timeout(180000)})
-        if(!response.ok)throw new WebhookError(response.status===429?429:503,'Não foi possível responder agora. Tente novamente em instantes.')
-        const content=object(await response.json()).content
-        const reply=(Array.isArray(content)?content:[]).map(v=>object(v)).filter(v=>v.type==='text').map(v=>String(v.text||'')).join('\n')
-        if(!reply)throw new WebhookError(503,'A resposta veio vazia. Tente novamente.')
-        return {reply}
+        throw new WebhookError(503,'Este modelo não está disponível no momento. Escolha outro modelo.')
       }
       throw new WebhookError(404,'Operação não encontrada.')
     },

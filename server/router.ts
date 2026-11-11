@@ -53,7 +53,7 @@ let cache: { at: number; url: string; value: RouterConfig } | null = null
 /** Depois de mudar algo no admin, a próxima chamada desta instância relê o banco. As outras, em até 30 s. */
 export function clearRouterCache() { cache = null }
 
-/** Modelos ativos com provedor ativo. Sem a migração aplicada (ou com falha), devolve um roteador vazio: tudo segue para o 66cloud. */
+/** Modelos ativos com provedor ativo. Sem a migração aplicada (ou com falha), devolve um roteador vazio: nenhum modelo fica disponível. */
 export async function loadRouter(env: Env, request: typeof fetch = fetch): Promise<RouterConfig> {
   const db = database(env)
   if (!db) return EMPTY_ROUTER

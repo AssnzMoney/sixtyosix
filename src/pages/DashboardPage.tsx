@@ -358,7 +358,6 @@ export default function DashboardPage() {
   const [devWithApi, setDevWithApi] = useState(false)
   const [accountError, setAccountError] = useState("")
   const [busy, setBusy] = useState(false)
-  const [claimKey, setClaimKey] = useState("")
   const [revokeId, setRevokeId] = useState("")
   const [keyState, setKeyState] = useState<"idle" | "loading" | "loaded" | "error">("idle")
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
@@ -392,7 +391,6 @@ export default function DashboardPage() {
   }, [period, from, to, modelFilter, search])
   useEffect(() => {
     setClientKey("")
-    setClaimKey("")
     setRevokeId("")
   }, [session?.user.id])
   useEffect(() => {
@@ -452,15 +450,14 @@ export default function DashboardPage() {
     }
   }, [session?.user.id, period, from, to, refresh])
 
-  async function mutateAccount(action: "claim" | "revoke", payload: Record<string, unknown>) {
+  async function mutateAccount(action: "revoke", payload: Record<string, unknown>) {
     setBusy(true)
     setAccountError("")
     try {
       await accountRequest<{ ok?: boolean }>(action, payload)
-      if (action === "claim") setClaimKey("")
       setRevokeId("")
       setRefresh((v) => v + 1)
-      setToast(action === "claim" ? "Chave vinculada à sua conta." : "Chave revogada.")
+      setToast("Chave revogada.")
     } catch (error) {
       setAccountError(error instanceof Error ? error.message : "Não foi possível concluir.")
     } finally {
@@ -620,7 +617,7 @@ export default function DashboardPage() {
         : `export ANTHROPIC_BASE_URL='${baseUrl}'\nexport ANTHROPIC_API_KEY=${shellKey}\nexport ANTHROPIC_MODEL='${model}'\nclaude --model ${model}`
   const claudeBase = claudeCredential?.base_url || "https://www.sixtysix.online"
   const claudeModel = claudeCredential?.model_id || "claude-fable-5-1"
-  const glmBase = glmCredential?.base_url || "https://www.sixtysix.online/glm"
+  const glmBase = glmCredential?.base_url || "https://www.sixtysix.online"
   const glmModel = glmCredential?.model_id || "glm-5"
   const claudeCode = anthropicCommands(claudeBase, claudeModel)
   const glmCode = anthropicCommands(glmBase, glmModel)
@@ -836,29 +833,6 @@ export default function DashboardPage() {
           ? "Teste encerrado"
           : "Sem acesso vinculado"
 
-  // A chave chega pelo WhatsApp; vinculá-la libera consumo e histórico no painel.
-  const claimForm = (
-    <form
-      className="six-inline-form"
-      onSubmit={(e) => {
-        e.preventDefault()
-        mutateAccount("claim", { key: claimKey })
-      }}
-    >
-      <input
-        type="password"
-        autoComplete="off"
-        aria-label="Chave recebida no WhatsApp"
-        placeholder="Cole sua chave sk-flg-…"
-        value={claimKey}
-        disabled={!session}
-        onChange={(e) => setClaimKey(e.target.value)}
-      />
-      <button type="submit" className="six-primary" disabled={!session || busy || !claimKey.trim()}>
-        {busy ? "Vinculando…" : "Vincular chave"}
-      </button>
-    </form>
-  )
   const credentialsKnown = preview || credentials.status === "ready" || credentials.status === "unavailable"
   const needsSetup =
     activeCredentials.length === 0 && !keys.some((k) => k.active) && (preview || (keyState === "loaded" && credentialsKnown))
@@ -938,16 +912,6 @@ export default function DashboardPage() {
 
   // Bloco que explica de onde vem a chave e mostra a configuração entregue para a ferramenta escolhida.
   const guideCredential = tool === "codex" ? gptCredential : tool === "glm" ? glmCredential : claudeCredential
-  const legacyClaim = session && (
-    <details className="six-legacy-claim">
-      <summary>Tenho uma chave antiga do gateway SixtySix (sk-flg-…)</summary>
-      <p>
-        Só para chaves antigas do nosso gateway. Chaves enviadas pelo WhatsApp não precisam ser coladas aqui: confirme o
-        recebimento no card acima.
-      </p>
-      {claimForm}
-    </details>
-  )
 
 
   return (
@@ -1435,8 +1399,6 @@ export default function DashboardPage() {
                 </p>
               </section>
 
-              {legacyClaim}
-
               {accountError && session && (
                 <p className="six-inline-notice is-error" role="alert">
                   <CircleAlert size={15} /> {accountError}
@@ -1448,7 +1410,7 @@ export default function DashboardPage() {
                 <div className="six-panel-head">
                   <div>
                     <h2>Chaves do gateway SixtySix</h2>
-                    <p>Chaves antigas (sk-flg-…) vinculadas à sua conta</p>
+                    <p>Chaves do SixtySix vinculadas à sua conta</p>
                   </div>
                   {session && (
                     <button
