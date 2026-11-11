@@ -308,7 +308,8 @@ test('admin: editar chave grava nome, modelos e validade até o fim do dia em Br
   const calls: { method: string; url: string; body: any }[] = []
   const request = (async (input: string, init: RequestInit = {}) => {
     calls.push({ method: init.method || 'GET', url: String(input), body: init.body ? JSON.parse(String(init.body)) : undefined })
-    if (String(input).includes('/router_keys')) return Response.json([{ id: '11111111-1111-4111-8111-111111111111', gateway_client_id: '22222222-2222-4222-8222-222222222222' }])
+    const wantsRows = String((init.headers as Record<string, string> | undefined)?.Prefer || '').includes('return=representation')
+    if (String(input).includes('/router_keys') && wantsRows) return Response.json([{ id: '11111111-1111-4111-8111-111111111111', gateway_client_id: '22222222-2222-4222-8222-222222222222' }])
     return new Response(null, { status: 204 })
   }) as typeof fetch
   const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
@@ -326,7 +327,8 @@ test('admin: aceitar e remover IP da chave', async () => {
   const calls: { method: string; url: string; body: any }[] = []
   const request = (async (input: string, init: RequestInit = {}) => {
     calls.push({ method: init.method || 'GET', url: String(input), body: init.body ? JSON.parse(String(init.body)) : undefined })
-    return init.method === 'PATCH' ? Response.json([{ ip: '177.10.20.30' }]) : new Response(null, { status: 204 })
+    const wantsRows = String((init.headers as Record<string, string> | undefined)?.Prefer || '').includes('return=representation')
+    return init.method === 'PATCH' && wantsRows ? Response.json([{ ip: '177.10.20.30' }]) : new Response(null, { status: 204 })
   }) as typeof fetch
   const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
   const client = '22222222-2222-4222-8222-222222222222'

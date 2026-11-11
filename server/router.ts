@@ -294,6 +294,7 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       if (!CLIENT_ID.test(clientId) || !ip || ip.includes('/')) throw new RouterError(400, 'IP inválido.')
       const changed = await rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, ip: 'eq.' + ip }), {
         method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
         body: JSON.stringify({ blocked_at: body.blocked === false ? null : new Date().toISOString() }),
       }, GUARD_MISSING)
       if (!changed?.length) throw new RouterError(404, 'Este IP ainda não usou a chave.')
@@ -325,6 +326,7 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       if (!CLIENT_ID.test(clientId) || !ip || ip.includes('/')) throw new RouterError(400, 'IP inválido.')
       const changed = await rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, ip: 'eq.' + ip }), {
         method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
         body: JSON.stringify({ accepted: true, blocked_at: null, last_seen: new Date().toISOString() }),
       }, IPS_MISSING)
       if (!changed?.length) throw new RouterError(404, 'Este IP ainda não usou a chave.')
@@ -430,6 +432,7 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       if (when > Date.now() + 3 * 366 * 86400000) throw new RouterError(400, 'Escolha uma validade de até 3 anos.')
       const rows = await rest<Row[]>(`router_keys?${new URLSearchParams({ id: `eq.${id}` })}`, {
         method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
         body: JSON.stringify({ name, contact: contact || null, models, expires_at: new Date(when).toISOString() }),
       })
       const row = rows?.[0]
