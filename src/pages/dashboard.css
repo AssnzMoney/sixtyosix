@@ -1087,6 +1087,16 @@
   margin-top: 2px;
 }
 
+.six-inline-notice.is-info {
+  border: 1px solid rgba(22, 163, 74, 0.2);
+  background: var(--track);
+  color: var(--ink);
+}
+
+.six-inline-notice.is-info svg {
+  color: var(--green-text);
+}
+
 .six-inline-notice.is-error {
   background: var(--danger-soft);
   color: var(--danger);
@@ -1646,56 +1656,6 @@
 /* --------------------------------------------------------------------------
    Chaves de API
    -------------------------------------------------------------------------- */
-.six-key-intro {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.six-key-intro > div {
-  flex: 1 1 260px;
-}
-
-.six-key-intro h2 {
-  margin: 0 0 4px;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.six-key-intro p {
-  margin: 0;
-  color: var(--muted);
-}
-
-.six-key-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.six-key-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.six-key-card h2 {
-  margin: 4px 0 0;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.six-key-card p {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--muted);
-}
-
-.six-key-actions,
 .six-inline-form {
   display: flex;
   flex-wrap: wrap;
@@ -1720,36 +1680,6 @@
   outline: none;
   border-color: var(--em);
   box-shadow: 0 0 0 4px var(--green-soft);
-}
-
-.six-issued-key {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 20px;
-  border: 1.5px dashed var(--em);
-  border-radius: 24px;
-  background: var(--track);
-}
-
-.six-issued-key strong {
-  font-family: 'Fustat', sans-serif;
-  font-size: 15px;
-}
-
-.six-issued-key code {
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  font: 13.5px/1.5 'DM Mono', monospace;
-  word-break: break-all;
-}
-
-.six-issued-key div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .six-key-list {
@@ -1824,6 +1754,208 @@
   height: 36px;
   padding: 0 14px;
   font-size: 13px;
+}
+
+/* --------------------------------------------------------------------------
+   Fluxo pelo WhatsApp: primeiros passos, vínculo da chave e planos
+   -------------------------------------------------------------------------- */
+.six-onboarding .six-panel-head {
+  margin-bottom: 20px;
+}
+
+.six-onboarding-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.six-onboarding-steps li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface-2);
+}
+
+.six-onboarding-number {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green-text);
+  font: 800 13px/1 'Fustat', sans-serif;
+}
+
+.six-onboarding-steps h3 {
+  margin: 4px 0 0;
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.six-onboarding-steps p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.six-onboarding-steps li > :is(a, button, form) {
+  margin-top: auto;
+}
+
+.six-onboarding-steps .six-inline-form {
+  width: 100%;
+}
+
+.six-claim {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px 32px;
+}
+
+.six-claim-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.six-claim-copy h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.six-claim-copy p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.six-claim-action .six-inline-form {
+  margin: 0;
+  padding: 0;
+}
+
+.six-claim-help {
+  margin: 10px 0 0 4px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.six-claim-help a,
+.six-note a {
+  color: var(--green-text);
+  font-weight: 700;
+}
+
+.six-section-head {
+  margin: 8px 0 14px;
+}
+
+.six-section-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.six-section-head p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.six-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.six-plan-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.six-plan-card img {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
+  object-fit: contain;
+}
+
+.six-plan-card h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.six-plan-card-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.six-plan-card-price span {
+  font: 700 16px/1 'Fustat', sans-serif;
+}
+
+.six-plan-card-price strong {
+  font: 800 34px/1 'Fustat', sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.six-plan-card-price small {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.six-plan-card > p {
+  flex: 1;
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.six-plan-card-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.six-plan-card-note svg {
+  color: var(--chart);
+}
+
+.six-plan-card .six-primary {
+  width: 100%;
+  margin-top: 8px;
 }
 
 /* --------------------------------------------------------------------------
@@ -2131,7 +2263,7 @@
    -------------------------------------------------------------------------- */
 .six-plan-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -2198,38 +2330,6 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 6px;
-}
-
-.six-plan-note {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 28px;
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  background: var(--cream);
-}
-
-.six-plan-note img {
-  width: 72px;
-  height: 72px;
-  object-fit: contain;
-}
-
-.six-plan-note h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.03em;
-}
-
-.six-plan-note p {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--muted);
 }
 
 .six-help-layout {
@@ -2372,12 +2472,18 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .six-key-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 
   .six-guide-choices {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .six-onboarding-steps,
+  .six-plans-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .six-claim {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2530,7 +2636,6 @@
   }
 
   .six-plan-actions > *,
-  .six-key-actions > *,
   .six-inline-form > * {
     width: 100%;
   }

@@ -74,6 +74,40 @@ const ALL_MODELS = "Todos os modelos"
 const SUPPORT_WHATSAPP = "https://wa.me/5581992376036"
 const supportLink = (message: string) => `${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`
 
+// Planos e preços como publicados na página inicial (#planos). A contratação é feita pelo WhatsApp.
+const PLANS = [
+  {
+    name: "Teste Grátis",
+    price: "0",
+    period: "/7 dias",
+    desc: "Acesso total e irrestrito para testar tudo na prática antes de decidir.",
+    note: "Sem cartão de crédito",
+    cta: "Pedir teste grátis",
+    message: "Olá! Quero fazer o teste grátis de 7 dias da SixtySix.",
+    icon: "/assets/plan-trial.webp",
+  },
+  {
+    name: "Dev",
+    price: "79,99",
+    period: "/mês",
+    desc: "Para desenvolvedores que criam e entregam software no dia a dia.",
+    note: "Chave de API: + R$ 15/mês",
+    cta: "Contratar pelo WhatsApp",
+    message: "Olá! Quero contratar o plano Dev da SixtySix.",
+    icon: "/assets/plan-cash.webp",
+  },
+  {
+    name: "Pro Ilimitado",
+    price: "119,99",
+    period: "/mês",
+    desc: "Acesso irrestrito aos modelos de ponta para quem constrói sem parar.",
+    note: "Acesso à API incluso",
+    cta: "Contratar pelo WhatsApp",
+    message: "Olá! Quero contratar o plano Pro Ilimitado da SixtySix.",
+    icon: "/assets/plan-cash.webp",
+  },
+]
+
 const nav = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "usage", label: "Meu consumo", icon: Activity },
@@ -306,9 +340,7 @@ export default function DashboardPage() {
   const subscription = ownData?.subscription ?? null
   const [accountError, setAccountError] = useState("")
   const [busy, setBusy] = useState(false)
-  const [newKeyName, setNewKeyName] = useState("")
   const [claimKey, setClaimKey] = useState("")
-  const [issuedKey, setIssuedKey] = useState("")
   const [revokeId, setRevokeId] = useState("")
   const [keyState, setKeyState] = useState<"idle" | "loading" | "loaded" | "error">("idle")
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
@@ -335,7 +367,6 @@ export default function DashboardPage() {
     setPage(1)
   }, [period, from, to, modelFilter, search])
   useEffect(() => {
-    setIssuedKey("")
     setClientKey("")
     setClaimKey("")
     setRevokeId("")
@@ -397,48 +428,15 @@ export default function DashboardPage() {
     }
   }, [session?.user.id, period, from, to, refresh])
 
-  async function replaceTrialKey() {
-    if (!session || busy) return
+  async function mutateAccount(action: "claim" | "revoke", payload: Record<string, unknown>) {
     setBusy(true)
     setAccountError("")
     try {
-      const response = await fetch("/api/access?action=trial&replace=1", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      const result = await response.json()
-      if (!response.ok || !result.key) throw new Error(result.error || "Não foi possível substituir a chave.")
-      setIssuedKey(result.key)
-      setClientKey(result.key)
-      setRefresh((v) => v + 1)
-      setToast("Nova chave de teste criada. O vencimento continua o mesmo.")
-    } catch (error) {
-      setAccountError(error instanceof Error ? error.message : "Não foi possível substituir a chave.")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function mutateAccount(action: "claim" | "keys" | "revoke", payload: Record<string, unknown>) {
-    setBusy(true)
-    setAccountError("")
-    try {
-      const result = await accountRequest<{ key?: string }>(action, payload)
-      if (result.key) {
-        setIssuedKey(result.key)
-        setClientKey(result.key)
-        setNewKeyName("")
-      }
+      await accountRequest<{ ok?: boolean }>(action, payload)
       if (action === "claim") setClaimKey("")
       setRevokeId("")
       setRefresh((v) => v + 1)
-      setToast(
-        action === "keys"
-          ? "Chave criada. Copie e guarde agora."
-          : action === "claim"
-            ? "Chave vinculada à sua conta."
-            : "Chave revogada.",
-      )
+      setToast(action === "claim" ? "Chave vinculada à sua conta." : "Chave revogada.")
     } catch (error) {
       setAccountError(error instanceof Error ? error.message : "Não foi possível concluir.")
     } finally {
@@ -762,6 +760,31 @@ export default function DashboardPage() {
           ? "Teste encerrado"
           : "Sem acesso vinculado"
 
+  // A chave chega pelo WhatsApp; vinculá-la libera consumo e histórico no painel.
+  const claimForm = (
+    <form
+      className="six-inline-form"
+      onSubmit={(e) => {
+        e.preventDefault()
+        mutateAccount("claim", { key: claimKey })
+      }}
+    >
+      <input
+        type="password"
+        autoComplete="off"
+        aria-label="Chave recebida no WhatsApp"
+        placeholder="Cole sua chave sk-flg-…"
+        value={claimKey}
+        disabled={!session}
+        onChange={(e) => setClaimKey(e.target.value)}
+      />
+      <button type="submit" className="six-primary" disabled={!session || busy || !claimKey.trim()}>
+        {busy ? "Vinculando…" : "Vincular chave"}
+      </button>
+    </form>
+  )
+  const needsSetup = !keys.some((k) => k.active) && (preview || keyState === "loaded")
+
   return (
     <div className="six-dashboard" data-theme={theme} data-collapsed={collapsed}>
       {drawer && <button type="button" className="six-overlay" aria-label="Fechar menu" onClick={() => setDrawer(false)} />}
@@ -955,6 +978,46 @@ export default function DashboardPage() {
             ) : null}
           </div>
 
+          {tab === "overview" && needsSetup && (
+            <section className="six-panel six-onboarding" aria-labelledby="six-onboarding-title">
+              <div className="six-panel-head">
+                <div>
+                  <h2 id="six-onboarding-title">Primeiros passos</h2>
+                  <p>Tudo acontece pelo WhatsApp: você contrata e recebe sua chave e a URL de configuração.</p>
+                </div>
+              </div>
+              <ol className="six-onboarding-steps">
+                <li>
+                  <span className="six-onboarding-number">01</span>
+                  <h3>Fale com a gente no WhatsApp</h3>
+                  <p>Escolha seu plano ou peça o teste grátis de 7 dias.</p>
+                  <a
+                    className="six-primary"
+                    href={supportLink("Olá! Quero contratar a SixtySix.")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <MessageSquare size={16} /> Abrir WhatsApp
+                  </a>
+                </li>
+                <li>
+                  <span className="six-onboarding-number">02</span>
+                  <h3>Vincule a chave que você recebeu</h3>
+                  <p>Assim o painel passa a mostrar seu consumo e seu histórico.</p>
+                  {claimForm}
+                </li>
+                <li>
+                  <span className="six-onboarding-number">03</span>
+                  <h3>Configure sua ferramenta</h3>
+                  <p>Use a URL e a chave no Claude Code, no Codex ou no Claude Desktop.</p>
+                  <button type="button" className="six-secondary" onClick={() => switchTab("guides")}>
+                    Ver passo a passo <ArrowRight size={15} />
+                  </button>
+                </li>
+              </ol>
+            </section>
+          )}
+
           {(tab === "overview" || tab === "usage") && (
             <>
               {filters}
@@ -1110,136 +1173,34 @@ export default function DashboardPage() {
 
           {tab === "keys" && (
             <>
-              <section className="six-panel six-key-intro">
-                <span className="six-soft-icon is-large">
-                  <KeyRound size={24} />
-                </span>
-                <div>
-                  <h2>Uma chave sua. Todas as suas ferramentas.</h2>
-                  <p>Use sua chave individual para configurar os perfis disponíveis no seu acesso.</p>
+              <section className="six-panel six-claim" aria-labelledby="six-claim-title">
+                <div className="six-claim-copy">
+                  <span className="six-step-badge">Chave recebida no WhatsApp</span>
+                  <h2 id="six-claim-title">Recebeu sua chave pelo WhatsApp? Vincule aqui.</h2>
+                  <p>
+                    Cole a chave individual que enviamos para você. Ela continua funcionando nas suas ferramentas, e o
+                    painel passa a mostrar seu consumo e seu histórico.
+                  </p>
                 </div>
-                <button type="button" className="six-primary" onClick={() => switchTab("guides")}>
-                  Configurar ferramenta <ArrowRight size={15} />
-                </button>
+                <div className="six-claim-action">
+                  {claimForm}
+                  <p className="six-claim-help">
+                    Ainda não tem uma chave?{" "}
+                    <a
+                      href={supportLink("Olá! Quero receber minha chave individual da SixtySix.")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Peça pelo WhatsApp
+                    </a>
+                  </p>
+                </div>
               </section>
-
-              {session && (
-                <div className="six-key-grid">
-                  <section className="six-panel six-key-card">
-                    <span className="six-step-badge">Teste grátis</span>
-                    {trial ? (
-                      <>
-                        <h2>
-                          {trial.active
-                            ? "Seu teste de 7 dias está ativo"
-                            : Date.parse(trial.expires) > Date.now()
-                              ? "Gere uma chave para continuar seu teste"
-                              : "Teste de 7 dias encerrado"}
-                        </h2>
-                        <p>
-                          {trial.revoked ? "Chave revogada. " : ""}Prazo: {new Date(trial.expires).toLocaleString("pt-BR")}.
-                        </p>
-                        <div className="six-key-actions">
-                          {trial.revoked && Date.parse(trial.expires) > Date.now() && (
-                            <button type="button" className="six-primary" disabled={busy} onClick={replaceTrialKey}>
-                              {busy ? "Gerando…" : "Gerar nova chave de teste"}
-                            </button>
-                          )}
-                          <Link className={trial.revoked ? "six-secondary" : "six-primary"} to={trial.active ? "/teste-gratis" : "/planos"}>
-                            {trial.active ? "Consultar minha chave de teste" : "Ver planos"}
-                          </Link>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <h2>Comece seu teste grátis</h2>
-                        <p>Ative uma chave individual por 7 dias, sem cartão.</p>
-                        <div className="six-key-actions">
-                          <Link className="six-primary" to="/teste-gratis">
-                            Ativar meus 7 dias
-                          </Link>
-                        </div>
-                      </>
-                    )}
-                  </section>
-
-                  <section className="six-panel six-key-card">
-                    <span className="six-step-badge">Vincular</span>
-                    <h2>Já tem uma chave de teste?</h2>
-                    <p>Vincule sua chave atual para consultar o histórico. A chave continua funcionando nos seus aplicativos.</p>
-                    <form
-                      className="six-inline-form"
-                      onSubmit={(e) => {
-                        e.preventDefault()
-                        mutateAccount("claim", { key: claimKey })
-                      }}
-                    >
-                      <input
-                        type="password"
-                        autoComplete="off"
-                        aria-label="Chave de teste existente"
-                        placeholder="Cole sua chave individual sk-flg-…"
-                        value={claimKey}
-                        onChange={(e) => setClaimKey(e.target.value)}
-                      />
-                      <button type="submit" className="six-primary" disabled={busy || !claimKey.trim()}>
-                        Vincular chave
-                      </button>
-                    </form>
-                  </section>
-
-                  <section className="six-panel six-key-card">
-                    <span className="six-step-badge">Nova chave</span>
-                    <h2>Criar outra chave</h2>
-                    <p>
-                      Acessos anteriores vinculados podem criar até 10 chaves ativas. O teste automático usa uma chave para
-                      todas as suas ferramentas.
-                    </p>
-                    <form
-                      className="six-inline-form"
-                      onSubmit={(e) => {
-                        e.preventDefault()
-                        mutateAccount("keys", { name: newKeyName })
-                      }}
-                    >
-                      <input
-                        aria-label="Nome da nova chave"
-                        maxLength={80}
-                        placeholder="Ex.: meu notebook"
-                        value={newKeyName}
-                        onChange={(e) => setNewKeyName(e.target.value)}
-                      />
-                      <button
-                        type="submit"
-                        className="six-secondary"
-                        disabled={busy || !newKeyName.trim() || !keys.some((k) => k.active && !k.managed)}
-                      >
-                        Criar chave
-                      </button>
-                    </form>
-                  </section>
-                </div>
-              )}
 
               {accountError && session && (
                 <p className="six-inline-notice is-error" role="alert">
                   <CircleAlert size={15} /> {accountError}
                 </p>
-              )}
-
-              {issuedKey && (
-                <div className="six-issued-key">
-                  <strong>Copie agora. Esta chave só é exibida nesta sessão.</strong>
-                  <code>{issuedKey}</code>
-                  <div>
-                    <button type="button" className="six-primary" onClick={() => copy(issuedKey)}>
-                      <Copy size={15} /> Copiar chave
-                    </button>
-                    <button type="button" className="six-secondary" onClick={() => setIssuedKey("")}>
-                      Já guardei
-                    </button>
-                  </div>
-                </div>
               )}
 
               <section className="six-panel">
@@ -1322,7 +1283,7 @@ export default function DashboardPage() {
                 ) : (
                   empty(
                     "Sua chave começa aqui",
-                    "Vincule sua chave de teste no formulário acima. Se ainda não recebeu uma, solicite ao suporte.",
+                    "Vincule no formulário acima a chave que você recebeu pelo WhatsApp. Se ainda não recebeu, peça para a gente.",
                     <a
                       className="six-primary"
                       href={supportLink("Olá! Quero solicitar minha chave individual SixtySix.")}
@@ -1339,7 +1300,15 @@ export default function DashboardPage() {
                 <ShieldCheck size={18} />
                 <p>
                   O segredo completo de uma chave não pode ser recuperado a partir do prefixo. Use a chave entregue a você e
-                  guarde-a em local seguro.
+                  guarde-a em local seguro. Precisa de outra chave ou quer trocar a atual?{" "}
+                  <a
+                    href={supportLink("Olá! Preciso de uma nova chave da SixtySix.")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Fale no WhatsApp
+                  </a>
+                  .
                 </p>
               </div>
             </>
@@ -1347,6 +1316,10 @@ export default function DashboardPage() {
 
           {tab === "guides" && (
             <>
+              <p className="six-inline-notice is-info">
+                <MessageSquare size={15} aria-hidden="true" /> A URL e a sua chave chegam pelo WhatsApp depois da contratação.
+                Cole a chave em “Deixe os comandos prontos” para preencher os comandos.
+              </p>
               <div className="six-guide-choices">
                 {[
                   ["claude", "Claude Code", "Terminal", "claude"],
@@ -1472,8 +1445,8 @@ export default function DashboardPage() {
                       </GuideStep>
                       <GuideStep number="02" title="Preencha as credenciais">
                         <p>
-                          Em Credenciais de gateway, escolha Chave de API estática. Copie sua chave na aba Chaves de API deste
-                          painel e cole no campo Chave de API do gateway. Use a URL inteira abaixo, sem acrescentar
+                          Em Credenciais de gateway, escolha Chave de API estática. Use a chave que você recebeu pelo
+                          WhatsApp e cole no campo Chave de API do gateway. Use a URL inteira abaixo, sem acrescentar
                           /v1/messages. Em Esquema de autenticação, selecione x-api-key. O campo Origem do iframe de
                           visualização de artefato é separado da conexão; deixe vazio se você não configurou uma origem de
                           artefatos.
@@ -1646,27 +1619,43 @@ export default function DashboardPage() {
                     ))}
                   </div>
                   <div className="six-plan-actions">
-                    <Link className="six-primary" to="/planos">
-                      Ver planos disponíveis <ArrowUpRight size={15} />
-                    </Link>
-                    {session && (
-                      <Link className="six-secondary" to="/assinatura">
-                        Pagamentos, chave e cancelamento <ArrowRight size={15} />
-                      </Link>
-                    )}
+                    <a
+                      className="six-primary"
+                      href={supportLink("Olá! Quero falar sobre o meu plano SixtySix.")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageSquare size={16} /> Falar sobre meu plano
+                    </a>
                   </div>
                 </section>
-                <section className="six-plan-note">
-                  <img src="/assets/plan-trial.webp" alt="" />
-                  <h2>
-                    Uma boa ideia <em>merece um começo.</em>
-                  </h2>
-                  <p>Os acessos, valores e limites devem ser confirmados no seu plano contratado.</p>
-                  <button type="button" className="six-secondary" onClick={() => switchTab("guides")}>
-                    Preparar minha ferramenta <ArrowRight size={15} />
-                  </button>
-                </section>
               </div>
+              <section aria-labelledby="six-plans-title">
+                <div className="six-section-head">
+                  <h2 id="six-plans-title">Planos</h2>
+                  <p>Escolha o seu e fale com a gente no WhatsApp para contratar.</p>
+                </div>
+                <div className="six-plans-grid">
+                  {PLANS.map((plan) => (
+                    <article key={plan.name} className="six-plan-card">
+                      <img src={plan.icon} alt="" aria-hidden="true" />
+                      <h3>{plan.name}</h3>
+                      <div className="six-plan-card-price">
+                        <span>R$</span>
+                        <strong>{plan.price}</strong>
+                        <small>{plan.period}</small>
+                      </div>
+                      <p>{plan.desc}</p>
+                      <span className="six-plan-card-note">
+                        <Check size={14} aria-hidden="true" /> {plan.note}
+                      </span>
+                      <a className="six-primary" href={supportLink(plan.message)} target="_blank" rel="noopener noreferrer">
+                        {plan.cta} <ArrowUpRight size={15} />
+                      </a>
+                    </article>
+                  ))}
+                </div>
+              </section>
               <section className="six-panel">
                 <div className="six-panel-head">
                   <div>
@@ -1676,15 +1665,30 @@ export default function DashboardPage() {
                 </div>
                 {subscription ? (
                   <div className="six-panel-row">
-                    <p>Consulte a situação de cada pagamento e a data do período contratado.</p>
-                    <Link className="six-primary" to="/assinatura">
-                      Ver meus pagamentos
-                    </Link>
+                    <p>Comprovantes, renovação e cancelamento são tratados pelo WhatsApp.</p>
+                    <a
+                      className="six-secondary"
+                      href={supportLink("Olá! Quero um comprovante do meu pagamento SixtySix.")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Pedir comprovante <ArrowUpRight size={15} />
+                    </a>
                   </div>
                 ) : (
                   empty(
-                    "Nenhuma cobrança disponível",
-                    preview ? "Entre na sua conta para ver suas cobranças." : "Você ainda não contratou um plano nesta conta.",
+                    "Nenhuma cobrança registrada no painel",
+                    preview
+                      ? "Entre na sua conta para ver suas cobranças."
+                      : "Compras feitas pelo WhatsApp podem não aparecer aqui. Para comprovantes, fale com a gente.",
+                    <a
+                      className="six-secondary"
+                      href={supportLink("Olá! Quero um comprovante do meu pagamento SixtySix.")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Falar no WhatsApp <ArrowUpRight size={14} />
+                    </a>,
                   )
                 )}
               </section>
@@ -1697,7 +1701,7 @@ export default function DashboardPage() {
                 {[
                   [
                     "Onde consigo minha chave?",
-                    "Ative o teste de 7 dias ou confirme um plano com API. A chave individual aparece na seção Chaves de API. No teste, Fable 5.1, Fable 5.2, Astra 6 e GLM 5 estão liberados. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
+                    "Você recebe sua chave individual e a URL de configuração pelo WhatsApp, logo depois de contratar ou pedir o teste. Depois, vincule a chave em Chaves de API para ver seu consumo aqui. No teste, Fable 5.1, Fable 5.2, Astra 6 e GLM 5 estão liberados. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
                   ],
                   [
                     "Deu erro 401. O que confiro?",
