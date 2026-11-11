@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
-import { withFableVariants } from '../server/model-aliases.js'
+import { withPlanModels } from '../server/model-aliases.js'
 import { CONFIRMATION_TEXT_VERSION, deliveryConfirmationText, deliveryState, type DeliveryRow } from '../src/lib/deliveries.js'
 
 type Config = { url: string; secret: string; publicKey: string;billingConnected?:boolean }
@@ -75,7 +75,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         const subscriptions=await db<Subscription[]>('billing_subscription_state',{user_id:`eq.${userId}`,select:'id,plan_code,amount_cents,api_enabled,models,paid_until,provider_status,created_at,entitled,billing_mode',order:'created_at.desc',limit:'50'})
         for(const access of paid)mine.push({id:access.gateway_client_id,name:'Assinatura · '+(access.api_enabled?'API':'Site'),enabled:access.entitled&&!access.revoked_at&&Boolean(access.paid_until&&Date.parse(access.paid_until)>Date.now()),created_at:access.created_at,key_prefix:access.token_prefix,managed:true,visible:access.api_enabled})
         const selected=subscriptions.find(item=>item.entitled&&item.paid_until&&Date.parse(item.paid_until)>Date.now())||subscriptions[0]
-        const subscription=selected?{id:selected.id,plan:selected.plan_code,name:selected.plan_code==='pro'?'Pro':selected.plan_code==='devApi'?'Dev + API':'Dev',amount:selected.amount_cents/100,api:selected.api_enabled,models:withFableVariants(selected.models),active:selected.entitled&&Boolean(selected.paid_until&&Date.parse(selected.paid_until)>Date.now()),expires:selected.paid_until,status:selected.provider_status,mode:selected.billing_mode}:null
+        const subscription=selected?{id:selected.id,plan:selected.plan_code,name:selected.plan_code==='pro'?'Pro':selected.plan_code==='devApi'?'Dev + API':'Dev',amount:selected.amount_cents/100,api:selected.api_enabled,models:withPlanModels(selected.models),active:selected.entitled&&Boolean(selected.paid_until&&Date.parse(selected.paid_until)>Date.now()),expires:selected.paid_until,status:selected.provider_status,mode:selected.billing_mode}:null
         const usage = mine.length ? await db<Usage[]>('gateway_usage', {
           select: 'id,client_id,requested_alias,status_code,input_tokens,output_tokens,latency_ms,created_at',
           client_id: `in.(${mine.map(c => c.id).join(',')})`, and: `(created_at.gte.${start},created_at.lt.${end},created_at.lte.${new Date(asOf).toISOString()})`,

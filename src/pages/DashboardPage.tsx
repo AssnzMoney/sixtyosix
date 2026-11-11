@@ -76,7 +76,7 @@ type GatewayStatus = "checking" | "ready" | "down" | "unknown"
 // Nomes de exibição dos perfis já usados pelo gateway e pelos guias.
 const MODEL_LABELS: Record<string, string> = {
   "claude-fable-5-1": "Fable 5.1",
-  "claude-fable-5-2": "Fable 5.2",
+  "argon-4": "Argon 4",
   "gpt-6-astra": "Astra 6",
   "glm-5": "GLM 5",
 }
@@ -1290,7 +1290,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="six-feature-tools">
                     {[
-                      ["claude", "Claude Code", "Fable 5.1 ou 5.2 no seu terminal", "claude"],
+                      ["claude", "Claude Code", "Fable 5.1 no seu terminal", "claude"],
                       ["codex", "Codex", "Astra 6 no seu workspace", "openai"],
                       ["glm", "Claude Code", "Perfil GLM 5", "glm"],
                     ].map(([id, title, desc, icon]) => (
@@ -1630,11 +1630,11 @@ export default function DashboardPage() {
                       <span className="six-step-badge">Passo a passo</span>
                       <h2>
                         {tool === "claude"
-                          ? "Fable 5.1 ou 5.2 no seu terminal"
+                          ? "Fable 5.1 no seu terminal"
                           : tool === "codex"
                             ? "Astra 6 no Codex"
                             : tool === "desktop"
-                              ? "Fable 5.1 ou 5.2 no Claude Desktop"
+                              ? "Fable 5.1 no Claude Desktop"
                               : "GLM 5 no Claude Code"}
                       </h2>
                     </div>
@@ -1742,7 +1742,7 @@ export default function DashboardPage() {
                       <GuideStep number="03" title="Salve, reinicie e teste">
                         <p>
                           Clique em Testar conexão. Depois clique em Salvar e Reiniciar e aguarde o aplicativo abrir novamente.
-                          Crie uma conversa nova na área Code e escolha Fable 5.1 ou Fable 5.2 no seletor de modelos. Conversas
+                          Crie uma conversa nova na área Code e escolha Fable 5.1 no seletor de modelos. Conversas
                           antigas podem manter o modelo anterior. Se o teste ficar vermelho, confira a chave completa, a URL e
                           x-api-key. Se aparecer Não foi possível atualizar as configurações salvas, o aplicativo ainda não
                           salvou a conexão: feche e abra o Claude e tente salvar novamente. Se a opção de terceiros não existir
@@ -1841,7 +1841,7 @@ export default function DashboardPage() {
                 subscription?.active
                   ? subscription.models
                   : trial?.active
-                    ? ["claude-fable-5-1", "claude-fable-5-2", "gpt-6-astra", "glm-5"]
+                    ? ["claude-fable-5-1", "argon-4", "gpt-6-astra", "glm-5"]
                     : []
               }
             />
@@ -1867,10 +1867,10 @@ export default function DashboardPage() {
                   {!preview && (
                     <p>
                       {trial?.active && !subscription?.active
-                        ? "Modelos liberados no teste: Fable 5.1, Fable 5.2, Astra 6 e GLM 5. Todos disponíveis durante os 7 dias."
+                        ? "Modelos liberados no teste: Fable 5.1, Argon 4, Astra 6 e GLM 5. Todos disponíveis durante os 7 dias."
                         : subscription
                           ? `Modelos do seu plano: ${subscription.models.map((model) => MODEL_LABELS[model] || model).join(", ")}.`
-                          : "Seu espaço para construir com Fable 5.1, Fable 5.2, Astra 6 e GLM 5."}
+                          : "Seu espaço para construir com Fable 5.1, Argon 4, Astra 6 e GLM 5."}
                     </p>
                   )}
                   <div className="six-plan-price">
@@ -1979,7 +1979,7 @@ export default function DashboardPage() {
                 {[
                   [
                     "Onde consigo minha chave?",
-                    "Você recebe sua chave individual e a URL de configuração pelo WhatsApp, logo depois de contratar ou pedir o teste. Depois, vincule a chave em Chaves de API para ver seu consumo aqui. No teste, Fable 5.1, Fable 5.2, Astra 6 e GLM 5 estão liberados. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
+                    "Você recebe sua chave individual e a URL de configuração pelo WhatsApp, logo depois de contratar ou pedir o teste. Depois, vincule a chave em Chaves de API para ver seu consumo aqui. No teste, Fable 5.1, Argon 4, Astra 6 e GLM 5 estão liberados. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
                   ],
                   [
                     "Deu erro 401. O que confiro?",
