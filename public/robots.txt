@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /administracao
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /assinatura
+Disallow: /comprar/
+Disallow: /auth/
+Disallow: /api/
+Disallow: /v1/
+Disallow: /glm/
+
+Sitemap: https://www.sixtysix.online/sitemap.xml
