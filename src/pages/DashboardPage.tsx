@@ -50,6 +50,7 @@ import { purchaseMessage, supportWhatsappLink } from "../lib/whatsapp"
 import { STATE_LABELS, credentialTitle, deliveryConfirmationText, type DeliveryProduct } from "../lib/deliveries"
 import SiteChat from "../components/SiteChat"
 import NumberRoller from "../components/ui/number-roller"
+import { PRO_BASE_MODELS, ROUTER_MODEL_NAMES } from "../lib/routerModels"
 import "./dashboard.css"
 import "./billing.css"
 
@@ -79,6 +80,7 @@ const MODEL_LABELS: Record<string, string> = {
   "argon-4": "Argon 4",
   "gpt-6-astra": "Astra 6",
   "glm-5": "GLM 5",
+  ...ROUTER_MODEL_NAMES,
 }
 const KNOWN_MODELS = Object.values(MODEL_LABELS)
 const ALL_MODELS = "Todos os modelos"
@@ -96,16 +98,6 @@ const PLANS: Array<{
   icon: string
   code?: "dev" | "pro"
 }> = [
-  {
-    name: "Teste Grátis",
-    price: "0",
-    period: "/7 dias",
-    desc: "Acesso total e irrestrito para testar tudo na prática antes de decidir.",
-    note: "Sem cartão de crédito",
-    cta: "Pedir teste grátis",
-    message: "Olá! Quero fazer o teste grátis de 7 dias da SixtySix.",
-    icon: "/assets/plan-trial.webp",
-  },
   {
     name: "Dev",
     price: "79,99",
@@ -1189,16 +1181,11 @@ export default function DashboardPage() {
               <ol className="six-onboarding-steps">
                 <li>
                   <span className="six-onboarding-number">01</span>
-                  <h3>Contrate pelo WhatsApp</h3>
-                  <p>Escolha seu plano ou peça o teste grátis de 7 dias.</p>
-                  <a
-                    className="six-primary"
-                    href={supportLink("Olá! Quero contratar a SixtySix.")}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <MessageSquare size={16} /> Abrir WhatsApp
-                  </a>
+                  <h3>Escolha seu plano</h3>
+                  <p>Contrate aqui no painel, por Pix ou cartão.</p>
+                  <button type="button" className="six-primary" onClick={() => switchTab("plan")}>
+                    <CreditCard size={16} /> Ver planos
+                  </button>
                 </li>
                 <li>
                   <span className="six-onboarding-number">02</span>
@@ -1854,7 +1841,7 @@ export default function DashboardPage() {
                 subscription?.active
                   ? subscription.models
                   : trial?.active
-                    ? ["claude-fable-5-1", "argon-4", "gpt-6-astra", "glm-5"]
+                    ? trial.models || PRO_BASE_MODELS
                     : []
               }
             />
@@ -2018,7 +2005,7 @@ export default function DashboardPage() {
                 {[
                   [
                     "Onde consigo minha chave?",
-                    "Você recebe sua chave individual e a URL de configuração pelo WhatsApp, logo depois de contratar ou pedir o teste. Depois, vincule a chave em Chaves de API para ver seu consumo aqui. No teste, Fable 5.1, Argon 4, Astra 6 e GLM 5 estão liberados. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
+                    "Você recebe sua chave individual e a URL de configuração pelo WhatsApp, logo depois de contratar. Depois, vincule a chave em Chaves de API para ver seu consumo aqui. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
                   ],
                   [
                     "Deu erro 401. O que confiro?",

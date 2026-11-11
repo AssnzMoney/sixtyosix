@@ -1,6 +1,8 @@
 import { createHash, createHmac, timingSafeEqual, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { withPlanModels } from '../server/model-aliases.js'
+import { collectUsage, recordUsage, supplierUrl } from '../server/supplier.js'
+import { loadRouter } from '../server/router.js'
 
 type ObjectValue = Record<string, unknown>
 type Env = Record<string, string | undefined>
@@ -132,8 +134,9 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     const rows=await db<Subscription[]>('billing_subscription_state',{user_id:`eq.${userId}`,select:'*',order:'created_at.desc',limit:'50'})
     const accesses=await db<PaidAccess[]>('billing_key_access',{user_id:`eq.${userId}`,select:'subscription_id,revoked_at',limit:'100'})
     const ids=rows.map(item=>item.id)
+    const router=await loadRouter(env,request)
     const payments=ids.length?await db<ObjectValue[]>('billing_payments',{subscription_id:`in.(${ids.join(',')})`,select:'id,subscription_id,status,amount_cents,currency,approved_at,period_start,period_end',order:'period_end.desc',limit:'100'}):[]
-    return {subscriptions:rows.map(item=>({id:item.id,plan:item.plan_code,name:billingPlans[item.plan_code].name,amount:item.amount_cents/100,api:item.api_enabled,models:item.models,mode:item.billing_mode||'recurring',active:subscriptionActive(item),expires:item.paid_until,status:item.provider_status,created:item.created_at,keyRevoked:Boolean(accesses.find(a=>a.subscription_id===item.id)?.revoked_at),checkoutUrl:item.provider_status==='pending'||item.billing_mode==='pix'?item.checkout_url:null})),payments}
+    return {subscriptions:rows.map(item=>({id:item.id,plan:item.plan_code,name:billingPlans[item.plan_code].name,amount:item.amount_cents/100,api:item.api_enabled,models:withPlanModels(item.models,router.proAliases),mode:item.billing_mode||'recurring',active:subscriptionActive(item),expires:item.paid_until,status:item.provider_status,created:item.created_at,keyRevoked:Boolean(accesses.find(a=>a.subscription_id===item.id)?.revoked_at),checkoutUrl:item.provider_status==='pending'||item.billing_mode==='pix'?item.checkout_url:null})),payments}
   }
   return {
     process:processEvent,
@@ -218,12 +221,13 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
       if(action==='chat'){
         const rows=await db<PaidAccess[]>('billing_key_access',{user_id:`eq.${user.id}`,entitled:'eq.true',paid_until:`gt.${new Date().toISOString()}`,revoked_at:'is.null',select:'*',order:'paid_until.desc',limit:'1'}),access=rows[0]
         if(!secret)throw new WebhookError(503,'Conexão indisponível.')
-        let allowed:string[],upstream:string
-        if(access){allowed=withPlanModels(access.models);upstream=decrypt(access.encrypted_upstream,secret,`${user.id}:paid:${access.subscription_id}:upstream`)}
+        const router=await loadRouter(env,request)
+        let allowed:string[],upstream:string,clientId:string
+        if(access){allowed=withPlanModels(access.models,router.proAliases);upstream=decrypt(access.encrypted_upstream,secret,`${user.id}:paid:${access.subscription_id}:upstream`);clientId=access.gateway_client_id}
         else{
-          const trials=await db<{encrypted_upstream:string;expires_at:string;revoked_at:string|null}[]>('gateway_trials',{user_id:`eq.${user.id}`,select:'encrypted_upstream,expires_at,revoked_at',limit:'1'}),trial=trials[0]
+          const trials=await db<{gateway_client_id:string;encrypted_upstream:string;expires_at:string;revoked_at:string|null}[]>('gateway_trials',{user_id:`eq.${user.id}`,select:'gateway_client_id,encrypted_upstream,expires_at,revoked_at',limit:'1'}),trial=trials[0]
           if(!trial||trial.revoked_at||Date.parse(trial.expires_at)<=Date.now())throw new WebhookError(403,'Ative um plano ou um teste grátis para conversar pelo site.')
-          allowed=[...billingPlans.pro.models];upstream=decrypt(trial.encrypted_upstream,secret,`${user.id}:upstream`)
+          allowed=withPlanModels(billingPlans.pro.models,router.proAliases);upstream=decrypt(trial.encrypted_upstream,secret,`${user.id}:upstream`);clientId=trial.gateway_client_id
         }
         const model=typeof body.model==='string'?body.model:''
         if(!allowed.includes(model))throw new WebhookError(403,'Este modelo não está incluído no seu plano.')
@@ -231,6 +235,18 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
         let length=0
         const messages=body.messages.map(value=>{const m=object(value);if(!['user','assistant'].includes(String(m.role))||typeof m.content!=='string'||!m.content.trim())throw new WebhookError(400,'Mensagem inválida.');length+=(m.content as string).length;return {role:m.role,content:m.content}})
         if(length>60000)throw new WebhookError(413,'Esta conversa ficou longa. Comece uma nova para continuar.')
+        // Modelos do Roteador: chamada no formato OpenAI com a key mestra do provedor, consumo gravado para o cliente.
+        const route=router.routes.get(model)
+        if(route){
+          const started=Date.now(),usage={input:0,output:0}
+          const answer=await request(supplierUrl(route.provider.url,'/v1/chat/completions'),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${route.provider.key}`},body:JSON.stringify({model:route.upstream,max_tokens:4096,messages}),signal:AbortSignal.timeout(180000)})
+          const data=object(await answer.json().catch(()=>({})));collectUsage(data,usage)
+          await recordUsage(env,request,{client_id:clientId,requested_alias:model,status_code:answer.status,input_tokens:usage.input,output_tokens:usage.output,latency_ms:Date.now()-started})
+          if(!answer.ok)throw new WebhookError(answer.status===429?429:503,'Não foi possível responder agora. Tente novamente em instantes.')
+          const choice=object(Array.isArray(data.choices)?data.choices[0]:null),reply=String(object(choice.message).content||'')
+          if(!reply)throw new WebhookError(503,'A resposta veio vazia. Tente novamente.')
+          return {reply}
+        }
         const response=await request('https://66cloud.vercel.app/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':upstream,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:4096,messages}),signal:AbortSignal.timeout(180000)})
         if(!response.ok)throw new WebhookError(response.status===429?429:503,'Não foi possível responder agora. Tente novamente em instantes.')
         const content=object(await response.json()).content

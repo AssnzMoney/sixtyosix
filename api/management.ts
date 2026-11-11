@@ -3,6 +3,7 @@ import { normalizeWhatsapp } from '../src/lib/whatsapp.js'
 import { credentialTitle, isUuid, validateDeliveryInput } from '../src/lib/deliveries.js'
 import { emailConfig } from '../server/email.js'
 import { createNotifier, userFromAuth, type NotifyResult } from '../server/notifications.js'
+import { createRouterAdmin, RouterError } from '../server/router.js'
 class AccountError extends Error { status:number; constructor(status:number,message:string){super(message);this.status=status} }
 function configuration(env:NodeJS.ProcessEnv){
  const url=env.SUPABASE_URL?.replace(/\/+$/,''),secret=env.SUPABASE_SERVICE_ROLE_KEY,publicKey=env.VITE_SUPABASE_ANON_KEY||env.SUPABASE_PUBLISHABLE_KEY
@@ -40,7 +41,9 @@ export function createAdminService(env=process.env,request:typeof fetch=fetch){
  return async (authorization:string|undefined,query:URLSearchParams)=>{
   const {config,email}=await requireAdmin(env,request,authorization)
   const resource=query.get('resource')||'clients',offset=Number(query.get('offset')||0)
-  if(!Number.isSafeInteger(offset)||offset<0||offset>1000000||(!resources[resource]&&resource!=='users'))throw new AccountError(400,'Consulta inválida.')
+  if(!Number.isSafeInteger(offset)||offset<0||offset>1000000||(!resources[resource]&&resource!=='users'&&resource!=='router'))throw new AccountError(400,'Consulta inválida.')
+  // Aba Roteador: provedores (sem a key), modelos vendidos e chaves manuais.
+  if(resource==='router'){try{return {...await createRouterAdmin(config,request,email).overview(),rows:[] as Row[],hasMore:false,admin:email}}catch(error){if(error instanceof RouterError)throw new AccountError(error.status,error.message);throw error}}
   const headers=serviceHeaders(config.secret)
   let url:string
   if(resource==='users')url=`${config.url}/auth/v1/admin/users?page=${Math.floor(offset/500)+1}&per_page=500`
@@ -74,6 +77,16 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    return await response.json() as T
   }
   const action=typeof body.action==='string'?body.action:''
+  if(action.startsWith('router-')){
+   const router=createRouterAdmin(config,request,email)
+   const actions:Record<string,(input:Row)=>Promise<unknown>>={
+    'router-provider-save':router.saveProvider,'router-provider-enabled':router.setProviderEnabled,'router-provider-delete':router.deleteProvider,
+    'router-provider-models':router.providerModels,'router-models-save':router.saveModels,
+    'router-key-create':router.createKey,'router-key-renew':router.renewKey,'router-key-block':router.setKeyBlocked,'router-key-reveal':router.revealKey,
+   }
+   if(!actions[action])throw new AccountError(400,'Ação inválida.')
+   try{return await actions[action](body)}catch(error){if(error instanceof RouterError)throw new AccountError(error.status,error.message);throw error}
+  }
   if(action==='revoke-old-trials'){
    const query=new URLSearchParams({resource:'trials',history:'1'}),read=createAdminService(env,request);let count=0
    for(let offset=0;offset<=1000000;offset+=500){query.set('offset',String(offset));const page=await read(authorization,query);for(const trial of page.rows){if(Date.parse(trial.created_at)>=Date.parse(TRIAL_CUTOFF)||trial.revoked_at)continue;if(await rpc<boolean>('account_revoke_trial',{p_user_id:trial.user_id,p_client_id:trial.gateway_client_id})!==true)throw new AccountError(503,'Revogação incompleta. Atualize e tente novamente.');count++}if(!page.hasMore)break}
@@ -107,7 +120,7 @@ async function readBody(req:IncomingMessage&{body?:unknown}):Promise<Row>{
  let body=req.body
  if(body===undefined){
   let text=''
-  for await(const chunk of req){text+=chunk;if(Buffer.byteLength(text)>4096)throw new AccountError(413,'Solicitação muito grande.')}
+  for await(const chunk of req){text+=chunk;if(Buffer.byteLength(text)>65536)throw new AccountError(413,'Solicitação muito grande.')}
   try{body=JSON.parse(text||'{}')}catch{throw new AccountError(400,'Solicitação inválida.')}
  }
  if(!body||typeof body!=='object'||Array.isArray(body))throw new AccountError(400,'Solicitação inválida.')

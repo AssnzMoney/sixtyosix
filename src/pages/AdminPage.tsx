@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import RouterPanel from '../components/RouterPanel'
 import { confirmationReminder, customerGreeting, deliveryMessage, formatWhatsapp, shortOrder, whatsappLink } from '../lib/whatsapp'
 import {
   PRODUCT_LABELS,
@@ -35,6 +36,7 @@ import {
 import './admin.css'
 
 type Row = Record<string, any>
+const brShort = (day: string) => day.split('-').reverse().slice(0, 2).join('/')
 
 const tabs: Array<[string, string]> = [
   ['service', 'Atendimento'],
@@ -45,6 +47,7 @@ const tabs: Array<[string, string]> = [
   ['keys', 'Chaves do gateway'],
   ['trials', 'Testes grátis'],
   ['usage', 'Consumo e falhas'],
+  ['router', 'Roteador'],
 ]
 const resourceLabels: Record<string, string> = {
   clients: 'Vínculo das chaves',
@@ -330,7 +333,7 @@ export default function AdminPage() {
 
   /* ------------------------- Tabelas genéricas ------------------------ */
   const enriched = useMemo<Row[]>(() => {
-    if (tab === 'service') return []
+    if (tab === 'service' || tab === 'router') return []
     const subs = new Map((data.subscriptions || []).map((x) => [x.id, x]))
     const clients = new Map<string, Row>((data.clients || []).map((x) => [x.id, { ...x, owner: x.user_id }]))
     for (const x of [...(data.keys || []), ...(data.trials || [])])
@@ -345,9 +348,11 @@ export default function AdminPage() {
       .map((x) => {
         const sub = subs.get(x.subscription_id)
         const client = clients.get(x.client_id)
+        const owner = x.user_id || sub?.user_id || client?.owner
         return {
           ...x,
-          customer: label(x.user_id || sub?.user_id || client?.owner),
+          // Chaves do Roteador não têm conta: aparecem pelo nome do cliente.
+          customer: owner || !client?.name ? label(owner) : client.name,
           plan_code: x.plan_code || sub?.plan_code,
           key: client?.key_prefix || x.client_id,
           ...(tab === 'users' ? { service_status: serviceStatus(x.id) } : {}),
@@ -607,12 +612,14 @@ export default function AdminPage() {
                 }}
               >
                 {label}
-                {key !== 'service' && <small>{(key === 'deliveries' ? deliveries : data[key])?.length ?? 0}</small>}
+                {key !== 'service' && key !== 'router' && <small>{(key === 'deliveries' ? deliveries : data[key])?.length ?? 0}</small>}
               </button>
             ))}
           </nav>
 
-          {tab === 'service' ? (
+          {tab === 'router' ? (
+            <RouterPanel token={session!.access_token} usage={data.usage || []} period={`${brShort(from)} a ${brShort(to)}`} />
+          ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(
                 'Pagou e aguarda entrega',

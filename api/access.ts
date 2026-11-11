@@ -1,11 +1,15 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { withPlanModels } from '../server/model-aliases.js'
+import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
+import { recordUsage, supplierRequestBody, supplierUrl, UsageTap } from '../server/supplier.js'
+import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, RouterError, ROUTER_KEY_PREFIX, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
 type Trial = { user_id:string; gateway_client_id:string; token_hash:string; token_prefix:string; encrypted_token:string; encrypted_upstream:string; created_at:string; expires_at:string; revoked_at:string|null }
-type PaidAccess = {user_id:string;subscription_id:string;encrypted_upstream:string;paid_until:string|null;revoked_at:string|null;api_enabled:boolean;models:string[];entitled:boolean}
+type PaidAccess = {user_id:string;subscription_id:string;gateway_client_id:string;encrypted_upstream:string;paid_until:string|null;revoked_at:string|null;api_enabled:boolean;models:string[];entitled:boolean}
+/** O teste grátis libera os mesmos modelos do Pro, incluindo os do Roteador marcados para o Pro. */
+export const trialModels=(router:RouterConfig=EMPTY_ROUTER)=>withPlanModels(PRO_BASE_MODELS,router.proAliases)
 export class AccessError extends Error {
   status:number
   constructor(status:number,message:string){super(message);this.status=status}
@@ -66,23 +70,23 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
       return {active,revoked:Boolean(trial.revoked_at),created:trial.created_at,expires:trial.expires_at,
         key:active?unseal(trial.encrypted_token,secret,`${userId}:public`):null}
     },
-    async authorize(token:string){
-      const rows=await db<Trial[]>('gateway_trials',{token_hash:`eq.${sha(token)}`,select:'user_id,expires_at,revoked_at,encrypted_upstream',limit:'1'})
+    async authorize(token:string,router:RouterConfig=EMPTY_ROUTER){
+      const rows=await db<Trial[]>('gateway_trials',{token_hash:`eq.${sha(token)}`,select:'user_id,gateway_client_id,expires_at,revoked_at,encrypted_upstream',limit:'1'})
       const trial=rows[0]
       if(!trial)throw new AccessError(401,'Chave de acesso inválida.')
       if(!trialActive(trial))throw new AccessError(403,'Seu teste terminou ou foi revogado. Escolha um plano para continuar.')
       if(!secret)throw new AccessError(503,'Conexão indisponível.')
-      return unseal(trial.encrypted_upstream,secret,`${trial.user_id}:upstream`)
+      return {token:unseal(trial.encrypted_upstream,secret,`${trial.user_id}:upstream`),clientId:trial.gateway_client_id,models:trialModels(router)}
     },
-    async authorizePaid(token:string,model?:string){
-      const rows=await db<PaidAccess[]>('billing_key_access',{token_hash:`eq.${sha(token)}`,select:'user_id,subscription_id,encrypted_upstream,paid_until,revoked_at,api_enabled,models,entitled',limit:'1'}),access=rows[0]
+    async authorizePaid(token:string,model?:string,proExtras:readonly string[]=[]){
+      const rows=await db<PaidAccess[]>('billing_key_access',{token_hash:`eq.${sha(token)}`,select:'user_id,subscription_id,gateway_client_id,encrypted_upstream,paid_until,revoked_at,api_enabled,models,entitled',limit:'1'}),access=rows[0]
       if(!access)throw new AccessError(401,'Chave de acesso inválida.')
       if(!access.entitled||access.revoked_at||!access.paid_until||Date.parse(access.paid_until)<=Date.now())throw new AccessError(403,'O período pago terminou ou a chave foi revogada. Confira sua assinatura no painel.')
       if(!access.api_enabled)throw new AccessError(403,'Seu plano permite uso pelo site. Para usar uma chave externa, escolha um plano com API.')
-      const models=withPlanModels(access.models)
+      const models=withPlanModels(access.models,proExtras)
       if(model&&!models.includes(model))throw new AccessError(403,'Este modelo não está incluído no seu plano.')
       if(!secret)throw new AccessError(503,'Conexão indisponível.')
-      return {token:unseal(access.encrypted_upstream,secret,`${access.user_id}:paid:${access.subscription_id}:upstream`),models}
+      return {token:unseal(access.encrypted_upstream,secret,`${access.user_id}:paid:${access.subscription_id}:upstream`),models,clientId:access.gateway_client_id}
     },
   }
 }
@@ -101,6 +105,40 @@ async function rawBody(req:IncomingMessage & {body?:unknown}){
   for await(const chunk of req){const bytes=Buffer.from(chunk);size+=bytes.length;if(size>4*1024*1024)throw new AccessError(413,'Solicitação muito grande.');chunks.push(bytes)}
   return Buffer.concat(chunks)
 }
+const single=(value:string|string[]|undefined)=>typeof value==='string'?value:undefined
+const modelEntry=(id:string,label?:string)=>({id,object:'model',type:'model',display_name:label||id,owned_by:'sixtysix',created:1767225600,created_at:'2026-01-01T00:00:00Z'})
+
+type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string}
+/** Chama o provedor do Roteador com a key mestra, repassa a resposta e grava o consumo do cliente. */
+async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:SupplierCall){
+  const {route}=call,{provider}=route
+  const {body,injectedUsage}=supplierRequestBody(call.payload,call.path,route.upstream)
+  const headers:Record<string,string>={'content-type':'application/json','x-api-key':provider.key,Authorization:`Bearer ${provider.key}`}
+  for(const key of ['accept','anthropic-version','anthropic-beta','openai-beta']){const value=single(req.headers[key]);if(value)headers[key]=value}
+  const controller=new AbortController(),started=Date.now()
+  req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
+  let status=502,tap:UsageTap|null=null
+  try{
+    const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers,body,redirect:'manual',signal:controller.signal})
+    status=response.status
+    // Recusa da key mestra (saldo, bloqueio) ou falha do fornecedor: o cliente não vê detalhes do fornecedor.
+    if(status===401||status===402||status===403||status>=500||(status>=300&&status<400)){
+      console.error('Provedor recusou a chamada',provider.name,status,(await response.text().catch(()=>'')).slice(0,500))
+      throw new AccessError(503,'Este modelo está temporariamente indisponível. Tente novamente em instantes.')
+    }
+    res.statusCode=status
+    for(const key of ['content-type','retry-after']){const value=response.headers.get(key);if(value)res.setHeader(key,value)}
+    if(req.headers.origin)res.setHeader('access-control-allow-origin','*')
+    tap=new UsageTap({stream:(response.headers.get('content-type')||'').includes('text/event-stream'),alias:route.alias,supplierId:route.upstream,dropInjectedUsage:injectedUsage})
+    const write=async(text:string)=>{if(text&&!res.write(text))await new Promise(resolve=>{res.once('drain',resolve);res.once('close',resolve)})}
+    if(response.body){const reader=response.body.getReader();for(;;){const {done,value}=await reader.read();if(done)break;await write(tap.push(value))}}
+    await write(tap.end())
+  }finally{
+    await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:status,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
+  }
+  res.end()
+}
+
 export default async function handler(req:IncomingMessage & {body?:unknown},res:ServerResponse){
   res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Content-Type-Options','nosniff')
   try{
@@ -109,36 +147,61 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     const service=createAccessService()
     if(action==='trial'){
       if(req.method!=='POST')throw new AccessError(405,'Use POST para ativar seu teste.')
+      // O teste grátis é pedido pelo WhatsApp e a chave sai do Roteador. SIXTYSIX_SELF_TRIAL=1 religa o teste automático.
+      if(process.env.SIXTYSIX_SELF_TRIAL!=='1')throw new AccessError(410,'O teste grátis agora é pedido pelo WhatsApp: (81) 99237-6036.')
       res.setHeader('Content-Type','application/json; charset=utf-8')
       res.end(JSON.stringify(await service.start(req.headers.authorization,url.searchParams.get('replace')==='1')));return
     }
     if(action!=='proxy')throw new AccessError(404,'Operação não encontrada.')
     if(!['GET','HEAD','POST','OPTIONS'].includes(req.method||''))throw new AccessError(405,'Método não permitido.')
     const path=proxyPath(url.searchParams.get('path')||'')
-    const single=(value:string|string[]|undefined)=>typeof value==='string'?value:undefined
     const credential=single(req.headers['x-api-key'])||single(req.headers['anthropic-api-key'])||req.headers.authorization||''
     const token=credential.replace(/^Bearer\s+/i,'').trim()
     if(token.length>256)throw new AccessError(401,'Chave inválida.')
     const body=req.method==='POST'?await rawBody(req):undefined
-    let upstreamToken=token,paidModels:string[]|null=null
-    if(token.startsWith('sk-sx-'))upstreamToken=await service.authorize(token)
+    const params=new URLSearchParams(url.searchParams);params.delete('action');params.delete('path')
+    let payload:Record<string,unknown>|null=null
+    const routed=/^sk-(sx|sp|rt)-/.test(token)
+    if(body&&routed){
+      try{const parsed=JSON.parse(body.toString('utf8')||'{}');if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))payload=parsed}catch{/* sem JSON: segue como antes */}
+    }
+    const router=routed?await loadRouter(process.env):EMPTY_ROUTER
+    let upstreamToken=token,paidModels:string[]|null=null,allowed:string[]|null=null,clientId:string|null=null
+    if(token.startsWith('sk-sx-')){const trial=await service.authorize(token,router);upstreamToken=trial.token;allowed=trial.models;clientId=trial.clientId}
     if(token.startsWith('sk-sp-')){
       let model:string|undefined
       if(req.method==='POST'){
-        let parsed:Record<string,unknown>
-        try{parsed=JSON.parse(body?.toString('utf8')||'{}')}catch{throw new AccessError(400,'JSON inválido.')}
-        if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new AccessError(400,'JSON inválido.')
-        if(typeof parsed.model!=='string'||!parsed.model)throw new AccessError(400,'Selecione um modelo para continuar.')
-        model=parsed.model
+        if(!payload)throw new AccessError(400,'JSON inválido.')
+        if(typeof payload.model!=='string'||!payload.model)throw new AccessError(400,'Selecione um modelo para continuar.')
+        model=payload.model
       }
-      const paid=await service.authorizePaid(token,model);upstreamToken=paid.token;paidModels=paid.models
+      const paid=await service.authorizePaid(token,model,router.proAliases);upstreamToken=paid.token;paidModels=allowed=paid.models;clientId=paid.clientId
+    }
+    if(token.startsWith(ROUTER_KEY_PREFIX)){
+      try{const key=await authorizeRouterKey(process.env,fetch,token,router);allowed=key.allowed;clientId=key.clientId;upstreamToken=''}
+      catch(error){if(error instanceof RouterError)throw new AccessError(error.status,error.message);throw error}
+    }
+    // Modelos do Roteador: só para chaves de teste, pagas e manuais, que sabem a quem cobrar o consumo.
+    const alias=typeof payload?.model==='string'?payload.model:''
+    const route=req.method==='POST'&&payload&&clientId&&path.startsWith('/v1/')?router.routes.get(alias):undefined
+    if(route&&payload&&clientId){
+      if(!allowed?.includes(alias))throw new AccessError(403,'Este modelo não está incluído no seu plano.')
+      await proxySupplier(req,res,{route,path,params,payload,clientId});return
+    }
+    // Chave manual do Roteador: só usa modelos do Roteador, e a lista de modelos é montada aqui.
+    if(token.startsWith(ROUTER_KEY_PREFIX)){
+      if(req.method==='GET'&&/^\/v1\/models\/?$/.test(path)){
+        const data=(allowed||[]).map(model=>modelEntry(model,router.routes.get(model)?.label))
+        res.statusCode=200;res.setHeader('Content-Type','application/json; charset=utf-8')
+        res.end(JSON.stringify({object:'list',data,has_more:false,first_id:data[0]?.id??null,last_id:data[data.length-1]?.id??null}));return
+      }
+      throw new AccessError(req.method==='POST'?403:400,req.method==='POST'?'Este modelo não está incluído na sua chave.':'Operação não disponível para esta chave.')
     }
     const headers:Record<string,string>={}
     for(const key of ['content-type','accept','anthropic-version','anthropic-beta','openai-beta','anthropic-dangerous-direct-browser-access','origin','access-control-request-method','access-control-request-headers']){
       const value=single(req.headers[key]);if(value)headers[key]=value
     }
     if(upstreamToken){headers['x-api-key']=upstreamToken;headers.Authorization=`Bearer ${upstreamToken}`}
-    const params=new URLSearchParams(url.searchParams);params.delete('action');params.delete('path')
     const controller=new AbortController()
     req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
     const response=await fetch(`https://66cloud.vercel.app${path}${params.size?'?'+params:''}`,{
@@ -149,10 +212,17 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     for(const key of ['content-type','retry-after','access-control-allow-origin','access-control-allow-headers','access-control-allow-methods']){
       const value=response.headers.get(key);if(value)res.setHeader(key,value)
     }
-    if(paidModels&&response.ok&&path.endsWith('/models')){
-      const payload=await response.json() as Record<string,unknown>
-      for(const key of ['data','models'])if(Array.isArray(payload[key]))payload[key]=(payload[key] as Record<string,unknown>[]).filter(item=>paidModels!.includes(String(item.id||item.slug||item.model||'')))
-      res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(payload));return
+    // Na lista de modelos entram também os do Roteador que a chave pode usar.
+    const extra=allowed&&/^\/v1\/models\/?$/.test(path)?allowed.filter(model=>router.routes.has(model)):[]
+    if((paidModels||extra.length)&&response.ok&&path.endsWith('/models')){
+      const list=await response.json() as Record<string,unknown>
+      for(const key of ['data','models'])if(Array.isArray(list[key])){
+        const id=(item:Record<string,unknown>)=>String(item.id||item.slug||item.model||'')
+        const items=(list[key] as Record<string,unknown>[]).filter(item=>!paidModels||paidModels.includes(id(item)))
+        for(const model of extra)if(!items.some(item=>id(item)===model))items.push(modelEntry(model,router.routes.get(model)?.label))
+        list[key]=items
+      }
+      res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(list));return
     }
     if(!response.body||req.method==='HEAD'){res.end();return}
     await new Promise<void>((resolve,reject)=>{
