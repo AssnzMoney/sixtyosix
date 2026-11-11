@@ -428,7 +428,11 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
     },
 
     async createKey(body: Row) {
-      const name = text(body.name, 80), contact = text(body.contact, 80), days = Number(body.days)
+      const name = text(body.name, 80), contact = text(body.contact, 80)
+      // Validade em horas (ex.: teste de 3 horas) ou em dias.
+      const hours = body.hours === undefined || body.hours === null || body.hours === '' ? null : Number(body.hours)
+      if (hours !== null && (!Number.isInteger(hours) || hours < 1 || hours > 720)) throw new RouterError(400, 'Escolha uma validade entre 1 e 720 horas.')
+      const days = hours !== null ? 1 : Number(body.days)
       if (!name) throw new RouterError(400, 'Dê um nome para a chave (ex.: nome do cliente).')
       if (!Number.isInteger(days) || days < 1 || days > 366) throw new RouterError(400, 'Escolha uma validade entre 1 e 366 dias.')
       const models = Array.isArray(body.models) ? (body.models as unknown[]).map(model => text(model, 80)).filter(Boolean).slice(0, 200) : null
@@ -438,7 +442,25 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
         p_name: name, p_contact: contact || null, p_hash: hash, p_prefix: key.slice(0, 14), p_encrypted_token: sealSecret(key, db.secret, keyAad(hash)),
         p_bridge_hash: sha(randomBytes(32).toString('hex')), p_models: models, p_days: days, p_created_by: adminEmail,
       }) })
-      return { key, row: Array.isArray(created) ? created[0] : created }
+      let row = (Array.isArray(created) ? created[0] : created) as Row
+      if (hours !== null && row?.id) {
+        const updated = await rest<Row[]>(`router_keys?${new URLSearchParams({ id: `eq.${row.id}` })}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({ expires_at: new Date(Date.now() + hours * 3600000).toISOString() }),
+        })
+        row = updated?.[0] || row
+      }
+      // Chave de teste: ritmo do teste grátis (mais lento), definido na Proteção. Sem a migração, segue sem limite próprio.
+      if (body.slow === true && row?.gateway_client_id) {
+        const settings = await rest<Row[]>('gateway_settings?select=trial_rpm,trial_concurrency&limit=1').catch(() => [] as Row[])
+        await rest('gateway_controls?on_conflict=client_id', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify({ client_id: row.gateway_client_id, rpm: settings[0]?.trial_rpm ?? 10, concurrency: settings[0]?.trial_concurrency ?? 1, updated_at: new Date().toISOString() }),
+        }).catch(() => undefined)
+      }
+      return { key, row }
     },
 
     /** Edita nome, contato, modelos e validade de uma chave manual. */

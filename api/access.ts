@@ -153,8 +153,8 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     const service=createAccessService()
     if(action==='trial'){
       if(req.method!=='POST')throw new AccessError(405,'Use POST para ativar seu teste.')
-      // Teste grátis de 3 horas, um por conta, mais lento que os planos pagos (supabase/trial-3h.sql). SIXTYSIX_SELF_TRIAL=0 pausa.
-      if(process.env.SIXTYSIX_SELF_TRIAL==='0')throw new AccessError(410,'O teste grátis está pausado no momento. Fale com a gente no WhatsApp: (81) 99237-6036.')
+      // O teste grátis é feito à mão: a chave de 3 horas sai do Roteador e vai pelo WhatsApp. SIXTYSIX_SELF_TRIAL=1 religa o teste automático.
+      if(process.env.SIXTYSIX_SELF_TRIAL!=='1')throw new AccessError(410,'O teste grátis é pedido pelo WhatsApp: (81) 99237-6036.')
       res.setHeader('Content-Type','application/json; charset=utf-8')
       res.end(JSON.stringify(await service.start(req.headers.authorization,url.searchParams.get('replace')==='1')));return
     }

@@ -367,3 +367,24 @@ test('admin: ritmo do teste grátis vale também para os testes rodando agora', 
   assert.deepEqual(controls.body.map((c: any) => [c.client_id, c.rpm, c.concurrency]), [['66666666-6666-4666-8666-666666666666', 6, 1]])
   await assert.rejects(admin.saveGuardSettings({ rpm: 60, concurrency: 4, trial_rpm: 0, trial_concurrency: 1 }), /Teste grátis/)
 })
+
+test('admin: chave de teste em horas vale até a hora certa e usa o ritmo do teste', async () => {
+  const calls: { method: string; url: string; body: any }[] = []
+  const request = (async (input: string, init: RequestInit = {}) => {
+    const url = String(input)
+    calls.push({ method: init.method || 'GET', url, body: init.body ? JSON.parse(String(init.body)) : undefined })
+    if (url.includes('/rpc/router_create_key')) return Response.json({ id: '44444444-4444-4444-8444-444444444444', gateway_client_id: '55555555-5555-4555-8555-555555555555', expires_at: new Date(Date.now() + 86400000).toISOString() })
+    if (url.includes('/router_keys') && init.method === 'PATCH') return Response.json([{ id: '44444444-4444-4444-8444-444444444444', gateway_client_id: '55555555-5555-4555-8555-555555555555', expires_at: JSON.parse(String(init.body)).expires_at }])
+    if (url.includes('/gateway_settings')) return Response.json([{ trial_rpm: 6, trial_concurrency: 1 }])
+    return new Response(null, { status: 201 })
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
+  const before = Date.now()
+  const result = await admin.createKey({ name: 'Teste João', hours: 3, slow: true, models: null })
+  const left = Date.parse(String(result.row.expires_at)) - before
+  assert.ok(left > 2.9 * 3600000 && left < 3.1 * 3600000, 'vale 3 horas')
+  const controls = calls.find((c) => c.url.includes('/gateway_controls'))!
+  assert.deepEqual([controls.body.client_id, controls.body.rpm, controls.body.concurrency], ['55555555-5555-4555-8555-555555555555', 6, 1])
+  await assert.rejects(admin.createKey({ name: 'x', hours: 0 }), /horas/)
+  await assert.rejects(admin.createKey({ name: 'x', hours: 721 }), /horas/)
+})

@@ -1418,3 +1418,19 @@
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }
+
+/* Nova chave: quantidade + unidade (horas ou dias) */
+.sx-router-amount {
+  display: flex;
+  gap: 8px;
+}
+
+.sx-router-amount input {
+  flex: 1;
+  min-width: 0;
+}
+
+.sx-router-amount select {
+  width: auto !important;
+  flex-shrink: 0;
+}

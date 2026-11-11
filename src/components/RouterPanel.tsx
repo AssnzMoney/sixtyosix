@@ -19,11 +19,11 @@ type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: num
 type EditForm = { name: string; contact: string; expires: string; all: boolean; models: string[] }
 type Draft = { key: string; upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
-type KeyForm = { name: string; contact: string; days: string; custom: string; all: boolean; models: string[] }
+type KeyForm = { name: string; contact: string; days: string; custom: string; unit: 'dias' | 'horas'; slow: boolean; all: boolean; models: string[] }
 
 const DAY = 86400000
 const SITE = 'https://www.sixtysix.online'
-const DURATIONS: Array<[string, string]> = [['7', '7 dias (teste)'], ['30', '30 dias'], ['60', '60 dias'], ['90', '90 dias'], ['custom', 'Outro…']]
+const DURATIONS: Array<[string, string]> = [['h3', '3 horas (teste)'], ['1', '1 dia'], ['7', '7 dias'], ['30', '30 dias'], ['60', '60 dias'], ['90', '90 dias'], ['custom', 'Outro…']]
 const date = (value: string) => new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 const dateTime = (value: string) => new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 const limitText = (value: string) => (value.trim() === '' ? null : Number(value))
@@ -234,15 +234,18 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   async function createKey() {
     if (!keyForm) return
     setModalError('')
-    const days = Number(keyForm.days === 'custom' ? keyForm.custom : keyForm.days)
+    const inHours = keyForm.days === 'h3' || (keyForm.days === 'custom' && keyForm.unit === 'horas')
+    const amount = keyForm.days === 'h3' ? 3 : Number(keyForm.days === 'custom' ? keyForm.custom : keyForm.days)
     if (!keyForm.name.trim()) return setModalError('Dê um nome para a chave (ex.: nome do cliente).')
-    if (!Number.isInteger(days) || days < 1 || days > 366) return setModalError('Escolha uma validade entre 1 e 366 dias.')
+    if (inHours && (!Number.isInteger(amount) || amount < 1 || amount > 720)) return setModalError('Escolha uma validade entre 1 e 720 horas.')
+    if (!inHours && (!Number.isInteger(amount) || amount < 1 || amount > 366)) return setModalError('Escolha uma validade entre 1 e 366 dias.')
+    const days = inHours ? 0 : amount
     if (!keyForm.all && !keyForm.models.length) return setModalError('Escolha pelo menos um modelo.')
     setWorking('key-form')
     try {
-      const result = await call<{ key: string; row: RouterKey }>({ action: 'router-key-create', name: keyForm.name, contact: keyForm.contact, days, models: keyForm.all ? null : keyForm.models })
+      const result = await call<{ key: string; row: RouterKey }>({ action: 'router-key-create', name: keyForm.name, contact: keyForm.contact, ...(inHours ? { hours: amount } : { days }), slow: keyForm.slow, models: keyForm.all ? null : keyForm.models })
       const list = (keyForm.all ? sellable.map((m) => m.alias) : keyForm.models).map(labelOf).join(', ')
-      const expires = result.row?.expires_at ? date(result.row.expires_at) : `${days} dias`
+      const expires = result.row?.expires_at ? (inHours ? `${date(result.row.expires_at)} às ${new Date(result.row.expires_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : date(result.row.expires_at)) : inHours ? `${amount} horas` : `${days} dias`
       setCreated({
         key: result.key,
         message: [
@@ -484,12 +487,12 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
               <label>
                 Teste grátis: chamadas por minuto
                 <input type="number" min={1} max={100000} inputMode="numeric" placeholder="Sem limite" disabled={!guard.trialLimit} value={form.trial_rpm} onChange={(e) => setGuardForm({ ...form, trial_rpm: e.target.value })} />
-                <small>{guard.trialLimit ? 'Mais lento que os pagantes. Vale para os testes que estão rodando e para os próximos.' : 'Aplique supabase/trial-3h.sql no Supabase para ligar.'}</small>
+                <small>{guard.trialLimit ? 'Mais lento que os pagantes. Vale para as próximas chaves marcadas como teste; numa chave já criada, ajuste em Detalhes.' : 'Aplique supabase/trial-3h.sql no Supabase para ligar.'}</small>
               </label>
               <label>
                 Teste grátis: respostas ao mesmo tempo
                 <input type="number" min={1} max={1000} inputMode="numeric" placeholder="Sem limite" disabled={!guard.trialLimit} value={form.trial_concurrency} onChange={(e) => setGuardForm({ ...form, trial_concurrency: e.target.value })} />
-                <small>O teste dura 3 horas e é uma vez por conta.</small>
+                <small>Crie a chave de teste em Nova chave → "3 horas (teste)".</small>
               </label>
               <div className="sx-router-modal-actions is-wide">
                 <button type="submit" className="sx-btn is-primary" disabled={working === 'guard' || !guardForm}>
@@ -556,7 +559,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
               className="sx-btn is-primary"
               disabled={!sellable.length}
               title={sellable.length ? undefined : 'Cadastre um provedor e escolha os modelos primeiro.'}
-              onClick={() => { setModalError(''); setKeyForm({ name: '', contact: '', days: '30', custom: '', all: true, models: [] }) }}
+              onClick={() => { setModalError(''); setKeyForm({ name: '', contact: '', days: '30', custom: '', unit: 'dias', slow: false, all: true, models: [] }) }}
             >
               <Plus size={15} /> Nova chave
             </button>
@@ -810,7 +813,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
             </label>
             <label>
               Validade
-              <select value={keyForm.days} onChange={(e) => setKeyForm({ ...keyForm, days: e.target.value })}>
+              <select value={keyForm.days} onChange={(e) => setKeyForm({ ...keyForm, days: e.target.value, slow: e.target.value === 'h3' || (e.target.value === 'custom' && keyForm.unit === 'horas') })}>
                 {DURATIONS.map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
@@ -820,12 +823,21 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
             </label>
             {keyForm.days === 'custom' ? (
               <label>
-                Quantos dias
-                <input type="number" min={1} max={366} value={keyForm.custom} onChange={(e) => setKeyForm({ ...keyForm, custom: e.target.value })} />
+                Quanto tempo
+                <span className="sx-router-amount">
+                  <input type="number" min={1} max={keyForm.unit === 'horas' ? 720 : 366} value={keyForm.custom} onChange={(e) => setKeyForm({ ...keyForm, custom: e.target.value })} />
+                  <select aria-label="Unidade" value={keyForm.unit} onChange={(e) => setKeyForm({ ...keyForm, unit: e.target.value as 'dias' | 'horas', slow: e.target.value === 'horas' })}>
+                    <option value="horas">horas</option>
+                    <option value="dias">dias</option>
+                  </select>
+                </span>
               </label>
             ) : (
               <span />
             )}
+            <label className="sx-router-check is-wide">
+              <input type="checkbox" checked={keyForm.slow} onChange={(e) => setKeyForm({ ...keyForm, slow: e.target.checked })} /> Chave de teste (mais lenta): usa o ritmo do teste grátis definido em Proteção
+            </label>
             <fieldset className="sx-router-models-pick is-wide">
               <legend>Modelos</legend>
               <label className="sx-router-check">

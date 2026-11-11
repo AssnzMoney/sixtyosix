@@ -49,11 +49,11 @@ const faqs = [
   ],
   [
     'Como funciona o teste grátis de 3 horas?',
-    'Clique em Começar Teste Grátis, entre ou crie sua conta e escolha como deseja ser chamado. Na área de teste você ativa uma chave que vale por 3 horas, sem cartão e sem cobrança automática. No teste a velocidade é reduzida; nos planos pagos é bem mais rápido. Cada conta pode ativar o teste uma vez.',
+    'Clique em Começar Teste Grátis e fale com a gente no WhatsApp. Enviamos uma chave que vale por 3 horas, sem cartão e sem cobrança automática. No teste a velocidade é reduzida; nos planos pagos é bem mais rápido. Cada conta pode ativar o teste uma vez.',
   ],
   [
     'Onde consigo minha chave individual de acesso?',
-    'No teste grátis, sua chave é criada automaticamente e fica disponível na página do teste. O painel reúne suas chaves e o consumo da sua conta. Durante as 3 horas, você pode consultar a chave novamente para configurar suas ferramentas.',
+    'A chave chega pelo WhatsApp, junto com a URL de configuração: no teste grátis (vale por 3 horas) e depois de contratar um plano. No painel você acompanha suas chaves e o consumo da sua conta.',
   ],
   [
     'Posso usar no terminal, no VS Code e no Codex?',
@@ -1050,9 +1050,14 @@ export default function App() {
               <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
-            <Link to="/teste-gratis" className="plan-btn">
+            <a
+              href={supportWhatsappLink('Olá! Quero fazer o teste grátis de 3 horas da SixtySix.')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="plan-btn"
+            >
               Começar Teste Grátis <Arrow />
-            </Link>
+            </a>
           </motion.div>
 
           {/* Dev */}
