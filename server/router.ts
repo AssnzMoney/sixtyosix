@@ -156,7 +156,18 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
         : null
   // Nomes dos planos que precisam existir para quem já é cliente (o Dev usa gpt-6-astra; o Pro, os três).
   const planAliases = ['claude-fable-5-1', 'argon-4', 'gpt-6-astra'].filter((alias) => !aliases.some((name) => normalizeAlias(name) === normalizeAlias(alias)))
-  return { ok: active > 0, models: rows.length, activeModels: active, aliases, missingPlanAliases: planAliases, providers: list, problem }
+  // Proteção contra sobrecarga (gateway-guard.sql) e máximo de IPs (gateway-guard-ips.sql): só os números dos limites.
+  let guard: Row = { ready: false, ipLimit: false }
+  for (const withIps of [true, false]) {
+    try {
+      const r = await request(`${db.url}/rest/v1/gateway_settings?select=rpm,concurrency${withIps ? ',max_ips' : ''}&limit=1`, { headers: serviceHeaders(db.secret), signal: AbortSignal.timeout(10000) })
+      if (!r.ok) continue
+      const row = ((await r.json()) as Row[])[0] || {}
+      guard = { ready: true, ipLimit: withIps, rpm: row.rpm ?? null, concurrency: row.concurrency ?? null, ...(withIps ? { max_ips: row.max_ips ?? null } : {}) }
+      break
+    } catch { /* tenta sem o máximo de IPs */ }
+  }
+  return { ok: active > 0, models: rows.length, activeModels: active, aliases, missingPlanAliases: planAliases, providers: list, guard, problem }
 }
 
 /** Confere uma chave manual sk-rt-: existe, não está bloqueada nem vencida. Devolve os modelos liberados. */
