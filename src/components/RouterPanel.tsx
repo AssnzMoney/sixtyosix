@@ -943,8 +943,16 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                           <button type="button" className={`sx-btn ${x.blocked_at ? '' : 'is-danger'}`} disabled={working === 'ip:' + x.ip} onClick={() => setIpBlocked(x.ip, !x.blocked_at)}>
                             {x.blocked_at ? <Check size={15} /> : <Ban size={15} />} {x.blocked_at ? 'Liberar' : 'Bloquear'}
                           </button>
-                          <button type="button" className="sx-btn" title="Bloquear este IP em todas as chaves" onClick={() => blockNetwork(x.ip, true, `Visto na chave de ${ipsFor.name}`)}>
-                            <Globe size={15} /> Em todas
+                          <button
+                            type="button"
+                            className="sx-btn is-danger"
+                            title="Bloqueia este IP em todas as chaves, não só nesta"
+                            onClick={() => {
+                              if (!window.confirm(`Bloquear o IP ${x.ip} em TODAS as chaves? Quem usa esse endereço fica sem acesso em qualquer chave até você liberar.`)) return
+                              blockNetwork(x.ip, true, `Visto na chave de ${ipsFor.name}`)
+                            }}
+                          >
+                            <Globe size={15} /> Bloquear em todas
                           </button>
                           <button type="button" className="sx-btn" aria-label={`Remover ${x.ip}`} title="Tirar da lista (libera a vaga; se voltar a usar, aparece de novo)" disabled={working === 'ip:' + x.ip} onClick={() => ipAction(x.ip, 'router-key-ip-remove')}>
                             <Trash2 size={15} />
