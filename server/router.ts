@@ -158,12 +158,12 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
   const planAliases = ['claude-fable-5-1', 'argon-4', 'gpt-6-astra'].filter((alias) => !aliases.some((name) => normalizeAlias(name) === normalizeAlias(alias)))
   // Proteção contra sobrecarga (gateway-guard.sql) e máximo de IPs (gateway-guard-ips.sql): só os números dos limites.
   let guard: Row = { ready: false, ipLimit: false }
-  for (const withIps of [true, false]) {
+  for (const [withIps, withTrial] of [[true, true], [true, false], [false, false]] as const) {
     try {
-      const r = await request(`${db.url}/rest/v1/gateway_settings?select=rpm,concurrency${withIps ? ',max_ips' : ''}&limit=1`, { headers: serviceHeaders(db.secret), signal: AbortSignal.timeout(10000) })
+      const r = await request(`${db.url}/rest/v1/gateway_settings?select=rpm,concurrency${withIps ? ',max_ips' : ''}${withTrial ? ',trial_rpm,trial_concurrency' : ''}&limit=1`, { headers: serviceHeaders(db.secret), signal: AbortSignal.timeout(10000) })
       if (!r.ok) continue
       const row = ((await r.json()) as Row[])[0] || {}
-      guard = { ready: true, ipLimit: withIps, rpm: row.rpm ?? null, concurrency: row.concurrency ?? null, ...(withIps ? { max_ips: row.max_ips ?? null } : {}) }
+      guard = { ready: true, ipLimit: withIps, trialLimit: withTrial, rpm: row.rpm ?? null, concurrency: row.concurrency ?? null, ...(withIps ? { max_ips: row.max_ips ?? null } : {}), ...(withTrial ? { trial_rpm: row.trial_rpm ?? null, trial_concurrency: row.trial_concurrency ?? null } : {}) }
       break
     } catch { /* tenta sem o máximo de IPs */ }
   }
