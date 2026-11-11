@@ -113,6 +113,7 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
   }
   const rows = (await response.json()) as Row[]
   const providers = new Map<string, { name: string; enabled: boolean; keyOpens: boolean; models: number; activeModels: number }>()
+  const aliases: string[] = []
   for (const row of rows) {
     const p = row.provider as Row | null
     if (!p) continue
@@ -123,7 +124,7 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
     }
     const info = providers.get(p.id)!
     info.models++
-    if (row.enabled && info.enabled && info.keyOpens) info.activeModels++
+    if (row.enabled && info.enabled && info.keyOpens) { info.activeModels++; aliases.push(String(row.alias)) }
   }
   const list = [...providers.values()]
   const active = list.reduce((sum, p) => sum + p.activeModels, 0)
@@ -134,7 +135,9 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
       : !active
         ? 'Os modelos existem, mas o provedor está desligado ou os modelos estão desativados.'
         : null
-  return { ok: active > 0, models: rows.length, activeModels: active, providers: list, problem }
+  // Nomes dos planos que precisam existir para quem já é cliente (o Dev usa gpt-6-astra; o Pro, os três).
+  const planAliases = ['claude-fable-5-1', 'argon-4', 'gpt-6-astra'].filter((alias) => !aliases.includes(alias))
+  return { ok: active > 0, models: rows.length, activeModels: active, aliases, missingPlanAliases: planAliases, providers: list, problem }
 }
 
 /** Confere uma chave manual sk-rt-: existe, não está bloqueada nem vencida. Devolve os modelos liberados. */
