@@ -83,8 +83,6 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
     'router-provider-save':router.saveProvider,'router-provider-enabled':router.setProviderEnabled,'router-provider-delete':router.deleteProvider,
     'router-provider-models':router.providerModels,'router-models-save':router.saveModels,
     'router-key-create':router.createKey,'router-key-renew':router.renewKey,'router-key-block':router.setKeyBlocked,'router-key-reveal':router.revealKey,
-    'router-guard-save':router.saveGuardSettings,'router-network-block':router.setNetworkBlocked,
-    'router-key-ips':router.keyIps,'router-key-ip-block':router.setKeyIpBlocked,'router-key-limits':router.saveKeyLimits,
    }
    if(!actions[action])throw new AccountError(400,'Ação inválida.')
    try{return await actions[action](body)}catch(error){if(error instanceof RouterError)throw new AccountError(error.status,error.message);throw error}

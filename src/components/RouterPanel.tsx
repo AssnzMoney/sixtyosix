@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Ban, Check, CircleAlert, Copy, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X } from 'lucide-react'
+import { Ban, Check, CircleAlert, Copy, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X } from 'lucide-react'
 import { suggestAlias, suggestLabel } from '../lib/routerModels'
 
 /**
@@ -12,10 +12,7 @@ type Row = Record<string, any>
 type Provider = { id: string; name: string; base_url: string; key_hint: string; enabled: boolean; created_at: string }
 type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean }
 type RouterKey = { id: string; gateway_client_id: string; name: string; contact: string | null; token_prefix: string; models: string[] | null; expires_at: string; revoked_at: string | null; created_at: string }
-type Limits = { rpm: number | null; concurrency: number | null }
-type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[] }
-type Overview = { providers: Provider[]; models: Model[]; keys: RouterKey[]; guard: Guard | null }
-type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: number; blocked_at: string | null }
+type Overview = { providers: Provider[]; models: Model[]; keys: RouterKey[] }
 type Draft = { upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
 type KeyForm = { name: string; contact: string; days: string; custom: string; all: boolean; models: string[] }
@@ -24,8 +21,6 @@ const DAY = 86400000
 const SITE = 'https://www.sixtysix.online'
 const DURATIONS: Array<[string, string]> = [['7', '7 dias (teste)'], ['30', '30 dias'], ['60', '60 dias'], ['90', '90 dias'], ['custom', 'Outro…']]
 const date = (value: string) => new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-const dateTime = (value: string) => new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-const limitText = (value: string) => (value.trim() === '' ? null : Number(value))
 const tokens = (value: number) => (value >= 10000 ? new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(value) : value.toLocaleString('pt-BR'))
 
 function keyState(key: RouterKey, now: number) {
@@ -70,11 +65,6 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   const [modalError, setModalError] = useState('')
   const [keyForm, setKeyForm] = useState<KeyForm | null>(null)
   const [created, setCreated] = useState<{ key: string; message: string } | null>(null)
-  const [guardForm, setGuardForm] = useState<{ rpm: string; concurrency: string } | null>(null)
-  const [blockForm, setBlockForm] = useState({ network: '', reason: '' })
-  const [ipsFor, setIpsFor] = useState<RouterKey | null>(null)
-  const [ipsData, setIpsData] = useState<{ ips: SeenIp[]; controls: Limits } | null>(null)
-  const [keyLimits, setKeyLimits] = useState({ rpm: '', concurrency: '' })
   const now = Date.now()
 
   async function call<T>(body: Row): Promise<T> {
@@ -95,7 +85,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
       .then(async (response) => {
         const body = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(body.error || 'Não foi possível carregar o Roteador.')
-        setOverview({ providers: body.providers || [], models: body.models || [], keys: body.keys || [], guard: body.guard || null })
+        setOverview({ providers: body.providers || [], models: body.models || [], keys: body.keys || [] })
         setError('')
       })
       .catch((e) => {
@@ -247,66 +237,6 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
     }
   }
 
-  /* ------------------------ Proteção e IPs ------------------------ */
-  const guard = overview?.guard || null
-  const settings = guard?.settings || { rpm: null, concurrency: null }
-  const customLimits = useMemo(() => new Map((guard?.controls || []).map((c) => [c.client_id, c])), [guard])
-  const form = guardForm || { rpm: settings.rpm == null ? '' : String(settings.rpm), concurrency: settings.concurrency == null ? '' : String(settings.concurrency) }
-
-  async function saveGuard() {
-    await run('guard', async () => {
-      await call({ action: 'router-guard-save', rpm: limitText(form.rpm), concurrency: limitText(form.concurrency) })
-      setGuardForm(null)
-      return 'Proteção salva. Vale para novas chamadas na hora.'
-    })
-  }
-  async function blockNetwork(network: string, blocked: boolean, reason = '') {
-    await run('network:' + network, async () => {
-      await call({ action: 'router-network-block', network, blocked, reason })
-      if (blocked) setBlockForm({ network: '', reason: '' })
-      return blocked ? `${network} bloqueado em todas as chaves.` : `${network} liberado.`
-    })
-  }
-  async function openIps(key: RouterKey) {
-    setIpsFor(key)
-    setIpsData(null)
-    setModalError('')
-    try {
-      const data = await call<{ ips: SeenIp[]; controls: Limits }>({ action: 'router-key-ips', client_id: key.gateway_client_id })
-      setIpsData(data)
-      setKeyLimits({ rpm: data.controls.rpm == null ? '' : String(data.controls.rpm), concurrency: data.controls.concurrency == null ? '' : String(data.controls.concurrency) })
-    } catch (e) {
-      setModalError(e instanceof Error ? e.message : 'Não foi possível carregar os IPs.')
-    }
-  }
-  async function setIpBlocked(ip: string, blocked: boolean) {
-    if (!ipsFor) return
-    setModalError('')
-    setWorking('ip:' + ip)
-    try {
-      await call({ action: 'router-key-ip-block', client_id: ipsFor.gateway_client_id, ip, blocked })
-      setIpsData((d) => d && { ...d, ips: d.ips.map((x) => (x.ip === ip ? { ...x, blocked_at: blocked ? new Date().toISOString() : null } : x)) })
-    } catch (e) {
-      setModalError(e instanceof Error ? e.message : 'Não foi possível concluir.')
-    } finally {
-      setWorking('')
-    }
-  }
-  async function saveKeyLimits() {
-    if (!ipsFor) return
-    setModalError('')
-    setWorking('key-limits')
-    try {
-      await call({ action: 'router-key-limits', client_id: ipsFor.gateway_client_id, rpm: limitText(keyLimits.rpm), concurrency: limitText(keyLimits.concurrency) })
-      setNotice(`Limite da chave de ${ipsFor.name} salvo.`)
-      reload()
-    } catch (e) {
-      setModalError(e instanceof Error ? e.message : 'Não foi possível salvar.')
-    } finally {
-      setWorking('')
-    }
-  }
-
   /* ------------------------------- Tela -------------------------------- */
   return (
     <div className="sx-router">
@@ -400,79 +330,6 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
       <section className="sx-admin-panel">
         <div className="sx-router-head">
           <h3>
-            <Gauge size={17} /> Proteção contra sobrecarga
-          </h3>
-        </div>
-        {!guard ? (
-          <p className="sx-admin-empty">
-            {loading ? 'Carregando…' : 'Aplique a migração supabase/gateway-guard.sql no Supabase para ligar a proteção e o controle de IP.'}
-          </p>
-        ) : (
-          <div className="sx-router-guard">
-            <form className="sx-form-grid" onSubmit={(e) => { e.preventDefault(); saveGuard() }}>
-              <label>
-                Chamadas por minuto, por chave
-                <input type="number" min={1} max={100000} inputMode="numeric" placeholder="Sem limite" value={form.rpm} onChange={(e) => setGuardForm({ ...form, rpm: e.target.value })} />
-                <small>Passou disso, a chave espera alguns segundos antes da próxima.</small>
-              </label>
-              <label>
-                Respostas ao mesmo tempo, por chave
-                <input type="number" min={1} max={1000} inputMode="numeric" placeholder="Sem limite" value={form.concurrency} onChange={(e) => setGuardForm({ ...form, concurrency: e.target.value })} />
-                <small>Evita que uma chave sozinha ocupe o fornecedor.</small>
-              </label>
-              <div className="sx-router-modal-actions is-wide">
-                <button type="submit" className="sx-btn is-primary" disabled={working === 'guard' || !guardForm}>
-                  {working === 'guard' ? 'Salvando…' : 'Salvar padrões'}
-                </button>
-              </div>
-            </form>
-            <p className="sx-admin-hint sx-router-note">
-              Não existe limite diário: o cliente usa quanto quiser. Quem passa do ritmo recebe "aguarde um instante" com o tempo de espera, e o Claude Code e o Codex tentam de novo sozinhos. Fica mais lento, não bloqueia. Para uma chave específica, use o botão IPs.
-            </p>
-
-            <div className="sx-router-blocks">
-              <h4>
-                <Globe size={15} /> IPs bloqueados em todas as chaves
-              </h4>
-              <form className="sx-router-block-form" onSubmit={(e) => { e.preventDefault(); blockNetwork(blockForm.network.trim(), true, blockForm.reason) }}>
-                <input aria-label="IP ou faixa" placeholder="IP ou faixa (ex.: 177.10.20.30 ou 177.10.20.0/24)" spellCheck={false} value={blockForm.network} onChange={(e) => setBlockForm({ ...blockForm, network: e.target.value })} />
-                <input aria-label="Motivo" placeholder="Motivo (opcional)" maxLength={200} value={blockForm.reason} onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })} />
-                <button type="submit" className="sx-btn is-danger" disabled={!blockForm.network.trim() || working.startsWith('network:')}>
-                  <Ban size={15} /> Bloquear
-                </button>
-              </form>
-              {!guard.blocks.length ? (
-                <p className="sx-router-sub">Nenhum IP bloqueado.</p>
-              ) : (
-                <ul className="sx-router-list">
-                  {guard.blocks.map((b) => (
-                    <li key={b.network}>
-                      <div className="sx-router-main">
-                        <strong>
-                          <code>{b.network}</code>
-                        </strong>
-                        <span>
-                          {b.reason || 'Sem motivo'} · {date(b.created_at)}
-                          {b.created_by ? ` · ${b.created_by}` : ''}
-                        </span>
-                      </div>
-                      <div className="sx-actions">
-                        <button type="button" className="sx-btn" disabled={working === 'network:' + b.network} onClick={() => blockNetwork(b.network, false)}>
-                          <Check size={15} /> Liberar
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="sx-admin-panel">
-        <div className="sx-router-head">
-          <h3>
             <KeyRound size={17} /> Chaves criadas na mão
           </h3>
           <div className="sx-actions">
@@ -525,11 +382,6 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                       <td>
                         <span className={`sx-state ${state.tone}`}>{state.label}</span>
                         <small className="sx-router-sub">{state.detail}</small>
-                        {customLimits.has(k.gateway_client_id) && (
-                          <small className="sx-router-sub">
-                            Limite próprio: {customLimits.get(k.gateway_client_id)?.rpm ?? 'padrão'}/min · {customLimits.get(k.gateway_client_id)?.concurrency ?? 'padrão'} ao mesmo tempo
-                          </small>
-                        )}
                       </td>
                       <td title={k.models ? k.models.map(labelOf).join(', ') : undefined}>{k.models ? (k.models.length === 1 ? labelOf(k.models[0]) : `${k.models.length} modelos`) : 'Todos'}</td>
                       <td>
@@ -556,9 +408,6 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                             })}
                           >
                             <RefreshCw size={15} /> +30 dias
-                          </button>
-                          <button type="button" className="sx-btn" disabled={!guard} title={guard ? undefined : 'Aplique supabase/gateway-guard.sql'} onClick={() => openIps(k)}>
-                            <Globe size={15} /> IPs
                           </button>
                           <button
                             type="button"
@@ -774,75 +623,6 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
               </button>
             </div>
           </form>
-        </Modal>
-      )}
-
-      {ipsFor && (
-        <Modal eyebrow={ipsFor.name} title="IPs e limite desta chave" onClose={() => setIpsFor(null)}>
-          {modalError && (
-            <p role="alert" className="sx-admin-message is-error">
-              <CircleAlert size={16} /> {modalError}
-            </p>
-          )}
-          <form className="sx-form-grid" onSubmit={(e) => { e.preventDefault(); saveKeyLimits() }}>
-            <label>
-              Chamadas por minuto
-              <input type="number" min={1} max={100000} placeholder={settings.rpm == null ? 'Padrão: sem limite' : `Padrão: ${settings.rpm}`} value={keyLimits.rpm} onChange={(e) => setKeyLimits({ ...keyLimits, rpm: e.target.value })} />
-            </label>
-            <label>
-              Respostas ao mesmo tempo
-              <input type="number" min={1} max={1000} placeholder={settings.concurrency == null ? 'Padrão: sem limite' : `Padrão: ${settings.concurrency}`} value={keyLimits.concurrency} onChange={(e) => setKeyLimits({ ...keyLimits, concurrency: e.target.value })} />
-            </label>
-            <small className="is-wide">Deixe vazio para usar o padrão de todas as chaves.</small>
-            <div className="sx-router-modal-actions is-wide">
-              <button type="submit" className="sx-btn is-primary" disabled={!ipsData || working === 'key-limits'}>
-                {working === 'key-limits' ? 'Salvando…' : 'Salvar limite da chave'}
-              </button>
-            </div>
-          </form>
-          {!ipsData ? (
-            <p className="sx-admin-empty">{modalError ? '' : 'Carregando os IPs…'}</p>
-          ) : !ipsData.ips.length ? (
-            <p className="sx-admin-empty">Esta chave ainda não foi usada.</p>
-          ) : (
-            <div className="sx-admin-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>IP</th>
-                    <th>Primeiro uso</th>
-                    <th>Último uso</th>
-                    <th>Chamadas</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {ipsData.ips.map((x) => (
-                    <tr key={x.ip}>
-                      <td>
-                        <code>{x.ip}</code>
-                        {x.blocked_at && <small className="sx-router-sub is-warning">Bloqueado nesta chave</small>}
-                      </td>
-                      <td>{dateTime(x.first_seen)}</td>
-                      <td>{dateTime(x.last_seen)}</td>
-                      <td>{Number(x.requests).toLocaleString('pt-BR')}</td>
-                      <td>
-                        <div className="sx-actions">
-                          <button type="button" className={`sx-btn ${x.blocked_at ? '' : 'is-danger'}`} disabled={working === 'ip:' + x.ip} onClick={() => setIpBlocked(x.ip, !x.blocked_at)}>
-                            {x.blocked_at ? <Check size={15} /> : <Ban size={15} />} {x.blocked_at ? 'Liberar' : 'Bloquear'}
-                          </button>
-                          <button type="button" className="sx-btn" title="Bloquear este IP em todas as chaves" onClick={() => blockNetwork(x.ip, true, `Visto na chave de ${ipsFor.name}`)}>
-                            <Globe size={15} /> Em todas
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <p className="sx-router-help">Muitos IPs diferentes numa chave só costuma ser chave compartilhada.</p>
         </Modal>
       )}
 

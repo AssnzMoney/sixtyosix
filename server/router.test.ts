@@ -57,9 +57,7 @@ test('o roteador ignora provedor desligado e fica vazio sem a migração', async
 type Call = { url: string; init: RequestInit }
 type Manual = { models: string[] | null; expires_at: string; revoked_at: string | null }
 /** Sobe o /api/access de verdade com Supabase e provedor simulados. */
-type Gate = { ok: boolean; reason?: string; retry_after?: number; leased?: boolean }
-const guardCalls: { name: string; body: any }[] = []
-async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response; manual?: Manual; gate?: Gate }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
+async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response; manual?: Manual }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
   const nativeFetch = globalThis.fetch
   const keys = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
   const saved = Object.fromEntries(keys.map(key => [key, process.env[key]]))
@@ -69,11 +67,6 @@ async function withAccess(options: { supplier?: (url: string, init: RequestInit)
     const url = String(input)
     if (url.startsWith(`${SUPABASE}/rest/v1/gateway_usage`)) { usage.push(JSON.parse(String(init.body))); return new Response(null, { status: 201 }) }
     if (url.startsWith(`${SUPABASE}/rest/v1/router_models`)) return Response.json(models())
-    // Proteção contra sobrecarga (server/guard.ts): passa por padrão e ocupa uma vaga.
-    if (url.startsWith(`${SUPABASE}/rest/v1/rpc/gateway_`)) {
-      guardCalls.push({ name: url.split('/rpc/')[1], body: JSON.parse(String(init.body)) })
-      return url.endsWith('gateway_gate') ? Response.json(options.gate || { ok: true, leased: true }) : new Response(null, { status: 204 })
-    }
     if (url.startsWith(`${SUPABASE}/rest/v1/gateway_trials`)) {
       return Response.json([{ user_id: uid, gateway_client_id: trialClient, expires_at: new Date(Date.now() + day).toISOString(), revoked_at: null, encrypted_upstream: seal('sk-flg-bridge', SECRET, `${uid}:upstream`) }])
     }
@@ -222,42 +215,4 @@ test('admin: a key do provedor e a chave manual só são gravadas criptografadas
   await assert.rejects(admin.saveProvider({ name: 'X', base_url: 'http://inseguro.example', key: 'k' }), { status: 400 })
   await assert.rejects(admin.createKey({ name: 'João', days: 0 }), { status: 400 })
   await assert.rejects(admin.saveModels({ provider_id: PROVIDER.id, models: [{ alias: 'Nome Inválido', upstream_model: 'x' }] }), { status: 400 })
-})
-
-test('passou do ritmo: 429 com tempo de espera, sem chamar o fornecedor nem gravar consumo', async () => {
-  guardCalls.length = 0
-  await withAccess({ gate: { ok: false, reason: 'rate', retry_after: 12 } }, async (base, usage, calls) => {
-    const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] }, { 'x-forwarded-for': '177.10.20.30' })
-    assert.equal(response.status, 429)
-    assert.equal(response.headers.get('retry-after'), '12')
-    const body = await response.json() as { error: { type: string; message: string } }
-    assert.equal(body.error.type, 'rate_limit_error')
-    assert.match(body.error.message, /Aguarde/)
-    assert.equal(calls.length, 0)
-    assert.equal(usage.length, 0)
-    assert.equal(guardCalls[0].body.p_client, trialClient)
-    assert.ok(!guardCalls.some((c) => c.name === 'gateway_release'), 'nada para liberar')
-  })
-})
-
-test('IP bloqueado é recusado antes do fornecedor', async () => {
-  await withAccess({ gate: { ok: false, reason: 'ip_blocked' } }, async (base, _usage, calls) => {
-    const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] })
-    assert.equal(response.status, 403)
-    assert.match(await response.text(), /bloqueado/)
-    assert.equal(calls.length, 0)
-  })
-})
-
-test('a vaga de resposta simultânea é liberada quando a resposta termina', async () => {
-  guardCalls.length = 0
-  await withAccess({ supplier: sse }, async (base) => {
-    const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', stream: true, messages: [] })
-    assert.equal(response.status, 200)
-    await response.text()
-    const gate = guardCalls.find((c) => c.name === 'gateway_gate')!
-    const release = guardCalls.find((c) => c.name === 'gateway_release')
-    assert.ok(release, 'liberou a vaga')
-    assert.equal(release!.body.p_request, gate.body.p_request)
-  })
 })

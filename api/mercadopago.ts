@@ -1,9 +1,8 @@
-import { createHash, createHmac, timingSafeEqual, createCipheriv, createDecipheriv, randomBytes, randomUUID } from 'node:crypto'
+import { createHash, createHmac, timingSafeEqual, createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { withPlanModels } from '../server/model-aliases.js'
 import { collectUsage, recordUsage, supplierUrl } from '../server/supplier.js'
 import { loadRouter } from '../server/router.js'
-import { gateRequest, releaseRequest } from '../server/guard.js'
 
 type ObjectValue = Record<string, unknown>
 type Env = Record<string, string | undefined>
@@ -239,10 +238,6 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
         // Modelos do Roteador: chamada no formato OpenAI com a key mestra do provedor, consumo gravado para o cliente.
         const route=router.routes.get(model)
         if(route){
-          // Mesma proteção contra sobrecarga das chaves: chamadas por minuto e respostas simultâneas.
-          const requestId=randomUUID(),gate=await gateRequest(env,request,{clientId,ip:'',requestId})
-          if(!gate.ok)throw new WebhookError(gate.status,gate.message)
-          try{
           const started=Date.now(),usage={input:0,output:0}
           const answer=await request(supplierUrl(route.provider.url,'/v1/chat/completions'),{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${route.provider.key}`},body:JSON.stringify({model:route.upstream,max_tokens:4096,messages}),signal:AbortSignal.timeout(180000)})
           const data=object(await answer.json().catch(()=>({})));collectUsage(data,usage)
@@ -251,7 +246,6 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
           const choice=object(Array.isArray(data.choices)?data.choices[0]:null),reply=String(object(choice.message).content||'')
           if(!reply)throw new WebhookError(503,'A resposta veio vazia. Tente novamente.')
           return {reply}
-          }finally{if(gate.leased)await releaseRequest(env,request,requestId)}
         }
         throw new WebhookError(503,'Este modelo não está disponível no momento. Escolha outro modelo.')
       }
