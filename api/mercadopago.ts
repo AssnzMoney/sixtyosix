@@ -2,7 +2,7 @@ import { createHash, createHmac, timingSafeEqual, createCipheriv, createDecipher
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { withPlanModels } from '../server/model-aliases.js'
 import { collectUsage, recordUsage, supplierUrl } from '../server/supplier.js'
-import { loadRouter } from '../server/router.js'
+import { canonicalModels, findRoute, loadRouter } from '../server/router.js'
 import { gateRequest, releaseRequest } from '../server/guard.js'
 
 type ObjectValue = Record<string, unknown>
@@ -137,7 +137,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     const ids=rows.map(item=>item.id)
     const router=await loadRouter(env,request)
     const payments=ids.length?await db<ObjectValue[]>('billing_payments',{subscription_id:`in.(${ids.join(',')})`,select:'id,subscription_id,status,amount_cents,currency,approved_at,period_start,period_end',order:'period_end.desc',limit:'100'}):[]
-    return {subscriptions:rows.map(item=>({id:item.id,plan:item.plan_code,name:billingPlans[item.plan_code].name,amount:item.amount_cents/100,api:item.api_enabled,models:withPlanModels(item.models,router.proAliases).filter(alias=>router.routes.has(alias)),mode:item.billing_mode||'recurring',active:subscriptionActive(item),expires:item.paid_until,status:item.provider_status,created:item.created_at,keyRevoked:Boolean(accesses.find(a=>a.subscription_id===item.id)?.revoked_at),checkoutUrl:item.provider_status==='pending'||item.billing_mode==='pix'?item.checkout_url:null})),payments}
+    return {subscriptions:rows.map(item=>({id:item.id,plan:item.plan_code,name:billingPlans[item.plan_code].name,amount:item.amount_cents/100,api:item.api_enabled,models:canonicalModels(router,withPlanModels(item.models,router.proAliases)),mode:item.billing_mode||'recurring',active:subscriptionActive(item),expires:item.paid_until,status:item.provider_status,created:item.created_at,keyRevoked:Boolean(accesses.find(a=>a.subscription_id===item.id)?.revoked_at),checkoutUrl:item.provider_status==='pending'||item.billing_mode==='pix'?item.checkout_url:null})),payments}
   }
   return {
     process:processEvent,
@@ -231,13 +231,15 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
           allowed=withPlanModels(billingPlans.pro.models,router.proAliases);clientId=trial.gateway_client_id
         }
         const model=typeof body.model==='string'?body.model:''
-        if(!allowed.includes(model))throw new WebhookError(403,'Este modelo não está incluído no seu plano.')
+        // Ponto e hífen valem o mesmo no nome (claude-fable-5.1 = claude-fable-5-1).
+        const wanted=findRoute(router,model)?.alias
+        if(!wanted||!canonicalModels(router,allowed).includes(wanted))throw new WebhookError(403,'Este modelo não está incluído no seu plano.')
         if(!Array.isArray(body.messages)||!body.messages.length||body.messages.length>40)throw new WebhookError(400,'Conversa inválida.')
         let length=0
         const messages=body.messages.map(value=>{const m=object(value);if(!['user','assistant'].includes(String(m.role))||typeof m.content!=='string'||!m.content.trim())throw new WebhookError(400,'Mensagem inválida.');length+=(m.content as string).length;return {role:m.role,content:m.content}})
         if(length>60000)throw new WebhookError(413,'Esta conversa ficou longa. Comece uma nova para continuar.')
         // Modelos do Roteador: chamada no formato OpenAI com a key mestra do provedor, consumo gravado para o cliente.
-        const route=router.routes.get(model)
+        const route=findRoute(router,model)
         if(route){
           // Mesma proteção contra sobrecarga das chaves: chamadas por minuto e respostas simultâneas.
           const requestId=randomUUID(),gate=await gateRequest(env,request,{clientId,ip:'',requestId})

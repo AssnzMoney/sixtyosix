@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import accessHandler, { seal } from '../api/access.ts'
-import { clearRouterCache, createRouterAdmin, loadRouter, routerStatus, sealSecret, unsealSecret } from './router.ts'
+import { canonicalModels, clearRouterCache, createRouterAdmin, findRoute, loadRouter, normalizeAlias, routerStatus, sealSecret, unsealSecret } from './router.ts'
 import { suggestAlias, suggestLabel } from '../src/lib/routerModels.ts'
 
 /** O fetch real, para o teste chamar o servidor local enquanto o do servidor é simulado. */
@@ -279,5 +279,27 @@ test('a vaga de resposta simultânea é liberada quando a resposta termina', asy
     const release = guardCalls.find((c) => c.name === 'gateway_release')
     assert.ok(release, 'liberou a vaga')
     assert.equal(release!.body.p_request, gate.body.p_request)
+  })
+})
+
+test('ponto e hífen valem o mesmo no nome do modelo', async () => {
+  const env = { SUPABASE_URL: SUPABASE, SUPABASE_SERVICE_ROLE_KEY: SECRET }
+  const router = await loadRouter(env, (async () => Response.json(models())) as typeof fetch)
+  assert.equal(normalizeAlias('Claude-Fable-5.1'), 'claude-fable-5-1')
+  assert.equal(findRoute(router, 'gpt-6-1-sol')?.alias, 'gpt-6.1-sol')
+  assert.equal(findRoute(router, 'gpt-6.1-sol')?.alias, 'gpt-6.1-sol')
+  assert.equal(findRoute(router, 'nao-existe'), undefined)
+  assert.deepEqual(canonicalModels(router, ['gpt-6-1-sol', 'gpt-6.1-sol', 'argon-4', 'glm-5']), ['gpt-6.1-sol', 'argon-4'])
+})
+
+test('chave pede o nome com hífen e o Roteador tem com ponto: funciona', async () => {
+  const manual = { models: ['gpt-6-1-sol'], expires_at: new Date(Date.now() + 30 * day).toISOString(), revoked_at: null }
+  await withAccess({ manual, supplier: () => Response.json({ model: 'openai/gpt-6.1-sol', choices: [{ message: { content: 'oi' } }], usage: { prompt_tokens: 3, completion_tokens: 1 } }) }, async (base, usage, calls) => {
+    const ok = await post(base, '/v1/chat/completions', 'sk-rt-manual', { model: 'gpt-6-1-sol', messages: [{ role: 'user', content: 'oi' }] })
+    assert.equal(ok.status, 200)
+    assert.equal(JSON.parse(String(calls[0].init.body)).model, 'openai/gpt-6.1-sol')
+    assert.equal(usage[0].requested_alias, 'gpt-6.1-sol')
+    const list = await (await client(base + '/v1/models', { headers: { Authorization: 'Bearer sk-rt-manual' } })).json() as { data: { id: string }[] }
+    assert.deepEqual(list.data.map((item) => item.id), ['gpt-6.1-sol'])
   })
 })

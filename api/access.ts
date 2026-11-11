@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { recordUsage, supplierRequestBody, supplierUrl, UsageTap } from '../server/supplier.js'
 import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
-import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, RouterError, ROUTER_KEY_PREFIX, routerStatus, type RouterConfig, type RouterRoute } from '../server/router.js'
+import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
 type Trial = { user_id:string; gateway_client_id:string; token_hash:string; token_prefix:string; encrypted_token:string; encrypted_upstream:string; created_at:string; expires_at:string; revoked_at:string|null }
@@ -203,16 +203,16 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       catch(error){if(error instanceof RouterError)throw new AccessError(error.status,error.message);throw error}
     }
     // Só existe o que está ativo no Roteador.
-    allowed=allowed.filter(alias=>router.routes.has(alias))
+    allowed=canonicalModels(router,allowed)
     if((req.method==='GET'||req.method==='HEAD')&&/^\/v1\/models\/?$/.test(path)){
       const data=allowed.map(alias=>modelEntry(alias,router.routes.get(alias)?.label))
       res.statusCode=200;res.setHeader('Content-Type','application/json; charset=utf-8')
       res.end(req.method==='HEAD'?undefined:JSON.stringify({object:'list',data,has_more:false,first_id:data[0]?.id??null,last_id:data[data.length-1]?.id??null}));return
     }
     if(req.method==='POST'&&payload&&path.startsWith('/v1/')){
-      const route=router.routes.get(model)
+      const route=findRoute(router,model)
       if(!route)throw new AccessError(404,'Este modelo não está disponível. Veja os modelos liberados para a sua chave em /v1/models.')
-      if(!allowed.includes(model)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
+      if(!allowed.includes(route.alias)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
       // Proteção contra sobrecarga e IP bloqueado: acima do limite, 429 com Retry-After (a ferramenta tenta de novo).
       const requestId=randomUUID()
       const gate=await gateRequest(process.env,fetch,{clientId,ip:clientIp(req.headers,req.socket?.remoteAddress||''),requestId})

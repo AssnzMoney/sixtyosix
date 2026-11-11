@@ -19,8 +19,24 @@ export class RouterError extends Error {
 
 export type RouterProvider = { id: string; name: string; url: string; key: string }
 export type RouterRoute = { alias: string; label: string; upstream: string; inPro: boolean; provider: RouterProvider }
-export type RouterConfig = { routes: Map<string, RouterRoute>; proAliases: string[] }
+export type RouterConfig = { routes: Map<string, RouterRoute>; proAliases: string[]; lookup?: Map<string, RouterRoute> }
 export const EMPTY_ROUTER: RouterConfig = { routes: new Map(), proAliases: [] }
+
+/** Ponto e hífen valem o mesmo no nome do modelo: claude-fable-5.1 e claude-fable-5-1 são o mesmo. */
+export const normalizeAlias = (name: string) => String(name || '').trim().toLowerCase().replace(/\./g, '-')
+/** Acha o modelo pelo nome exato ou pela forma com hífen. */
+export function findRoute(router: RouterConfig, name: string): RouterRoute | undefined {
+  return router.routes.get(name) || router.lookup?.get(normalizeAlias(name))
+}
+/** Nomes como estão salvos no Roteador, sem repetir, para uma lista vinda do plano ou da chave. */
+export function canonicalModels(router: RouterConfig, names: readonly string[]): string[] {
+  const out: string[] = []
+  for (const name of names) {
+    const alias = findRoute(router, name)?.alias
+    if (alias && !out.includes(alias)) out.push(alias)
+  }
+  return out
+}
 
 export const ROUTER_KEY_PREFIX = 'sk-rt-'
 const CACHE_MS = 30_000
@@ -79,7 +95,9 @@ export async function loadRouter(env: Env, request: typeof fetch = fetch): Promi
         if (!key) continue
         routes.set(row.alias, { alias: row.alias, label: row.label, upstream: row.upstream_model, inPro: Boolean(row.in_pro), provider: { id: provider.id, name: provider.name, url: String(provider.base_url).replace(/\/+$/, ''), key } })
       }
-      value = { routes, proAliases: [...routes.values()].filter(route => route.inPro).map(route => route.alias) }
+      const lookup = new Map<string, RouterRoute>()
+      for (const route of routes.values()) if (!lookup.has(normalizeAlias(route.alias))) lookup.set(normalizeAlias(route.alias), route)
+      value = { routes, lookup, proAliases: [...routes.values()].filter(route => route.inPro).map(route => route.alias) }
     } else {
       console.error('Roteador indisponível (aplique supabase/router.sql?)', response.status)
     }
@@ -137,7 +155,7 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
         ? 'Os modelos existem, mas o provedor está desligado ou os modelos estão desativados.'
         : null
   // Nomes dos planos que precisam existir para quem já é cliente (o Dev usa gpt-6-astra; o Pro, os três).
-  const planAliases = ['claude-fable-5-1', 'argon-4', 'gpt-6-astra'].filter((alias) => !aliases.includes(alias))
+  const planAliases = ['claude-fable-5-1', 'argon-4', 'gpt-6-astra'].filter((alias) => !aliases.some((name) => normalizeAlias(name) === normalizeAlias(alias)))
   return { ok: active > 0, models: rows.length, activeModels: active, aliases, missingPlanAliases: planAliases, providers: list, problem }
 }
 
@@ -153,7 +171,7 @@ export async function authorizeRouterKey(env: Env, request: typeof fetch, token:
   if (row.revoked_at) throw new RouterError(403, 'Esta chave foi bloqueada. Fale com a SixtySix.')
   if (!(Date.parse(row.expires_at) > Date.now())) throw new RouterError(403, 'Sua chave venceu. Fale com a SixtySix para renovar.')
   const active = [...router.routes.keys()]
-  const allowed = Array.isArray(row.models) ? (row.models as string[]).filter(model => router.routes.has(model)) : active
+  const allowed = Array.isArray(row.models) ? canonicalModels(router, row.models as string[]) : active
   return { clientId: String(row.gateway_client_id), allowed }
 }
 

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { loadRouter } from '../server/router.js'
+import { canonicalModels, loadRouter } from '../server/router.js'
 import { CONFIRMATION_TEXT_VERSION, deliveryConfirmationText, deliveryState, type DeliveryRow } from '../src/lib/deliveries.js'
 import { emailConfig, type EmailConfig } from '../server/email.js'
 import { createNotifier, userFromAuth } from '../server/notifications.js'
@@ -79,14 +79,14 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         for(const access of paid)mine.push({id:access.gateway_client_id,name:'Assinatura · '+(access.api_enabled?'API':'Site'),enabled:access.entitled&&!access.revoked_at&&Boolean(access.paid_until&&Date.parse(access.paid_until)>Date.now()),created_at:access.created_at,key_prefix:access.token_prefix,managed:true,visible:access.api_enabled})
         const router=await loadRouter({SUPABASE_URL:config.url,SUPABASE_SERVICE_ROLE_KEY:config.secret},request)
         const selected=subscriptions.find(item=>item.entitled&&item.paid_until&&Date.parse(item.paid_until)>Date.now())||subscriptions[0]
-        const subscription=selected?{id:selected.id,plan:selected.plan_code,name:selected.plan_code==='pro'?'Pro':selected.plan_code==='devApi'?'Dev + API':'Dev',amount:selected.amount_cents/100,api:selected.api_enabled,models:withPlanModels(selected.models,router.proAliases).filter(alias=>router.routes.has(alias)),active:selected.entitled&&Boolean(selected.paid_until&&Date.parse(selected.paid_until)>Date.now()),expires:selected.paid_until,status:selected.provider_status,mode:selected.billing_mode}:null
+        const subscription=selected?{id:selected.id,plan:selected.plan_code,name:selected.plan_code==='pro'?'Pro':selected.plan_code==='devApi'?'Dev + API':'Dev',amount:selected.amount_cents/100,api:selected.api_enabled,models:canonicalModels(router,withPlanModels(selected.models,router.proAliases)),active:selected.entitled&&Boolean(selected.paid_until&&Date.parse(selected.paid_until)>Date.now()),expires:selected.paid_until,status:selected.provider_status,mode:selected.billing_mode}:null
         const usage = mine.length ? await db<Usage[]>('gateway_usage', {
           select: 'id,client_id,requested_alias,status_code,input_tokens,output_tokens,latency_ms,created_at',
           client_id: `in.(${mine.map(c => c.id).join(',')})`, and: `(created_at.gte.${start},created_at.lt.${end},created_at.lte.${new Date(asOf).toISOString()})`,
           order: 'created_at.desc,id.desc', limit: '1000', offset: String(offset),
         }) : []
         return { keys: mine.filter(c=>c.visible!==false).map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:Boolean(c.managed) })), usage, hasMore: usage.length === 1000, subscription, billingConnected:Boolean(config.billingConnected),
-          trial:trial?{expires:trial.expires_at,active:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),revoked:Boolean(trial.revoked_at),models:withPlanModels(PRO_BASE_MODELS,router.proAliases).filter(alias=>router.routes.has(alias))}:null }
+          trial:trial?{expires:trial.expires_at,active:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),revoked:Boolean(trial.revoked_at),models:canonicalModels(router,withPlanModels(PRO_BASE_MODELS,router.proAliases))}:null }
       }
       // Chaves antigas do gateway (sk-flg-) foram desativadas: a chave agora sai do Roteador e é entregue pelo WhatsApp.
       if (method === 'POST' && (path === 'claim' || path === 'keys')) {
