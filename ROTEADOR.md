@@ -10,14 +10,13 @@ Aba **Roteador** do `/admin`, no estilo do 9router: você cadastra provedores (U
 - **Chaves do site**: quem paga no Mercado Pago recebe `sk-sp-`; quem pede o teste recebe `sk-sx-` (7 dias). As duas também usam os modelos do Roteador marcados para o Pro, e são cortadas no vencimento como já eram.
 - **Consumo**: toda chamada pelo Roteador grava cliente, modelo, status e tokens em `gateway_usage`. Aparece na aba **Consumo e falhas** (as chaves manuais pelo nome do cliente), no consumo de cada chave na aba Roteador e no painel do cliente.
 - **Erros do provedor**: se a key mestra for recusada (sem saldo, bloqueada) ou o provedor cair, o cliente vê "Este modelo está temporariamente indisponível"; você vê o status real (402, 5xx) em Consumo e falhas e o detalhe no log da função `api/access` na Vercel.
-- **Só o Roteador**: o gateway antigo (66cloud) foi removido. Só funciona o modelo que está ativo no Roteador. Os planos guardam os nomes `claude-fable-5-1`, `argon-4`, `gpt-6-astra` e `glm-5` (o Dev usa `gpt-6-astra` e `glm-5`): cadastre esses apelidos no Roteador, apontando para modelos do provedor, para que planos antigos e o chat do site continuem funcionando. Chaves antigas `sk-flg-` são recusadas.
+- **66cloud**: Fable, Astra e GLM continuam indo para o 66cloud como antes. Um modelo cadastrado no Roteador com o mesmo nome (ex.: `argon-4`) passa a sair do provedor do Roteador.
 - Mudanças no painel valem para novas chamadas em até 30 segundos.
 
 ## Endereço dos clientes
 
 - Claude Code: `https://www.sixtysix.online`
 - Codex, Cline, OpenCode e apps compatíveis com OpenAI: `https://www.sixtysix.online/v1`
-- Endereços antigos continuam aceitos: `/glm/v1` e `/api/codex` viram `/v1` no provedor. `/api/health` responde se há modelos ativos no Roteador.
 - A chave vai em `x-api-key` ou `Authorization: Bearer`. Formatos aceitos: Anthropic (`/v1/messages`), OpenAI (`/v1/chat/completions` e `/v1/responses`). `GET /v1/models` lista só o que a chave pode usar.
 
 ## Ativação
@@ -35,6 +34,7 @@ Trocar a `SUPABASE_SERVICE_ROLE_KEY` invalida as keys de provedor guardadas (e a
 
 ## Ainda não coberto
 
+- O catálogo do Codex (`/api/codex/models`) vem do 66cloud e só lista `gpt-6-astra`.
 - As páginas de venda e de planos não citam os modelos novos.
 - Fallback automático entre provedores (se um cair, tentar outro) e limite de tokens por chave.
 - O valor pago ao provedor por cliente não é calculado; o consumo é em tokens.

@@ -1,7 +1,7 @@
 /**
  * Repasse para provedores do Roteador (server/router.ts): monta a URL, troca o apelido pelo
  * modelo do provedor, conta os tokens da resposta e grava o consumo em gateway_usage,
- * a mesma tabela do consumo das chaves — então tudo aparece no admin e no painel do cliente.
+ * a mesma tabela do 66cloud — então tudo aparece no admin e no painel do cliente.
  */
 
 type Env = Record<string, string | undefined>

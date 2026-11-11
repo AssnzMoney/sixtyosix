@@ -50,17 +50,27 @@ test('foreign keys cannot be revoked',async()=>{
   const patch=calls.find(c=>c.init.method==='PATCH')!
   assert.equal(patch.url.searchParams.get('user_id'),`eq.${uid}`)
 })
-test('gerar ou vincular chave antiga sk-flg- foi desativado',async()=>{
+test('issues a gateway-compatible key and stores only its SHA-256 hash',async()=>{
   const {calls,service}=fixture()
-  await assert.rejects(service.execute('POST','keys','Bearer verified',{name:'Notebook'}),{status:410})
-  await assert.rejects(service.execute('POST','claim','Bearer verified',{key:'sk-flg-'+'a'.repeat(43)}),{status:410})
-  assert.ok(!calls.some(c=>c.url.pathname.includes('account_issue_gateway_key')||c.url.pathname.includes('account_claim_gateway_key')))
+  const result=await service.execute('POST','keys','Bearer verified',{name:'Notebook'}) as {key:string}
+  assert.match(result.key,/^sk-flg-[A-Za-z0-9_-]{43}$/)
+  const write=calls.find(c=>c.url.pathname.endsWith('account_issue_gateway_key'))!
+  const body=JSON.parse(String(write.init.body))
+  assert.equal(body.p_user_id,uid)
+  assert.equal(body.p_token_hash,createHash('sha256').update(result.key).digest('hex'))
+  assert.ok(!String(write.init.body).includes(result.key))
 })
 test('rejects malformed periods and does not silently truncate to first page',async()=>{
   const {calls,service}=fixture()
   await assert.rejects(service.execute('GET','summary','Bearer verified',{},new URLSearchParams({from:'2026-02-31',to:'2026-03-04'})),{status:400})
   await service.execute('GET','summary','Bearer verified',{},new URLSearchParams({from:'2026-01-01',to:'2026-01-02',offset:'1000'}))
   assert.equal(calls.find(c=>c.url.pathname.endsWith('/gateway_usage'))!.url.searchParams.get('offset'),'1000')
+})
+test('accepts the empty 204 response returned by a successful key claim',async()=>{
+  const fake = async (input: string | URL | Request) => String(input).includes('/auth/v1/user')
+    ? Response.json({id:uid,email_confirmed_at:'2026-01-01T00:00:00Z'}) : new Response(null,{status:204})
+  const service=createAccountService(config,fake as typeof fetch)
+  assert.deepEqual(await service.execute('POST','claim','Bearer verified',{key:'sk-flg-'+'a'.repeat(43)}),{ok:true})
 })
 
 test('unconfirmed accounts cannot read usage, claim or issue keys',async()=>{

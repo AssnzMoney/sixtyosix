@@ -61,22 +61,24 @@ test('missing trials are rejected instead of falling through to legacy authentic
   const service=createAccessService(env,(async()=>Response.json([])) as typeof fetch)
   await assert.rejects(service.authorize('sk-sx-unknown'),{status:401})
 })
-test('chaves antigas sk-flg- são recusadas sem chamar nenhum gateway externo',async()=>{
+test('legacy inference retains streaming, credentials and query options through the proxy',async()=>{
   const nativeFetch=globalThis.fetch
-  let external=0
-  globalThis.fetch=(async()=>{external++;return Response.json({})}) as typeof fetch
+  let capturedUrl='',capturedBody='',capturedKey=''
+  globalThis.fetch=(async(url:string|URL|Request,init?:RequestInit)=>{
+    capturedUrl=String(url);capturedBody=Buffer.from(init?.body as Uint8Array).toString();capturedKey=(init?.headers as Record<string,string>)['x-api-key']
+    return new Response(new ReadableStream({start(controller){controller.enqueue(new TextEncoder().encode('event: first\ndata: 1\n\n'));controller.enqueue(new TextEncoder().encode('event: done\ndata: 2\n\n'));controller.close()}}),{headers:{'Content-Type':'text/event-stream'}})
+  }) as typeof fetch
   const server=createServer(accessHandler)
   try{
     await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve))
     const address=server.address() as {port:number}
-    const response=await nativeFetch(`http://127.0.0.1:${address.port}/api/access?action=proxy&path=/v1/messages`,{
+    const response=await nativeFetch(`http://127.0.0.1:${address.port}/api/access?action=proxy&path=/v1/messages&beta=true`,{
       method:'POST',headers:{'Content-Type':'application/json','x-api-key':'sk-flg-existing-test'},body:JSON.stringify({model:'claude-fable-5-1',stream:true})})
-    assert.equal(response.status,401)
-    assert.match(await response.text(),/desativada/)
-    const preflight=await nativeFetch(`http://127.0.0.1:${address.port}/api/access?action=proxy&path=/v1/messages`,{method:'OPTIONS'})
-    assert.equal(preflight.status,204)
-    assert.equal(preflight.headers.get('access-control-allow-origin'),'*')
-    assert.match(String(preflight.headers.get('access-control-allow-headers')),/x-api-key/)
-    assert.equal(external,0)
+    assert.equal(response.status,200)
+    assert.equal(response.headers.get('content-type'),'text/event-stream')
+    assert.equal(await response.text(),'event: first\ndata: 1\n\nevent: done\ndata: 2\n\n')
+    assert.equal(capturedUrl,'https://66cloud.vercel.app/v1/messages?beta=true')
+    assert.equal(capturedKey,'sk-flg-existing-test')
+    assert.deepEqual(JSON.parse(capturedBody),{model:'claude-fable-5-1',stream:true})
   }finally{globalThis.fetch=nativeFetch;await new Promise<void>(resolve=>{server.closeAllConnections();server.close(()=>resolve())})}
 })
