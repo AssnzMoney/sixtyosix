@@ -1,7 +1,8 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { recordUsage, supplierRequestBody, supplierUrl, UsageTap } from '../server/supplier.js'
+import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, RouterError, ROUTER_KEY_PREFIX, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
@@ -207,13 +208,20 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       const route=router.routes.get(model)
       if(!route)throw new AccessError(404,'Este modelo não está disponível. Veja os modelos liberados para a sua chave em /v1/models.')
       if(!allowed.includes(model)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
-      await proxySupplier(req,res,{route,path,params,payload,clientId});return
+      // Proteção contra sobrecarga e IP bloqueado: acima do limite, 429 com Retry-After (a ferramenta tenta de novo).
+      const requestId=randomUUID()
+      const gate=await gateRequest(process.env,fetch,{clientId,ip:clientIp(req.headers,req.socket?.remoteAddress||''),requestId})
+      if(!gate.ok){if(gate.retryAfter)res.setHeader('retry-after',String(gate.retryAfter));throw new AccessError(gate.status,gate.message)}
+      try{await proxySupplier(req,res,{route,path,params,payload,clientId})}
+      finally{if(gate.leased)await releaseRequest(process.env,fetch,requestId)}
+      return
     }
     throw new AccessError(404,'Endereço não disponível.')
   }catch(error){
     if(res.headersSent){res.destroy();return}
     res.statusCode=error instanceof AccessError?error.status:503
     res.setHeader('Content-Type','application/json; charset=utf-8')
-    res.end(JSON.stringify({type:'error',error:{type:res.statusCode===401?'authentication_error':'permission_error',message:error instanceof AccessError?error.message:'Conexão temporariamente indisponível.'}}))
+    const type=({400:'invalid_request_error',401:'authentication_error',404:'not_found_error',413:'request_too_large',429:'rate_limit_error'} as Record<number,string>)[res.statusCode]||(res.statusCode>=500?'api_error':'permission_error')
+    res.end(JSON.stringify({type:'error',error:{type,message:error instanceof AccessError?error.message:'Conexão temporariamente indisponível.'}}))
   }
 }
