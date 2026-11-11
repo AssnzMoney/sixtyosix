@@ -90,6 +90,53 @@ export async function loadRouter(env: Env, request: typeof fetch = fetch): Promi
   return value
 }
 
+/**
+ * Diagnóstico público do Roteador (/api/router-status): diz se o gateway consegue ler o banco,
+ * quantos provedores estão ligados, se as keys abrem e quantos modelos estão ativos. Nunca devolve keys.
+ */
+export async function routerStatus(env: Env, request: typeof fetch = fetch) {
+  const db = database(env)
+  if (!db) return { ok: false, problem: 'O gateway não tem SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY na Vercel.' }
+  const params = new URLSearchParams({
+    select: 'alias,enabled,provider:router_providers(id,name,enabled,encrypted_key)',
+    order: 'created_at.asc,alias.asc',
+  })
+  let response: Response
+  try {
+    response = await request(`${db.url}/rest/v1/router_models?${params}`, { headers: serviceHeaders(db.secret), signal: AbortSignal.timeout(10000) })
+  } catch {
+    return { ok: false, problem: 'O gateway não conseguiu falar com o Supabase.' }
+  }
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => '')).slice(0, 300)
+    return { ok: false, problem: 'O gateway não conseguiu ler os modelos do Roteador (a migração supabase/router.sql foi aplicada?).', http: response.status, detail }
+  }
+  const rows = (await response.json()) as Row[]
+  const providers = new Map<string, { name: string; enabled: boolean; keyOpens: boolean; models: number; activeModels: number }>()
+  for (const row of rows) {
+    const p = row.provider as Row | null
+    if (!p) continue
+    if (!providers.has(p.id)) {
+      let keyOpens = false
+      try { unsealSecret(p.encrypted_key, db.secret, providerAad(p.id)); keyOpens = true } catch { keyOpens = false }
+      providers.set(p.id, { name: String(p.name), enabled: Boolean(p.enabled), keyOpens, models: 0, activeModels: 0 })
+    }
+    const info = providers.get(p.id)!
+    info.models++
+    if (row.enabled && info.enabled && info.keyOpens) info.activeModels++
+  }
+  const list = [...providers.values()]
+  const active = list.reduce((sum, p) => sum + p.activeModels, 0)
+  const problem = !rows.length
+    ? 'Nenhum modelo cadastrado: em Roteador → Modelos, marque "Vender" e clique em Salvar modelos.'
+    : list.some((p) => !p.keyOpens)
+      ? 'A key de um provedor não abre: cadastre a key de novo em Roteador → Editar (a SUPABASE_SERVICE_ROLE_KEY pode ter mudado).'
+      : !active
+        ? 'Os modelos existem, mas o provedor está desligado ou os modelos estão desativados.'
+        : null
+  return { ok: active > 0, models: rows.length, activeModels: active, providers: list, problem }
+}
+
 /** Confere uma chave manual sk-rt-: existe, não está bloqueada nem vencida. Devolve os modelos liberados. */
 export async function authorizeRouterKey(env: Env, request: typeof fetch, token: string, router: RouterConfig) {
   const db = database(env)

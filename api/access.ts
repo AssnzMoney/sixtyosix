@@ -3,7 +3,7 @@ import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { recordUsage, supplierRequestBody, supplierUrl, UsageTap } from '../server/supplier.js'
-import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, RouterError, ROUTER_KEY_PREFIX, type RouterConfig, type RouterRoute } from '../server/router.js'
+import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, RouterError, ROUTER_KEY_PREFIX, routerStatus, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
 type Trial = { user_id:string; gateway_client_id:string; token_hash:string; token_prefix:string; encrypted_token:string; encrypted_upstream:string; created_at:string; expires_at:string; revoked_at:string|null }
@@ -151,6 +151,11 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       if(process.env.SIXTYSIX_SELF_TRIAL!=='1')throw new AccessError(410,'O teste grátis agora é pedido pelo WhatsApp: (81) 99237-6036.')
       res.setHeader('Content-Type','application/json; charset=utf-8')
       res.end(JSON.stringify(await service.start(req.headers.authorization,url.searchParams.get('replace')==='1')));return
+    }
+    // Diagnóstico público do Roteador (sem keys): /api/router-status
+    if(action==='router-status'){
+      const status=await routerStatus(process.env)
+      res.setHeader('Content-Type','application/json; charset=utf-8');res.statusCode=200;res.end(JSON.stringify(status));return
     }
     if(action!=='proxy')throw new AccessError(404,'Operação não encontrada.')
     if(!['GET','HEAD','POST','OPTIONS'].includes(req.method||''))throw new AccessError(405,'Método não permitido.')

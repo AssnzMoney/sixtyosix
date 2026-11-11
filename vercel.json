@@ -52,6 +52,10 @@
       "destination": "https://66cloud.vercel.app/api/admin/:path*"
     },
     {
+      "source": "/api/router-status",
+      "destination": "/api/access?action=router-status"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

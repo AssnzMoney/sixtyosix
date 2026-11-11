@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import accessHandler, { seal } from '../api/access.ts'
-import { clearRouterCache, createRouterAdmin, loadRouter, sealSecret, unsealSecret } from './router.ts'
+import { clearRouterCache, createRouterAdmin, loadRouter, routerStatus, sealSecret, unsealSecret } from './router.ts'
 import { suggestAlias, suggestLabel } from '../src/lib/routerModels.ts'
 
 /** O fetch real, para o teste chamar o servidor local enquanto o do servidor é simulado. */
@@ -206,4 +206,24 @@ test('admin: a key do provedor e a chave manual só são gravadas criptografadas
   await assert.rejects(admin.saveProvider({ name: 'X', base_url: 'http://inseguro.example', key: 'k' }), { status: 400 })
   await assert.rejects(admin.createKey({ name: 'João', days: 0 }), { status: 400 })
   await assert.rejects(admin.saveModels({ provider_id: PROVIDER.id, models: [{ alias: 'Nome Inválido', upstream_model: 'x' }] }), { status: 400 })
+})
+
+test('diagnóstico do Roteador conta modelos ativos e aponta o problema, sem devolver keys', async () => {
+  const env = { SUPABASE_URL: SUPABASE, SUPABASE_SERVICE_ROLE_KEY: SECRET }
+  const rows = models().map((m) => ({ alias: m.alias, enabled: true, provider: m.provider }))
+  const ok = await routerStatus(env, (async () => Response.json(rows)) as typeof fetch)
+  assert.equal(ok.ok, true)
+  assert.equal(ok.activeModels, 3)
+  assert.ok(!JSON.stringify(ok).includes('gw_master') && !JSON.stringify(ok).includes('encrypted'))
+  const empty = await routerStatus(env, (async () => Response.json([])) as typeof fetch)
+  assert.equal(empty.ok, false)
+  assert.match(String(empty.problem), /Salvar modelos/)
+  const badKey = await routerStatus(env, (async () => Response.json(rows.map((r) => ({ ...r, provider: { ...r.provider, encrypted_key: 'x'.repeat(40) } })))) as typeof fetch)
+  assert.equal(badKey.activeModels, 0)
+  assert.match(String(badKey.problem), /key de um provedor não abre/)
+  const off = await routerStatus(env, (async () => Response.json(rows.map((r) => ({ ...r, provider: { ...r.provider, enabled: false } })))) as typeof fetch)
+  assert.match(String(off.problem), /desligado/)
+  const missing = await routerStatus(env, (async () => new Response('{"message":"relation does not exist"}', { status: 404 })) as typeof fetch)
+  assert.match(String(missing.problem), /router.sql/)
+  assert.match(String((await routerStatus({}, fetch)).problem), /SUPABASE_URL/)
 })
