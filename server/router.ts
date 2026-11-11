@@ -7,6 +7,7 @@
  */
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import { supplierUrl } from './supplier.js'
+import { validLimit, validNetwork } from './guard.js'
 
 type Env = Record<string, string | undefined>
 type Row = Record<string, any>
@@ -162,6 +163,8 @@ const URL_RE = /^https:\/\/[^\s]+$/
 const ALIAS_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/
 const text = (value: unknown, max: number) => (typeof value === 'string' ? value.trim().slice(0, max) : '')
 const keyHint = (key: string) => '…' + key.slice(-4)
+const CLIENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const GUARD_MISSING = 'Aplique a migração supabase/gateway-guard.sql no Supabase para usar a proteção e o controle de IP.'
 
 /** Operações da aba Roteador. Só é chamado depois de requireAdmin (api/management.ts). */
 export function createRouterAdmin(db: { url: string; secret: string }, request: typeof fetch, adminEmail: string) {
@@ -190,7 +193,89 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
         rest<Row[]>(`router_models?select=alias,provider_id,upstream_model,label,enabled,in_pro,created_at&order=created_at.asc,alias.asc`),
         rest<Row[]>(`router_keys?select=id,gateway_client_id,name,contact,token_prefix,models,expires_at,revoked_at,created_by,created_at&order=created_at.desc&limit=1000`),
       ])
-      return { providers, models, keys }
+      // Proteção contra sobrecarga (supabase/gateway-guard.sql). Sem a migração, guard = null e o resto segue.
+      let guard: Row | null = null
+      try {
+        const [settings, blocks, controls] = await Promise.all([
+          rest<Row[]>('gateway_settings?select=rpm,concurrency&limit=1'),
+          rest<Row[]>('gateway_ip_blocks?select=network,reason,created_by,created_at&order=created_at.desc&limit=500'),
+          rest<Row[]>('gateway_controls?select=client_id,rpm,concurrency&limit=5000'),
+        ])
+        guard = { settings: settings[0] || { rpm: null, concurrency: null }, blocks, controls }
+      } catch {
+        guard = null
+      }
+      return { providers, models, keys, guard }
+    },
+
+    /** Padrões de proteção para todas as chaves. Vazio = sem limite. */
+    async saveGuardSettings(body: Row) {
+      const rpm = validLimit(body.rpm, 100000), concurrency = validLimit(body.concurrency, 1000)
+      if (rpm === undefined) throw new RouterError(400, 'Chamadas por minuto: use um número de 1 a 100000, ou deixe vazio para sem limite.')
+      if (concurrency === undefined) throw new RouterError(400, 'Respostas simultâneas: use um número de 1 a 1000, ou deixe vazio para sem limite.')
+      await rest('gateway_settings?on_conflict=id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ id: true, rpm, concurrency, updated_at: new Date().toISOString() }),
+      }, GUARD_MISSING)
+      return { rpm, concurrency }
+    },
+
+    /** Bloqueia (ou libera) um IP ou faixa em todas as chaves. */
+    async setNetworkBlocked(body: Row) {
+      const network = validNetwork(body.network)
+      if (!network) throw new RouterError(400, 'Informe um IP (ex.: 177.10.20.30) ou uma faixa (ex.: 177.10.20.0/24).')
+      if (body.blocked === false) {
+        await rest('gateway_ip_blocks?' + new URLSearchParams({ network: 'eq.' + network }), { method: 'DELETE' }, GUARD_MISSING)
+        return { ok: true }
+      }
+      await rest('gateway_ip_blocks?on_conflict=network', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ network, reason: text(body.reason, 200) || null, created_by: adminEmail }),
+      }, 'Não foi possível bloquear. Confira o IP e se a migração supabase/gateway-guard.sql foi aplicada.')
+      return { ok: true }
+    },
+
+    /** IPs que usaram uma chave (mais recentes primeiro) e o limite próprio dela. */
+    async keyIps(body: Row) {
+      const clientId = text(body.client_id, 40)
+      if (!CLIENT_ID.test(clientId)) throw new RouterError(400, 'Chave inválida.')
+      const [ips, controls] = await Promise.all([
+        rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: 'ip,first_seen,last_seen,requests,blocked_at', order: 'last_seen.desc', limit: '200' }), {}, GUARD_MISSING),
+        rest<Row[]>('gateway_controls?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: 'rpm,concurrency', limit: '1' }), {}, GUARD_MISSING),
+      ])
+      return { ips, controls: controls[0] || { rpm: null, concurrency: null } }
+    },
+
+    /** Bloqueia ou libera um IP só nesta chave. */
+    async setKeyIpBlocked(body: Row) {
+      const clientId = text(body.client_id, 40), ip = validNetwork(body.ip)
+      if (!CLIENT_ID.test(clientId) || !ip || ip.includes('/')) throw new RouterError(400, 'IP inválido.')
+      const changed = await rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, ip: 'eq.' + ip }), {
+        method: 'PATCH',
+        body: JSON.stringify({ blocked_at: body.blocked === false ? null : new Date().toISOString() }),
+      }, GUARD_MISSING)
+      if (!changed?.length) throw new RouterError(404, 'Este IP ainda não usou a chave.')
+      return { ok: true }
+    },
+
+    /** Limite próprio da chave. Vazio = usa o padrão. */
+    async saveKeyLimits(body: Row) {
+      const clientId = text(body.client_id, 40)
+      if (!CLIENT_ID.test(clientId)) throw new RouterError(400, 'Chave inválida.')
+      const rpm = validLimit(body.rpm, 100000), concurrency = validLimit(body.concurrency, 1000)
+      if (rpm === undefined || concurrency === undefined) throw new RouterError(400, 'Use números inteiros positivos, ou deixe vazio para usar o padrão.')
+      if (rpm === null && concurrency === null) {
+        await rest('gateway_controls?' + new URLSearchParams({ client_id: 'eq.' + clientId }), { method: 'DELETE' }, GUARD_MISSING)
+        return { rpm, concurrency }
+      }
+      await rest('gateway_controls?on_conflict=client_id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ client_id: clientId, rpm, concurrency, updated_at: new Date().toISOString() }),
+      }, GUARD_MISSING)
+      return { rpm, concurrency }
     },
 
     async saveProvider(body: Row) {

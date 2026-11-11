@@ -13,6 +13,17 @@ Aba **Roteador** do `/admin`, no estilo do 9router: você cadastra provedores (U
 - **Só o Roteador**: o gateway antigo (66cloud) foi removido. Só funciona o modelo que está ativo no Roteador. Os planos guardam os nomes `claude-fable-5-1`, `argon-4`, `gpt-6-astra` e `glm-5` (o Dev usa `gpt-6-astra` e `glm-5`): cadastre esses apelidos no Roteador, apontando para modelos do provedor, para que planos antigos e o chat do site continuem funcionando. Chaves antigas `sk-flg-` são recusadas.
 - Mudanças no painel valem para novas chamadas em até 30 segundos.
 
+## Proteção contra sobrecarga e IPs
+
+Não existe limite diário: o cliente usa quanto quiser. A proteção só impede que uma chave dispare rápido demais.
+
+- **Chamadas por minuto** e **respostas ao mesmo tempo**, por chave. Padrão: 60 por minuto e 4 ao mesmo tempo, editáveis na seção "Proteção contra sobrecarga" da aba Roteador (vazio = sem limite).
+- Passou do ritmo: o cliente recebe 429 com `Retry-After` ("aguarde um instante"). O Claude Code e o Codex tentam de novo sozinhos, então fica mais lento, sem bloquear.
+- **Limite próprio** de uma chave: botão **IPs** na chave. Vazio = usa o padrão.
+- **IPs**: o botão IPs mostra cada IP que usou a chave (primeiro e último uso, número de chamadas). Dá para bloquear o IP só naquela chave ou em todas. A lista "IPs bloqueados em todas as chaves" aceita IP ou faixa (`177.10.20.0/24`).
+- Vale para chaves manuais `sk-rt-`, do plano `sk-sp-`, do teste `sk-sx-` e para o chat do site.
+- Uma checagem por chamada (`gateway_gate` no Supabase). Se o banco falhar ou a migração não estiver aplicada, a chamada segue normalmente.
+
 ## Endereço dos clientes
 
 - Claude Code: `https://www.sixtysix.online`
@@ -22,7 +33,7 @@ Aba **Roteador** do `/admin`, no estilo do 9router: você cadastra provedores (U
 
 ## Ativação
 
-1. **Supabase** — rode `supabase/router.sql` no SQL Editor (uma vez). É aditivo: não muda nenhuma tabela existente. Antes dele, o site funciona como antes e a aba Roteador pede a migração.
+1. **Supabase** — rode `supabase/router.sql` e depois `supabase/gateway-guard.sql` no SQL Editor (uma vez). São aditivos: não mudam nenhuma tabela existente. Sem eles, a aba Roteador pede a migração e a proteção fica desligada.
 2. **Publicar o código** (push na `main`).
 3. **Vercel** — `SIXTYSIX_AUTO_GATEWAY_KEYS` = `1` para quem paga no site ver a chave no painel na hora (sem WhatsApp). `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já devem estar lá. As variáveis `FORNECEDOR_URL`/`FORNECEDOR_KEY` não são usadas.
 4. **Admin** → `www.sixtysix.online/admin` → aba **Roteador**:
@@ -36,7 +47,8 @@ Trocar a `SUPABASE_SERVICE_ROLE_KEY` invalida as keys de provedor guardadas (e a
 ## Ainda não coberto
 
 - As páginas de venda e de planos não citam os modelos novos.
-- Fallback automático entre provedores (se um cair, tentar outro) e limite de tokens por chave.
+- Fallback automático entre provedores (se um cair, tentar outro).
+- Limite próprio e lista de IPs para chaves do plano e do teste (hoje só pelo padrão e pela lista de IPs bloqueados em todas as chaves).
 - O valor pago ao provedor por cliente não é calculado; o consumo é em tokens.
 
 ## Verificação
