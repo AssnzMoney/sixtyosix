@@ -1,9 +1,9 @@
 {
-  "title": "SixtySix — Modelos Oficiais de IA Sem Limites",
-  "description": "Acesso 100% ilimitado aos modelos de ponta Claude 3.7 Sonnet, GPT-4.5 e GLM-4 Plus. Zero rateio, chave de API individual e 99.9% de uptime para Cursor, VS Code e Claude Code.",
+  "title": "SixtySix — Claude Code, Codex e API de IA em Reais via Pix",
+  "description": "Use Claude Code, Codex, VS Code, Cline e OpenCode com Fable 5.1, GPT Astra 6 e Argon 4. Planos com preço fixo em Reais, pagos via Pix e sem IOF. Teste grátis por 7 dias.",
   "language": "pt-BR",
   "icons": {
-    "icon": "/favicon.svg"
+    "icon": "/favicon.ico"
   },
   "robots": {
     "index": false
@@ -11,5 +11,8 @@
   "accessibility": {
     "addBypassLinks": false,
     "ignoreReducedMotion": false
+  },
+  "openGraph": {
+    "image": "https://www.sixtysix.online/assets/logo.png"
   }
 }
