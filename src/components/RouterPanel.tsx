@@ -13,7 +13,7 @@ type Provider = { id: string; name: string; base_url: string; key_hint: string; 
 type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean }
 type RouterKey = { id: string; gateway_client_id: string; name: string; contact: string | null; token_prefix: string; models: string[] | null; expires_at: string; revoked_at: string | null; created_at: string }
 type Overview = { providers: Provider[]; models: Model[]; keys: RouterKey[] }
-type Draft = { upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
+type Draft = { key: string; upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
 type KeyForm = { name: string; contact: string; days: string; custom: string; all: boolean; models: string[] }
 
@@ -62,6 +62,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   const [modelsFor, setModelsFor] = useState<Provider | null>(null)
   const [drafts, setDrafts] = useState<Draft[] | null>(null)
   const [modelSearch, setModelSearch] = useState('')
+  const [manualModel, setManualModel] = useState('')
   const [modalError, setModalError] = useState('')
   const [keyForm, setKeyForm] = useState<KeyForm | null>(null)
   const [created, setCreated] = useState<{ key: string; message: string } | null>(null)
@@ -177,11 +178,12 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
     const list: Draft[] = offered.map((item) => {
       const current = saved.find((m) => m.upstream_model === item.id)
       const alias = current?.alias || suggestAlias(item.id)
-      return { upstream: item.id, upstreamName: item.name, sell: Boolean(current), alias, label: current?.label || suggestLabel(alias, item.name), in_pro: current?.in_pro ?? true, missing: false }
+      return { key: current ? 'saved:' + current.alias : 'offer:' + item.id, upstream: item.id, upstreamName: item.name, sell: Boolean(current), alias, label: current?.label || suggestLabel(alias, item.name), in_pro: current?.in_pro ?? true, missing: false }
     })
+    // Nomes salvos que ainda não estão na lista: outros nomes do mesmo modelo, ou modelos que sumiram do provedor.
     for (const m of saved)
-      if (!list.some((d) => d.upstream === m.upstream_model))
-        list.push({ upstream: m.upstream_model, upstreamName: '', sell: true, alias: m.alias, label: m.label, in_pro: m.in_pro, missing: offered.length > 0 })
+      if (!list.some((d) => d.sell && d.alias === m.alias))
+        list.push({ key: 'saved:' + m.alias, upstream: m.upstream_model, upstreamName: '', sell: true, alias: m.alias, label: m.label, in_pro: m.in_pro, missing: offered.length > 0 && !offered.some((o) => o.id === m.upstream_model) })
     setDrafts(list)
   }
 
@@ -201,7 +203,15 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
       setWorking('')
     }
   }
-  const editDraft = (upstream: string, change: Partial<Draft>) => setDrafts((list) => list && list.map((d) => (d.upstream === upstream ? { ...d, ...change } : d)))
+  const editDraft = (key: string, change: Partial<Draft>) => setDrafts((list) => list && list.map((d) => (d.key === key ? { ...d, ...change } : d)))
+  /** Modelo digitado à mão (o provedor não listou, ou um segundo nome para o mesmo modelo). */
+  function addManualModel() {
+    const upstream = manualModel.trim()
+    if (!upstream) return
+    const alias = suggestAlias(upstream)
+    setDrafts((list) => [{ key: 'manual:' + Date.now(), upstream, upstreamName: '', sell: true, alias, label: suggestLabel(alias, ''), in_pro: true, missing: false }, ...(list || [])])
+    setManualModel('')
+  }
 
   /* ------------------------------- Chaves ------------------------------- */
   async function createKey() {
@@ -494,10 +504,25 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
               <CircleAlert size={16} /> {modalError}
             </p>
           )}
+          <form className="sx-router-manual" onSubmit={(e) => { e.preventDefault(); addManualModel() }}>
+            <input
+              aria-label="Modelo no provedor"
+              placeholder="Digite o ID do modelo no provedor (ex.: anthropic/claude-opus-5-5)"
+              spellCheck={false}
+              value={manualModel}
+              onChange={(e) => setManualModel(e.target.value)}
+            />
+            <button type="submit" className="sx-btn" disabled={!manualModel.trim()}>
+              <Plus size={15} /> Adicionar modelo
+            </button>
+          </form>
+          <p className="sx-router-help">
+            Use para um modelo que o provedor não listou ou para dar outro nome ao mesmo modelo (ex.: os nomes dos planos <code>claude-fable-5-1</code>, <code>argon-4</code>, <code>gpt-6-astra</code> e <code>glm-5</code>).
+          </p>
           {!drafts ? (
             <p className="sx-admin-empty">Consultando os modelos do provedor…</p>
           ) : !drafts.length ? (
-            <p className="sx-admin-empty">O provedor não listou nenhum modelo.</p>
+            <p className="sx-admin-empty">O provedor não listou nenhum modelo. Digite o ID acima para adicionar.</p>
           ) : (
             <>
               <div className="sx-router-model-tools">
@@ -522,22 +547,22 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                     {drafts
                       .filter((d) => !modelSearch || `${d.upstream} ${d.upstreamName} ${d.alias}`.toLowerCase().includes(modelSearch.toLowerCase()))
                       .map((d) => (
-                        <tr key={d.upstream} className={d.sell ? 'is-selected' : ''}>
+                        <tr key={d.key} className={d.sell ? 'is-selected' : ''}>
                           <td>
-                            <input type="checkbox" aria-label={`Vender ${d.upstream}`} checked={d.sell} onChange={(e) => editDraft(d.upstream, { sell: e.target.checked })} />
+                            <input type="checkbox" aria-label={`Vender ${d.upstream}`} checked={d.sell} onChange={(e) => editDraft(d.key, { sell: e.target.checked })} />
                           </td>
                           <td>
                             <code>{d.upstream}</code>
                             {d.missing && <small className="sx-router-sub is-warning">Sumiu da lista do provedor</small>}
                           </td>
                           <td>
-                            <input value={d.alias} disabled={!d.sell} spellCheck={false} aria-label={`Nome para o cliente de ${d.upstream}`} onChange={(e) => editDraft(d.upstream, { alias: e.target.value.toLowerCase() })} />
+                            <input value={d.alias} disabled={!d.sell} spellCheck={false} aria-label={`Nome para o cliente de ${d.upstream}`} onChange={(e) => editDraft(d.key, { alias: e.target.value.toLowerCase() })} />
                           </td>
                           <td>
-                            <input value={d.label} disabled={!d.sell} aria-label={`Nome na tela de ${d.upstream}`} onChange={(e) => editDraft(d.upstream, { label: e.target.value })} />
+                            <input value={d.label} disabled={!d.sell} aria-label={`Nome na tela de ${d.upstream}`} onChange={(e) => editDraft(d.key, { label: e.target.value })} />
                           </td>
                           <td>
-                            <input type="checkbox" aria-label={`${d.upstream} no Pro e no teste`} disabled={!d.sell} checked={d.in_pro} onChange={(e) => editDraft(d.upstream, { in_pro: e.target.checked })} />
+                            <input type="checkbox" aria-label={`${d.upstream} no Pro e no teste`} disabled={!d.sell} checked={d.in_pro} onChange={(e) => editDraft(d.key, { in_pro: e.target.checked })} />
                           </td>
                         </tr>
                       ))}
