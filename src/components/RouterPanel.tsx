@@ -32,10 +32,20 @@ const brDay = (value: string | number) => new Date(value).toLocaleDateString('sv
 const plusDays = (from: string, days: number) => brDay(Math.max(Date.parse(from + 'T23:59:59-03:00') || 0, Date.now()) + days * DAY)
 const tokens = (value: number) => (value >= 10000 ? new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(value) : value.toLocaleString('pt-BR'))
 
+const clock = (value: string) => new Date(value).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+/** "faltam 2h 40min", "falta 1h", "faltam 25 min". */
+function hoursLeft(ms: number) {
+  const total = Math.max(1, Math.ceil(ms / 60000)), h = Math.floor(total / 60), m = total % 60
+  if (!h) return `faltam ${m} min`
+  return `${h === 1 && !m ? 'falta' : 'faltam'} ${h}h${m ? ` ${String(m).padStart(2, '0')}min` : ''}`
+}
+
 function keyState(key: RouterKey, now: number) {
   if (key.revoked_at) return { label: 'Bloqueada', tone: 'is-revoked', detail: `desde ${date(key.revoked_at)}` }
   const left = Date.parse(key.expires_at) - now
-  if (left <= 0) return { label: 'Vencida', tone: 'is-expired', detail: `venceu em ${date(key.expires_at)}` }
+  if (left <= 0) return { label: 'Vencida', tone: 'is-expired', detail: `venceu em ${date(key.expires_at)}${left > -DAY ? ` às ${clock(key.expires_at)}` : ''}` }
+  // Menos de 1 dia (ex.: teste de 3 horas): mostra o horário e as horas que faltam.
+  if (left < DAY) return { label: 'Ativa', tone: 'is-pending', detail: `vence em ${date(key.expires_at)} às ${clock(key.expires_at)} · ${hoursLeft(left)}` }
   const days = Math.ceil(left / DAY)
   return { label: 'Ativa', tone: days <= 3 ? 'is-pending' : 'is-confirmed', detail: `vence em ${date(key.expires_at)} · ${days === 1 ? 'falta 1 dia' : `faltam ${days} dias`}` }
 }
@@ -355,7 +365,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
     if (!editForm.all && !editForm.models.length) return setModalError('Escolha pelo menos um modelo.')
     setWorking('edit')
     try {
-      await call({ action: 'router-key-update', id: editFor.id, name: editForm.name, contact: editForm.contact, expires_at: editForm.expires, models: editForm.all ? null : editForm.models })
+      await call({ action: 'router-key-update', id: editFor.id, name: editForm.name, contact: editForm.contact, expires_at: editForm.expires === brDay(editFor.expires_at) ? editFor.expires_at : editForm.expires, models: editForm.all ? null : editForm.models })
       setNotice(`Chave de ${editForm.name.trim()} atualizada.`)
       setEditFor(null)
       reload()
