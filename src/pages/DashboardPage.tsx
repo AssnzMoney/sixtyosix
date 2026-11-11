@@ -71,6 +71,7 @@ type KeyRow = {
   active: boolean
   created: string
   managed?: boolean
+  expires?: string | null
 }
 type GatewayStatus = "checking" | "ready" | "down" | "unknown"
 
@@ -901,6 +902,14 @@ export default function DashboardPage() {
           >
             {confirmingId === c.id ? "Confirmando…" : "Confirmar recebimento"}
           </button>
+          <a
+            className="six-text-button"
+            href={supportLink(`Olá! Não recebi minha chave SixtySix terminada em …${c.key_hint}. Pode me reenviar?`)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Não recebi
+          </a>
         </div>
       ) : c.state === "confirmed" && c.confirmed_at ? (
         <p className="six-credential-ok">
@@ -1451,8 +1460,8 @@ export default function DashboardPage() {
                           <code>{k.prefix.startsWith("sk-") ? `${k.prefix}••••••••` : k.prefix}</code>
                         </div>
                         <div className="six-key-meta">
-                          <span>Criada em</span>
-                          <strong>{dateLabel(k.created)}</strong>
+                          <span>{k.expires ? "Válida até" : "Criada em"}</span>
+                          <strong>{k.expires ? fullDate(k.expires) : dateLabel(k.created)}</strong>
                         </div>
                         <span className={`six-status ${k.active ? "" : "muted"}`}>
                           {k.active ? <Check size={11} /> : <X size={11} />}
@@ -1460,6 +1469,7 @@ export default function DashboardPage() {
                         </span>
                         <div className="six-key-row-actions">
                           {k.active &&
+                            !k.managed &&
                             (revokeId === k.id ? (
                               <>
                                 <button

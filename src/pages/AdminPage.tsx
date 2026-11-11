@@ -7,12 +7,12 @@ import {
   Check,
   CircleAlert,
   Clock,
+  Copy,
   Download,
   KeyRound,
   MessageCircle,
   RefreshCw,
   Search,
-  ShieldCheck,
   UserRound,
   Wallet,
   X,
@@ -27,9 +27,6 @@ import {
   credentialTitle,
   deliveryState,
   isActiveDelivery,
-  productForModel,
-  validBaseUrl,
-  validKeyHint,
   type DeliveryProduct,
   type DeliveryRow,
 } from '../lib/deliveries'
@@ -131,19 +128,9 @@ const subscriptionLabel = (s: Row) =>
     subscriptionActive(s) ? `pago até ${fullDate(s.paid_until)}` : s.paid_until ? `venceu em ${fullDate(s.paid_until)}` : 'aguardando pagamento'
   }`
 
-type DeliveryDraft = {
-  id: string
-  user_id: string
-  subscription_id: string
-  replaces: string
-  product: DeliveryProduct
-  supplier: string
-  key_hint: string
-  base_url: string
-  model_id: string
-  expires_at: string
-  notes: string
-}
+/** Entrega da operação atual: uma chave SixtySix (sk-rt-) criada no Roteador para o cliente. */
+type KeyDraft = { userId: string; subscription_id: string; expires: string; all: boolean; models: string[] }
+type KeyDelivered = { key: string; hint: string; expires_at: string; models: string[] | null; deliveryId: string | null; email?: string }
 type Customer = { id: string; name: string; email: string; whatsapp: string }
 
 export default function AdminPage() {
@@ -160,14 +147,13 @@ export default function AdminPage() {
   const [from, setFrom] = useState(new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10))
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10))
   const [revision, setRevision] = useState(0)
-  const [draft, setDraft] = useState<DeliveryDraft | null>(null)
+  const [draft, setDraft] = useState<KeyDraft | null>(null)
   const [draftCustomer, setDraftCustomer] = useState<Customer | null>(null)
   const [draftError, setDraftError] = useState('')
-  const [hintNotice, setHintNotice] = useState('')
   const [saving, setSaving] = useState(false)
-  const [savedDelivery, setSavedDelivery] = useState<DeliveryDraft | null>(null)
+  const [delivered, setDelivered] = useState<KeyDelivered | null>(null)
+  const [routerModels, setRouterModels] = useState<{ alias: string; label: string }[] | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
-  const [deliveryEmail, setDeliveryEmail] = useState('')
 
   useEffect(() => {
     if (!session) return
@@ -403,62 +389,72 @@ export default function AdminPage() {
     }
   }
 
-  /* ------------------------ Registrar entrega ------------------------ */
-  function openDelivery(userId: string, options: { replaces?: Row } = {}) {
-    const previous = options.replaces
-    // A entrega fica presa à assinatura: a ativa, senão a mais recente. A validade vem do fim do período pago.
+  /* -------------------------- Entregar chave -------------------------- */
+  // Cria a chave SixtySix no Roteador para o cliente, liga à conta dele e registra a entrega
+  // para ele só confirmar no painel. A validade vem do fim do plano pago (ou 30 dias).
+  async function loadRouterModels() {
+    if (routerModels || !session) return
+    try {
+      const response = await fetch('/api/management?resource=router', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body.error || 'Não foi possível carregar os modelos do Roteador.')
+      const providers = new Map((body.providers || []).map((p: Row) => [p.id, p]))
+      setRouterModels((body.models || []).filter((m: Row) => m.enabled && (providers.get(m.provider_id) as Row | undefined)?.enabled).map((m: Row) => ({ alias: m.alias, label: m.label || m.alias })))
+    } catch (e) {
+      setDraftError(e instanceof Error ? e.message : 'Não foi possível carregar os modelos do Roteador.')
+      setRouterModels([])
+    }
+  }
+  const defaultExpires = (s?: Row) => (s?.paid_until && subscriptionActive(s) ? brDate(s.paid_until) : inDays(30))
+  // `options` fica por compatibilidade com os botões antigos de rotação: agora sempre entrega uma chave nova.
+  function openDelivery(userId: string, _options: { replaces?: Row } = {}) {
     const subscription = activeSubscription(userId) || userSubscriptions(userId)[0]
     setDraftCustomer(customer(userId))
     setDraftError('')
-    setHintNotice('')
-    setSavedDelivery(null)
+    setDelivered(null)
     setProfileId(null)
-    setDraft({
-      id: crypto.randomUUID(),
-      user_id: userId,
-      subscription_id: subscription?.id || '',
-      replaces: previous?.id || '',
-      product: (previous?.product as DeliveryProduct) || 'outro',
-      supplier: previous?.supplier && previous.supplier !== 'Não informado' ? previous.supplier : '',
-      key_hint: '',
-      base_url: previous?.base_url || '',
-      model_id: previous?.model_id || '',
-      expires_at: subscription?.paid_until && subscriptionActive(subscription) ? brDate(subscription.paid_until) : '',
-      notes: '',
-    })
+    setDraft({ userId, subscription_id: subscription?.id || '', expires: defaultExpires(subscription), all: true, models: [] })
+    void loadRouterModels()
   }
   const pickSubscription = (id: string) => {
     if (!draft) return
-    const s = subscriptionsById.get(id)
-    setDraft({ ...draft, subscription_id: id, expires_at: s?.paid_until && subscriptionActive(s) ? brDate(s.paid_until) : draft.expires_at })
+    setDraft({ ...draft, subscription_id: id, expires: defaultExpires(subscriptionsById.get(id)) })
   }
   const draftSubscription = draft?.subscription_id ? subscriptionsById.get(draft.subscription_id) : undefined
-  const expiresFromPlan = Boolean(draftSubscription?.paid_until && draft?.expires_at === brDate(draftSubscription.paid_until))
   const closeDelivery = () => {
     setDraft(null)
-    setSavedDelivery(null)
-    if (savedDelivery) setRevision((x) => x + 1)
+    if (delivered) setRevision((x) => x + 1)
+    setDelivered(null)
   }
-  const suggestions = (field: 'supplier' | 'base_url' | 'model_id') => [...new Set(deliveries.map((d) => d[field]).filter(Boolean))].slice(0, 12)
-
   async function saveDelivery(e: React.FormEvent) {
     e.preventDefault()
     if (!draft) return
-    if (!validKeyHint(draft.key_hint)) return setDraftError('Informe o final da chave com 2 a 8 caracteres.')
-    if (!validBaseUrl(draft.base_url)) return setDraftError('Informe a URL base com https://, sem parâmetros.')
+    if (!draft.expires) return setDraftError('Escolha até quando a chave vale.')
+    if (!draft.all && !draft.models.length) return setDraftError('Escolha pelo menos um modelo.')
     setSaving(true)
     setDraftError('')
-    // Produto deduzido do modelo; numa rotação sem modelo, mantém o da credencial anterior.
-    const product = draft.model_id.trim() ? productForModel(draft.model_id) : draft.product
     try {
-      const result = await adminAction<{ id: string; email?: string }>({ action: 'register-delivery', delivery: { ...draft, product } })
-      setDeliveryEmail(result.email || '')
-      setSavedDelivery(draft)
+      const result = await adminAction<KeyDelivered>({ action: 'deliver-key', user_id: draft.userId, subscription_id: draft.subscription_id || null, expires: draft.expires, models: draft.all ? null : draft.models })
+      setDelivered(result)
     } catch (err) {
-      setDraftError(err instanceof Error ? err.message : 'Não foi possível registrar.')
+      setDraftError(err instanceof Error ? err.message : 'Não foi possível criar a chave.')
     } finally {
       setSaving(false)
     }
+  }
+  const deliveredMessage = (c: Customer, d: KeyDelivered) => {
+    const labels = (d.models || (routerModels || []).map((m) => m.alias)).map((alias) => routerModels?.find((m) => m.alias === alias)?.label || alias)
+    return [
+      `Olá${c.name && c.name !== 'Sem nome' ? `, ${c.name}` : ''}! Seu acesso SixtySix está liberado.`,
+      '',
+      `Chave: ${d.key}`,
+      'Endereço (Claude Code): https://www.sixtysix.online',
+      'Endereço (Codex, Cline, OpenCode e apps compatíveis com OpenAI): https://www.sixtysix.online/v1',
+      ...(labels.length ? [`Modelos: ${labels.join(', ')}`] : []),
+      `Válida até: ${fullDate(d.expires_at)}`,
+      '',
+      'Depois de configurar, confirme o recebimento no seu painel: https://www.sixtysix.online/dashboard',
+    ].join('\n')
   }
 
   /* --------------------------- Fragmentos ---------------------------- */
@@ -646,7 +642,7 @@ export default function AdminPage() {
                       <div className="sx-actions">
                         {whatsappButton(c, customerGreeting({ name: c.name, plan: planNames[subscription!.plan_code] }))}
                         <button type="button" className="sx-btn is-primary" disabled={!deliveriesReady} onClick={() => openDelivery(user.id)}>
-                          <KeyRound size={15} /> Registrar entrega
+                          <KeyRound size={15} /> Entregar chave
                         </button>
                       </div>
                     </li>
@@ -705,7 +701,7 @@ export default function AdminPage() {
                       <div className="sx-actions">
                         {whatsappButton(c, customerGreeting({ name: c.name, plan: planOf(d.user_id) }))}
                         <button type="button" className="sx-btn is-primary" onClick={() => openDelivery(d.user_id, { replaces: d })}>
-                          <RefreshCw size={15} /> Registrar rotação
+                          <KeyRound size={15} /> Entregar chave nova
                         </button>
                       </div>
                     </li>
@@ -843,7 +839,7 @@ export default function AdminPage() {
                               {whatsappButton(customer(row.id), customerGreeting({ name: row.name, plan: planOf(row.id) }))}
                               {deliveriesReady && (
                                 <button type="button" className="sx-btn" onClick={() => openDelivery(row.id)}>
-                                  <KeyRound size={15} /> Entrega
+                                  <KeyRound size={15} /> Entregar chave
                                 </button>
                               )}
                             </div>
@@ -854,7 +850,7 @@ export default function AdminPage() {
                             <div className="sx-actions">
                               {(row.state === 'pending' || row.state === 'confirmed' || row.state === 'expired') && (
                                 <button type="button" className="sx-btn" onClick={() => openDelivery(row.user_id, { replaces: row })}>
-                                  <RefreshCw size={15} /> Rotação
+                                  <KeyRound size={15} /> Chave nova
                                 </button>
                               )}
                               {!row.revoked_at && (
@@ -919,7 +915,7 @@ export default function AdminPage() {
               {whatsappButton(profile.customer, customerGreeting({ name: profile.customer.name, plan: planOf(profileId) }), 'Chamar no WhatsApp')}
               {deliveriesReady && (
                 <button type="button" className="sx-btn is-primary" onClick={() => openDelivery(profileId)}>
-                  <KeyRound size={15} /> Registrar entrega
+                  <KeyRound size={15} /> Entregar chave
                 </button>
               )}
             </div>
@@ -981,7 +977,7 @@ export default function AdminPage() {
                         {d.state === 'pending' && whatsappButton(profile.customer, confirmationReminder({ name: profile.customer.name, hint: d.key_hint }), 'Lembrar')}
                         {['pending', 'confirmed', 'expired'].includes(d.state) && (
                           <button type="button" className="sx-btn" onClick={() => openDelivery(d.user_id, { replaces: d })}>
-                            <RefreshCw size={15} /> Rotação
+                            <KeyRound size={15} /> Chave nova
                           </button>
                         )}
                         {!d.revoked_at && !d.replaced_at && (
@@ -1042,29 +1038,33 @@ export default function AdminPage() {
         <div className="sx-modal-backdrop" onClick={closeDelivery}>
           <div className="sx-modal" role="dialog" aria-modal="true" aria-labelledby="sx-modal-title" onClick={(e) => e.stopPropagation()}>
             <header>
-              <span className="sx-eyebrow">{draft.replaces ? 'rotação de credencial' : 'nova entrega'}</span>
+              <span className="sx-eyebrow">entregar chave</span>
               <button type="button" className="sx-icon" onClick={closeDelivery} aria-label="Fechar">
                 <X size={18} />
               </button>
             </header>
-            <h2 id="sx-modal-title">{savedDelivery ? 'Entrega registrada.' : `Registrar entrega para ${draftCustomer.name}`}</h2>
-            {savedDelivery ? (
+            <h2 id="sx-modal-title">{delivered ? 'Chave criada.' : `Entregar chave para ${draftCustomer.name}`}</h2>
+            {delivered ? (
               <div className="sx-modal-done">
                 <p>
-                  <Check size={16} /> A credencial …{savedDelivery.key_hint} já aparece na dashboard do cliente para confirmação.
+                  <Check size={16} /> A chave já está valendo e aparece no painel do cliente. Ele só precisa confirmar que recebeu a chave terminada em …{delivered.hint}.
                 </p>
-                <p>Agora envie a chave pelo WhatsApp. A mensagem abre pronta; cole a chave no lugar indicado.</p>
-                {deliveryEmail === 'sent' && (
+                {delivered.email === 'sent' && (
                   <p>
-                    <Check size={16} /> Também avisamos o cliente por e-mail para olhar o WhatsApp e confirmar (sem a chave).
+                    <Check size={16} /> Também avisamos o cliente por e-mail (sem a chave).
                   </p>
                 )}
+                {!delivered.deliveryId && (
+                  <p>
+                    <CircleAlert size={16} /> A confirmação no painel não foi registrada (aplique supabase/whatsapp-delivery.sql). A chave funciona normalmente.
+                  </p>
+                )}
+                <pre className="sx-delivery-message">{deliveredMessage(draftCustomer, delivered)}</pre>
                 <div className="sx-actions">
-                  {whatsappButton(
-                    draftCustomer,
-                    deliveryMessage({ name: draftCustomer.name, hint: validKeyHint(savedDelivery.key_hint) || savedDelivery.key_hint, url: validBaseUrl(savedDelivery.base_url) || savedDelivery.base_url }),
-                    'Abrir WhatsApp do cliente',
-                  )}
+                  {whatsappButton(draftCustomer, deliveredMessage(draftCustomer, delivered), 'Enviar no WhatsApp do cliente')}
+                  <button type="button" className="sx-btn" onClick={() => void navigator.clipboard.writeText(deliveredMessage(draftCustomer, delivered)).then(() => setNotice('Mensagem copiada.')).catch(() => window.prompt('Copie a mensagem:', deliveredMessage(draftCustomer, delivered)))}>
+                    <Copy size={15} /> Copiar mensagem
+                  </button>
                   <button type="button" className="sx-btn" onClick={closeDelivery}>
                     Concluir
                   </button>
@@ -1083,132 +1083,63 @@ export default function AdminPage() {
                   <label className="is-wide">
                     Assinatura
                     <select value={draft.subscription_id} onChange={(e) => pickSubscription(e.target.value)}>
-                      {userSubscriptions(draft.user_id).map((s) => (
+                      {userSubscriptions(draft.userId).map((s) => (
                         <option key={s.id} value={s.id}>
                           {subscriptionLabel(s)}
                         </option>
                       ))}
                       <option value="">Sem assinatura (teste grátis ou cortesia)</option>
                     </select>
-                    <small>
-                      {draftSubscription
-                        ? subscriptionActive(draftSubscription)
-                          ? 'A validade da chave acompanha o fim do período pago.'
-                          : 'Esta assinatura não está ativa. Confira o pagamento antes de entregar.'
-                        : 'A entrega fica registrada sem plano. Defina a validade abaixo.'}
-                    </small>
+                    {draftSubscription && !subscriptionActive(draftSubscription) && <small>Esta assinatura não está ativa. Confira o pagamento antes de entregar.</small>}
                   </label>
-                  <label>
-                    Final da chave
-                    <input
-                      value={draft.key_hint}
-                      autoComplete="off"
-                      spellCheck={false}
-                      onChange={(e) => {
-                        const value = e.target.value.trim()
-                        if (value.length > 8) {
-                          setDraft({ ...draft, key_hint: value.slice(-4) })
-                          setHintNotice('Guardamos só os últimos 4 caracteres. A chave inteira não é salva no painel.')
-                        } else {
-                          setDraft({ ...draft, key_hint: value })
-                          setHintNotice('')
-                        }
-                      }}
-                      placeholder="Ex.: 9f3a"
-                      required
-                    />
-                    <small>{hintNotice || 'Só os últimos caracteres (2 a 8). Nunca a chave inteira.'}</small>
-                  </label>
-                  <label>
+                  <label className="is-wide">
                     Válida até
-                    <input type="date" value={draft.expires_at} onChange={(e) => setDraft({ ...draft, expires_at: e.target.value })} />
+                    <input type="date" value={draft.expires} onChange={(e) => setDraft({ ...draft, expires: e.target.value })} />
                     <span className="sx-quick">
                       {draftSubscription?.paid_until && subscriptionActive(draftSubscription) && (
-                        <button
-                          type="button"
-                          className={expiresFromPlan ? 'is-on' : ''}
-                          onClick={() => setDraft({ ...draft, expires_at: brDate(draftSubscription.paid_until) })}
-                        >
+                        <button type="button" className={draft.expires === brDate(draftSubscription.paid_until) ? 'is-on' : ''} onClick={() => setDraft({ ...draft, expires: brDate(draftSubscription.paid_until) })}>
                           Fim do plano
                         </button>
                       )}
                       {[7, 30].map((d) => (
-                        <button key={d} type="button" onClick={() => setDraft({ ...draft, expires_at: inDays(d) })}>
-                          +{d} dias
+                        <button key={d} type="button" onClick={() => setDraft({ ...draft, expires: inDays(d) })}>
+                          {d} dias
                         </button>
                       ))}
                     </span>
+                    <small>A chave para sozinha no fim desse dia. Depois dá para renovar ou editar no Roteador.</small>
                   </label>
-                  <label className="is-wide">
-                    URL base
-                    <input
-                      list="sx-urls"
-                      value={draft.base_url}
-                      onChange={(e) => setDraft({ ...draft, base_url: e.target.value })}
-                      placeholder="https://api.fornecedor.com"
-                      required
-                    />
-                    <datalist id="sx-urls">
-                      {suggestions('base_url').map((v) => (
-                        <option key={v} value={v} />
-                      ))}
-                    </datalist>
-                  </label>
-                  <label>
-                    Modelo (opcional)
-                    <input
-                      list="sx-models"
-                      value={draft.model_id}
-                      onChange={(e) => setDraft({ ...draft, model_id: e.target.value })}
-                      placeholder="Ex.: claude-fable-5-1"
-                    />
-                    <datalist id="sx-models">
-                      {[...new Set([...Object.keys(MODEL_NAMES), ...suggestions('model_id')])].map((v) => (
-                        <option key={v} value={v}>
-                          {MODEL_NAMES[v] || v}
-                        </option>
-                      ))}
-                    </datalist>
-                    <small>{draft.model_id && MODEL_NAMES[draft.model_id] ? `Aparece para o cliente como ${MODEL_NAMES[draft.model_id]}.` : 'Ex.: argon-4, claude-fable-5-1, gpt-6-astra.'}</small>
-                  </label>
-                  <label>
-                    Substitui a credencial
-                    <select value={draft.replaces} onChange={(e) => setDraft({ ...draft, replaces: e.target.value })}>
-                      <option value="">Nenhuma (nova chave)</option>
-                      {activeDeliveries(draft.user_id).map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {credentialTitle(d)} · …{d.key_hint}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Fornecedor (opcional)
-                    <input
-                      list="sx-suppliers"
-                      maxLength={60}
-                      value={draft.supplier}
-                      onChange={(e) => setDraft({ ...draft, supplier: e.target.value })}
-                      placeholder="De onde veio a chave"
-                    />
-                    <datalist id="sx-suppliers">
-                      {suggestions('supplier')
-                        .filter((v) => v !== 'Não informado')
-                        .map((v) => (
-                          <option key={v} value={v} />
-                        ))}
-                    </datalist>
-                  </label>
-                  <label>
-                    Observação (opcional)
-                    <textarea
-                      maxLength={500}
-                      rows={2}
-                      value={draft.notes}
-                      onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-                      placeholder="Ex.: rotação mensal do fornecedor"
-                    />
-                  </label>
+                  <fieldset className="sx-delivery-models is-wide">
+                    <legend>Modelos</legend>
+                    {!routerModels ? (
+                      <small>Carregando os modelos do Roteador…</small>
+                    ) : !routerModels.length ? (
+                      <small>Nenhum modelo ativo no Roteador. Cadastre o fornecedor e os modelos na aba Roteador.</small>
+                    ) : (
+                      <>
+                        <label>
+                          <input type="radio" checked={draft.all} onChange={() => setDraft({ ...draft, all: true })} /> Todos os modelos à venda ({routerModels.length})
+                        </label>
+                        <label>
+                          <input type="radio" checked={!draft.all} onChange={() => setDraft({ ...draft, all: false })} /> Escolher
+                        </label>
+                        {!draft.all && (
+                          <div className="sx-delivery-chips">
+                            {routerModels.map((m) => (
+                              <label key={m.alias}>
+                                <input
+                                  type="checkbox"
+                                  checked={draft.models.includes(m.alias)}
+                                  onChange={(e) => setDraft({ ...draft, models: e.target.checked ? [...draft.models, m.alias] : draft.models.filter((x) => x !== m.alias) })}
+                                />
+                                {m.label}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </fieldset>
                 </div>
                 {draftError && (
                   <p className="sx-admin-message is-error" role="alert">
@@ -1219,8 +1150,8 @@ export default function AdminPage() {
                   <button type="button" className="sx-btn" onClick={closeDelivery}>
                     Cancelar
                   </button>
-                  <button type="submit" className="sx-btn is-primary" disabled={saving}>
-                    <ShieldCheck size={15} /> {saving ? 'Registrando…' : 'Registrar entrega'}
+                  <button type="submit" className="sx-btn is-primary" disabled={saving || !routerModels?.length}>
+                    <KeyRound size={15} /> {saving ? 'Criando a chave…' : 'Criar chave e preparar WhatsApp'}
                   </button>
                 </div>
               </form>

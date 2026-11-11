@@ -1366,3 +1366,55 @@
   font: 700 16px/1.2 'Fustat', sans-serif;
   color: var(--ink);
 }
+
+/* Entregar chave */
+.sx-delivery-message {
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 500 12.5px/1.55 'DM Mono', ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.sx-delivery-models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 10px 14px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+}
+
+.sx-delivery-models legend {
+  padding: 0 4px;
+  font: 700 13px/1.3 'Fustat', sans-serif;
+}
+
+.sx-delivery-models label,
+.sx-delivery-chips label {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 6px !important;
+  font: 600 13px/1.3 'Manrope', sans-serif !important;
+}
+
+.sx-delivery-models input,
+.sx-delivery-chips input {
+  width: auto !important;
+  min-height: 0 !important;
+}
+
+.sx-delivery-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}

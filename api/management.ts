@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { normalizeWhatsapp } from '../src/lib/whatsapp.js'
+import { randomUUID } from 'node:crypto'
+import { formatWhatsapp, normalizeWhatsapp } from '../src/lib/whatsapp.js'
 import { credentialTitle, isUuid, validateDeliveryInput } from '../src/lib/deliveries.js'
 import { emailConfig } from '../server/email.js'
 import { createNotifier, userFromAuth, type NotifyResult } from '../server/notifications.js'
@@ -94,6 +95,45 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    const query=new URLSearchParams({resource:'trials',history:'1'}),read=createAdminService(env,request);let count=0
    for(let offset=0;offset<=1000000;offset+=500){query.set('offset',String(offset));const page=await read(authorization,query);for(const trial of page.rows){if(Date.parse(trial.created_at)>=Date.parse(TRIAL_CUTOFF)||trial.revoked_at)continue;if(await rpc<boolean>('account_revoke_trial',{p_user_id:trial.user_id,p_client_id:trial.gateway_client_id})!==true)throw new AccountError(503,'Revogação incompleta. Atualize e tente novamente.');count++}if(!page.hasMore)break}
    return {revoked:count,cutoff:TRIAL_CUTOFF}
+  }
+  // Entrega da operação atual: cria a chave SixtySix (sk-rt-) no Roteador, liga à conta do cliente
+  // (ele vê a chave e o consumo no painel) e registra a entrega para ele confirmar o recebimento.
+  if(action==='deliver-key'){
+   if(!isUuid(body.user_id))throw new AccountError(400,'Cliente inválido.')
+   const subscription=body.subscription_id==null||body.subscription_id===''?null:body.subscription_id
+   if(subscription!==null&&!isUuid(subscription))throw new AccountError(400,'Assinatura inválida.')
+   const raw=typeof body.expires==='string'?body.expires.trim():''
+   const until=Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(raw)?`${raw}T23:59:59-03:00`:'')
+   if(!Number.isFinite(until)||until<=Date.now())throw new AccountError(400,'Escolha uma validade a partir de hoje.')
+   const days=Math.ceil((until-Date.now())/86400000)
+   if(days>366)throw new AccountError(400,'Escolha uma validade de até 1 ano.')
+   const models=Array.isArray(body.models)?(body.models as unknown[]).map(m=>String(m).trim()).filter(Boolean).slice(0,200):null
+   if(models&&!models.length)throw new AccountError(400,'Escolha pelo menos um modelo.')
+   const found=await request(`${config.url}/auth/v1/admin/users/${body.user_id}`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(10000)})
+   if(!found.ok)throw new AccountError(404,'Cliente não encontrado.')
+   const customer=userFromAuth(await found.json())
+   const name=(customer.name||customer.email||'Cliente').trim().slice(0,80)
+   const contact=(customer.whatsapp?formatWhatsapp(customer.whatsapp):customer.email||'').slice(0,80)
+   const router=createRouterAdmin(config,request,email)
+   let created:{key:string;row:Row}
+   try{
+    created=await router.createKey({name,contact,days,models}) as {key:string;row:Row}
+    // Validade exata: até o fim do dia escolhido, no horário de Brasília.
+    await router.updateKey({id:created.row.id,name,contact,models,expires_at:raw})
+   }catch(error){if(error instanceof RouterError)throw new AccountError(error.status,error.message);throw error}
+   const headers2={...serviceHeaders(config.secret),'Content-Type':'application/json'}
+   // Liga a chave à conta do cliente: ela e o consumo aparecem no painel dele.
+   await request(`${config.url}/rest/v1/gateway_clients?${new URLSearchParams({id:`eq.${created.row.gateway_client_id}`})}`,{method:'PATCH',headers:headers2,body:JSON.stringify({user_id:customer.id}),signal:AbortSignal.timeout(10000)}).catch(()=>undefined)
+   // Registro da entrega: o cliente confirma no painel que recebeu a chave terminada em …xxxx.
+   const hint=created.key.slice(-4),deliveryId=randomUUID()
+   let delivered:string|null=null
+   try{
+    delivered=await rpc<string|null>('admin_register_delivery',{p_id:deliveryId,p_user_id:customer.id,p_subscription_id:subscription,p_product:'outro',p_supplier:'SixtySix',p_key_hint:hint,p_base_url:'https://www.sixtysix.online',p_model_id:null,p_notes:null,p_expires_at:new Date(until).toISOString(),p_replaces:null,p_created_by:email})
+   }catch{delivered=null}
+   let notice:NotifyResult='skipped'
+   const mail=emailConfig(env)
+   if(mail&&delivered)notice=await createNotifier(config,mail,request).delivery(customer,{id:deliveryId,title:'SixtySix',key_hint:hint}).catch(()=>'failed' as NotifyResult)
+   return {key:created.key,hint,expires_at:new Date(until).toISOString(),models,keyId:created.row.id,deliveryId:delivered,email:notice}
   }
   if(action==='register-delivery'){
    let input

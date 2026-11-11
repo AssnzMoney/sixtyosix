@@ -6,7 +6,7 @@ import { emailConfig, type EmailConfig } from '../server/email.js'
 import { createNotifier, userFromAuth } from '../server/notifications.js'
 
 type Config = { url: string; secret: string; publicKey: string;billingConnected?:boolean }
-type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean }
+type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean;expires?:string|null }
 type Subscription = {id:string;plan_code:string;amount_cents:number;api_enabled:boolean;models:string[];paid_until:string|null;provider_status:string;created_at:string;entitled:boolean;billing_mode:string}
 type PaidAccess = {subscription_id:string;gateway_client_id:string;token_prefix:string;paid_until:string|null;revoked_at:string|null;api_enabled:boolean;created_at:string;entitled:boolean;billing_mode:string}
 type Trial = { gateway_client_id:string; token_prefix:string; created_at:string; expires_at:string; revoked_at:string|null }
@@ -71,6 +71,20 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         const offset = Number(query.get('offset') || 0)
         if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000) throw new AccountError(400, 'Página inválida.')
         const mine = await clients(userId)
+        // Chaves do Roteador ligadas a esta conta: validade e bloqueio vêm de router_keys.
+        if (mine.length) {
+          const routerKeys = await db<{ gateway_client_id: string; expires_at: string; revoked_at: string | null }[]>('router_keys', {
+            gateway_client_id: `in.(${mine.map(c => c.id).join(',')})`, select: 'gateway_client_id,expires_at,revoked_at',
+          }).catch(() => [])
+          for (const k of routerKeys) {
+            const client = mine.find(c => c.id === k.gateway_client_id)
+            if (!client) continue
+            client.name = 'Chave SixtySix'
+            client.enabled = !k.revoked_at && Date.parse(k.expires_at) > Date.now()
+            client.managed = true
+            client.expires = k.expires_at
+          }
+        }
         const trials = await db<Trial[]>('gateway_trials', { user_id:`eq.${userId}`,select:'gateway_client_id,token_prefix,created_at,expires_at,revoked_at',limit:'1' })
         const trial=trials[0]
         if(trial) mine.push({id:trial.gateway_client_id,name:'Teste grátis · 7 dias',enabled:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),created_at:trial.created_at,key_prefix:trial.token_prefix,managed:true})
@@ -85,7 +99,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
           client_id: `in.(${mine.map(c => c.id).join(',')})`, and: `(created_at.gte.${start},created_at.lt.${end},created_at.lte.${new Date(asOf).toISOString()})`,
           order: 'created_at.desc,id.desc', limit: '1000', offset: String(offset),
         }) : []
-        return { keys: mine.filter(c=>c.visible!==false).map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:Boolean(c.managed) })), usage, hasMore: usage.length === 1000, subscription, billingConnected:Boolean(config.billingConnected),
+        return { keys: mine.filter(c=>c.visible!==false).map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:Boolean(c.managed),expires:c.expires||null })), usage, hasMore: usage.length === 1000, subscription, billingConnected:Boolean(config.billingConnected),
           trial:trial?{expires:trial.expires_at,active:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),revoked:Boolean(trial.revoked_at),models:canonicalModels(router,withPlanModels(PRO_BASE_MODELS,router.proAliases))}:null }
       }
       // Chaves antigas do gateway (sk-flg-) foram desativadas: a chave agora sai do Roteador e é entregue pelo WhatsApp.

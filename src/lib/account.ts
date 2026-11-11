@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-export type AccountKey = { id: string; name: string; prefix: string; active: boolean; created: string; managed?:boolean }
+export type AccountKey = { id: string; name: string; prefix: string; active: boolean; created: string; managed?:boolean; expires?:string|null }
 export type AccountTrial = {expires:string;active:boolean;revoked:boolean;models?:string[]}
 export type AccountSubscription={id:string;plan:string;name:string;amount:number;api:boolean;models:string[];active:boolean;expires:string|null;status:string;mode:string}
 export type AccountUsage = { id: number; client_id: string; requested_alias: string; status_code: number; input_tokens: number; output_tokens: number; latency_ms: number; created_at: string }
