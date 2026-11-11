@@ -1975,6 +1975,47 @@
   margin-top: 8px;
 }
 
+/* Dev: com ou sem chave de API, como na página inicial */
+.six-plan-api-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  background: var(--cream);
+}
+
+.six-plan-api-toggle button {
+  height: 32px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--muted);
+  font: 700 12.5px/1 'Fustat', sans-serif;
+  cursor: pointer;
+}
+
+.six-plan-api-toggle button[aria-pressed='true'] {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.six-plan-card.is-current {
+  border-color: rgba(22, 163, 74, 0.35);
+  box-shadow: 0 0 0 3px var(--green-soft);
+}
+
+.six-plan-card .six-primary.is-current,
+.six-plan-card .six-primary.is-current:hover {
+  background: var(--track);
+  color: var(--green-text);
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
 /* --------------------------------------------------------------------------
    Credenciais entregues pelo WhatsApp
    -------------------------------------------------------------------------- */

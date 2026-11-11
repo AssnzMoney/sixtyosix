@@ -85,7 +85,17 @@ const ALL_MODELS = "Todos os modelos"
 const supportLink = (message: string) => supportWhatsappLink(message)
 
 // Planos e preços como publicados na página inicial (#planos). A contratação é feita pelo WhatsApp.
-const PLANS = [
+const PLANS: Array<{
+  name: string
+  price: string
+  period: string
+  desc: string
+  note: string
+  cta: string
+  message: string
+  icon: string
+  code?: "dev" | "pro"
+}> = [
   {
     name: "Teste Grátis",
     price: "0",
@@ -102,8 +112,9 @@ const PLANS = [
     period: "/mês",
     desc: "Para desenvolvedores que criam e entregam software no dia a dia.",
     note: "Chave de API: + R$ 15/mês",
-    cta: "Contratar pelo WhatsApp",
+    cta: "Contratar o Dev",
     message: "Olá! Quero contratar o plano Dev da SixtySix.",
+    code: "dev",
     icon: "/assets/plan-cash.webp",
   },
   {
@@ -112,8 +123,9 @@ const PLANS = [
     period: "/mês",
     desc: "Acesso irrestrito aos modelos de ponta para quem constrói sem parar.",
     note: "Acesso à API incluso",
-    cta: "Contratar pelo WhatsApp",
+    cta: "Contratar o Pro",
     message: "Olá! Quero contratar o plano Pro Ilimitado da SixtySix.",
+    code: "pro",
     icon: "/assets/plan-cash.webp",
   },
 ]
@@ -351,6 +363,7 @@ export default function DashboardPage() {
   const keys = ownData?.keys || []
   const trial = ownData?.trial ?? null
   const subscription = ownData?.subscription ?? null
+  const [devWithApi, setDevWithApi] = useState(false)
   const [accountError, setAccountError] = useState("")
   const [busy, setBusy] = useState(false)
   const [claimKey, setClaimKey] = useState("")
@@ -1911,27 +1924,53 @@ export default function DashboardPage() {
               <section aria-labelledby="six-plans-title">
                 <div className="six-section-head">
                   <h2 id="six-plans-title">Planos</h2>
-                  <p>Escolha o seu e fale com a gente no WhatsApp para contratar.</p>
+                  <p>Contrate aqui mesmo, por Pix ou cartão. Depois do pagamento, sua chave chega pelo WhatsApp.</p>
                 </div>
                 <div className="six-plans-grid">
-                  {PLANS.map((plan) => (
-                    <article key={plan.name} className="six-plan-card">
-                      <img src={plan.icon} alt="" aria-hidden="true" />
-                      <h3>{plan.name}</h3>
-                      <div className="six-plan-card-price">
-                        <span>R$</span>
-                        <strong>{plan.price}</strong>
-                        <small>{plan.period}</small>
-                      </div>
-                      <p>{plan.desc}</p>
-                      <span className="six-plan-card-note">
-                        <Check size={14} aria-hidden="true" /> {plan.note}
-                      </span>
-                      <a className="six-primary" href={supportLink(plan.message)} target="_blank" rel="noopener noreferrer">
-                        {plan.cta} <ArrowUpRight size={15} />
-                      </a>
-                    </article>
-                  ))}
+                  {PLANS.map((plan) => {
+                    // Dev pode ir com ou sem chave de API, como na página inicial.
+                    const code = plan.code === "dev" && devWithApi ? "devApi" : plan.code
+                    const current = Boolean(code && subscription?.active && subscription.plan === code)
+                    return (
+                      <article key={plan.name} className={`six-plan-card${current ? " is-current" : ""}`}>
+                        <img src={plan.icon} alt="" aria-hidden="true" />
+                        <h3>{plan.name}</h3>
+                        <div className="six-plan-card-price">
+                          <span>R$</span>
+                          <strong>{plan.code === "dev" && devWithApi ? "94,99" : plan.price}</strong>
+                          <small>{plan.period}</small>
+                        </div>
+                        <p>{plan.desc}</p>
+                        {plan.code === "dev" ? (
+                          <div className="six-plan-api-toggle" role="group" aria-label="Chave de API no plano Dev">
+                            <button type="button" aria-pressed={!devWithApi} onClick={() => setDevWithApi(false)}>
+                              Só no site
+                            </button>
+                            <button type="button" aria-pressed={devWithApi} onClick={() => setDevWithApi(true)}>
+                              + Chave de API
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="six-plan-card-note">
+                            <Check size={14} aria-hidden="true" /> {plan.note}
+                          </span>
+                        )}
+                        {current ? (
+                          <span className="six-primary is-current" aria-disabled="true">
+                            <CircleCheck size={15} aria-hidden="true" /> Seu plano atual
+                          </span>
+                        ) : code ? (
+                          <Link className="six-primary" to={`/comprar/${code}`}>
+                            {plan.code === "dev" && devWithApi ? "Contratar o Dev + API" : plan.cta} <ArrowRight size={15} />
+                          </Link>
+                        ) : (
+                          <a className="six-primary" href={supportLink(plan.message)} target="_blank" rel="noopener noreferrer">
+                            {plan.cta} <ArrowUpRight size={15} />
+                          </a>
+                        )}
+                      </article>
+                    )
+                  })}
                 </div>
               </section>
               <section className="six-panel">
