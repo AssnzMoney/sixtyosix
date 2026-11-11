@@ -1,35 +1,25 @@
-/* Tela de nome e WhatsApp — mesma identidade da página inicial
-   (papel, tinta verde-petróleo, Fustat, card branco e pílula verde-limão).
-   À direita, o número digitado aparece em destaque: é onde a chave vai chegar. */
-.six-onb,
+/* Tela de nome e WhatsApp — usa o layout do login (login-page-wrap, login-split-grid,
+   AuthShowcase) e acrescenta só o que é próprio dela: conta conectada e campos com ícone. */
+.six-onb-box,
 .six-onb-loading {
-  --onb-paper: #fbf9f4;
   --onb-ink: #1f4647;
-  --onb-ink-deep: #123435;
   --onb-muted: #4e6b68;
   --onb-line: rgba(31, 70, 71, 0.1);
-  --onb-line-strong: rgba(31, 70, 71, 0.2);
-  --onb-lime: #9eea6c;
-  --onb-lime-ink: #0b3824;
   --onb-green: #16a34a;
   --onb-green-text: #15803d;
-  --onb-green-soft: rgba(34, 197, 94, 0.12);
   --onb-danger: #b42318;
-  min-height: 100vh;
-  min-height: 100dvh;
-  background: var(--onb-paper);
-  color: var(--onb-ink);
-  font-family: 'Manrope', sans-serif;
 }
 
 .six-onb-loading {
+  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   align-content: center;
   gap: 14px;
+  background: #fbfcfb;
   color: var(--onb-muted);
-  font-size: 14px;
-  font-weight: 600;
+  font: 600 14px/1.4 'Manrope', sans-serif;
 }
 
 .six-onb-spinner {
@@ -47,47 +37,38 @@
   }
 }
 
-.six-onb {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
+/* Em telas baixas a coluna do formulário rola em vez de cortar o botão */
+.six-onb-page .login-left-col {
+  justify-content: safe center;
+  overflow-y: auto;
 }
 
-/* Card dividido: formulário à esquerda, destino da chave à direita */
-.six-onb-shell {
-  width: 100%;
-  max-width: 980px;
-  display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-  border: 1px solid var(--onb-line);
-  border-radius: 28px;
-  background: #ffffff;
-  box-shadow: 0 30px 70px -36px rgba(31, 70, 71, 0.35);
-  overflow: hidden;
+.six-onb-page .login-brand-header {
+  margin-bottom: 18px;
 }
 
-.six-onb-main {
-  padding: 34px 40px 28px;
+.six-onb-page .login-sub {
+  margin-bottom: 22px;
 }
 
 /* Conta conectada */
 .six-onb-account {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 11px;
+  align-self: center;
   max-width: 100%;
-  margin-bottom: 26px;
-  padding: 7px 16px 7px 7px;
+  margin-bottom: 18px;
+  padding: 6px 16px 6px 6px;
   border: 1px solid var(--onb-line);
   border-radius: 9999px;
-  background: var(--onb-paper);
+  background: #fbf9f4;
 }
 
 .six-onb-avatar {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -95,7 +76,7 @@
   border-radius: 50%;
   background: #e4f9ee;
   color: var(--onb-ink);
-  font: 800 14px/1 'Fustat', sans-serif;
+  font: 800 13px/1 'Fustat', sans-serif;
 }
 
 .six-onb-avatar img {
@@ -109,8 +90,8 @@
   position: absolute;
   right: -3px;
   bottom: -3px;
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   display: grid;
   place-items: center;
   border: 2px solid #ffffff;
@@ -141,34 +122,11 @@
 
 .six-onb-account-text strong {
   overflow: hidden;
-  font-size: 13.5px;
+  color: var(--onb-ink);
+  font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-
-/* Título */
-.six-onb-title {
-  margin: 0 0 10px;
-  color: var(--onb-ink);
-  font: 700 clamp(30px, 4.4vw, 40px)/1.05 'Fustat', sans-serif;
-  letter-spacing: -0.045em;
-}
-
-.six-onb-title em {
-  font-family: 'Instrument Serif', 'Newsreader', Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  color: var(--onb-green);
-}
-
-.six-onb-sub {
-  max-width: 40ch;
-  margin: 0 0 24px;
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--onb-muted);
 }
 
 /* Formulário */
@@ -178,32 +136,34 @@
   gap: 16px;
 }
 
-.six-onb-field label {
+.six-onb-field .login-label {
   display: block;
   margin-bottom: 7px;
-  font: 700 14px/1.3 'Fustat', sans-serif;
 }
 
+/* Mesmo campo do login (borda clara, raio 12px, foco verde), com ícone dentro */
 .six-onb-input {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 52px;
-  padding: 0 16px;
-  border: 1px solid var(--onb-line-strong);
-  border-radius: 16px;
-  background: var(--onb-paper);
-  color: var(--onb-muted);
+  height: 48px;
+  padding: 0 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #94a3b8;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    background 0.15s ease;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .six-onb-input:focus-within {
-  border-color: var(--onb-green);
-  background: #ffffff;
-  box-shadow: 0 0 0 4px var(--onb-green-soft);
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+
+.six-onb-input.is-valid {
+  border-color: rgba(34, 197, 94, 0.55);
 }
 
 .six-onb-input.is-invalid {
@@ -211,7 +171,7 @@
 }
 
 .six-onb-input.is-invalid:focus-within {
-  box-shadow: 0 0 0 4px rgba(180, 35, 24, 0.1);
+  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.1);
 }
 
 .six-onb-input input {
@@ -223,52 +183,45 @@
   outline: none;
   background: transparent;
   color: var(--onb-ink);
-  font: 600 15.5px/1 'Manrope', sans-serif;
+  font: 500 14.5px/1 'Manrope', sans-serif;
 }
 
-/* O anel de foco fica no contorno do campo, não no input dentro dele */
 .six-onb-input input:focus-visible {
   outline: none;
 }
 
 .six-onb-input input::placeholder {
-  color: #8aa19d;
-  font-weight: 500;
+  color: #94a3b8;
 }
 
 /* WhatsApp: +55 fixo, o cliente digita só DDD e número */
 .six-onb-input.is-phone {
-  padding-left: 6px;
+  padding-left: 5px;
 }
 
 .six-onb-ddi {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  height: 38px;
-  padding: 0 12px;
-  border-radius: 11px;
-  background: #ffffff;
-  border: 1px solid var(--onb-line);
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 9px;
+  background: #f1f5f2;
   color: var(--onb-ink);
-  font: 700 14.5px/1 'Fustat', sans-serif;
+  font: 700 14px/1 'Fustat', sans-serif;
 }
 
 .six-onb-input.is-phone input {
   font-family: 'Fustat', sans-serif;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: 0.01em;
-}
-
-.six-onb-input.is-valid {
-  border-color: rgba(22, 163, 74, 0.45);
 }
 
 .six-onb-count {
   font-size: 12px;
   font-weight: 600;
-  color: #8aa19d;
+  color: #94a3b8;
 }
 
 .six-onb-ok {
@@ -289,7 +242,7 @@
 .six-onb-suggestions button {
   height: 30px;
   padding: 0 13px;
-  border: 1px solid var(--onb-line-strong);
+  border: 1.5px solid #e2e8f0;
   border-radius: 9999px;
   background: #ffffff;
   color: var(--onb-ink);
@@ -303,7 +256,7 @@
 
 .six-onb-help {
   margin: 7px 0 0;
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.5;
   color: var(--onb-muted);
 }
@@ -316,237 +269,28 @@
 .six-onb-error {
   margin: 0;
   padding: 11px 14px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #fdecea;
   color: var(--onb-danger);
   font-size: 13.5px;
   font-weight: 600;
 }
 
-.six-onb-submit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 52px;
-  margin-top: 4px;
-  border: 0;
-  border-radius: 9999px;
-  background: var(--onb-lime);
-  color: var(--onb-lime-ink);
-  font: 800 15.5px/1 'Fustat', sans-serif;
-  letter-spacing: -0.01em;
-  box-shadow: 0 6px 18px rgba(158, 234, 108, 0.45);
-  cursor: pointer;
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    background 0.15s ease;
+.six-onb-box .login-submit-btn {
+  margin-top: 2px;
 }
 
-.six-onb-submit:hover:not(:disabled) {
-  background: #8ee257;
-  transform: translateY(-1px);
-  box-shadow: 0 10px 24px rgba(158, 234, 108, 0.55);
-}
-
-.six-onb-submit:disabled {
-  opacity: 0.7;
+.six-onb-box .login-submit-btn:disabled {
   cursor: progress;
 }
 
-.six-onb-note {
-  margin: 18px 0 0;
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--onb-muted);
-}
-
-.six-onb-note a {
-  color: var(--onb-green-text);
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.six-onb :is(button, a):focus-visible {
+.six-onb-box :is(button, a):focus-visible {
   outline: 2px solid var(--onb-green);
   outline-offset: 2px;
-}
-
-/* Lado da chave */
-.six-onb-preview {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 22px;
-  padding: 34px 34px 28px;
-  background:
-    radial-gradient(120% 70% at 100% 0%, rgba(158, 234, 108, 0.16), transparent 60%),
-    var(--onb-ink);
-  color: #e8f1ec;
-}
-
-.six-onb-logo {
-  display: block;
-  height: 30px;
-  width: auto;
-  align-self: flex-start;
-}
-
-.six-onb-preview-copy p {
-  margin: 0 0 8px;
-  font: 600 14px/1.4 'Manrope', sans-serif;
-  color: rgba(232, 241, 236, 0.72);
-}
-
-.six-onb-number {
-  display: block;
-  font: 700 clamp(26px, 3.1vw, 34px)/1.1 'Fustat', sans-serif;
-  letter-spacing: -0.03em;
-  word-spacing: -0.12em;
-  color: #ffffff;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-  transition: color 0.2s ease;
-}
-
-.six-onb-number.is-empty {
-  color: rgba(232, 241, 236, 0.35);
-}
-
-.six-onb-number.is-valid {
-  color: var(--onb-lime);
-}
-
-/* Prévia da conversa: o que chega no WhatsApp depois do pagamento */
-.six-onb-chat {
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 22px;
-  background: rgba(18, 52, 53, 0.55);
-}
-
-.six-onb-chat-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 2px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 12px;
-}
-
-.six-onb-chat-avatar {
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #ffffff;
-}
-
-.six-onb-chat-avatar img {
-  width: 22px;
-  height: auto;
-}
-
-.six-onb-chat-head span:last-child {
-  display: flex;
-  flex-direction: column;
-}
-
-.six-onb-chat-head strong {
-  font: 700 14px/1.2 'Fustat', sans-serif;
-  color: #ffffff;
-}
-
-.six-onb-chat-head small {
-  font-size: 12px;
-  color: rgba(232, 241, 236, 0.6);
-}
-
-.six-onb-bubble {
-  position: relative;
-  max-width: 92%;
-  padding: 11px 14px 22px;
-  border-radius: 4px 16px 16px 16px;
-  background: #fbf9f4;
-  color: var(--onb-ink);
-  font-size: 13.5px;
-  line-height: 1.5;
-}
-
-.six-onb-bubble p {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.six-onb-bubble-code {
-  margin-top: 6px !important;
-  font: 500 12.5px/1.6 'DM Mono', ui-monospace, monospace;
-  color: var(--onb-muted);
-}
-
-.six-onb-bubble-code span {
-  color: var(--onb-ink);
-}
-
-.six-onb-ticks {
-  position: absolute;
-  right: 10px;
-  bottom: 5px;
-  display: inline-flex;
-  color: #9fb4b0;
-  transition: color 0.2s ease;
-}
-
-.six-onb-ticks.is-valid {
-  color: #34b7f1;
-}
-
-.six-onb-preview-foot {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: rgba(232, 241, 236, 0.7);
-}
-
-@media (max-width: 860px) {
-  .six-onb {
-    align-items: flex-start;
-    padding: 16px 12px 24px;
-  }
-
-  .six-onb-shell {
-    grid-template-columns: minmax(0, 1fr);
-    max-width: 540px;
-    border-radius: 24px;
-  }
-
-  .six-onb-main {
-    padding: 26px 22px 22px;
-  }
-
-  .six-onb-preview {
-    gap: 16px;
-    padding: 24px 22px 22px;
-  }
-
-  .six-onb-logo {
-    display: none;
-  }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
   .six-onb-spinner {
     animation-duration: 3s;
-  }
-
-  .six-onb-number,
-  .six-onb-ticks,
-  .six-onb-submit {
-    transition: none;
   }
 }

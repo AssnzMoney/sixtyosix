@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { accountDestination } from '../lib/authDestination'
+import AuthShowcase from '../components/AuthShowcase'
 
 const GoogleIcon = () => (
   <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -381,39 +382,8 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Coluna Direita: Showcase com Arte Renascentista estilo AbacatePay */}
-        <div className="login-right-col">
-          <div className="login-showcase-panel">
-            {/* Palco Artístico com as Donzelas Renascentistas e Mascote Caindo de Paraquedas */}
-            <div className="login-art-stage">
-              <motion.img
-                src="/assets/login-art-lady-left.webp"
-                alt="Donzela Renascentista"
-                className="login-art-lady-left"
-                initial={{ opacity: 0, x: -35 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
-              />
-
-              {/* Mascote SixtySix com Paraquedas (Estático e Reto) */}
-              <div className="login-art-parachute-wrap">
-                <img
-                  src="/assets/sixtysix-parachute.webp"
-                  alt="SixtySix Paraquedas"
-                  className="login-art-parachute-img"
-                />
-              </div>
-
-              <motion.img
-                src="/assets/login-art-lady-right.webp"
-                alt="Dama Renascentista"
-                className="login-art-lady-right"
-                initial={{ opacity: 0, x: 35 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
-              />
-            </div>
-
+        {/* Coluna Direita: arte do login, compartilhada com a tela de WhatsApp */}
+        <AuthShowcase>
             {/* Texto de Impacto Inferior com Slides */}
             <div className="showcase-bottom-copy">
               <AnimatePresence mode="wait">
@@ -468,8 +438,7 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-          </div>
-        </div>
+        </AuthShowcase>
       </div>
 
       {/* Modal de Conexão das Chaves / Modo de Teste */}

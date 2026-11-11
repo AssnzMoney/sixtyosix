@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, Mail, ShieldCheck, Check, CheckCheck } from 'lucide-react'
+import { User, Mail, ShieldCheck, Check } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { accountDestination } from '../lib/authDestination'
+import AuthShowcase from '../components/AuthShowcase'
 import { formatWhatsapp, maskWhatsappInput, normalizeWhatsapp } from '../lib/whatsapp'
 import './onboarding.css'
 
@@ -118,183 +119,163 @@ export default function OnboardingPage() {
   }
 
   const providerLabel = user.provider === 'google' ? 'Google' : user.provider === 'discord' ? 'Discord' : 'e-mail'
-  const previewName = nameValue || suggestedName
-  const previewNumber = phoneDigits ? formatWhatsapp(phoneDigits) : whatsapp ? `+55 ${whatsapp}` : '+55 (DDD) 00000-0000'
 
   return (
-    <main className="six-onb">
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="six-onb-shell"
-      >
-        <section className="six-onb-main" aria-labelledby="six-onb-title">
-          <div className="six-onb-account">
-            <span className="six-onb-avatar">
-              {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" />
-              ) : (
-                (user.name || 'U').charAt(0).toUpperCase()
-              )}
-              <span className="six-onb-provider" aria-hidden="true">
-                {user.provider === 'google' ? <GoogleIcon /> : user.provider === 'discord' ? <DiscordIcon /> : <Mail size={11} />}
-              </span>
-            </span>
-            <span className="six-onb-account-text">
-              <small>
-                <ShieldCheck size={13} aria-hidden="true" /> Conectado com {providerLabel}
-              </small>
-              <strong>{user.email}</strong>
-            </span>
-          </div>
+    <div className="login-page-wrap six-onb-page">
+      <div className="login-split-grid">
+        <img src="/assets/login-bottom-glow.webp" alt="" className="login-bottom-glow" aria-hidden="true" />
 
-          <h1 id="six-onb-title" className="six-onb-title">
-            {isEditing ? (
-              <>
-                Seu nome e seu <em>WhatsApp.</em>
-              </>
-            ) : onlyWhatsapp ? (
-              <>
-                Falta só seu <em>WhatsApp.</em>
-              </>
-            ) : (
-              <>
-                Como podemos <em>te chamar?</em>
-              </>
-            )}
-          </h1>
-          <p className="six-onb-sub">
-            {onlyWhatsapp
-              ? 'É por ele que você recebe sua chave, a URL de configuração e o suporte.'
-              : 'Seu nome aparece no painel. Pelo WhatsApp você recebe sua chave e fala com o suporte.'}
-          </p>
-
-          <form onSubmit={handleSubmit} className="six-onb-form" noValidate>
-            <div className="six-onb-field">
-              <label htmlFor="six-onb-name">Nome ou apelido</label>
-              <div className={`six-onb-input${nameInvalid ? ' is-invalid' : ''}`}>
-                <User size={18} aria-hidden="true" />
-                <input
-                  id="six-onb-name"
-                  type="text"
-                  autoComplete="nickname"
-                  autoFocus={!onlyWhatsapp}
-                  maxLength={30}
-                  value={displayName}
-                  onChange={(e) => {
-                    setDisplayName(e.target.value)
-                    if (error) setError(null)
-                  }}
-                  placeholder="Ex.: Alysson, Neo, DevMax"
-                  aria-invalid={nameInvalid}
-                />
-                {displayName.length > 20 && <span className="six-onb-count">{displayName.length}/30</span>}
-              </div>
-              {nameInvalid && <p className="six-onb-help is-invalid">Informe como gostaria de ser chamado.</p>}
-              {!nameValue && (
-                <div className="six-onb-suggestions">
-                  <span>Sugestão:</span>
-                  <button type="button" onClick={() => setDisplayName(suggestedName)}>
-                    {suggestedName}
-                  </button>
-                  {user.rawName && user.rawName !== suggestedName && (
-                    <button type="button" onClick={() => setDisplayName(user.rawName || '')}>
-                      {user.rawName}
-                    </button>
-                  )}
-                </div>
-              )}
+        {/* Coluna esquerda: nome e WhatsApp, no mesmo visual do login */}
+        <div className="login-left-col">
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="login-form-box six-onb-box"
+            aria-labelledby="six-onb-title"
+          >
+            <div className="login-brand-header">
+              <Link to="/" className="login-brand-link" aria-label="Voltar para a página inicial">
+                <img src="/assets/sidebar-logo.png" alt="SixtySix" className="login-brand-logo" />
+              </Link>
             </div>
 
-            <div className="six-onb-field">
-              <label htmlFor="six-onb-whatsapp">WhatsApp</label>
-              <div className={`six-onb-input is-phone${phoneInvalid ? ' is-invalid' : ''}${phoneDigits ? ' is-valid' : ''}`}>
-                <span className="six-onb-ddi" aria-hidden="true">
-                  +55
+            <div className="six-onb-account">
+              <span className="six-onb-avatar">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" />
+                ) : (
+                  (user.name || 'U').charAt(0).toUpperCase()
+                )}
+                <span className="six-onb-provider" aria-hidden="true">
+                  {user.provider === 'google' ? <GoogleIcon /> : user.provider === 'discord' ? <DiscordIcon /> : <Mail size={11} />}
                 </span>
-                <input
-                  id="six-onb-whatsapp"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel-national"
-                  autoFocus={onlyWhatsapp}
-                  value={whatsapp}
-                  onChange={(e) => {
-                    setWhatsapp(maskWhatsappInput(e.target.value))
-                    if (error) setError(null)
-                  }}
-                  onBlur={() => setPhoneTouched(true)}
-                  placeholder="(81) 99999-9999"
-                  aria-describedby="six-onb-whatsapp-help"
-                  aria-invalid={phoneInvalid}
-                />
-                {phoneDigits && <Check size={18} className="six-onb-ok" aria-label="Número válido" />}
+              </span>
+              <span className="six-onb-account-text">
+                <small>
+                  <ShieldCheck size={13} aria-hidden="true" /> Conectado com {providerLabel}
+                </small>
+                <strong>{user.email}</strong>
+              </span>
+            </div>
+
+            <h1 id="six-onb-title" className="login-title">
+              {isEditing ? 'Seu nome e seu WhatsApp' : onlyWhatsapp ? 'Falta só seu WhatsApp' : 'Como podemos te chamar?'}
+            </h1>
+            <p className="login-sub">
+              {onlyWhatsapp
+                ? 'É por ele que você recebe sua chave, a URL de configuração e o suporte.'
+                : 'Seu nome aparece no painel. Pelo WhatsApp você recebe sua chave e fala com o suporte.'}
+            </p>
+
+            <form onSubmit={handleSubmit} className="six-onb-form" noValidate>
+              <div className="six-onb-field">
+                <label htmlFor="six-onb-name" className="login-label">
+                  Nome ou apelido
+                </label>
+                <div className={`six-onb-input${nameInvalid ? ' is-invalid' : ''}`}>
+                  <User size={17} aria-hidden="true" />
+                  <input
+                    id="six-onb-name"
+                    type="text"
+                    autoComplete="nickname"
+                    autoFocus={!onlyWhatsapp}
+                    maxLength={30}
+                    value={displayName}
+                    onChange={(e) => {
+                      setDisplayName(e.target.value)
+                      if (error) setError(null)
+                    }}
+                    placeholder="Ex.: Alysson, Neo, DevMax"
+                    aria-invalid={nameInvalid}
+                  />
+                  {displayName.length > 20 && <span className="six-onb-count">{displayName.length}/30</span>}
+                </div>
+                {nameInvalid && <p className="six-onb-help is-invalid">Informe como gostaria de ser chamado.</p>}
+                {!nameValue && (
+                  <div className="six-onb-suggestions">
+                    <span>Sugestão:</span>
+                    <button type="button" onClick={() => setDisplayName(suggestedName)}>
+                      {suggestedName}
+                    </button>
+                    {user.rawName && user.rawName !== suggestedName && (
+                      <button type="button" onClick={() => setDisplayName(user.rawName || '')}>
+                        {user.rawName}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-              <p id="six-onb-whatsapp-help" className={`six-onb-help${phoneInvalid ? ' is-invalid' : ''}`}>
-                {phoneInvalid
-                  ? whatsapp
-                    ? 'Número incompleto. Use o celular com DDD, por exemplo (81) 99237-6036.'
-                    : 'Informe seu WhatsApp com DDD.'
-                  : 'Celular com DDD, o mesmo do seu WhatsApp.'}
-              </p>
-            </div>
 
-            {error && (
-              <p className="six-onb-error" role="alert">
-                {error}
-              </p>
-            )}
+              <div className="six-onb-field">
+                <label htmlFor="six-onb-whatsapp" className="login-label">
+                  WhatsApp
+                </label>
+                <div className={`six-onb-input is-phone${phoneInvalid ? ' is-invalid' : ''}${phoneDigits ? ' is-valid' : ''}`}>
+                  <span className="six-onb-ddi" aria-hidden="true">
+                    +55
+                  </span>
+                  <input
+                    id="six-onb-whatsapp"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel-national"
+                    autoFocus={onlyWhatsapp}
+                    value={whatsapp}
+                    onChange={(e) => {
+                      setWhatsapp(maskWhatsappInput(e.target.value))
+                      if (error) setError(null)
+                    }}
+                    onBlur={() => setPhoneTouched(true)}
+                    placeholder="(81) 99999-9999"
+                    aria-describedby="six-onb-whatsapp-help"
+                    aria-invalid={phoneInvalid}
+                  />
+                  {phoneDigits && <Check size={18} className="six-onb-ok" aria-label="Número válido" />}
+                </div>
+                <p id="six-onb-whatsapp-help" className={`six-onb-help${phoneInvalid ? ' is-invalid' : ''}`}>
+                  {phoneInvalid
+                    ? whatsapp
+                      ? 'Número incompleto. Use o celular com DDD, por exemplo (81) 99237-6036.'
+                      : 'Informe seu WhatsApp com DDD.'
+                    : 'Celular com DDD, o mesmo do seu WhatsApp.'}
+                </p>
+              </div>
 
-            <button type="submit" disabled={submitting} className="six-onb-submit">
-              {submitting ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Salvar e continuar'}
-            </button>
-          </form>
+              {error && (
+                <p className="six-onb-error" role="alert">
+                  {error}
+                </p>
+              )}
 
-          <p className="six-onb-note">
-            Usamos seu nome e WhatsApp só para entrega e suporte.{' '}
-            <a href="/privacidade.html" target="_blank" rel="noopener noreferrer">
-              Política de Privacidade
-            </a>
-          </p>
-        </section>
+              <button type="submit" disabled={submitting} className={`login-submit-btn${submitting ? '' : ' is-ready'}`}>
+                {submitting ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Salvar e continuar'}
+              </button>
+            </form>
 
-        <aside className="six-onb-preview" aria-label="Onde você recebe sua chave">
-          <img src="/assets/sidebar-logo-white.png" alt="SixtySix" className="six-onb-logo" />
+            <p className="login-footer-terms">
+              Usamos seu nome e WhatsApp só para entrega e suporte. Veja a{' '}
+              <a href="/privacidade.html" target="_blank" rel="noopener noreferrer">
+                Política de Privacidade
+              </a>
+              .
+            </p>
+          </motion.section>
+        </div>
 
-          <div className="six-onb-preview-copy">
-            <p>Sua chave chega neste número</p>
-            <strong className={`six-onb-number${phoneDigits ? ' is-valid' : whatsapp ? '' : ' is-empty'}`} aria-live="polite">
-              {previewNumber}
-            </strong>
+        {/* Coluna direita: a mesma arte do login, com o destino da chave */}
+        <AuthShowcase>
+          <div className="showcase-bottom-copy" aria-live="polite">
+            <h2 className="showcase-headline">
+              Sua chave chega direto <br />
+              <span className="showcase-green">{phoneDigits ? `no ${formatWhatsapp(phoneDigits)}` : 'no seu WhatsApp'}</span>
+            </h2>
+            <p className="showcase-sub">
+              Depois do pagamento, enviamos a chave e a URL de configuração por lá. Você confirma o recebimento no painel.
+            </p>
           </div>
-
-          <div className="six-onb-chat" aria-hidden="true">
-            <div className="six-onb-chat-head">
-              <span className="six-onb-chat-avatar">
-                <img src="/assets/sidebar-logo.png" alt="" />
-              </span>
-              <span>
-                <strong>SixtySix</strong>
-                <small>(81) 99237-6036</small>
-              </span>
-            </div>
-            <div className="six-onb-bubble">
-              <p>Olá, {previewName}! Segue sua credencial SixtySix:</p>
-              <p className="six-onb-bubble-code">
-                Chave: <span>••••••••••••</span>
-                <br />
-                URL: <span>https://…</span>
-              </p>
-              <span className={`six-onb-ticks${phoneDigits ? ' is-valid' : ''}`}>
-                <CheckCheck size={15} />
-              </span>
-            </div>
-          </div>
-
-          <p className="six-onb-preview-foot">Depois de configurar, você confirma o recebimento no painel.</p>
-        </aside>
-      </motion.div>
-    </main>
+        </AuthShowcase>
+      </div>
+    </div>
   )
 }
