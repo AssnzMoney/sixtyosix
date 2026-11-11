@@ -303,3 +303,48 @@ test('chave pede o nome com hífen e o Roteador tem com ponto: funciona', async 
     assert.deepEqual(list.data.map((item) => item.id), ['gpt-6.1-sol'])
   })
 })
+
+test('admin: editar chave grava nome, modelos e validade até o fim do dia em Brasília', async () => {
+  const calls: { method: string; url: string; body: any }[] = []
+  const request = (async (input: string, init: RequestInit = {}) => {
+    calls.push({ method: init.method || 'GET', url: String(input), body: init.body ? JSON.parse(String(init.body)) : undefined })
+    if (String(input).includes('/router_keys')) return Response.json([{ id: '11111111-1111-4111-8111-111111111111', gateway_client_id: '22222222-2222-4222-8222-222222222222' }])
+    return new Response(null, { status: 204 })
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
+  await admin.updateKey({ id: '11111111-1111-4111-8111-111111111111', name: ' João ', contact: '', expires_at: '2026-12-20', models: ['argon-4'] })
+  const patch = calls.find((c) => c.url.includes('/router_keys'))!
+  assert.equal(patch.method, 'PATCH')
+  assert.deepEqual(patch.body, { name: 'João', contact: null, models: ['argon-4'], expires_at: '2026-12-21T02:59:59.000Z' })
+  assert.ok(calls.some((c) => c.url.includes('/gateway_clients') && c.body.name === 'Roteador · João'))
+  await assert.rejects(admin.updateKey({ id: '11111111-1111-4111-8111-111111111111', name: '', expires_at: '2026-12-20' }), /nome/)
+  await assert.rejects(admin.updateKey({ id: '11111111-1111-4111-8111-111111111111', name: 'x', expires_at: 'amanhã' }), /validade/)
+  await assert.rejects(admin.updateKey({ id: '11111111-1111-4111-8111-111111111111', name: 'x', expires_at: '2026-12-20', models: [] }), /modelo/)
+})
+
+test('admin: aceitar e remover IP da chave', async () => {
+  const calls: { method: string; url: string; body: any }[] = []
+  const request = (async (input: string, init: RequestInit = {}) => {
+    calls.push({ method: init.method || 'GET', url: String(input), body: init.body ? JSON.parse(String(init.body)) : undefined })
+    return init.method === 'PATCH' ? Response.json([{ ip: '177.10.20.30' }]) : new Response(null, { status: 204 })
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
+  const client = '22222222-2222-4222-8222-222222222222'
+  await admin.acceptKeyIp({ client_id: client, ip: '177.10.20.30' })
+  assert.equal(calls[0].method, 'PATCH')
+  assert.equal(calls[0].body.accepted, true)
+  assert.equal(calls[0].body.blocked_at, null)
+  assert.ok(calls[0].url.includes('ip=eq.177.10.20.30'))
+  await admin.removeKeyIp({ client_id: client, ip: '177.10.20.30' })
+  assert.equal(calls[1].method, 'DELETE')
+  await assert.rejects(admin.acceptKeyIp({ client_id: client, ip: '10.0.0.0/8' }), /IP inválido/)
+})
+
+test('IP além do limite da chave recebe aviso de liberação pelo WhatsApp', async () => {
+  await withAccess({ gate: { ok: false, reason: 'ip_pending' } }, async (base, _usage, calls) => {
+    const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] })
+    assert.equal(response.status, 403)
+    assert.match(await response.text(), /ainda não foi liberado/)
+    assert.equal(calls.length, 0)
+  })
+})

@@ -16,6 +16,7 @@ const MESSAGES: Record<string, { status: number; message: string }> = {
   rate: { status: 429, message: 'Muitas chamadas em pouco tempo. Aguarde alguns segundos: a sua ferramenta tenta de novo sozinha.' },
   busy: { status: 429, message: 'Você já tem várias respostas em andamento nesta chave. Aguarde uma terminar.' },
   ip_blocked: { status: 403, message: 'Acesso bloqueado a partir deste endereço. Fale com a SixtySix pelo WhatsApp: (81) 99237-6036.' },
+  ip_pending: { status: 403, message: 'Este endereço (IP) ainda não foi liberado para a sua chave. Peça a liberação pelo WhatsApp: (81) 99237-6036.' },
 }
 
 function database(env: Env) {

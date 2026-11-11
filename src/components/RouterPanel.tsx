@@ -12,10 +12,11 @@ type Row = Record<string, any>
 type Provider = { id: string; name: string; base_url: string; key_hint: string; enabled: boolean; created_at: string }
 type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean }
 type RouterKey = { id: string; gateway_client_id: string; name: string; contact: string | null; token_prefix: string; models: string[] | null; expires_at: string; revoked_at: string | null; created_at: string }
-type Limits = { rpm: number | null; concurrency: number | null }
-type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[] }
+type Limits = { rpm: number | null; concurrency: number | null; max_ips?: number | null }
+type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[]; ipLimit?: boolean }
 type Overview = { providers: Provider[]; models: Model[]; keys: RouterKey[]; guard: Guard | null }
-type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: number; blocked_at: string | null }
+type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: number; blocked_at: string | null; accepted?: boolean }
+type EditForm = { name: string; contact: string; expires: string; all: boolean; models: string[] }
 type Draft = { key: string; upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
 type KeyForm = { name: string; contact: string; days: string; custom: string; all: boolean; models: string[] }
@@ -26,6 +27,9 @@ const DURATIONS: Array<[string, string]> = [['7', '7 dias (teste)'], ['30', '30 
 const date = (value: string) => new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 const dateTime = (value: string) => new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 const limitText = (value: string) => (value.trim() === '' ? null : Number(value))
+/** AAAA-MM-DD no horário de Brasília. */
+const brDay = (value: string | number) => new Date(value).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
+const plusDays = (from: string, days: number) => brDay(Math.max(Date.parse(from + 'T23:59:59-03:00') || 0, Date.now()) + days * DAY)
 const tokens = (value: number) => (value >= 10000 ? new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(value) : value.toLocaleString('pt-BR'))
 
 function keyState(key: RouterKey, now: number) {
@@ -71,11 +75,13 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   const [modalError, setModalError] = useState('')
   const [keyForm, setKeyForm] = useState<KeyForm | null>(null)
   const [created, setCreated] = useState<{ key: string; message: string } | null>(null)
-  const [guardForm, setGuardForm] = useState<{ rpm: string; concurrency: string } | null>(null)
+  const [guardForm, setGuardForm] = useState<{ rpm: string; concurrency: string; max_ips: string } | null>(null)
   const [blockForm, setBlockForm] = useState({ network: '', reason: '' })
   const [ipsFor, setIpsFor] = useState<RouterKey | null>(null)
-  const [ipsData, setIpsData] = useState<{ ips: SeenIp[]; controls: Limits } | null>(null)
-  const [keyLimits, setKeyLimits] = useState({ rpm: '', concurrency: '' })
+  const [ipsData, setIpsData] = useState<{ ips: SeenIp[]; controls: Limits; ipLimit?: boolean } | null>(null)
+  const [keyLimits, setKeyLimits] = useState({ rpm: '', concurrency: '', max_ips: '' })
+  const [editFor, setEditFor] = useState<RouterKey | null>(null)
+  const [editForm, setEditForm] = useState<EditForm | null>(null)
   const now = Date.now()
 
   async function call<T>(body: Row): Promise<T> {
@@ -140,10 +146,11 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
 
   // Consumo de cada chave manual no período escolhido na aba Consumo.
   const spent = useMemo(() => {
-    const totals = new Map<string, { requests: number; input: number; output: number; errors: number }>()
+    const totals = new Map<string, { requests: number; input: number; output: number; errors: number; last: string }>()
     for (const row of usage) {
-      const t = totals.get(row.client_id) || { requests: 0, input: 0, output: 0, errors: 0 }
+      const t = totals.get(row.client_id) || { requests: 0, input: 0, output: 0, errors: 0, last: '' }
       t.requests++
+      if (String(row.created_at || '') > t.last) t.last = String(row.created_at)
       t.input += Number(row.input_tokens || 0)
       t.output += Number(row.output_tokens || 0)
       if (Number(row.status_code) >= 400) t.errors++
@@ -261,11 +268,12 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   const guard = overview?.guard || null
   const settings = guard?.settings || { rpm: null, concurrency: null }
   const customLimits = useMemo(() => new Map((guard?.controls || []).map((c) => [c.client_id, c])), [guard])
-  const form = guardForm || { rpm: settings.rpm == null ? '' : String(settings.rpm), concurrency: settings.concurrency == null ? '' : String(settings.concurrency) }
+  const asText = (value: number | null | undefined) => (value == null ? '' : String(value))
+  const form = guardForm || { rpm: asText(settings.rpm), concurrency: asText(settings.concurrency), max_ips: asText(settings.max_ips) }
 
   async function saveGuard() {
     await run('guard', async () => {
-      await call({ action: 'router-guard-save', rpm: limitText(form.rpm), concurrency: limitText(form.concurrency) })
+      await call({ action: 'router-guard-save', rpm: limitText(form.rpm), concurrency: limitText(form.concurrency), ...(guard?.ipLimit ? { max_ips: limitText(form.max_ips) } : {}) })
       setGuardForm(null)
       return 'Proteção salva. Vale para novas chamadas na hora.'
     })
@@ -282,9 +290,9 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
     setIpsData(null)
     setModalError('')
     try {
-      const data = await call<{ ips: SeenIp[]; controls: Limits }>({ action: 'router-key-ips', client_id: key.gateway_client_id })
+      const data = await call<{ ips: SeenIp[]; controls: Limits; ipLimit?: boolean }>({ action: 'router-key-ips', client_id: key.gateway_client_id })
       setIpsData(data)
-      setKeyLimits({ rpm: data.controls.rpm == null ? '' : String(data.controls.rpm), concurrency: data.controls.concurrency == null ? '' : String(data.controls.concurrency) })
+      setKeyLimits({ rpm: asText(data.controls.rpm), concurrency: asText(data.controls.concurrency), max_ips: asText(data.controls.max_ips) })
     } catch (e) {
       setModalError(e instanceof Error ? e.message : 'Não foi possível carregar os IPs.')
     }
@@ -307,8 +315,46 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
     setModalError('')
     setWorking('key-limits')
     try {
-      await call({ action: 'router-key-limits', client_id: ipsFor.gateway_client_id, rpm: limitText(keyLimits.rpm), concurrency: limitText(keyLimits.concurrency) })
+      await call({ action: 'router-key-limits', client_id: ipsFor.gateway_client_id, rpm: limitText(keyLimits.rpm), concurrency: limitText(keyLimits.concurrency), ...(ipsData?.ipLimit ? { max_ips: limitText(keyLimits.max_ips) } : {}) })
       setNotice(`Limite da chave de ${ipsFor.name} salvo.`)
+      reload()
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : 'Não foi possível salvar.')
+    } finally {
+      setWorking('')
+    }
+  }
+
+  async function ipAction(ip: string, action: 'router-key-ip-accept' | 'router-key-ip-remove') {
+    if (!ipsFor) return
+    setModalError('')
+    setWorking('ip:' + ip)
+    try {
+      await call({ action, client_id: ipsFor.gateway_client_id, ip })
+      setIpsData((d) => d && { ...d, ips: action === 'router-key-ip-remove' ? d.ips.filter((x) => x.ip !== ip) : d.ips.map((x) => (x.ip === ip ? { ...x, accepted: true, blocked_at: null } : x)) })
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : 'Não foi possível concluir.')
+    } finally {
+      setWorking('')
+    }
+  }
+
+  /* ---------------------------- Editar chave ---------------------------- */
+  function openEdit(key: RouterKey) {
+    setModalError('')
+    setEditFor(key)
+    setEditForm({ name: key.name, contact: key.contact || '', expires: brDay(key.expires_at), all: !key.models, models: key.models || [] })
+  }
+  async function saveEdit() {
+    if (!editFor || !editForm) return
+    setModalError('')
+    if (!editForm.name.trim()) return setModalError('Dê um nome para a chave.')
+    if (!editForm.all && !editForm.models.length) return setModalError('Escolha pelo menos um modelo.')
+    setWorking('edit')
+    try {
+      await call({ action: 'router-key-update', id: editFor.id, name: editForm.name, contact: editForm.contact, expires_at: editForm.expires, models: editForm.all ? null : editForm.models })
+      setNotice(`Chave de ${editForm.name.trim()} atualizada.`)
+      setEditFor(null)
       reload()
     } catch (e) {
       setModalError(e instanceof Error ? e.message : 'Não foi possível salvar.')
@@ -430,6 +476,11 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                 <input type="number" min={1} max={1000} inputMode="numeric" placeholder="Sem limite" value={form.concurrency} onChange={(e) => setGuardForm({ ...form, concurrency: e.target.value })} />
                 <small>Evita que uma chave sozinha ocupe o fornecedor.</small>
               </label>
+              <label>
+                Máximo de IPs por chave
+                <input type="number" min={1} max={100} inputMode="numeric" placeholder="Sem limite" disabled={!guard.ipLimit} value={form.max_ips} onChange={(e) => setGuardForm({ ...form, max_ips: e.target.value })} />
+                <small>{guard.ipLimit ? 'Passou disso, o IP novo fica aguardando você aceitar. IP parado há 7 dias libera a vaga.' : 'Aplique supabase/gateway-guard-ips.sql no Supabase para ligar.'}</small>
+              </label>
               <div className="sx-router-modal-actions is-wide">
                 <button type="submit" className="sx-btn is-primary" disabled={working === 'guard' || !guardForm}>
                   {working === 'guard' ? 'Salvando…' : 'Salvar padrões'}
@@ -437,7 +488,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
               </div>
             </form>
             <p className="sx-admin-hint sx-router-note">
-              Não existe limite diário: o cliente usa quanto quiser. Quem passa do ritmo recebe "aguarde um instante" com o tempo de espera, e o Claude Code e o Codex tentam de novo sozinhos. Fica mais lento, não bloqueia. Para uma chave específica, use o botão IPs.
+              Não existe limite diário: o cliente usa quanto quiser. Quem passa do ritmo recebe "aguarde um instante" com o tempo de espera, e o Claude Code e o Codex tentam de novo sozinhos. Fica mais lento, não bloqueia. Para uma chave específica, use o botão Detalhes.
             </p>
 
             <div className="sx-router-blocks">
@@ -567,8 +618,11 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                           >
                             <RefreshCw size={15} /> +30 dias
                           </button>
-                          <button type="button" className="sx-btn" disabled={!guard} title={guard ? undefined : 'Aplique supabase/gateway-guard.sql'} onClick={() => openIps(k)}>
-                            <Globe size={15} /> IPs
+                          <button type="button" className="sx-btn" onClick={() => openEdit(k)}>
+                            <Pencil size={15} /> Editar
+                          </button>
+                          <button type="button" className="sx-btn" disabled={!guard} title={guard ? 'Consumo, limites e IPs desta chave' : 'Aplique supabase/gateway-guard.sql'} onClick={() => openIps(k)}>
+                            <Globe size={15} /> Detalhes
                           </button>
                           <button
                             type="button"
@@ -803,12 +857,32 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
       )}
 
       {ipsFor && (
-        <Modal eyebrow={ipsFor.name} title="IPs e limite desta chave" onClose={() => setIpsFor(null)}>
+        <Modal eyebrow={ipsFor.name} title="Detalhes da chave" onClose={() => setIpsFor(null)}>
           {modalError && (
             <p role="alert" className="sx-admin-message is-error">
               <CircleAlert size={16} /> {modalError}
             </p>
           )}
+          {(() => {
+            const use = spent.get(ipsFor.gateway_client_id)
+            return (
+              <div className="sx-router-usage">
+                <h4>Consumo ({period})</h4>
+                {use ? (
+                  <dl>
+                    <div><dt>Chamadas</dt><dd>{use.requests.toLocaleString('pt-BR')}</dd></div>
+                    <div><dt>Tokens de entrada</dt><dd>{tokens(use.input)}</dd></div>
+                    <div><dt>Tokens de saída</dt><dd>{tokens(use.output)}</dd></div>
+                    <div><dt>Com erro</dt><dd>{use.errors.toLocaleString('pt-BR')}</dd></div>
+                    <div><dt>Última chamada</dt><dd>{use.last ? dateTime(use.last) : '—'}</dd></div>
+                  </dl>
+                ) : (
+                  <p className="sx-router-sub">Sem uso neste período.</p>
+                )}
+                <small className="sx-router-sub">Cada chamada, com modelo e tokens, aparece na aba "Consumo e falhas". Mude o período lá.</small>
+              </div>
+            )
+          })()}
           <form className="sx-form-grid" onSubmit={(e) => { e.preventDefault(); saveKeyLimits() }}>
             <label>
               Chamadas por minuto
@@ -818,7 +892,11 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
               Respostas ao mesmo tempo
               <input type="number" min={1} max={1000} placeholder={settings.concurrency == null ? 'Padrão: sem limite' : `Padrão: ${settings.concurrency}`} value={keyLimits.concurrency} onChange={(e) => setKeyLimits({ ...keyLimits, concurrency: e.target.value })} />
             </label>
-            <small className="is-wide">Deixe vazio para usar o padrão de todas as chaves.</small>
+            <label>
+              Máximo de IPs
+              <input type="number" min={1} max={100} disabled={!ipsData?.ipLimit} placeholder={settings.max_ips == null ? 'Padrão: sem limite' : `Padrão: ${settings.max_ips}`} value={keyLimits.max_ips} onChange={(e) => setKeyLimits({ ...keyLimits, max_ips: e.target.value })} />
+            </label>
+            <small className="is-wide">Deixe vazio para usar o padrão de todas as chaves.{ipsData && !ipsData.ipLimit ? ' Para o máximo de IPs, aplique supabase/gateway-guard-ips.sql.' : ''}</small>
             <div className="sx-router-modal-actions is-wide">
               <button type="submit" className="sx-btn is-primary" disabled={!ipsData || working === 'key-limits'}>
                 {working === 'key-limits' ? 'Salvando…' : 'Salvar limite da chave'}
@@ -846,18 +924,30 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                     <tr key={x.ip}>
                       <td>
                         <code>{x.ip}</code>
-                        {x.blocked_at && <small className="sx-router-sub is-warning">Bloqueado nesta chave</small>}
+                        {x.blocked_at ? (
+                          <small className="sx-router-sub is-warning">Bloqueado nesta chave</small>
+                        ) : x.accepted === false ? (
+                          <small className="sx-router-sub is-warning">Aguardando você aceitar</small>
+                        ) : null}
                       </td>
                       <td>{dateTime(x.first_seen)}</td>
                       <td>{dateTime(x.last_seen)}</td>
                       <td>{Number(x.requests).toLocaleString('pt-BR')}</td>
                       <td>
                         <div className="sx-actions">
+                          {x.accepted === false && !x.blocked_at && (
+                            <button type="button" className="sx-btn is-primary" disabled={working === 'ip:' + x.ip} onClick={() => ipAction(x.ip, 'router-key-ip-accept')}>
+                              <Check size={15} /> Aceitar
+                            </button>
+                          )}
                           <button type="button" className={`sx-btn ${x.blocked_at ? '' : 'is-danger'}`} disabled={working === 'ip:' + x.ip} onClick={() => setIpBlocked(x.ip, !x.blocked_at)}>
                             {x.blocked_at ? <Check size={15} /> : <Ban size={15} />} {x.blocked_at ? 'Liberar' : 'Bloquear'}
                           </button>
                           <button type="button" className="sx-btn" title="Bloquear este IP em todas as chaves" onClick={() => blockNetwork(x.ip, true, `Visto na chave de ${ipsFor.name}`)}>
                             <Globe size={15} /> Em todas
+                          </button>
+                          <button type="button" className="sx-btn" aria-label={`Remover ${x.ip}`} title="Tirar da lista (libera a vaga; se voltar a usar, aparece de novo)" disabled={working === 'ip:' + x.ip} onClick={() => ipAction(x.ip, 'router-key-ip-remove')}>
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>
@@ -867,7 +957,73 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
               </table>
             </div>
           )}
-          <p className="sx-router-help">Muitos IPs diferentes numa chave só costuma ser chave compartilhada.</p>
+          <p className="sx-router-help">Muitos IPs diferentes numa chave só costuma ser chave compartilhada. Com "Máximo de IPs", o IP novo além do limite fica aguardando: aceite aqui se for o cliente (trocou de rede ou de aparelho).</p>
+        </Modal>
+      )}
+
+      {editFor && editForm && (
+        <Modal eyebrow="Chave manual" title={`Editar ${editFor.name}`} onClose={() => setEditFor(null)}>
+          <form className="sx-form-grid" onSubmit={(e) => { e.preventDefault(); saveEdit() }}>
+            <label>
+              Nome do cliente
+              <input value={editForm.name} maxLength={80} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </label>
+            <label>
+              WhatsApp (opcional)
+              <input value={editForm.contact} maxLength={80} placeholder="(81) 99999-9999" onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })} />
+            </label>
+            <label className="is-wide">
+              Válida até
+              <input type="date" value={editForm.expires} onChange={(e) => setEditForm({ ...editForm, expires: e.target.value })} />
+              <span className="sx-quick">
+                {[7, 30, 60, 90].map((days) => (
+                  <button key={days} type="button" onClick={() => setEditForm({ ...editForm, expires: plusDays(brDay(editFor.expires_at), days) })}>
+                    +{days} dias
+                  </button>
+                ))}
+                <button type="button" onClick={() => setEditForm({ ...editForm, expires: brDay(Date.now()) })}>
+                  Vence hoje
+                </button>
+              </span>
+              <small>Vale até o fim do dia escolhido. Os botões somam a partir do vencimento atual (ou de hoje, se já venceu).</small>
+            </label>
+            <fieldset className="sx-router-models-pick is-wide">
+              <legend>Modelos</legend>
+              <label className="sx-router-check">
+                <input type="radio" checked={editForm.all} onChange={() => setEditForm({ ...editForm, all: true })} /> Todos os modelos à venda ({sellable.length})
+              </label>
+              <label className="sx-router-check">
+                <input type="radio" checked={!editForm.all} onChange={() => setEditForm({ ...editForm, all: false })} /> Escolher
+              </label>
+              {!editForm.all && (
+                <div className="sx-router-chips">
+                  {sellable.map((m) => (
+                    <label key={m.alias} className="sx-router-check">
+                      <input
+                        type="checkbox"
+                        checked={editForm.models.includes(m.alias)}
+                        onChange={(e) => setEditForm({ ...editForm, models: e.target.checked ? [...editForm.models, m.alias] : editForm.models.filter((x) => x !== m.alias) })}
+                      />
+                      {m.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </fieldset>
+            {modalError && (
+              <p role="alert" className="sx-admin-message is-error is-wide">
+                <CircleAlert size={16} /> {modalError}
+              </p>
+            )}
+            <div className="sx-router-modal-actions is-wide">
+              <button type="button" className="sx-btn" onClick={() => setEditFor(null)}>
+                Cancelar
+              </button>
+              <button type="submit" className="sx-btn is-primary" disabled={working === 'edit'}>
+                {working === 'edit' ? 'Salvando…' : 'Salvar alterações'}
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
 

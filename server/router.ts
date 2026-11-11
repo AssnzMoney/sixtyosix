@@ -183,6 +183,7 @@ const text = (value: unknown, max: number) => (typeof value === 'string' ? value
 const keyHint = (key: string) => '…' + key.slice(-4)
 const CLIENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const GUARD_MISSING = 'Aplique a migração supabase/gateway-guard.sql no Supabase para usar a proteção e o controle de IP.'
+const IPS_MISSING = 'Aplique a migração supabase/gateway-guard-ips.sql no Supabase para usar o máximo de IPs por chave.'
 
 /** Operações da aba Roteador. Só é chamado depois de requireAdmin (api/management.ts). */
 export function createRouterAdmin(db: { url: string; secret: string }, request: typeof fetch, adminEmail: string) {
@@ -213,15 +214,20 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       ])
       // Proteção contra sobrecarga (supabase/gateway-guard.sql). Sem a migração, guard = null e o resto segue.
       let guard: Row | null = null
-      try {
+      // Com supabase/gateway-guard-ips.sql vem também o máximo de IPs (ipLimit = true).
+      const loadGuard = async (withIps: boolean) => {
+        const extra = withIps ? ',max_ips' : ''
         const [settings, blocks, controls] = await Promise.all([
-          rest<Row[]>('gateway_settings?select=rpm,concurrency&limit=1'),
+          rest<Row[]>(`gateway_settings?select=rpm,concurrency${extra}&limit=1`),
           rest<Row[]>('gateway_ip_blocks?select=network,reason,created_by,created_at&order=created_at.desc&limit=500'),
-          rest<Row[]>('gateway_controls?select=client_id,rpm,concurrency&limit=5000'),
+          rest<Row[]>(`gateway_controls?select=client_id,rpm,concurrency${extra}&limit=5000`),
         ])
-        guard = { settings: settings[0] || { rpm: null, concurrency: null }, blocks, controls }
+        return { settings: settings[0] || { rpm: null, concurrency: null, max_ips: null }, blocks, controls, ipLimit: withIps }
+      }
+      try {
+        guard = await loadGuard(true)
       } catch {
-        guard = null
+        guard = await loadGuard(false).catch(() => null)
       }
       return { providers, models, keys, guard }
     },
@@ -231,12 +237,14 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       const rpm = validLimit(body.rpm, 100000), concurrency = validLimit(body.concurrency, 1000)
       if (rpm === undefined) throw new RouterError(400, 'Chamadas por minuto: use um número de 1 a 100000, ou deixe vazio para sem limite.')
       if (concurrency === undefined) throw new RouterError(400, 'Respostas simultâneas: use um número de 1 a 1000, ou deixe vazio para sem limite.')
+      const maxIps = body.max_ips === undefined ? undefined : validLimit(body.max_ips, 100)
+      if (body.max_ips !== undefined && maxIps === undefined) throw new RouterError(400, 'Máximo de IPs: use um número de 1 a 100, ou deixe vazio para sem limite.')
       await rest('gateway_settings?on_conflict=id', {
         method: 'POST',
         headers: { Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ id: true, rpm, concurrency, updated_at: new Date().toISOString() }),
-      }, GUARD_MISSING)
-      return { rpm, concurrency }
+        body: JSON.stringify({ id: true, rpm, concurrency, ...(maxIps !== undefined ? { max_ips: maxIps } : {}), updated_at: new Date().toISOString() }),
+      }, maxIps !== undefined ? IPS_MISSING : GUARD_MISSING)
+      return { rpm, concurrency, max_ips: maxIps ?? null }
     },
 
     /** Bloqueia (ou libera) um IP ou faixa em todas as chaves. */
@@ -259,11 +267,14 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
     async keyIps(body: Row) {
       const clientId = text(body.client_id, 40)
       if (!CLIENT_ID.test(clientId)) throw new RouterError(400, 'Chave inválida.')
-      const [ips, controls] = await Promise.all([
-        rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: 'ip,first_seen,last_seen,requests,blocked_at', order: 'last_seen.desc', limit: '200' }), {}, GUARD_MISSING),
-        rest<Row[]>('gateway_controls?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: 'rpm,concurrency', limit: '1' }), {}, GUARD_MISSING),
+      const load = (withIps: boolean) => Promise.all([
+        rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: 'ip,first_seen,last_seen,requests,blocked_at' + (withIps ? ',accepted' : ''), order: 'last_seen.desc', limit: '200' }), {}, GUARD_MISSING),
+        rest<Row[]>('gateway_controls?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: 'rpm,concurrency' + (withIps ? ',max_ips' : ''), limit: '1' }), {}, GUARD_MISSING),
       ])
-      return { ips, controls: controls[0] || { rpm: null, concurrency: null } }
+      let ipLimit = true
+      let [ips, controls] = await load(true).catch(() => [null, null] as [Row[] | null, Row[] | null])
+      if (!ips || !controls) { ipLimit = false; [ips, controls] = await load(false) }
+      return { ips: ips.map((x) => ({ accepted: true, ...x })), controls: controls[0] || { rpm: null, concurrency: null, max_ips: null }, ipLimit }
     },
 
     /** Bloqueia ou libera um IP só nesta chave. */
@@ -283,17 +294,38 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       const clientId = text(body.client_id, 40)
       if (!CLIENT_ID.test(clientId)) throw new RouterError(400, 'Chave inválida.')
       const rpm = validLimit(body.rpm, 100000), concurrency = validLimit(body.concurrency, 1000)
-      if (rpm === undefined || concurrency === undefined) throw new RouterError(400, 'Use números inteiros positivos, ou deixe vazio para usar o padrão.')
-      if (rpm === null && concurrency === null) {
+      const maxIps = body.max_ips === undefined ? undefined : validLimit(body.max_ips, 100)
+      if (rpm === undefined || concurrency === undefined || (body.max_ips !== undefined && maxIps === undefined)) throw new RouterError(400, 'Use números inteiros positivos, ou deixe vazio para usar o padrão.')
+      if (rpm === null && concurrency === null && !maxIps) {
         await rest('gateway_controls?' + new URLSearchParams({ client_id: 'eq.' + clientId }), { method: 'DELETE' }, GUARD_MISSING)
-        return { rpm, concurrency }
+        return { rpm, concurrency, max_ips: null }
       }
       await rest('gateway_controls?on_conflict=client_id', {
         method: 'POST',
         headers: { Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify({ client_id: clientId, rpm, concurrency, updated_at: new Date().toISOString() }),
-      }, GUARD_MISSING)
-      return { rpm, concurrency }
+        body: JSON.stringify({ client_id: clientId, rpm, concurrency, ...(maxIps !== undefined ? { max_ips: maxIps } : {}), updated_at: new Date().toISOString() }),
+      }, maxIps !== undefined ? IPS_MISSING : GUARD_MISSING)
+      return { rpm, concurrency, max_ips: maxIps ?? null }
+    },
+
+    /** Aceita um IP que estava aguardando (passou do máximo de IPs da chave). */
+    async acceptKeyIp(body: Row) {
+      const clientId = text(body.client_id, 40), ip = validNetwork(body.ip)
+      if (!CLIENT_ID.test(clientId) || !ip || ip.includes('/')) throw new RouterError(400, 'IP inválido.')
+      const changed = await rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, ip: 'eq.' + ip }), {
+        method: 'PATCH',
+        body: JSON.stringify({ accepted: true, blocked_at: null, last_seen: new Date().toISOString() }),
+      }, IPS_MISSING)
+      if (!changed?.length) throw new RouterError(404, 'Este IP ainda não usou a chave.')
+      return { ok: true }
+    },
+
+    /** Tira o IP da lista da chave (libera a vaga). Se ele voltar a usar, aparece de novo. */
+    async removeKeyIp(body: Row) {
+      const clientId = text(body.client_id, 40), ip = validNetwork(body.ip)
+      if (!CLIENT_ID.test(clientId) || !ip || ip.includes('/')) throw new RouterError(400, 'IP inválido.')
+      await rest('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, ip: 'eq.' + ip }), { method: 'DELETE' }, GUARD_MISSING)
+      return { ok: true }
     },
 
     async saveProvider(body: Row) {
@@ -370,6 +402,29 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
         p_bridge_hash: sha(randomBytes(32).toString('hex')), p_models: models, p_days: days, p_created_by: adminEmail,
       }) })
       return { key, row: Array.isArray(created) ? created[0] : created }
+    },
+
+    /** Edita nome, contato, modelos e validade de uma chave manual. */
+    async updateKey(body: Row) {
+      const id = text(body.id, 40)
+      if (!CLIENT_ID.test(id)) throw new RouterError(400, 'Chave inválida.')
+      const name = text(body.name, 80), contact = text(body.contact, 80)
+      if (!name) throw new RouterError(400, 'Dê um nome para a chave (ex.: nome do cliente).')
+      const models = Array.isArray(body.models) ? (body.models as unknown[]).map(model => text(model, 80)).filter(Boolean).slice(0, 200) : null
+      if (models && !models.length) throw new RouterError(400, 'Escolha pelo menos um modelo.')
+      // Data (AAAA-MM-DD) vale até o fim do dia no horário de Brasília.
+      const raw = text(body.expires_at, 40)
+      const when = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T23:59:59-03:00` : raw)
+      if (!Number.isFinite(when)) throw new RouterError(400, 'Informe a data de validade.')
+      if (when > Date.now() + 3 * 366 * 86400000) throw new RouterError(400, 'Escolha uma validade de até 3 anos.')
+      const rows = await rest<Row[]>(`router_keys?${new URLSearchParams({ id: `eq.${id}` })}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name, contact: contact || null, models, expires_at: new Date(when).toISOString() }),
+      })
+      const row = rows?.[0]
+      if (!row) throw new RouterError(404, 'Chave não encontrada.')
+      await rest(`gateway_clients?${new URLSearchParams({ id: `eq.${row.gateway_client_id}` })}`, { method: 'PATCH', body: JSON.stringify({ name: 'Roteador · ' + name }) }).catch(() => undefined)
+      return { row }
     },
 
     async renewKey(body: Row) {
