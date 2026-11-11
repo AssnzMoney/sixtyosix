@@ -71,6 +71,8 @@ const MODEL_LABELS: Record<string, string> = {
 }
 const KNOWN_MODELS = Object.values(MODEL_LABELS)
 const ALL_MODELS = "Todos os modelos"
+const SUPPORT_WHATSAPP = "https://wa.me/5581992376036"
+const supportLink = (message: string) => `${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`
 
 const nav = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
@@ -1321,7 +1323,12 @@ export default function DashboardPage() {
                   empty(
                     "Sua chave começa aqui",
                     "Vincule sua chave de teste no formulário acima. Se ainda não recebeu uma, solicite ao suporte.",
-                    <a className="six-primary" href="mailto:alisongeneral25@gmail.com?subject=Chave%20individual%20SixtySix">
+                    <a
+                      className="six-primary"
+                      href={supportLink("Olá! Quero solicitar minha chave individual SixtySix.")}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Solicitar minha chave <ArrowUpRight size={14} />
                     </a>,
                   )
@@ -1725,8 +1732,16 @@ export default function DashboardPage() {
                   Envie o nome da ferramenta, seu sistema e a mensagem de erro. Assim conseguimos entender o problema mais
                   rápido.
                 </p>
-                <a className="six-primary" href="mailto:alisongeneral25@gmail.com?subject=Suporte%20SixtySix">
-                  Falar com o suporte <ArrowUpRight size={15} />
+                <a
+                  className="six-primary"
+                  href={supportLink("Olá! Preciso de ajuda com a SixtySix.")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Falar no WhatsApp <ArrowUpRight size={15} />
+                </a>
+                <a className="six-text-button" href="mailto:alisongeneral25@gmail.com?subject=Suporte%20SixtySix">
+                  Prefiro mandar e-mail <ArrowRight size={14} />
                 </a>
                 <button type="button" className="six-text-button" onClick={() => switchTab("guides")}>
                   Revisar configuração <ArrowRight size={14} />
