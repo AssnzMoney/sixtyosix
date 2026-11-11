@@ -1,4 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { normalizeWhatsapp } from '../src/lib/whatsapp.js'
+import { isUuid, validateDeliveryInput } from '../src/lib/deliveries.js'
 class AccountError extends Error { status:number; constructor(status:number,message:string){super(message);this.status=status} }
 function configuration(env:NodeJS.ProcessEnv){
  const url=env.SUPABASE_URL?.replace(/\/+$/,''),secret=env.SUPABASE_SERVICE_ROLE_KEY,publicKey=env.VITE_SUPABASE_ANON_KEY||env.SUPABASE_PUBLISHABLE_KEY
@@ -14,24 +16,34 @@ const resources:Record<string,string>={
  trials:'user_id,gateway_client_id,token_prefix,created_at,expires_at,revoked_at',
  usage:'id,client_id,requested_alias,status_code,input_tokens,output_tokens,latency_ms,created_at',
  payments:'id,subscription_id,status,amount_cents,currency,approved_at,period_start,period_end,recorded_at',
+ deliveries:'id,user_id,subscription_id,product,supplier,key_hint,base_url,model_id,notes,expires_at,delivered_at,created_by,replaced_at,revoked_at,revoked_by,confirmed_at,confirm_ip,confirm_user_agent,confirm_text,confirm_text_version',
 }
-const tables:Record<string,string>={clients:'gateway_clients',subscriptions:'billing_subscription_state',keys:'billing_key_access',trials:'gateway_trials',usage:'gateway_usage',payments:'billing_payments'}
+const tables:Record<string,string>={clients:'gateway_clients',subscriptions:'billing_subscription_state',keys:'billing_key_access',trials:'gateway_trials',usage:'gateway_usage',payments:'billing_payments',deliveries:'credential_deliveries'}
+const orders:Record<string,string>={usage:'created_at.desc,id.desc',payments:'recorded_at.desc,id.desc',keys:'created_at.desc,subscription_id',trials:'created_at.desc,user_id',deliveries:'delivered_at.desc,id'}
+const serviceHeaders=(secret:string)=>({apikey:secret,...(!secret.startsWith('sb_secret_')?{Authorization:`Bearer ${secret}`}:{})})
+
+/** Valida a sessão e exige um e-mail confirmado da lista de administradores. */
+async function requireAdmin(env:NodeJS.ProcessEnv,request:typeof fetch,authorization:string|undefined){
+ if(!authorization?.startsWith('Bearer ')||authorization.length>16000)throw new AccountError(401,'Entre na sua conta para acessar a administração.')
+ const config=configuration(env)
+ const identity=await request(`${config.url}/auth/v1/user`,{headers:{apikey:config.publicKey,Authorization:authorization},signal:AbortSignal.timeout(10000)})
+ if(!identity.ok)throw new AccountError(401,'Entre novamente para continuar.')
+ const user=await identity.json() as Row
+ const allowed=(env.SIXTYSIX_ADMIN_EMAILS||'alisongeneral25@gmail.com').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean)
+ if(!user.id||user.is_anonymous||!user.email_confirmed_at||!allowed.includes(String(user.email||'').toLowerCase()))throw new AccountError(403,'Esta área é exclusiva da administração.')
+ return {config,email:String(user.email).toLowerCase()}
+}
+
 export function createAdminService(env=process.env,request:typeof fetch=fetch){
  return async (authorization:string|undefined,query:URLSearchParams)=>{
-  if(!authorization?.startsWith('Bearer ')||authorization.length>16000)throw new AccountError(401,'Entre na sua conta para acessar a administração.')
-  const config=configuration(env)
-  const identity=await request(`${config.url}/auth/v1/user`,{headers:{apikey:config.publicKey,Authorization:authorization},signal:AbortSignal.timeout(10000)})
-  if(!identity.ok)throw new AccountError(401,'Entre novamente para continuar.')
-  const user=await identity.json() as Row
-  const allowed=(env.SIXTYSIX_ADMIN_EMAILS||'alisongeneral25@gmail.com').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean)
-  if(!user.id||user.is_anonymous||!user.email_confirmed_at||!allowed.includes(String(user.email||'').toLowerCase()))throw new AccountError(403,'Esta área é exclusiva da administração.')
+  const {config,email}=await requireAdmin(env,request,authorization)
   const resource=query.get('resource')||'clients',offset=Number(query.get('offset')||0)
   if(!Number.isSafeInteger(offset)||offset<0||offset>1000000||(!resources[resource]&&resource!=='users'))throw new AccountError(400,'Consulta inválida.')
-  const headers={apikey:config.secret,...(!config.secret.startsWith('sb_secret_')?{Authorization:`Bearer ${config.secret}`}:{})}
+  const headers=serviceHeaders(config.secret)
   let url:string
   if(resource==='users')url=`${config.url}/auth/v1/admin/users?page=${Math.floor(offset/500)+1}&per_page=500`
   else{
-   const params=new URLSearchParams({select:resources[resource],limit:'500',offset:String(offset),order:resource==='usage'?'created_at.desc,id.desc':resource==='payments'?'recorded_at.desc,id.desc':resource==='keys'?'created_at.desc,subscription_id':resource==='trials'?'created_at.desc,user_id':'created_at.desc,id.desc'})
+   const params=new URLSearchParams({select:resources[resource],limit:'500',offset:String(offset),order:orders[resource]||'created_at.desc,id.desc'})
    if(resource==='trials'&&query.get('history')!=='1')params.set('created_at','gte.'+TRIAL_CUTOFF)
    if(['usage','payments'].includes(resource)){
     const from=query.get('from')||new Date(Date.now()-29*86400000).toISOString().slice(0,10),to=query.get('to')||new Date().toISOString().slice(0,10)
@@ -42,29 +54,66 @@ export function createAdminService(env=process.env,request:typeof fetch=fetch){
    url=`${config.url}/rest/v1/${tables[resource]}?${params}`
   }
   const response=await request(url,{headers,signal:AbortSignal.timeout(20000)})
-  if(!response.ok)throw new AccountError(503,'Não foi possível carregar '+resource+'. Tente atualizar o painel.')
+  if(!response.ok)throw new AccountError(503,resource==='deliveries'?'Credenciais indisponíveis: aplique a migração supabase/whatsapp-delivery.sql.':'Não foi possível carregar '+resource+'. Tente atualizar o painel.')
   const data=await response.json()
-  const rows:Row[]=resource==='users'?(data.users||[]).map((u:Row)=>({id:u.id,email:u.email,created_at:u.created_at,last_sign_in_at:u.last_sign_in_at,email_confirmed_at:u.email_confirmed_at,name:u.user_metadata?.custom_name||u.user_metadata?.preferred_name||u.user_metadata?.full_name||u.user_metadata?.name||'',provider:u.app_metadata?.provider||''})):data
-  return {rows,hasMore:rows.length===500,admin:user.email}
+  const rows:Row[]=resource==='users'?(data.users||[]).map((u:Row)=>({id:u.id,email:u.email,created_at:u.created_at,last_sign_in_at:u.last_sign_in_at,email_confirmed_at:u.email_confirmed_at,name:u.user_metadata?.custom_name||u.user_metadata?.preferred_name||u.user_metadata?.full_name||u.user_metadata?.name||'',whatsapp:normalizeWhatsapp(u.user_metadata?.whatsapp)||'',provider:u.app_metadata?.provider||''})):data
+  return {rows,hasMore:rows.length===500,admin:email}
  }
 }
-export default async function handler(req:IncomingMessage,res:ServerResponse){
+
+/** Ações do admin. Sempre exigem `action` explícita — nunca uma ação em massa por acidente. */
+export function createAdminActions(env=process.env,request:typeof fetch=fetch){
+ return async (authorization:string|undefined,body:Row)=>{
+  const {config,email}=await requireAdmin(env,request,authorization)
+  const headers={...serviceHeaders(config.secret),'Content-Type':'application/json'}
+  const rpc=async<T>(name:string,args:Row):Promise<T>=>{
+   const response=await request(`${config.url}/rest/v1/rpc/${name}`,{method:'POST',headers,body:JSON.stringify(args),signal:AbortSignal.timeout(15000)})
+   if(!response.ok)throw new AccountError(503,name.includes('delivery')?'Não foi possível salvar. Confira se a migração supabase/whatsapp-delivery.sql foi aplicada.':'Operação incompleta. Atualize e tente novamente.')
+   return await response.json() as T
+  }
+  const action=typeof body.action==='string'?body.action:''
+  if(action==='revoke-old-trials'){
+   const query=new URLSearchParams({resource:'trials',history:'1'}),read=createAdminService(env,request);let count=0
+   for(let offset=0;offset<=1000000;offset+=500){query.set('offset',String(offset));const page=await read(authorization,query);for(const trial of page.rows){if(Date.parse(trial.created_at)>=Date.parse(TRIAL_CUTOFF)||trial.revoked_at)continue;if(await rpc<boolean>('account_revoke_trial',{p_user_id:trial.user_id,p_client_id:trial.gateway_client_id})!==true)throw new AccountError(503,'Revogação incompleta. Atualize e tente novamente.');count++}if(!page.hasMore)break}
+   return {revoked:count,cutoff:TRIAL_CUTOFF}
+  }
+  if(action==='register-delivery'){
+   let input
+   try{input=validateDeliveryInput(body.delivery&&typeof body.delivery==='object'?body.delivery:{})}catch(error){throw new AccountError(400,error instanceof Error?error.message:'Entrega inválida.')}
+   const id=await rpc<string|null>('admin_register_delivery',{p_id:input.id,p_user_id:input.user_id,p_subscription_id:input.subscription_id,p_product:input.product,p_supplier:input.supplier,p_key_hint:input.key_hint,p_base_url:input.base_url,p_model_id:input.model_id,p_notes:input.notes,p_expires_at:input.expires_at,p_replaces:input.replaces,p_created_by:email})
+   if(!id)throw new AccountError(409,'Não foi possível registrar: a credencial a substituir ou a assinatura não pertence a este cliente.')
+   return {id}
+  }
+  if(action==='revoke-delivery'){
+   if(!isUuid(body.id))throw new AccountError(400,'Credencial inválida.')
+   const revoked=await rpc<boolean>('admin_revoke_delivery',{p_id:body.id,p_by:email})
+   if(!revoked)throw new AccountError(409,'Esta credencial já estava revogada.')
+   return {ok:true}
+  }
+  throw new AccountError(400,'Ação inválida.')
+ }
+}
+
+async function readBody(req:IncomingMessage&{body?:unknown}):Promise<Row>{
+ let body=req.body
+ if(body===undefined){
+  let text=''
+  for await(const chunk of req){text+=chunk;if(Buffer.byteLength(text)>4096)throw new AccountError(413,'Solicitação muito grande.')}
+  try{body=JSON.parse(text||'{}')}catch{throw new AccountError(400,'Solicitação inválida.')}
+ }
+ if(!body||typeof body!=='object'||Array.isArray(body))throw new AccountError(400,'Solicitação inválida.')
+ return body as Row
+}
+
+export default async function handler(req:IncomingMessage&{body?:unknown},res:ServerResponse){
  res.setHeader('Cache-Control','private, no-store');res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('X-Content-Type-Options','nosniff')
  try{
   if(req.method==='POST'){
-   const query=new URLSearchParams({resource:'trials',history:'1'});const service=createAdminService();const config=configuration(process.env);let count=0;
-   for(let offset=0;offset<=1000000;offset+=500){query.set('offset',String(offset));const page=await service(req.headers.authorization,query);for(const trial of page.rows){if(Date.parse(trial.created_at)>=Date.parse(TRIAL_CUTOFF)||trial.revoked_at)continue;const response=await fetch(config.url+'/rest/v1/rpc/account_revoke_trial',{method:'POST',headers:{apikey:config.secret,...(!config.secret.startsWith('sb_secret_')?{Authorization:'Bearer '+config.secret}:{}),'Content-Type':'application/json'},body:JSON.stringify({p_user_id:trial.user_id,p_client_id:trial.gateway_client_id}),signal:AbortSignal.timeout(15000)});if(!response.ok||await response.json()!==true)throw new AccountError(503,'Revogação incompleta. Atualize e tente novamente.');count++}if(!page.hasMore)break}
-   res.statusCode=200;res.end(JSON.stringify({revoked:count,cutoff:TRIAL_CUTOFF}));return
+   const result=await createAdminActions()(req.headers.authorization,await readBody(req))
+   res.statusCode=200;res.end(JSON.stringify(result));return
   }
   if(req.method!=='GET')throw new AccountError(405,'Operação não disponível.')
   const result=await createAdminService()(req.headers.authorization,new URL(req.url||'/', 'http://localhost').searchParams)
   res.statusCode=200;res.end(JSON.stringify(result))
  }catch(error){res.statusCode=error instanceof AccountError?error.status:503;res.end(JSON.stringify({error:error instanceof AccountError?error.message:'Administração temporariamente indisponível.'}))}
 }
-
-
-
-
-
-
-

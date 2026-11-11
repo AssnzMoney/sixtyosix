@@ -1102,6 +1102,23 @@
   color: var(--danger);
 }
 
+.six-card-footnote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.six-card-footnote svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
 .six-note {
   display: flex;
   align-items: flex-start;
@@ -1768,7 +1785,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 16px;
 }
 
@@ -1956,6 +1973,245 @@
 .six-plan-card .six-primary {
   width: 100%;
   margin-top: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   Credenciais entregues pelo WhatsApp
+   -------------------------------------------------------------------------- */
+.six-status.is-pending {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.six-status.is-muted {
+  background: var(--cream);
+  color: var(--muted);
+}
+
+.six-credential-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.six-credential {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface-2);
+}
+
+.six-credential.is-pending {
+  border-color: rgba(22, 163, 74, 0.35);
+  background: var(--track);
+}
+
+.six-credential-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.six-credential-data {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px 20px;
+  margin: 0;
+}
+
+.six-credential-data .is-wide {
+  grid-column: 1 / -1;
+}
+
+.six-credential-data dt {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.six-credential-data dd {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.six-credential-data code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font: 13px/1.5 'DM Mono', monospace;
+}
+
+.six-copy-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: 700 12px/1 'Manrope', sans-serif;
+  cursor: pointer;
+}
+
+.six-copy-inline:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.six-credential-confirm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.six-credential-confirm label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.six-credential-confirm input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  accent-color: var(--em);
+}
+
+.six-credential-ok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--green-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.six-paid-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 20px;
+  border: 1px solid rgba(22, 163, 74, 0.3);
+  border-radius: 22px;
+  background: var(--track);
+}
+
+.six-paid-banner-text {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.six-paid-banner-text svg {
+  flex-shrink: 0;
+  color: var(--green-text);
+}
+
+.six-credential-history,
+.six-legacy-claim {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.six-credential-history {
+  margin-top: 16px;
+  padding: 4px 16px;
+}
+
+.six-credential-history summary,
+.six-legacy-claim summary {
+  padding: 12px 0;
+  font: 700 14px/1.4 'Fustat', sans-serif;
+  cursor: pointer;
+}
+
+.six-credential-history ul {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.six-credential-history li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.six-credential-history li small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.six-legacy-claim {
+  padding: 4px 20px;
+  box-shadow: var(--shadow);
+}
+
+.six-legacy-claim p {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.six-legacy-claim .six-inline-form {
+  margin-bottom: 16px;
+  padding: 0;
+}
+
+.six-guide-config {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 18px 28px;
+}
+
+.six-guide-config h2 {
+  margin: 8px 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.six-guide-config p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
 }
 
 /* --------------------------------------------------------------------------
@@ -2482,7 +2738,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .six-claim {
+  .six-claim,
+  .six-guide-config {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supportWhatsappLink } from '../lib/whatsapp'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Marquee } from '@/components/ui/marquee'
@@ -1027,9 +1028,14 @@ export default function App() {
               <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
             </ul>
-            <Link to="/teste-gratis" className="plan-btn">
+            <a
+              href={supportWhatsappLink('Olá! Quero fazer o teste grátis de 7 dias da SixtySix.')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="plan-btn"
+            >
               Começar Teste Grátis <Arrow />
-            </Link>
+            </a>
           </motion.div>
 
           {/* Dev */}

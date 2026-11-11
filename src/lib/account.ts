@@ -32,3 +32,24 @@ export async function accountSummary(from: string, to: string, signal?: AbortSig
   first.hasMore = false
   return first
 }
+
+// Credenciais do fornecedor entregues pelo WhatsApp (só o final da chave; nunca o segredo).
+export type AccountCredential = {
+  id: string
+  product: string
+  key_hint: string
+  base_url: string
+  model_id: string | null
+  delivered_at: string
+  expires_at: string | null
+  replaced_at: string | null
+  revoked_at: string | null
+  confirmed_at: string | null
+  state: 'pending' | 'confirmed' | 'expired' | 'replaced' | 'revoked'
+}
+export function accountCredentials(signal?: AbortSignal) {
+  return accountRequest<{ available: boolean; credentials: AccountCredential[] }>('credentials', undefined, signal)
+}
+export function confirmCredential(id: string) {
+  return accountRequest<{ confirmed_at: string }>('confirm-delivery', { id })
+}

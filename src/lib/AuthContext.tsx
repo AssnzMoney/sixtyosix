@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, isSupabaseConfigured } from './supabase'
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js'
 import { normalizeDisplayName, savedDisplayName } from './displayName'
+import { normalizeWhatsapp } from './whatsapp'
 
 export interface UserProfile {
   id: string
@@ -9,7 +10,8 @@ export interface UserProfile {
   name: string // Nome preferido escolhido pelo usuário para ser chamado
   rawName?: string // Nome original retornado pelo Google/Discord
   customName?: string
-  hasCompletedOnboarding: boolean // Se já passou pela tela de escolha de nome
+  hasCompletedOnboarding: boolean // Nome escolhido e WhatsApp válido (obrigatórios para usar a conta)
+  whatsapp?: string // WhatsApp normalizado (55 + DDD + número), usado para entrega e suporte
   avatarUrl?: string
   provider: 'google' | 'discord' | 'email' | 'demo'
   hasActivePlan: boolean // Se tem plano ativo (Pro) ou gratuito
@@ -27,7 +29,7 @@ interface AuthContextType {
   verifyEmailOtp: (email: string, token: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
   demoLogin: (provider: 'google' | 'discord', asNewUser?: boolean) => void
-  updateDisplayName: (chosenName: string) => Promise<void>
+  updateProfile: (profile: { name: string; whatsapp: string }) => Promise<void>
   toggleSubscriptionPlan: () => void
 }
 
@@ -69,9 +71,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const rawName = meta.full_name || meta.name || meta.user_name || (su.email ? su.email.split('@')[0] : 'Desenvolvedor')
     const hasPlanSaved = localStorage.getItem(`sixtysix_has_plan_${su.id}`) === 'true'
     const customName = savedDisplayName(meta)
-    const hasCompletedOnboarding = Boolean(customName)
+    const whatsapp = normalizeWhatsapp(meta.whatsapp) || undefined
+    const hasCompletedOnboarding = Boolean(customName && whatsapp)
 
-    const finalName = hasCompletedOnboarding && customName.trim() ? customName.trim() : rawName
+    const finalName = customName.trim() ? customName.trim() : rawName
 
     return {
       id: su.id,
@@ -80,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       rawName,
       customName: customName || undefined,
       hasCompletedOnboarding,
+      whatsapp,
       avatarUrl: meta.avatar_url || meta.picture || '',
       provider,
       hasActivePlan: meta.has_active_plan ?? hasPlanSaved,
@@ -140,13 +144,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [])
 
-  const updateDisplayName = async (chosenName: string) => {
-    const cleanName = normalizeDisplayName(chosenName)
-    if (!supabase || !session?.user) throw new Error('Entre na sua conta para salvar seu nome.')
+  // Nome e WhatsApp são salvos juntos, numa única atualização da conta.
+  const updateProfile = async (profile: { name: string; whatsapp: string }) => {
+    const cleanName = normalizeDisplayName(profile.name)
+    const whatsapp = normalizeWhatsapp(profile.whatsapp)
+    if (!whatsapp) throw new Error('Informe um WhatsApp válido com DDD, por exemplo (81) 99237-6036.')
+    if (!supabase || !session?.user) throw new Error('Entre na sua conta para salvar seus dados.')
     const { data, error } = await supabase.auth.updateUser({
-      data: { custom_name: cleanName, has_completed_onboarding: true },
+      data: { custom_name: cleanName, whatsapp, has_completed_onboarding: true },
     })
-    if (error || !data.user) throw new Error('Não foi possível salvar seu nome na conta. Tente novamente.')
+    if (error || !data.user) throw new Error('Não foi possível salvar seus dados na conta. Tente novamente.')
     const updated = mapSupabaseUser(data.user)
     setUser(updated)
     localStorage.setItem(LOCAL_STORAGE_USER_KEY, JSON.stringify(updated))
@@ -277,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         verifyEmailOtp,
         signOut,
         demoLogin,
-        updateDisplayName,
+        updateProfile,
         toggleSubscriptionPlan,
       }}
     >

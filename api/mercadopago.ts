@@ -201,6 +201,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
       if(action==='restore'){
         const item=await own(body.id,user.id)
         if(!subscriptionActive(item)||!item.api_enabled||!secret)throw new WebhookError(403,'Seu plano não tem acesso externo ativo.')
+        if(env.SIXTYSIX_AUTO_GATEWAY_KEYS!=='1')throw new WebhookError(410,'Sua chave é entregue pelo WhatsApp. Fale com a gente: (81) 99237-6036.')
         const publicToken=`sk-sp-${randomBytes(32).toString('base64url')}`,upstream=`sk-flg-${randomBytes(32).toString('base64url')}`
         const restored=await db<boolean>('rpc/billing_restore_key',{},'POST',{p_user_id:user.id,p_id:item.id,p_hash:createHash('sha256').update(publicToken).digest('hex'),p_prefix:publicToken.slice(0,14),p_encrypted_token:encrypt(publicToken,secret,`${user.id}:paid:${item.id}:public`),p_upstream_hash:createHash('sha256').update(upstream).digest('hex'),p_encrypted_upstream:encrypt(upstream,secret,`${user.id}:paid:${item.id}:upstream`)})
         if(!restored)throw new WebhookError(409,'A chave não está revogada. Atualize a página.')
@@ -209,6 +210,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
       if(action==='key'){
         const item=await own(body.id,user.id)
         if(!subscriptionActive(item)||!item.api_enabled)throw new WebhookError(403,'Seu plano não tem acesso externo ativo.')
+        if(env.SIXTYSIX_AUTO_GATEWAY_KEYS!=='1')throw new WebhookError(410,'Sua chave é entregue pelo WhatsApp. Fale com a gente: (81) 99237-6036.')
         const rows=await db<PaidAccess[]>('billing_access',{subscription_id:`eq.${item.id}`,user_id:`eq.${user.id}`,select:'*',limit:'1'}),access=rows[0]
         if(!access||access.revoked_at||!secret)throw new WebhookError(403,'A chave está indisponível ou foi revogada.')
         return {key:decrypt(access.encrypted_token,secret,`${user.id}:paid:${item.id}:public`),expires:item.paid_until}
@@ -376,7 +378,7 @@ export default async function handler(req: IncomingMessage & { body?: unknown },
       res.end(req.method === 'HEAD' ? undefined : JSON.stringify({
         service: 'SixtySix Mercado Pago webhook', endpoint: '/api/mercadopago/webhook',
         status: process.env.MERCADOPAGO_WEBHOOK_SECRET ? 'receiver_configured' : 'awaiting_webhook_secret',
-        automaticKeyDelivery: Boolean(process.env.MERCADOPAGO_WEBHOOK_SECRET&&process.env.MERCADOPAGO_ACCESS_TOKEN),
+        automaticKeyDelivery: Boolean(process.env.MERCADOPAGO_WEBHOOK_SECRET&&process.env.MERCADOPAGO_ACCESS_TOKEN&&process.env.SIXTYSIX_AUTO_GATEWAY_KEYS==='1'),
       }))
       return
     }

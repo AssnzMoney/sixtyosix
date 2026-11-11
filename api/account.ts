@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { withFableVariants } from '../server/model-aliases.js'
+import { CONFIRMATION_TEXT_VERSION, deliveryConfirmationText, deliveryState, type DeliveryRow } from '../src/lib/deliveries.js'
 
 type Config = { url: string; secret: string; publicKey: string;billingConnected?:boolean }
 type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean }
@@ -52,7 +53,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
     return db<Client[]>('gateway_clients', { user_id: `eq.${userId}`, select: 'id,name,enabled,created_at,key_prefix', order: 'created_at.desc' })
   }
   return {
-    async execute(method: string, path: string, authorization?: string, body: Record<string, unknown> = {}, query = new URLSearchParams()) {
+    async execute(method: string, path: string, authorization?: string, body: Record<string, unknown> = {}, query = new URLSearchParams(), meta: { ip?: string; userAgent?: string } = {}) {
       const userId = await identity(authorization)
       if (method === 'GET' && path === 'summary') {
         const from = query.get('from') || new Date(Date.now() - 29 * 86400000).toISOString().slice(0,10)
@@ -106,6 +107,44 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         if (!updated.length) throw new AccountError(404, 'Chave não encontrada ou já revogada.')
         return { ok: true }
       }
+      // Credenciais do fornecedor entregues pelo WhatsApp (só o final da chave; nunca o segredo).
+      if (method === 'GET' && path === 'credentials') {
+        let rows: DeliveryRow[]
+        try {
+          rows = await db<DeliveryRow[]>('credential_deliveries', {
+            user_id: `eq.${userId}`,
+            select: 'id,product,key_hint,base_url,model_id,delivered_at,expires_at,replaced_at,revoked_at,confirmed_at',
+            order: 'delivered_at.desc', limit: '30',
+          })
+        } catch {
+          return { available: false, credentials: [] }
+        }
+        return { available: true, credentials: rows.map(row => ({ ...row, state: deliveryState(row) })) }
+      }
+      if (method === 'POST' && path === 'confirm-delivery') {
+        const id = typeof body.id === 'string' ? body.id : ''
+        if (!uuid.test(id)) throw new AccountError(400, 'Credencial inválida.')
+        const rows = await db<DeliveryRow[]>('credential_deliveries', {
+          id: `eq.${id}`, user_id: `eq.${userId}`,
+          select: 'id,product,key_hint,base_url,model_id,delivered_at,expires_at,replaced_at,revoked_at,confirmed_at', limit: '1',
+        })
+        const row = rows[0]
+        if (!row) throw new AccountError(404, 'Credencial não encontrada.')
+        if (row.confirmed_at) return { confirmed_at: row.confirmed_at }
+        const state = deliveryState(row)
+        if (state !== 'pending') {
+          throw new AccountError(409, state === 'replaced'
+            ? 'Esta credencial foi substituída. Confirme a nova credencial.'
+            : state === 'revoked' ? 'Esta credencial foi revogada.' : 'Esta credencial venceu. Fale com a gente no WhatsApp.')
+        }
+        const confirmed = await db<string | null>('rpc/account_confirm_delivery', {}, 'POST', {
+          p_user_id: userId, p_id: id,
+          p_ip: (meta.ip || '').slice(0, 64), p_user_agent: (meta.userAgent || '').slice(0, 300),
+          p_text: deliveryConfirmationText(row.key_hint, row.base_url), p_version: CONFIRMATION_TEXT_VERSION,
+        })
+        if (!confirmed) throw new AccountError(409, 'Esta credencial não está mais ativa. Atualize o painel.')
+        return { confirmed_at: confirmed }
+      }
       throw new AccountError(405, 'Operação não disponível.')
     },
   }
@@ -131,7 +170,9 @@ export default async function handler(req: IncomingMessage & { body?: Record<str
       try { body = JSON.parse(text || '{}') } catch { throw new AccountError(400, 'Solicitação inválida.') }
     }
     if (body && (typeof body !== 'object' || Array.isArray(body))) throw new AccountError(400, 'Solicitação inválida.')
-    const data = await createAccountService(configuration()).execute(req.method!, path, req.headers.authorization, body, url.searchParams)
+    const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+    const meta = { ip: String(req.headers['x-real-ip'] || forwarded || ''), userAgent: String(req.headers['user-agent'] || '') }
+    const data = await createAccountService(configuration()).execute(req.method!, path, req.headers.authorization, body, url.searchParams, meta)
     res.statusCode = 200
     res.end(JSON.stringify(data))
   } catch (error) {

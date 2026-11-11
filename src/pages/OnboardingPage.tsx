@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { User, Sparkles, ArrowRight, ShieldCheck, Check } from 'lucide-react'
+import { User, Phone, Mail, ArrowRight, ShieldCheck, Check } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { accountDestination } from '../lib/authDestination'
+import { maskWhatsappInput, normalizeWhatsapp } from '../lib/whatsapp'
+import './onboarding.css'
 
 const GoogleIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
@@ -36,186 +38,215 @@ export default function OnboardingPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const isEditing = searchParams.get('edit') === 'true'
-  const { user, loading, updateDisplayName } = useAuth()
+  const { user, loading, updateProfile } = useAuth()
 
   const [displayName, setDisplayName] = useState('')
+  const [whatsapp, setWhatsapp] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const filled = useRef(false)
 
-  // Extrai sugestão a partir do primeiro nome ou dados do provedor
+  // Sugestão a partir do primeiro nome do provedor ou do e-mail
   const suggestedName = user?.rawName
     ? user.rawName.trim().split(' ')[0]
     : user?.email
-    ? user.email.split('@')[0]
-    : 'Dev'
+      ? user.email.split('@')[0]
+      : 'Dev'
+  // Conta antiga: já escolheu o nome, falta só o WhatsApp
+  const onlyWhatsapp = Boolean(user?.customName && !user?.whatsapp && !isEditing)
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return
+    if (!user) {
       navigate('/login')
       return
     }
-
-    if (!loading && user) {
-      if (user.hasCompletedOnboarding && !isEditing) {
-        navigate(accountDestination(true))
-        return
-      }
-      setDisplayName(user.customName || '')
+    if (user.hasCompletedOnboarding && !isEditing) {
+      navigate(accountDestination(true))
+      return
     }
-  }, [user?.id, user?.customName, user?.hasCompletedOnboarding, loading, isEditing, navigate])
+    if (!filled.current) {
+      filled.current = true
+      setDisplayName(user.customName || '')
+      setWhatsapp(user.whatsapp ? maskWhatsappInput(user.whatsapp) : '')
+    }
+  }, [user, loading, isEditing, navigate])
+
+  const phoneDigits = normalizeWhatsapp(whatsapp)
+  const canSubmit = Boolean(displayName.trim()) && Boolean(phoneDigits) && !submitting
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmed = displayName.trim()
-    if (!trimmed) {
-      setError('Por favor, informe como gostaria de ser chamado.')
+    if (!displayName.trim()) {
+      setError('Informe como gostaria de ser chamado.')
       return
     }
-    if (trimmed.length > 30) {
-      setError('O nome de exibição deve ter no máximo 30 caracteres.')
+    if (displayName.trim().length > 30) {
+      setError('O nome pode ter no máximo 30 caracteres.')
       return
     }
-
+    if (!phoneDigits) {
+      setError('Informe um WhatsApp válido com DDD, por exemplo (81) 99237-6036.')
+      return
+    }
     setError(null)
     setSubmitting(true)
     try {
-      await updateDisplayName(trimmed)
-      navigate(isEditing?'/dashboard':accountDestination(true))
-    } catch (err: any) {
-      setError(err?.message || 'Falha ao salvar nome.')
+      await updateProfile({ name: displayName, whatsapp: phoneDigits })
+      navigate(isEditing ? '/dashboard' : accountDestination(true))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível salvar seus dados.')
       setSubmitting(false)
     }
   }
 
   if (loading || !user) {
     return (
-      <div className="onboarding-loading-screen">
-        <div className="onboarding-loading-spinner" />
+      <div className="six-onb-loading" role="status">
+        <span className="six-onb-spinner" aria-hidden="true" />
+        Carregando sua conta…
       </div>
     )
   }
 
+  const providerLabel = user.provider === 'google' ? 'Google' : user.provider === 'discord' ? 'Discord' : 'e-mail'
+
   return (
-    <div className="onboarding-wrapper">
-      {/* Esfumado verde na base */}
-      <img
-        src="/assets/login-bottom-glow.webp"
-        alt=""
-        className="onboarding-bottom-glow"
-        aria-hidden="true"
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 18 }}
+    <main className="six-onb">
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="onboarding-card"
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+        className="six-onb-card"
+        aria-labelledby="six-onb-title"
       >
-        {/* Brand Header */}
-        <div className="onboarding-header">
-          <img src="/assets/sidebar-logo.png" alt="SixtySix" className="onboarding-brand-logo" />
-        </div>
+        <img src="/assets/sidebar-logo.png" alt="SixtySix" className="six-onb-logo" />
 
-        {/* User Provider Avatar Pill */}
-        <div className="onboarding-avatar-section">
-          <div className="onboarding-avatar-wrap">
+        <div className="six-onb-account">
+          <span className="six-onb-avatar">
             {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt={user.name} className="onboarding-avatar-img" />
+              <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" />
             ) : (
-              <div className="onboarding-avatar-fallback">
-                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-              </div>
+              (user.name || 'U').charAt(0).toUpperCase()
             )}
-            <span className={`onboarding-provider-badge badge-${user.provider}`}>
-              {user.provider === 'google' ? <GoogleIcon /> : <DiscordIcon />}
+            <span className="six-onb-provider" aria-hidden="true">
+              {user.provider === 'google' ? <GoogleIcon /> : user.provider === 'discord' ? <DiscordIcon /> : <Mail size={11} />}
             </span>
-          </div>
-
-          <div className="onboarding-account-info">
-            <span className="onboarding-account-pill">
-              <ShieldCheck size={13} color="#22c55e" />
-              Conta conectada via {user.provider === 'google' ? 'Google' : user.provider === 'discord' ? 'Discord' : 'E-mail'}
-            </span>
-            <span className="onboarding-account-email">{user.email}</span>
-          </div>
-        </div>
-
-        {/* Main Title & Subtitle */}
-        <div className="onboarding-text-group">
-          <span className="onboarding-step-pill">
-            <Sparkles size={13} color="#1f4647" />
-            {isEditing ? 'Atualizar Perfil' : 'Primeiro Acesso • Quase Pronto'}
           </span>
-          <h1 className="onboarding-title">Como gostaria de ser chamado?</h1>
-          <p className="onboarding-sub">
-            Personalize seu nome de desenvolvedor. Em vez de exibir o nome completo ou tag da conta, é assim que você será identificado na SixtySix e no seu painel.
-          </p>
+          <span className="six-onb-account-text">
+            <small>
+              <ShieldCheck size={13} /> Conectado com {providerLabel}
+            </small>
+            <strong>{user.email}</strong>
+          </span>
         </div>
 
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="onboarding-form">
-          <div className="onboarding-field">
-            <label htmlFor="display-name-input" className="onboarding-label">
-              Seu nome ou apelido de desenvolvedor
-            </label>
-            <div className="onboarding-input-wrap">
-              <User size={18} className="onboarding-input-icon" />
+        <span className="six-onb-eyebrow">
+          {isEditing ? 'seu perfil' : onlyWhatsapp ? 'falta pouco' : 'primeiro acesso'}
+        </span>
+        <h1 id="six-onb-title" className="six-onb-title">
+          {isEditing ? (
+            <>
+              Seus <em>dados.</em>
+            </>
+          ) : onlyWhatsapp ? (
+            <>
+              Falta só seu <em>WhatsApp.</em>
+            </>
+          ) : (
+            <>
+              Como podemos <em>te chamar?</em>
+            </>
+          )}
+        </h1>
+        <p className="six-onb-sub">
+          Seu nome aparece no painel. Seu WhatsApp é por onde entregamos sua chave, a URL de configuração e o suporte.
+        </p>
+
+        <form onSubmit={handleSubmit} className="six-onb-form" noValidate>
+          <div className="six-onb-field">
+            <label htmlFor="six-onb-name">Nome ou apelido</label>
+            <div className="six-onb-input">
+              <User size={18} aria-hidden="true" />
               <input
-                id="display-name-input"
+                id="six-onb-name"
                 type="text"
-                autoFocus
+                autoComplete="nickname"
+                autoFocus={!onlyWhatsapp}
                 maxLength={30}
                 value={displayName}
                 onChange={(e) => {
                   setDisplayName(e.target.value)
                   if (error) setError(null)
                 }}
-                placeholder="Ex: Alysson, Neo, DevMax..."
-                className="onboarding-input"
+                placeholder="Ex.: Alysson, Neo, DevMax"
               />
-              <span className="onboarding-char-count">{displayName.length}/30</span>
+              <span className="six-onb-count">{displayName.length}/30</span>
             </div>
-
-            {/* Sugestões Rápidas */}
-            <div className="onboarding-suggestions">
-              <span className="onboarding-sugg-label">Sugestão:</span>
-              <button
-                type="button"
-                className="onboarding-sugg-pill"
-                onClick={() => setDisplayName(suggestedName)}
-              >
-                {suggestedName}
-              </button>
-              {user.rawName && user.rawName !== suggestedName && (
-                <button
-                  type="button"
-                  className="onboarding-sugg-pill"
-                  onClick={() => setDisplayName(user.rawName || '')}
-                >
-                  {user.rawName}
+            {!displayName.trim() && (
+              <div className="six-onb-suggestions">
+                <span>Sugestão:</span>
+                <button type="button" onClick={() => setDisplayName(suggestedName)}>
+                  {suggestedName}
                 </button>
-              )}
-            </div>
-
-            {error && <p className="onboarding-error-msg">{error}</p>}
+                {user.rawName && user.rawName !== suggestedName && (
+                  <button type="button" onClick={() => setDisplayName(user.rawName || '')}>
+                    {user.rawName}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting || !displayName.trim()}
-            className="onboarding-submit-btn"
-          >
-            <span>{submitting ? 'Salvando...' : 'Continuar para a Plataforma'}</span>
-            <ArrowRight size={18} />
+          <div className="six-onb-field">
+            <label htmlFor="six-onb-whatsapp">Seu WhatsApp</label>
+            <div className={`six-onb-input ${whatsapp && !phoneDigits ? 'is-invalid' : ''}`}>
+              <Phone size={18} aria-hidden="true" />
+              <input
+                id="six-onb-whatsapp"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel-national"
+                autoFocus={onlyWhatsapp}
+                value={whatsapp}
+                onChange={(e) => {
+                  setWhatsapp(maskWhatsappInput(e.target.value))
+                  if (error) setError(null)
+                }}
+                placeholder="(81) 99999-9999"
+                aria-describedby="six-onb-whatsapp-help"
+                aria-invalid={Boolean(whatsapp && !phoneDigits)}
+              />
+              {phoneDigits && <Check size={18} className="six-onb-ok" aria-label="Número válido" />}
+            </div>
+            <p id="six-onb-whatsapp-help" className="six-onb-help">
+              Com DDD. Usamos para entregar sua chave e a URL de configuração, e para dar suporte.
+            </p>
+          </div>
+
+          {error && (
+            <p className="six-onb-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button type="submit" disabled={!canSubmit} className="six-onb-submit">
+            <span>{submitting ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Salvar e continuar'}</span>
+            <ArrowRight size={18} aria-hidden="true" />
           </button>
         </form>
 
-        <p className="onboarding-footer-note">
-          <Check size={14} color="#16a34a" />
-          Você poderá alterar este nome a qualquer momento dentro das configurações da sua Dashboard.
+        <p className="six-onb-note">
+          <Check size={14} aria-hidden="true" />
+          <span>
+            Seus dados são usados para entregar suas credenciais e dar suporte, conforme a{' '}
+            <a href="/privacidade.html" target="_blank" rel="noopener noreferrer">
+              Política de Privacidade
+            </a>
+            . Você pode alterá-los a qualquer momento no seu painel.
+          </span>
         </p>
-      </motion.div>
-    </div>
+      </motion.section>
+    </main>
   )
 }
-
