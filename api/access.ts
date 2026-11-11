@@ -1,5 +1,4 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
-import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { recordUsage, supplierRequestBody, supplierUrl, UsageTap } from '../server/supplier.js'
@@ -91,6 +90,12 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
   }
 }
 
+/** /glm/v1/... e /api/codex/... (endereços antigos) → /v1/... no provedor. */
+export function supplierPath(path:string){
+  if(path.startsWith('/glm/v1'))return '/v1'+path.slice('/glm/v1'.length)
+  if(path.startsWith('/api/codex'))return '/v1'+path.slice('/api/codex'.length)
+  return path
+}
 export function proxyPath(value:string){
   if(!/^\/(?:v1|glm\/v1|api\/codex)(?:\/[A-Za-z0-9_.-]+)*\/?$/.test(value)||value.split('/').some(s=>s==='.'||s==='..'))throw new AccessError(400,'Endereço inválido.')
   return value
@@ -157,83 +162,59 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       const status=await routerStatus(process.env)
       res.setHeader('Content-Type','application/json; charset=utf-8');res.statusCode=200;res.end(JSON.stringify(status));return
     }
+    // Status público (/api/health): o gateway está pronto quando há modelos ativos no Roteador.
+    if(action==='health'){
+      const router=await loadRouter(process.env)
+      res.setHeader('Content-Type','application/json; charset=utf-8');res.statusCode=router.routes.size?200:503
+      res.end(JSON.stringify({ok:router.routes.size>0,models:router.routes.size}));return
+    }
     if(action!=='proxy')throw new AccessError(404,'Operação não encontrada.')
     if(!['GET','HEAD','POST','OPTIONS'].includes(req.method||''))throw new AccessError(405,'Método não permitido.')
-    const path=proxyPath(url.searchParams.get('path')||'')
+    // CORS para apps no navegador: respondido aqui, sem gateway externo.
+    res.setHeader('access-control-allow-origin','*')
+    if(req.method==='OPTIONS'){
+      res.setHeader('access-control-allow-methods','GET, POST, OPTIONS')
+      res.setHeader('access-control-allow-headers','authorization, x-api-key, anthropic-api-key, content-type, accept, anthropic-version, anthropic-beta, openai-beta, anthropic-dangerous-direct-browser-access')
+      res.setHeader('access-control-max-age','86400');res.statusCode=204;res.end();return
+    }
+    // Endereços antigos (/glm/v1 e /api/codex) continuam aceitos e viram /v1 no provedor.
+    const path=supplierPath(proxyPath(url.searchParams.get('path')||''))
     const credential=single(req.headers['x-api-key'])||single(req.headers['anthropic-api-key'])||req.headers.authorization||''
     const token=credential.replace(/^Bearer\s+/i,'').trim()
     if(token.length>256)throw new AccessError(401,'Chave inválida.')
+    // Só as chaves do SixtySix: Roteador (sk-rt-), plano do site (sk-sp-) e teste (sk-sx-). As antigas (sk-flg-) foram desativadas.
+    if(!/^sk-(sx|sp|rt)-/.test(token))throw new AccessError(401,token?'Esta chave foi desativada. Peça uma nova pelo WhatsApp: (81) 99237-6036.':'Informe sua chave de acesso.')
     const body=req.method==='POST'?await rawBody(req):undefined
     const params=new URLSearchParams(url.searchParams);params.delete('action');params.delete('path')
     let payload:Record<string,unknown>|null=null
-    const routed=/^sk-(sx|sp|rt)-/.test(token)
-    if(body&&routed){
-      try{const parsed=JSON.parse(body.toString('utf8')||'{}');if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))payload=parsed}catch{/* sem JSON: segue como antes */}
+    if(body){
+      try{const parsed=JSON.parse(body.toString('utf8')||'{}');if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))payload=parsed}catch{/* tratado abaixo */}
+      if(!payload)throw new AccessError(400,'JSON inválido.')
     }
-    const router=routed?await loadRouter(process.env):EMPTY_ROUTER
-    let upstreamToken=token,paidModels:string[]|null=null,allowed:string[]|null=null,clientId:string|null=null
-    if(token.startsWith('sk-sx-')){const trial=await service.authorize(token,router);upstreamToken=trial.token;allowed=trial.models;clientId=trial.clientId}
-    if(token.startsWith('sk-sp-')){
-      let model:string|undefined
-      if(req.method==='POST'){
-        if(!payload)throw new AccessError(400,'JSON inválido.')
-        if(typeof payload.model!=='string'||!payload.model)throw new AccessError(400,'Selecione um modelo para continuar.')
-        model=payload.model
-      }
-      const paid=await service.authorizePaid(token,model,router.proAliases);upstreamToken=paid.token;paidModels=allowed=paid.models;clientId=paid.clientId
-    }
+    const model=typeof payload?.model==='string'?payload.model:''
+    if(req.method==='POST'&&!model)throw new AccessError(400,'Selecione um modelo para continuar.')
+    const router=await loadRouter(process.env)
+    let allowed:string[]=[],clientId=''
+    if(token.startsWith('sk-sx-')){const trial=await service.authorize(token,router);allowed=trial.models;clientId=trial.clientId}
+    if(token.startsWith('sk-sp-')){const paid=await service.authorizePaid(token,model||undefined,router.proAliases);allowed=paid.models;clientId=paid.clientId}
     if(token.startsWith(ROUTER_KEY_PREFIX)){
-      try{const key=await authorizeRouterKey(process.env,fetch,token,router);allowed=key.allowed;clientId=key.clientId;upstreamToken=''}
+      try{const key=await authorizeRouterKey(process.env,fetch,token,router);allowed=key.allowed;clientId=key.clientId}
       catch(error){if(error instanceof RouterError)throw new AccessError(error.status,error.message);throw error}
     }
-    // Modelos do Roteador: só para chaves de teste, pagas e manuais, que sabem a quem cobrar o consumo.
-    const alias=typeof payload?.model==='string'?payload.model:''
-    const route=req.method==='POST'&&payload&&clientId&&path.startsWith('/v1/')?router.routes.get(alias):undefined
-    if(route&&payload&&clientId){
-      if(!allowed?.includes(alias))throw new AccessError(403,'Este modelo não está incluído no seu plano.')
+    // Só existe o que está ativo no Roteador.
+    allowed=allowed.filter(alias=>router.routes.has(alias))
+    if((req.method==='GET'||req.method==='HEAD')&&/^\/v1\/models\/?$/.test(path)){
+      const data=allowed.map(alias=>modelEntry(alias,router.routes.get(alias)?.label))
+      res.statusCode=200;res.setHeader('Content-Type','application/json; charset=utf-8')
+      res.end(req.method==='HEAD'?undefined:JSON.stringify({object:'list',data,has_more:false,first_id:data[0]?.id??null,last_id:data[data.length-1]?.id??null}));return
+    }
+    if(req.method==='POST'&&payload&&path.startsWith('/v1/')){
+      const route=router.routes.get(model)
+      if(!route)throw new AccessError(404,'Este modelo não está disponível. Veja os modelos liberados para a sua chave em /v1/models.')
+      if(!allowed.includes(model)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
       await proxySupplier(req,res,{route,path,params,payload,clientId});return
     }
-    // Chave manual do Roteador: só usa modelos do Roteador, e a lista de modelos é montada aqui.
-    if(token.startsWith(ROUTER_KEY_PREFIX)){
-      if(req.method==='GET'&&/^\/v1\/models\/?$/.test(path)){
-        const data=(allowed||[]).map(model=>modelEntry(model,router.routes.get(model)?.label))
-        res.statusCode=200;res.setHeader('Content-Type','application/json; charset=utf-8')
-        res.end(JSON.stringify({object:'list',data,has_more:false,first_id:data[0]?.id??null,last_id:data[data.length-1]?.id??null}));return
-      }
-      throw new AccessError(req.method==='POST'?403:400,req.method==='POST'?'Este modelo não está incluído na sua chave.':'Operação não disponível para esta chave.')
-    }
-    const headers:Record<string,string>={}
-    for(const key of ['content-type','accept','anthropic-version','anthropic-beta','openai-beta','anthropic-dangerous-direct-browser-access','origin','access-control-request-method','access-control-request-headers']){
-      const value=single(req.headers[key]);if(value)headers[key]=value
-    }
-    if(upstreamToken){headers['x-api-key']=upstreamToken;headers.Authorization=`Bearer ${upstreamToken}`}
-    const controller=new AbortController()
-    req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
-    const response=await fetch(`https://66cloud.vercel.app${path}${params.size?'?'+params:''}`,{
-      method:req.method,headers,...(body===undefined?{}:{body:new Uint8Array(body)}),redirect:'manual',signal:controller.signal,
-    })
-    if(response.status>=300&&response.status<400)throw new AccessError(502,'Redirecionamento inesperado do gateway.')
-    res.statusCode=response.status
-    for(const key of ['content-type','retry-after','access-control-allow-origin','access-control-allow-headers','access-control-allow-methods']){
-      const value=response.headers.get(key);if(value)res.setHeader(key,value)
-    }
-    // Na lista de modelos entram também os do Roteador que a chave pode usar.
-    const extra=allowed&&/^\/v1\/models\/?$/.test(path)?allowed.filter(model=>router.routes.has(model)):[]
-    if((paidModels||extra.length)&&response.ok&&path.endsWith('/models')){
-      const list=await response.json() as Record<string,unknown>
-      for(const key of ['data','models'])if(Array.isArray(list[key])){
-        const id=(item:Record<string,unknown>)=>String(item.id||item.slug||item.model||'')
-        const items=(list[key] as Record<string,unknown>[]).filter(item=>!paidModels||paidModels.includes(id(item)))
-        for(const model of extra)if(!items.some(item=>id(item)===model))items.push(modelEntry(model,router.routes.get(model)?.label))
-        list[key]=items
-      }
-      res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(list));return
-    }
-    if(!response.body||req.method==='HEAD'){res.end();return}
-    await new Promise<void>((resolve,reject)=>{
-      const stream=Readable.fromWeb(response.body as import('node:stream/web').ReadableStream)
-      stream.once('error',reject);res.once('error',reject);res.once('finish',resolve);res.once('close',()=>{stream.destroy();resolve()});stream.pipe(res)
-    })
+    throw new AccessError(404,'Endereço não disponível.')
   }catch(error){
     if(res.headersSent){res.destroy();return}
     res.statusCode=error instanceof AccessError?error.status:503

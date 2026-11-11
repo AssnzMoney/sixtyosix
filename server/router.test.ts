@@ -75,7 +75,6 @@ async function withAccess(options: { supplier?: (url: string, init: RequestInit)
       return Response.json(options.manual ? [{ gateway_client_id: manualClient, ...options.manual }] : [])
     }
     calls.push({ url, init })
-    if (url.startsWith('https://66cloud.vercel.app/')) return Response.json({ data: [{ id: 'claude-fable-5-1' }, { id: 'argon-4' }] })
     if (!options.supplier) throw new Error('não deveria chamar o provedor')
     return options.supplier(url, init)
   }) as typeof fetch
@@ -131,22 +130,32 @@ test('recusa da key mestra vira erro genérico para o cliente e fica registrada'
   })
 })
 
-test('modelos do 66cloud continuam no 66cloud e a lista mostra os do Roteador', async () => {
+test('modelo fora do Roteador é recusado e a lista mostra só o Roteador', async () => {
   await withAccess({}, async (base, usage, calls) => {
     const fable = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-fable-5-1' })
-    assert.equal(fable.status, 200)
-    assert.equal(calls[0].url, 'https://66cloud.vercel.app/v1/messages')
-    assert.equal((calls[0].init.headers as Record<string, string>)['x-api-key'], 'sk-flg-bridge')
+    assert.equal(fable.status, 404)
+    assert.match(await fable.text(), /não está disponível/)
+    assert.equal(calls.length, 0, 'não chama nenhum gateway externo')
     assert.equal(usage.length, 0)
     const list = await (await client(base + '/v1/models', { headers: { 'x-api-key': 'sk-sx-cliente' } })).json() as { data: { id: string; display_name?: string }[] }
     const ids = list.data.map(item => item.id)
-    assert.ok(ids.includes('claude-fable-5-1') && ids.includes('claude-opus-5-5') && !ids.includes('gpt-6.1-sol'))
+    assert.ok(ids.includes('claude-opus-5-5') && ids.includes('argon-4'))
+    assert.ok(!ids.includes('claude-fable-5-1') && !ids.includes('gpt-6.1-sol'))
     assert.equal(ids.filter(id => id === 'argon-4').length, 1)
     assert.equal(list.data.find(item => item.id === 'claude-opus-5-5')?.display_name, 'Claude Opus 5.5')
   })
 })
 
-test('chave manual sk-rt- usa só os modelos dela e nunca vai ao 66cloud', async () => {
+test('endereços antigos /glm/v1 e /api/codex chegam ao provedor como /v1', async () => {
+  await withAccess({ supplier: () => Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } }) }, async (base, _usage, calls) => {
+    assert.equal((await post(base, '/glm/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] })).status, 200)
+    assert.equal(calls[0].url, 'https://fornecedor.example/v1/messages')
+    const catalog = await (await client(base + '/api/codex/models', { headers: { 'x-api-key': 'sk-sx-cliente' } })).json() as { data: { id: string }[] }
+    assert.ok(catalog.data.some(item => item.id === 'claude-opus-5-5'))
+  })
+})
+
+test('chave manual sk-rt- usa só os modelos dela', async () => {
   const manual = { models: ['gpt-6.1-sol'], expires_at: new Date(Date.now() + 30 * day).toISOString(), revoked_at: null }
   await withAccess({ manual, supplier: () => Response.json({ model: 'openai/gpt-6.1-sol', choices: [{ message: { content: 'oi' } }], usage: { prompt_tokens: 5, completion_tokens: 2 } }) }, async (base, usage, calls) => {
     const ok = await post(base, '/v1/chat/completions', 'sk-rt-manual', { model: 'gpt-6.1-sol', messages: [{ role: 'user', content: 'oi' }] })
@@ -154,10 +163,10 @@ test('chave manual sk-rt- usa só os modelos dela e nunca vai ao 66cloud', async
     assert.equal((await ok.json() as { model: string }).model, 'gpt-6.1-sol')
     assert.deepEqual({ ...usage[0], latency_ms: 0 }, { client_id: manualClient, requested_alias: 'gpt-6.1-sol', status_code: 200, input_tokens: 5, output_tokens: 2, latency_ms: 0 })
     assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-opus-5-5' })).status, 403)
-    assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-fable-5-1' })).status, 403)
+    assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-fable-5-1' })).status, 404)
     const list = await (await client(base + '/v1/models', { headers: { Authorization: 'Bearer sk-rt-manual' } })).json() as { data: { id: string }[] }
     assert.deepEqual(list.data.map(item => item.id), ['gpt-6.1-sol'])
-    assert.ok(calls.every(call => !call.url.includes('66cloud')))
+    assert.ok(calls.every(call => call.url.startsWith('https://fornecedor.example/')))
   })
 })
 
