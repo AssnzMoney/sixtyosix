@@ -1,0 +1,39 @@
+# Caddy na VPS: https automático (Let's Encrypt), site estático e as funções no Node (PM2, porta 8080).
+# Instalado em /etc/caddy/Caddyfile pelo deploy/setup-vps.sh. Depois de mudar: sudo systemctl reload caddy
+
+# O endereço sem "www" leva para o com "www", como era na Vercel.
+sixtysix.online {
+	redir https://www.sixtysix.online{uri} permanent
+}
+
+www.sixtysix.online {
+	# Funções: login, painel, admin, pagamentos e o gateway (/v1, /glm/v1, /api/codex).
+	@api path /api/* /v1 /v1/* /glm/v1/*
+	handle @api {
+		reverse_proxy 127.0.0.1:8080 {
+			# Repassa cada pedaço da resposta na hora (streaming do Claude Code, Cline, OpenCode).
+			flush_interval -1
+			# IP real do cliente para o bloqueio de IP e o limite de velocidade (server/guard.ts lê x-real-ip).
+			# Substitui o que vier do cliente, então ninguém consegue se passar por outro IP.
+			header_up X-Real-IP {client_ip}
+		}
+	}
+
+	# Site: arquivo de dist/ se existir; senão o index.html (o React cuida da rota).
+	handle {
+		root * /home/sixtysix/app/dist
+		encode zstd gzip
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header -Server
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output file /var/log/caddy/sixtysix.log {
+			roll_size 50MiB
+			roll_keep 10
+		}
+	}
+}
