@@ -14,7 +14,15 @@ export default function AuthCallback() {
     if (session && user) {
       navigate(accountDestination(user.hasCompletedOnboarding), { replace: true })
     } else {
-      setErrorMsg('Não foi possível concluir o login. Volte e tente novamente.')
+      // O Google, o Discord ou o Supabase mandam o motivo na URL (?error_description=… ou #error_description=…).
+      const params = new URLSearchParams(window.location.search)
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const reason = params.get('error_description') || hash.get('error_description') || params.get('error') || hash.get('error')
+      setErrorMsg(
+        reason
+          ? `Não foi possível concluir o login: ${reason.replace(/\+/g, ' ').slice(0, 200)}. Volte e tente novamente.`
+          : 'Não foi possível concluir o login. Volte e tente novamente.',
+      )
     }
   }, [loading, session, user, navigate])
 

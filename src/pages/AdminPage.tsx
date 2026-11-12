@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
 import { AdminCodeRequired, adminHeaders, clearAdminSession, saveAdminSession } from '../lib/adminSession'
+import { rememberReturn } from '../lib/authDestination'
 import { confirmationReminder, customerGreeting, deliveryMessage, formatWhatsapp, shortOrder, whatsappLink } from '../lib/whatsapp'
 import {
   PRODUCT_LABELS,
@@ -253,6 +254,11 @@ export default function AdminPage() {
       controller.abort()
     }
   }, [session?.access_token, from, to, revision])
+
+  // Sem login: depois de entrar (Google, Discord ou e-mail), volta direto para o admin, não para o painel do cliente.
+  useEffect(() => {
+    if (!loading && !session) rememberReturn('/adminxv1')
+  }, [loading, session])
 
   useEffect(() => {
     if (!profileId) return
@@ -692,7 +698,7 @@ export default function AdminPage() {
       ) : !session ? (
         <div className="sx-admin-message">
           <h2>Entre com sua conta administrativa</h2>
-          <Link className="sx-btn is-primary" to="/login">
+          <Link className="sx-btn is-primary" to="/login" onClick={() => rememberReturn('/adminxv1')}>
             Entrar na SixtySix
           </Link>
         </div>
