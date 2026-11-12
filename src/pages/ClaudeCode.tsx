@@ -16,11 +16,11 @@ const Arrow = () => (
 )
 
 const claudeFaqs = [
-  ['Como funciona o acesso ao Claude Code pela SixtySix?', 'O Claude Code conecta ao perfil Fable 5.1 pelo gateway SixtySix. Use o ID claude-fable-5-1. Cotas e disponibilidade podem variar.'],
+  ['Como funciona o acesso ao Claude Code pela SixtySix?', 'O Claude Code conecta ao Fable 5.1 ou ao Fable 5.2 pelo gateway SixtySix. Use o ID claude-fable-5-1 ou claude-fable-5-2. Cotas e disponibilidade podem variar.'],
   ['Como consigo minha chave?', 'A chave individual é fornecida pela SixtySix para identificar suas chamadas. Guarde-a em segredo e não a envie em prints ou mensagens públicas.'],
   ['Em quais terminais posso rodar o Claude Code?', 'Use o Claude Code CLI em um terminal compatível, configurando as variáveis mostradas no tutorial. No Windows, a página apresenta comandos para o CMD.'],
   ['Posso usar no Claude.ai pelo navegador?', 'Não. O site claude.ai não permite apontar a conexão para este gateway. Claude Desktop só funciona quando a versão instalada oferece configuração de gateway personalizado.'],
-  ['Qual URL e ID devo configurar?', 'Use https://www.sixtysix.online como URL base e o modelo claude-fable-5-1 (Fable 5.1). O gateway atual espera a chave no cabeçalho x-api-key.'],
+  ['Qual URL e ID devo configurar?', 'Use https://www.sixtysix.online como URL base e o modelo claude-fable-5-1 (Fable 5.1) ou claude-fable-5-2 (Fable 5.2). O gateway atual espera a chave no cabeçalho x-api-key.'],
   ['Posso usar GLM 5 ou GPT Astra 6 nesta página?', 'Esta página configura o perfil Fable. Para GPT Astra 6 no Codex, abra o tutorial Astra. Para GLM 5, use o tutorial GLM 5 no Claude Code; essa rota não aparece no catálogo do Codex.'],
   ['Por que posso receber erro ou indisponibilidade?', 'O gateway pode ficar temporariamente indisponível. Confira URL, ID do perfil e chave. Ao pedir suporte, informe horário e código HTTP, nunca a chave.'],
 ]
@@ -1114,7 +1114,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>Fable 5.1</strong>, <strong>Argon 4</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2</strong>, <strong>Argon 4</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>Claude Code</strong></span></li>
               <li><Check /> <span><strong>Chave individual</strong></span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
@@ -1230,7 +1230,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Fable 5.1</strong>, <strong>Argon 4</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.1 e 5.2</strong>, <strong>Argon 4</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
               <li><Check /> <span><strong>Uso conforme cotas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Chave individual</strong> (chave individual)</span></li>
               <li><Check /> <span><strong>Perfis SixtySix</strong> (disponibilidade variável)</span></li>

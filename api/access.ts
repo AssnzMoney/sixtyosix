@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { recordUsage, supplierRequestBody, supplierUrl, UsageTap } from '../server/supplier.js'
 import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
-import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
+import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
 type Trial = { user_id:string; gateway_client_id:string; token_hash:string; token_prefix:string; encrypted_token:string; encrypted_upstream:string; created_at:string; expires_at:string; revoked_at:string|null }
@@ -84,7 +84,8 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
       if(!access.entitled||access.revoked_at||!access.paid_until||Date.parse(access.paid_until)<=Date.now())throw new AccessError(403,'O período pago terminou ou a chave foi revogada. Confira sua assinatura no painel.')
       if(!access.api_enabled)throw new AccessError(403,'Seu plano permite uso pelo site. Para usar uma chave externa, escolha um plano com API.')
       const models=withPlanModels(access.models,proExtras)
-      if(model&&!models.includes(model))throw new AccessError(403,'Este modelo não está incluído no seu plano.')
+      // Ponto e hífen valem o mesmo: claude-fable-5-2 pedido pelo cliente = claude-fable-5.2 do Roteador.
+      if(model&&!models.some(name=>normalizeAlias(name)===normalizeAlias(model)))throw new AccessError(403,'Este modelo não está incluído no seu plano.')
       if(!secret)throw new AccessError(503,'Conexão indisponível.')
       return {token:unseal(access.encrypted_upstream,secret,`${access.user_id}:paid:${access.subscription_id}:upstream`),models,clientId:access.gateway_client_id}
     },

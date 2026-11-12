@@ -1,5 +1,5 @@
 const FABLE_51 = 'claude-fable-5-1'
-/** Saiu do catálogo: é removido até de assinaturas antigas que o tenham gravado. */
+/** O nome antigo gravado em assinaturas é ignorado: o Fable 5.2 do Pro vem do Roteador, quando marcado para o Pro. */
 const FABLE_52 = 'claude-fable-5-2'
 /** Argon 4 (Gemini), usado no Cline e no OpenCode. Exclusivo do plano Pro. */
 export const ARGON_4 = 'argon-4'
