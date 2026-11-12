@@ -7,7 +7,7 @@ const uid = '1a9ff780-4164-4952-a9af-cbf41cc02042'
 const own = '11111111-1111-4111-8111-111111111111'
 const other = '22222222-2222-4222-8222-222222222222'
 const config = { url: 'https://example.supabase.co', secret:'server-only-secret', publicKey:'public-key' }
-function fixture() {
+function fixture(routerKeys: unknown[] = [{gateway_client_id:own,expires_at:'2099-01-01T00:00:00Z',revoked_at:null}]) {
   const calls: {url:URL;init:RequestInit}[] = []
   const fake = async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = new URL(String(input)); calls.push({url,init})
@@ -18,6 +18,7 @@ function fixture() {
     }
     if (url.pathname.endsWith('/gateway_usage')) return Response.json([{id:1,client_id:own,requested_alias:'gpt-6-astra',input_tokens:500,output_tokens:20,status_code:200,created_at:'2026-01-01'}])
     if (url.pathname.endsWith('/gateway_trials')) return Response.json([])
+    if (url.pathname.endsWith('/router_keys')) return Response.json(routerKeys)
     if (url.pathname.endsWith('/account_revoke_trial')) return Response.json(false)
     if (url.pathname.endsWith('/billing_revoke_key')) return Response.json(false)
     if (url.pathname.endsWith('/billing_key_access')||url.pathname.endsWith('/billing_subscription_state')) return Response.json([])
@@ -44,11 +45,17 @@ test('reads only the verified user and owned keys; ignores client-supplied owner
   assert.ok(!JSON.stringify(result).includes('server-only-secret'))
   assert.ok(!usage.url.searchParams.get('select')!.includes('upstream_model'))
 })
-test('foreign keys cannot be revoked',async()=>{
+test('revogar chave pelo painel foi desativado (era só das chaves antigas)',async()=>{
   const {calls,service}=fixture()
-  await assert.rejects(service.execute('POST','revoke','Bearer verified',{id:other,user_id:other}),{status:404})
-  const patch=calls.find(c=>c.init.method==='PATCH')!
-  assert.equal(patch.url.searchParams.get('user_id'),`eq.${uid}`)
+  await assert.rejects(service.execute('POST','revoke','Bearer verified',{id:other,user_id:other}),{status:410})
+  assert.ok(!calls.some(c=>c.init.method==='PATCH'||c.url.pathname.includes('/rpc/')))
+})
+test('chave antiga (fora do Roteador) não aparece no painel nem tem consumo lido',async()=>{
+  const {calls,service}=fixture([])
+  const result=await service.execute('GET','summary','Bearer verified',{},new URLSearchParams({from:'2026-01-01',to:'2026-01-02'})) as {keys:unknown[];trial:unknown}
+  assert.deepEqual(result.keys,[])
+  assert.equal(result.trial,null)
+  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/gateway_usage')||c.url.pathname.endsWith('/gateway_trials')))
 })
 test('gerar ou vincular chave antiga sk-flg- foi desativado',async()=>{
   const {calls,service}=fixture()

@@ -362,7 +362,6 @@ export default function DashboardPage() {
   const [devWithApi, setDevWithApi] = useState(false)
   const [accountError, setAccountError] = useState("")
   const [busy, setBusy] = useState(false)
-  const [revokeId, setRevokeId] = useState("")
   const [keyState, setKeyState] = useState<"idle" | "loading" | "loaded" | "error">("idle")
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [refresh, setRefresh] = useState(0)
@@ -395,7 +394,6 @@ export default function DashboardPage() {
   }, [period, from, to, modelFilter, search])
   useEffect(() => {
     setClientKey("")
-    setRevokeId("")
   }, [session?.user.id])
   useEffect(() => {
     fetchGatewayStatus().then(setGateway)
@@ -454,20 +452,6 @@ export default function DashboardPage() {
     }
   }, [session?.user.id, period, from, to, refresh])
 
-  async function mutateAccount(action: "revoke", payload: Record<string, unknown>) {
-    setBusy(true)
-    setAccountError("")
-    try {
-      await accountRequest<{ ok?: boolean }>(action, payload)
-      setRevokeId("")
-      setRefresh((v) => v + 1)
-      setToast("Chave revogada.")
-    } catch (error) {
-      setAccountError(error instanceof Error ? error.message : "Não foi possível concluir.")
-    } finally {
-      setBusy(false)
-    }
-  }
 
   // Credenciais do fornecedor entregues pelo WhatsApp: o cliente confirma o recebimento aqui.
   useEffect(() => {
@@ -1406,8 +1390,7 @@ export default function DashboardPage() {
                   </details>
                 )}
                 <p className="six-card-footnote">
-                  <Info size={14} aria-hidden="true" /> O consumo das chaves enviadas pelo WhatsApp é medido pelo fornecedor e
-                  não aparece neste painel.
+                  <Info size={14} aria-hidden="true" /> O consumo da sua chave aparece na aba Consumo.
                 </p>
               </section>
 
@@ -1421,8 +1404,8 @@ export default function DashboardPage() {
               <section className="six-panel">
                 <div className="six-panel-head">
                   <div>
-                    <h2>Chaves do gateway SixtySix</h2>
-                    <p>Chaves do SixtySix vinculadas à sua conta</p>
+                    <h2>Suas chaves SixtySix</h2>
+                    <p>Chaves ligadas à sua conta, com a validade de cada uma</p>
                   </div>
                   {session && (
                     <button
@@ -1470,36 +1453,13 @@ export default function DashboardPage() {
                           {k.active ? <Check size={11} /> : <X size={11} />}
                           {k.active ? "Ativa" : "Inativa"}
                         </span>
-                        <div className="six-key-row-actions">
-                          {k.active &&
-                            !k.managed &&
-                            (revokeId === k.id ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="six-danger"
-                                  disabled={busy}
-                                  onClick={() => mutateAccount("revoke", { id: k.id })}
-                                >
-                                  Confirmar revogação
-                                </button>
-                                <button type="button" className="six-text-button" onClick={() => setRevokeId("")}>
-                                  Cancelar
-                                </button>
-                              </>
-                            ) : (
-                              <button type="button" className="six-text-button is-danger" onClick={() => setRevokeId(k.id)}>
-                                Revogar
-                              </button>
-                            ))}
-                        </div>
                       </li>
                     ))}
                   </ul>
                 ) : (
                   empty(
                     "Sua chave começa aqui",
-                    "Vincule no formulário acima a chave que você recebeu pelo WhatsApp. Se ainda não recebeu, peça para a gente.",
+                    "Assim que sua chave for liberada, ela aparece aqui com a validade e o consumo. Se ainda não recebeu, peça para a gente.",
                     <a
                       className="six-primary"
                       href={supportLink("Olá! Quero solicitar minha chave individual SixtySix.")}
@@ -1980,7 +1940,7 @@ export default function DashboardPage() {
                 {[
                   [
                     "Onde consigo minha chave?",
-                    "Você recebe sua chave individual e a URL de configuração pelo WhatsApp, logo depois de contratar. Depois, vincule a chave em Chaves de API para ver seu consumo aqui. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
+                    "Você recebe sua chave individual e a URL de configuração pelo WhatsApp, logo depois de contratar. A chave fica ligada à sua conta e o consumo aparece aqui. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
                   ],
                   [
                     "Deu erro 401. O que confiro?",

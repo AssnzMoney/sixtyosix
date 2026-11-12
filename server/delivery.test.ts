@@ -25,9 +25,16 @@ function accountFixture(row: Record<string, unknown> | null, options: { tableMis
   return { calls, service: createAccountService(config, fake as typeof fetch) }
 }
 const pendingRow = {
-  id: deliveryId, product: 'claude', key_hint: '9f3a', base_url: 'https://api.fornecedor.com', model_id: null,
+  id: deliveryId, product: 'claude', key_hint: '9f3a', base_url: 'https://www.sixtysix.online', model_id: null,
   delivered_at: '2026-11-10T00:00:00Z', expires_at: null, replaced_at: null, revoked_at: null, confirmed_at: null,
 }
+
+test('credencial antiga do fornecedor (fora da SixtySix) não aparece no painel', async () => {
+  const { service } = accountFixture({ ...pendingRow, base_url: 'https://api.fornecedor.com' })
+  const result = await service.execute('GET', 'credentials', 'Bearer ok') as { available: boolean; credentials: unknown[] }
+  assert.equal(result.available, true)
+  assert.deepEqual(result.credentials, [])
+})
 
 test('cliente vê só as próprias credenciais, sem fornecedor nem observações', async () => {
   const { calls, service } = accountFixture(pendingRow)
@@ -53,7 +60,7 @@ test('confirmação grava IP, navegador e o texto exato aceito', async () => {
   assert.equal(args.p_user_id, uid)
   assert.equal(args.p_ip, '203.0.113.9')
   assert.equal(args.p_user_agent, 'Teste/1.0')
-  assert.equal(args.p_text, 'Confirmo que recebi pelo WhatsApp a chave terminada em …9f3a e a URL https://api.fornecedor.com.')
+  assert.equal(args.p_text, 'Confirmo que recebi pelo WhatsApp a chave terminada em …9f3a e a URL https://www.sixtysix.online.')
 })
 
 test('confirmação de credencial substituída, de outro cliente ou repetida', async () => {

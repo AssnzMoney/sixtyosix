@@ -70,24 +70,20 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         const end = new Date(Date.parse(to) + 86400000 + timezone * 60000).toISOString()
         const offset = Number(query.get('offset') || 0)
         if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1000000) throw new AccountError(400, 'Página inválida.')
-        const mine = await clients(userId)
-        // Chaves do Roteador ligadas a esta conta: validade e bloqueio vêm de router_keys.
-        if (mine.length) {
+        // Só as chaves que funcionam hoje: as do Roteador ligadas a esta conta (validade e bloqueio vêm de router_keys)
+        // e, logo abaixo, as dos planos do site. As antigas (sk-flg- e o teste automático) não aparecem mais.
+        const linked = await clients(userId)
+        const mine: Client[] = []
+        if (linked.length) {
           const routerKeys = await db<{ gateway_client_id: string; expires_at: string; revoked_at: string | null }[]>('router_keys', {
-            gateway_client_id: `in.(${mine.map(c => c.id).join(',')})`, select: 'gateway_client_id,expires_at,revoked_at',
+            gateway_client_id: `in.(${linked.map(c => c.id).join(',')})`, select: 'gateway_client_id,expires_at,revoked_at',
           }).catch(() => [])
           for (const k of routerKeys) {
-            const client = mine.find(c => c.id === k.gateway_client_id)
+            const client = linked.find(c => c.id === k.gateway_client_id)
             if (!client) continue
-            client.name = 'Chave SixtySix'
-            client.enabled = !k.revoked_at && Date.parse(k.expires_at) > Date.now()
-            client.managed = true
-            client.expires = k.expires_at
+            mine.push({ ...client, name: 'Chave SixtySix', enabled: !k.revoked_at && Date.parse(k.expires_at) > Date.now(), managed: true, expires: k.expires_at })
           }
         }
-        const trials = await db<Trial[]>('gateway_trials', { user_id:`eq.${userId}`,select:'gateway_client_id,token_prefix,created_at,expires_at,revoked_at',limit:'1' })
-        const trial=trials[0]
-        if(trial) mine.push({id:trial.gateway_client_id,name:'Teste grátis · 7 dias',enabled:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),created_at:trial.created_at,key_prefix:trial.token_prefix,managed:true})
         const paid=await db<PaidAccess[]>('billing_key_access',{user_id:`eq.${userId}`,select:'subscription_id,gateway_client_id,token_prefix,paid_until,revoked_at,api_enabled,created_at,entitled'})
         const subscriptions=await db<Subscription[]>('billing_subscription_state',{user_id:`eq.${userId}`,select:'id,plan_code,amount_cents,api_enabled,models,paid_until,provider_status,created_at,entitled,billing_mode',order:'created_at.desc',limit:'50'})
         for(const access of paid)mine.push({id:access.gateway_client_id,name:'Assinatura · '+(access.api_enabled?'API':'Site'),enabled:access.entitled&&!access.revoked_at&&Boolean(access.paid_until&&Date.parse(access.paid_until)>Date.now()),created_at:access.created_at,key_prefix:access.token_prefix,managed:true,visible:access.api_enabled})
@@ -100,36 +96,17 @@ export function createAccountService(config: Config, request: typeof fetch = fet
           order: 'created_at.desc,id.desc', limit: '1000', offset: String(offset),
         }) : []
         return { keys: mine.filter(c=>c.visible!==false).map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:Boolean(c.managed),expires:c.expires||null })), usage, hasMore: usage.length === 1000, subscription, billingConnected:Boolean(config.billingConnected),
-          trial:trial?{expires:trial.expires_at,active:!trial.revoked_at && Date.parse(trial.expires_at)>Date.now(),revoked:Boolean(trial.revoked_at),models:canonicalModels(router,withPlanModels(PRO_BASE_MODELS,router.proAliases))}:null }
+          trial:null }
       }
       // Chaves antigas do gateway (sk-flg-) foram desativadas: a chave agora sai do Roteador e é entregue pelo WhatsApp.
       if (method === 'POST' && (path === 'claim' || path === 'keys')) {
         throw new AccountError(410, 'As chaves antigas foram desativadas. Peça sua chave pelo WhatsApp: (81) 99237-6036.')
       }
-      if (method === 'POST' && path === 'claim') {
-        const key = typeof body.key === 'string' ? body.key.trim() : ''
-        if (!/^sk-flg-[A-Za-z0-9_-]{30,100}$/.test(key)) throw new AccountError(400, 'Cole sua chave individual completa, iniciada por sk-flg-.')
-        await db('rpc/account_claim_gateway_key', {}, 'POST', { p_user_id: userId, p_token_hash: hash(key), p_prefix: key.slice(0,14) })
-        return { ok: true }
-      }
-      if (method === 'POST' && path === 'keys') {
-        const name = typeof body.name === 'string' ? body.name.trim() : ''
-        if (!name || name.length > 80) throw new AccountError(400, 'Dê um nome à chave com até 80 caracteres.')
-        const key = `sk-flg-${randomBytes(32).toString('base64url')}`
-        const created = await db('rpc/account_issue_gateway_key', {}, 'POST', { p_user_id: userId, p_name: name, p_token_hash: hash(key), p_prefix: key.slice(0,14) })
-        return { key, created }
-      }
+      // Revogar era só das chaves antigas. Para cancelar uma chave, o cliente fala com a gente.
       if (method === 'POST' && path === 'revoke') {
-        const id = typeof body.id === 'string' ? body.id : ''
-        if (!uuid.test(id)) throw new AccountError(400, 'Chave inválida.')
-        const trialRevoked=await db<boolean>('rpc/account_revoke_trial',{},'POST',{p_user_id:userId,p_client_id:id})
-        if(trialRevoked)return {ok:true}
-        if(await db<boolean>('rpc/billing_revoke_key',{},'POST',{p_user_id:userId,p_client_id:id}))return {ok:true}
-        const updated = await db<Client[]>('gateway_clients', { id: `eq.${id}`, user_id: `eq.${userId}`, enabled: 'eq.true', select: 'id' }, 'PATCH', { enabled: false, revoked_at: new Date().toISOString() })
-        if (!updated.length) throw new AccountError(404, 'Chave não encontrada ou já revogada.')
-        return { ok: true }
+        throw new AccountError(410, 'Para cancelar sua chave, fale com a gente pelo WhatsApp: (81) 99237-6036.')
       }
-      // Credenciais do fornecedor entregues pelo WhatsApp (só o final da chave; nunca o segredo).
+      // Credenciais entregues pelo WhatsApp (só o final da chave; nunca o segredo). Só as da SixtySix: as antigas do fornecedor não aparecem.
       if (method === 'GET' && path === 'credentials') {
         let rows: DeliveryRow[]
         try {
@@ -141,7 +118,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         } catch {
           return { available: false, credentials: [] }
         }
-        return { available: true, credentials: rows.map(row => ({ ...row, state: deliveryState(row) })) }
+        return { available: true, credentials: rows.filter(row => /^https:\/\/(www\.)?sixtysix\.online(\/|$)/.test(String(row.base_url || ''))).map(row => ({ ...row, state: deliveryState(row) })) }
       }
       if (method === 'POST' && path === 'confirm-delivery') {
         const id = typeof body.id === 'string' ? body.id : ''
