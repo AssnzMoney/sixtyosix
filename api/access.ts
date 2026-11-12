@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { recordUsage, supplierRequestBody, supplierUrl, UsageTap } from '../server/supplier.js'
+import { recordUsage, rememberUnsupported, supplierRequestBody, supplierUrl, unsupportedParam, UsageTap } from '../server/supplier.js'
 import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
@@ -141,9 +141,17 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
   const controller=new AbortController(),started=Date.now()
   req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
   let status=502,tap:UsageTap|null=null
+  const send=(payloadBody:string)=>fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers,body:payloadBody,redirect:'manual',signal:controller.signal})
   try{
-    const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers,body,redirect:'manual',signal:controller.signal})
+    let response=await send(body)
     status=response.status
+    // Ajuste que o modelo não aceita (ex.: nível de esforço no Haiku): tira, tenta de novo e lembra para as próximas.
+    if(status===400){
+      const text=await response.text().catch(()=>'')
+      const param=unsupportedParam(status,text)
+      if(param){rememberUnsupported(route.upstream,param);response=await send(supplierRequestBody(call.payload,call.path,route.upstream).body);status=response.status}
+      else response=new Response(text,{status,headers:response.headers})
+    }
     // Recusa da key mestra (saldo, bloqueio) ou falha do fornecedor: o cliente não vê detalhes do fornecedor.
     if(status===401||status===402||status===403||status>=500||(status>=300&&status<400)){
       console.error('Provedor recusou a chamada',provider.name,status,(await response.text().catch(()=>'')).slice(0,500))

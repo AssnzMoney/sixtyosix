@@ -25,8 +25,43 @@ export function supplierUrl(base: string, path: string, search = ''): string {
  * Troca o apelido pelo id do fornecedor. Em streams do chat da OpenAI pede o consumo no
  * último evento (include_usage); esse evento extra é retirado antes de chegar ao cliente.
  */
+/*
+ * Ajustes que um modelo do fornecedor recusa. Ex.: o Claude Code manda "nível de esforço" (output_config.effort)
+ * achando que o modelo é grande, e o Haiku responde 400 "não suporta níveis de esforço". O gateway tira o ajuste,
+ * tenta de novo e lembra para as próximas chamadas daquele modelo. Só ajustes desta lista podem ser tirados.
+ */
+const STRIPPABLE = ['output_config.effort', 'reasoning_effort', 'reasoning.effort']
+const unsupported = new Map<string, Set<string>>()
+
+/** Qual ajuste o fornecedor recusou neste 400 (ou null, se o erro for outro). */
+export function unsupportedParam(status: number, text: string): string | null {
+  if (status !== 400) return null
+  try {
+    const error = (JSON.parse(text) as { error?: { param?: unknown; code?: unknown; type?: unknown } }).error
+    const param = String(error?.param ?? '')
+    if (STRIPPABLE.includes(param)) return param
+    if (/reasoning_effort|unsupported_effort/i.test(`${error?.code ?? ''} ${error?.type ?? ''}`)) return 'output_config.effort'
+  } catch { /* resposta que não é JSON */ }
+  return null
+}
+export function rememberUnsupported(supplierId: string, param: string) {
+  if (!STRIPPABLE.includes(param)) return
+  unsupported.set(supplierId, new Set([...(unsupported.get(supplierId) || []), param]))
+}
+function removePath(target: Record<string, unknown>, path: string) {
+  const [head, ...rest] = path.split('.')
+  if (!rest.length) return void delete target[head]
+  const child = target[head]
+  if (!child || typeof child !== 'object' || Array.isArray(child)) return
+  const copy = { ...(child as Record<string, unknown>) }
+  removePath(copy, rest.join('.'))
+  if (Object.keys(copy).length) target[head] = copy
+  else delete target[head]
+}
+
 export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string) {
   const next: Record<string, unknown> = { ...payload, model: supplierId }
+  for (const param of unsupported.get(supplierId) || []) removePath(next, param)
   const options = next.stream_options && typeof next.stream_options === 'object' ? next.stream_options as Record<string, unknown> : {}
   const injectedUsage = next.stream === true && path.endsWith('/chat/completions') && options.include_usage !== true
   if (injectedUsage) next.stream_options = { ...options, include_usage: true }

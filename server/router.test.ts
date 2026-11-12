@@ -140,6 +140,34 @@ test('modelos internos do Claude Code (avaliador do modo Automático, haiku de f
   })
 })
 
+test('modelo que não aceita nível de esforço: o gateway tira o ajuste, tenta de novo e lembra', async () => {
+  const supplier = (_url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body))
+    if (body.output_config?.effort) return Response.json({ type: 'error', error: { type: 'unsupported_reasoning_effort', code: 'unsupported_reasoning_effort', message: 'Este modelo não suporta níveis de esforço; use automático.', param: 'output_config.effort' } }, { status: 400 })
+    return Response.json({ model: 'anthropic/claude-opus-5-5', content: [{ type: 'text', text: 'oi' }], usage: { input_tokens: 2, output_tokens: 1 } })
+  }
+  await withAccess({ supplier }, async (base, _usage, calls) => {
+    const ask = { model: 'claude-opus-5-5', max_tokens: 10, output_config: { effort: 'high' }, messages: [{ role: 'user', content: 'oi' }] }
+    const first = await post(base, '/v1/messages', 'sk-sx-cliente', ask)
+    assert.equal(first.status, 200)
+    assert.equal(calls.length, 2, 'recusou com o esforço e deu certo sem ele')
+    assert.equal(JSON.parse(String(calls[1].init.body)).output_config, undefined, 'tira o output_config que ficou vazio')
+    // Da próxima vez já vai sem o esforço, numa chamada só.
+    assert.equal((await post(base, '/v1/messages', 'sk-sx-cliente', ask)).status, 200)
+    assert.equal(calls.length, 3)
+  })
+})
+
+test('outro erro 400 do fornecedor chega ao cliente sem nova tentativa', async () => {
+  const supplier = () => Response.json({ type: 'error', error: { type: 'invalid_request_error', message: 'messages: campo obrigatório' } }, { status: 400 })
+  await withAccess({ supplier }, async (base, _usage, calls) => {
+    const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'argon-4', messages: [] })
+    assert.equal(response.status, 400)
+    assert.match(await response.text(), /campo obrigatório/)
+    assert.equal(calls.length, 1)
+  })
+})
+
 test('modelo do Roteador fora do Pro não entra no teste grátis', async () => {
   await withAccess({}, async (base) => {
     const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'gpt-6.1-sol', messages: [] })
