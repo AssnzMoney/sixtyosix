@@ -80,7 +80,23 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
   const action=typeof body.action==='string'?body.action:''
   if(action.startsWith('router-')){
    const router=createRouterAdmin(config,request,email)
+   // Acha a conta cadastrada pelo e-mail (vazio = desligar a chave da conta).
+   const findUser=async(raw:unknown)=>{
+    const wanted=typeof raw==='string'?raw.trim().toLowerCase():''
+    if(!wanted)return null
+    if(wanted.length>200||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(wanted))throw new RouterError(400,'Digite um e-mail válido.')
+    for(let page=1;page<=40;page++){
+     const response=await request(`${config.url}/auth/v1/admin/users?page=${page}&per_page=500`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(15000)})
+     if(!response.ok)throw new RouterError(503,'Não foi possível consultar as contas. Tente de novo.')
+     const list=(((await response.json()) as Row).users||[]) as Row[]
+     const found=list.find(u=>String(u.email||'').toLowerCase()===wanted)
+     if(found){const u=userFromAuth(found);return {id:u.id,email:u.email,name:u.name}}
+     if(list.length<500)break
+    }
+    throw new RouterError(404,'Nenhuma conta com esse e-mail. Peça para o cliente criar a conta em sixtysix.online e tente de novo.')
+   }
    const actions:Record<string,(input:Row)=>Promise<unknown>>={
+    'router-key-link':async(input:Row)=>{const user=await findUser(input.email);return {...await router.linkKey({id:input.id,user_id:user?.id||null}),user}},
     'router-provider-save':router.saveProvider,'router-provider-enabled':router.setProviderEnabled,'router-provider-delete':router.deleteProvider,
     'router-provider-models':router.providerModels,'router-models-save':router.saveModels,
     'router-key-create':router.createKey,'router-key-renew':router.renewKey,'router-key-block':router.setKeyBlocked,'router-key-reveal':router.revealKey,

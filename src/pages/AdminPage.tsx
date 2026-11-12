@@ -637,7 +637,7 @@ export default function AdminPage() {
           </nav>
 
           {tab === 'router' ? (
-            <RouterPanel token={session!.access_token} usage={data.usage || []} period={`${brShort(from)} a ${brShort(to)}`} />
+            <RouterPanel token={session!.access_token} usage={data.usage || []} users={data.users || []} period={`${brShort(from)} a ${brShort(to)}`} />
           ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(

@@ -11,15 +11,15 @@ import { suggestAlias, suggestLabel } from '../lib/routerModels'
 type Row = Record<string, any>
 type Provider = { id: string; name: string; base_url: string; key_hint: string; enabled: boolean; created_at: string }
 type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean }
-type RouterKey = { id: string; gateway_client_id: string; name: string; contact: string | null; token_prefix: string; models: string[] | null; expires_at: string; revoked_at: string | null; created_at: string }
+type RouterKey = { id: string; gateway_client_id: string; name: string; contact: string | null; token_prefix: string; models: string[] | null; expires_at: string; revoked_at: string | null; created_at: string; user_id?: string | null }
 type Limits = { rpm: number | null; concurrency: number | null; max_ips?: number | null; trial_rpm?: number | null; trial_concurrency?: number | null }
 type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[]; ipLimit?: boolean; trialLimit?: boolean }
 type Overview = { providers: Provider[]; models: Model[]; keys: RouterKey[]; guard: Guard | null }
 type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: number; blocked_at: string | null; accepted?: boolean }
-type EditForm = { name: string; contact: string; expires: string; all: boolean; models: string[] }
+type EditForm = { name: string; contact: string; email: string; expires: string; all: boolean; models: string[] }
 type Draft = { key: string; upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
-type KeyForm = { name: string; contact: string; days: string; custom: string; unit: 'dias' | 'horas'; slow: boolean; all: boolean; models: string[] }
+type KeyForm = { name: string; contact: string; email: string; days: string; custom: string; unit: 'dias' | 'horas'; slow: boolean; all: boolean; models: string[] }
 
 const DAY = 86400000
 const SITE = 'https://www.sixtysix.online'
@@ -69,7 +69,10 @@ function Modal({ eyebrow, title, onClose, children }: { eyebrow: string; title: 
   )
 }
 
-export default function RouterPanel({ token, usage, period }: { token: string; usage: Row[]; period: string }) {
+export default function RouterPanel({ token, usage, period, users = [] }: { token: string; usage: Row[]; period: string; users?: Row[] }) {
+  // Contas cadastradas: para ligar uma chave ao e-mail do cliente e mostrar a quem ela pertence.
+  const accounts = useMemo(() => new Map(users.map((u) => [String(u.id), u])), [users])
+  const accountEmail = (id?: string | null) => (id ? String(accounts.get(id)?.email || '') : '')
   const [overview, setOverview] = useState<Overview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -268,6 +271,15 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
           `Válida até: ${expires}`,
         ].join('\n'),
       })
+      // Conta do cliente: a chave e o consumo aparecem no painel dele.
+      if (keyForm.email.trim() && result.row?.id) {
+        try {
+          await call({ action: 'router-key-link', id: result.row.id, email: keyForm.email })
+          setNotice(`Chave criada e ligada à conta ${keyForm.email.trim()}.`)
+        } catch (e) {
+          setError(`A chave foi criada, mas não deu para ligar à conta: ${e instanceof Error ? e.message : 'tente em Editar'}`)
+        }
+      }
       setKeyForm(null)
       reload()
     } catch (e) {
@@ -356,7 +368,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   function openEdit(key: RouterKey) {
     setModalError('')
     setEditFor(key)
-    setEditForm({ name: key.name, contact: key.contact || '', expires: brDay(key.expires_at), all: !key.models, models: key.models || [] })
+    setEditForm({ name: key.name, contact: key.contact || '', email: accountEmail(key.user_id), expires: brDay(key.expires_at), all: !key.models, models: key.models || [] })
   }
   async function saveEdit() {
     if (!editFor || !editForm) return
@@ -366,7 +378,12 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
     setWorking('edit')
     try {
       await call({ action: 'router-key-update', id: editFor.id, name: editForm.name, contact: editForm.contact, expires_at: editForm.expires === brDay(editFor.expires_at) ? editFor.expires_at : editForm.expires, models: editForm.all ? null : editForm.models })
-      setNotice(`Chave de ${editForm.name.trim()} atualizada.`)
+      // Só mexe no vínculo se o e-mail do campo mudou.
+      const email = editForm.email.trim().toLowerCase()
+      if (email !== accountEmail(editFor.user_id).toLowerCase()) {
+        await call({ action: 'router-key-link', id: editFor.id, email })
+        setNotice(email ? `Chave de ${editForm.name.trim()} atualizada e ligada à conta ${email}.` : `Chave de ${editForm.name.trim()} atualizada e desligada da conta do cliente.`)
+      } else setNotice(`Chave de ${editForm.name.trim()} atualizada.`)
       setEditFor(null)
       reload()
     } catch (e) {
@@ -379,6 +396,11 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
   /* ------------------------------- Tela -------------------------------- */
   return (
     <div className="sx-router">
+      <datalist id="sx-router-accounts">
+        {users.filter((u) => u.email).map((u) => (
+          <option key={u.id} value={u.email}>{u.name || u.email}</option>
+        ))}
+      </datalist>
       <div className="sx-router-intro">
         <div>
           <h2>Roteador</h2>
@@ -569,7 +591,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
               className="sx-btn is-primary"
               disabled={!sellable.length}
               title={sellable.length ? undefined : 'Cadastre um provedor e escolha os modelos primeiro.'}
-              onClick={() => { setModalError(''); setKeyForm({ name: '', contact: '', days: '30', custom: '', unit: 'dias', slow: false, all: true, models: [] }) }}
+              onClick={() => { setModalError(''); setKeyForm({ name: '', contact: '', email: '', days: '30', custom: '', unit: 'dias', slow: false, all: true, models: [] }) }}
             >
               <Plus size={15} /> Nova chave
             </button>
@@ -602,6 +624,7 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                       <td>
                         <strong>{k.name}</strong>
                         {k.contact && <small className="sx-router-sub">{k.contact}</small>}
+                        {k.user_id && <small className="sx-router-sub is-linked">Conta: {accountEmail(k.user_id) || 'cliente cadastrado'}</small>}
                       </td>
                       <td>
                         <code>{k.token_prefix}…</code>
@@ -836,6 +859,11 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
               WhatsApp (opcional)
               <input value={keyForm.contact} maxLength={80} placeholder="(81) 99999-9999" onChange={(e) => setKeyForm({ ...keyForm, contact: e.target.value })} />
             </label>
+            <label className="is-wide">
+              E-mail da conta do cliente (opcional)
+              <input type="email" list="sx-router-accounts" value={keyForm.email} maxLength={200} placeholder="email@cliente.com" onChange={(e) => setKeyForm({ ...keyForm, email: e.target.value })} />
+              <small>Ligada à conta, o cliente vê esta chave, a validade e o consumo no painel dele. A conta precisa estar cadastrada no site.</small>
+            </label>
             <label>
               Validade
               <select value={keyForm.days} onChange={(e) => setKeyForm({ ...keyForm, days: e.target.value, slow: e.target.value === 'h3' || (e.target.value === 'custom' && keyForm.unit === 'horas') })}>
@@ -1026,6 +1054,11 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
             <label>
               WhatsApp (opcional)
               <input value={editForm.contact} maxLength={80} placeholder="(81) 99999-9999" onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })} />
+            </label>
+            <label className="is-wide">
+              E-mail da conta do cliente
+              <input type="email" list="sx-router-accounts" value={editForm.email} maxLength={200} placeholder="email@cliente.com" onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+              <small>Ligada à conta, o cliente vê esta chave, a validade e o consumo no painel dele. Apague o e-mail para desligar.</small>
             </label>
             <label className="is-wide">
               Válida até

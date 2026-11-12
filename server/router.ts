@@ -250,7 +250,10 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
           guard = null
         }
       }
-      return { providers, models, keys, guard }
+      // Conta do cliente ligada a cada chave (gateway_clients.user_id): ela vê a chave e o consumo no painel.
+      const links = await rest<Row[]>('gateway_clients?select=id,user_id&user_id=not.is.null&limit=10000').catch(() => [] as Row[])
+      const owner = new Map(links.map((l) => [String(l.id), String(l.user_id)]))
+      return { providers, models, keys: keys.map((k) => ({ ...k, user_id: owner.get(String(k.gateway_client_id)) || null })), guard }
     },
 
     /** Padrões de proteção para todas as chaves. Vazio = sem limite. */
@@ -512,6 +515,21 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       const deleted = await rest<boolean>('rpc/router_delete_key', { method: 'POST', body: JSON.stringify({ p_id: id }) }, 'Não foi possível apagar. Confira se a migração supabase/router-delete-key.sql foi aplicada no Supabase.')
       if (!deleted) throw new RouterError(404, 'Chave não encontrada.')
       return { ok: true }
+    },
+
+    /** Liga a chave à conta de um cliente (user_id) ou desliga (user_id vazio). Ligada, ela e o consumo aparecem no painel dele. */
+    async linkKey(body: Row) {
+      const id = text(body.id, 40), userId = body.user_id ? text(body.user_id, 40) : null
+      if (!/^[0-9a-f-]{36}$/i.test(id) || (userId && !/^[0-9a-f-]{36}$/i.test(userId))) throw new RouterError(400, 'Chave ou conta inválida.')
+      const found = await rest<Row[]>(`router_keys?${new URLSearchParams({ id: `eq.${id}`, select: 'gateway_client_id', limit: '1' })}`)
+      if (!found[0]) throw new RouterError(404, 'Chave não encontrada.')
+      const rows = await rest<Row[]>(`gateway_clients?${new URLSearchParams({ id: `eq.${found[0].gateway_client_id}` })}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ user_id: userId }),
+      })
+      if (!rows?.[0]) throw new RouterError(404, 'Chave não encontrada.')
+      return { ok: true, user_id: userId }
     },
 
     /** Mostra a chave completa de novo, para reenviar ao cliente. */

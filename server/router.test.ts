@@ -413,3 +413,24 @@ test('admin: apagar chave chama router_delete_key e avisa quando não existe ou 
   await assert.rejects(admin.deleteKey({ id }), /router-delete-key.sql/)
   await assert.rejects(admin.deleteKey({ id: 'x' }), /inválida/)
 })
+
+test('admin: ligar chave à conta do cliente grava user_id no cliente do gateway, e vazio desliga', async () => {
+  const calls: { method: string; url: string; body: any; prefer: string }[] = []
+  const request = (async (input: string, init: RequestInit = {}) => {
+    const url = decodeURIComponent(String(input))
+    calls.push({ method: init.method || 'GET', url, body: init.body ? JSON.parse(String(init.body)) : undefined, prefer: String((init.headers as Record<string, string>)?.Prefer || '') })
+    if (url.includes('/router_keys?')) return Response.json([{ gateway_client_id: '77777777-7777-4777-8777-777777777777' }])
+    if (url.includes('/gateway_clients?') && init.method === 'PATCH') return Response.json([{ id: '77777777-7777-4777-8777-777777777777' }])
+    return Response.json([])
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
+  const id = '88888888-8888-4888-8888-888888888888', user = '99999999-9999-4999-8999-999999999999'
+  assert.deepEqual(await admin.linkKey({ id, user_id: user }), { ok: true, user_id: user })
+  const patch = calls.find((c) => c.method === 'PATCH')!
+  assert.ok(patch.url.includes('/gateway_clients?id=eq.77777777-7777-4777-8777-777777777777'))
+  assert.deepEqual(patch.body, { user_id: user })
+  assert.equal(patch.prefer, 'return=representation')
+  assert.deepEqual(await admin.linkKey({ id, user_id: '' }), { ok: true, user_id: null })
+  assert.deepEqual(calls.filter((c) => c.method === 'PATCH')[1].body, { user_id: null })
+  await assert.rejects(admin.linkKey({ id: 'x', user_id: user }), /inválida/)
+})

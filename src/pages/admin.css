@@ -1465,3 +1465,9 @@
 .sx-usage-models {
   color: var(--muted);
 }
+
+/* Chave do Roteador ligada à conta do cliente */
+.sx-router-sub.is-linked {
+  color: var(--green-text);
+  font-weight: 600;
+}
