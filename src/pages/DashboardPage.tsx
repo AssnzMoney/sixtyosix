@@ -492,6 +492,8 @@ export default function DashboardPage() {
 
   const activeCredentials = credentials.items.filter((c) => c.state === "pending" || c.state === "confirmed")
   const pendingCredentials = credentials.items.filter((c) => c.state === "pending")
+  // Chave entregue e ainda não confirmada: o consumo fica bloqueado e a janela de confirmação não sai da tela.
+  const consumptionLocked = pendingCredentials.length > 0
   const pastCredentials = credentials.items.filter((c) => c.state !== "pending" && c.state !== "confirmed")
   const credentialFor = (product: DeliveryProduct) => activeCredentials.find((c) => c.product === product)
   const claudeCredential = credentialFor("claude")
@@ -913,6 +915,18 @@ export default function DashboardPage() {
   return (
     <div className="six-dashboard" data-theme={theme} data-collapsed={collapsed}>
       {drawer && <button type="button" className="six-overlay" aria-label="Fechar menu" onClick={() => setDrawer(false)} />}
+      {session && consumptionLocked && (
+        <div className="six-confirm-gate" role="dialog" aria-modal="true" aria-labelledby="six-gate-title">
+          <div className="six-confirm-gate-card">
+            <span className="six-step-badge">Falta 1 passo</span>
+            <h2 id="six-gate-title">Confirme o recebimento da sua chave</h2>
+            <p>
+              Enviamos sua chave e a URL pelo WhatsApp. Confirme aqui que recebeu para liberar o seu consumo e o painel.
+            </p>
+            <div className="six-credential-list">{pendingCredentials.map(credentialCard)}</div>
+          </div>
+        </div>
+      )}
 
       <aside className={`six-sidebar ${drawer ? "open" : ""}`} aria-label="Menu do painel">
         <div className="six-sidebar-top">
@@ -1097,7 +1111,7 @@ export default function DashboardPage() {
                 <Terminal size={16} /> Conectar ferramenta
               </button>
             ) : tab === "usage" ? (
-              <button type="button" className="six-secondary" disabled={!metricsReady || !filtered.length} onClick={exportCsv}>
+              <button type="button" className="six-secondary" disabled={!metricsReady || !filtered.length || consumptionLocked} onClick={exportCsv}>
                 <Download size={15} /> Exportar CSV
               </button>
             ) : null}
@@ -1169,7 +1183,17 @@ export default function DashboardPage() {
             </section>
           )}
 
-          {(tab === "overview" || tab === "usage") && (
+          {(tab === "overview" || tab === "usage") && consumptionLocked && (
+            <section className="six-panel six-consumption-locked">
+              <CircleAlert size={18} aria-hidden="true" />
+              <div>
+                <h2>Consumo bloqueado</h2>
+                <p>Confirme o recebimento da sua chave para liberar o seu consumo.</p>
+              </div>
+            </section>
+          )}
+
+          {(tab === "overview" || tab === "usage") && !consumptionLocked && (
             <>
               {filters}
               {stats}
@@ -1390,7 +1414,7 @@ export default function DashboardPage() {
                   </details>
                 )}
                 <p className="six-card-footnote">
-                  <Info size={14} aria-hidden="true" /> O consumo da sua chave aparece na aba Consumo.
+                  <Info size={14} aria-hidden="true" /> O consumo da sua chave aparece em Meu consumo.
                 </p>
               </section>
 
