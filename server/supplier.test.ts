@@ -44,6 +44,22 @@ test('conta tokens no formato Anthropic, Responses e resposta comum', () => {
   assert.deepEqual(plain.usage, { input: 3, output: 2 })
 })
 
+test('o cliente nunca vê o modelo real, mesmo quando o fornecedor devolve outro formato de nome', () => {
+  // Visto em produção: pediu "anthropic/claude-opus-5-5" e o fornecedor respondeu "claude-opus-5-5".
+  const plain = new UsageTap({ stream: false, alias: 'claude-fable-5.2', supplierId: 'anthropic/claude-opus-5-5', dropInjectedUsage: false })
+  plain.push(encode('{"id":"msg_1","model":"claude-opus-5-5","content":[{"type":"text","text":"veja o campo \\"model\\":\\"x\\" no JSON"}],"usage":{"input_tokens":1,"output_tokens":1}}'))
+  const body = JSON.parse(plain.end())
+  assert.equal(body.model, 'claude-fable-5.2')
+  assert.equal(body.content[0].text, 'veja o campo "model":"x" no JSON', 'texto da resposta não é mexido')
+  // Stream: data no fim do nome ("claude-haiku-4-5-20251001") e um "model" em cada pedaço do chat da OpenAI.
+  const stream = new UsageTap({ stream: true, alias: 'claude-opus.5.5', supplierId: 'anthropic/claude-haiku-4-5', dropInjectedUsage: false })
+  const out = stream.push(encode('event: message_start\ndata: {"type":"message_start","message":{"model":"claude-haiku-4-5-20251001","usage":{"input_tokens":3,"output_tokens":1}}}\n\n'))
+    + stream.push(encode('data: {"id":"c1","model":"claude-haiku-4-5-20251001","choices":[{"delta":{"content":"oi"}}]}\n\n'))
+    + stream.end()
+  assert.ok(!out.includes('haiku'), out)
+  assert.equal(out.split('"model":"claude-opus.5.5"').length - 1, 2)
+})
+
 test('consumo: coluna obrigatória herdada da API antiga é preenchida com o valor de um registro antigo', async () => {
   const env = { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'service-role' }
   const row = { client_id: 'c1', requested_alias: 'claude-fable-5.1', status_code: 200, input_tokens: 10, output_tokens: 2, latency_ms: 900 }

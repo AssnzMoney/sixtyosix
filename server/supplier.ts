@@ -94,11 +94,16 @@ export class UsageTap {
     return this.hide(text) + '\n\n'
   }
 
-  /** O cliente vê o apelido que comprou, nunca o id interno do fornecedor. */
+  /**
+   * O cliente vê o apelido que comprou, nunca o modelo real do fornecedor. O fornecedor nem sempre devolve
+   * o mesmo id que recebeu (ex.: pede "anthropic/claude-opus-5-5" e responde "claude-opus-5-5", ou
+   * acrescenta a data, como "claude-haiku-4-5-20251001"), então todo campo "model" vira o apelido.
+   * Texto dentro das mensagens não é afetado: ali as aspas vêm escapadas (\"model\").
+   */
   private hide(text: string): string {
     return text
       .split(JSON.stringify(this.opts.supplierId)).join(JSON.stringify(this.opts.alias))
-      .replace(/("model"\s*:\s*")(?:anthropic|openai|google)\//g, '$1')
+      .replace(/("model"\s*:\s*")[^"\\]*(")/g, `$1${this.opts.alias}$2`)
   }
 }
 
