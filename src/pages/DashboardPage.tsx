@@ -194,7 +194,7 @@ const fullDate = (date: string) => new Date(date).toLocaleDateString("pt-BR", { 
 const fullDateTime = (date: string) =>
   new Date(date).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
 const modelIcon = (model: string) =>
-  model.startsWith("Fable") ? "claude" : model === "Astra 6" ? "openai" : model.startsWith("GLM") ? "glm" : ""
+  model.startsWith("Fable") ? "claude" : model === "Astra 6" ? "openai" : model.startsWith("Argon") ? "gemini" : ""
 
 function niceCeil(value: number) {
   if (value <= 0) return 1
@@ -497,7 +497,6 @@ export default function DashboardPage() {
   const pastCredentials = credentials.items.filter((c) => c.state !== "pending" && c.state !== "confirmed")
   const credentialFor = (product: DeliveryProduct) => activeCredentials.find((c) => c.product === product)
   const claudeCredential = credentialFor("claude")
-  const glmCredential = credentialFor("glm")
   const gptCredential = credentialFor("gpt")
 
   const modelOptions = useMemo(
@@ -607,11 +606,25 @@ export default function DashboardPage() {
         : `export ANTHROPIC_BASE_URL='${baseUrl}'\nexport ANTHROPIC_API_KEY=${shellKey}\nexport ANTHROPIC_MODEL='${model}'\nclaude --model ${model}`
   const claudeBase = claudeCredential?.base_url || "https://www.sixtysix.online"
   const claudeModel = claudeCredential?.model_id || "claude-fable-5-1"
-  const glmBase = glmCredential?.base_url || "https://www.sixtysix.online"
-  const glmModel = glmCredential?.model_id || "glm-5"
   const claudeCode = anthropicCommands(claudeBase, claudeModel)
-  const glmCode = anthropicCommands(glmBase, glmModel)
   const codexConfig = `model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://www.sixtysix.online/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://www.sixtysix.online/api/codex/models"`
+  // OpenCode (Argon 4): provedor compatível com OpenAI no opencode.json, já com a chave do cliente.
+  const opencodeConfig = JSON.stringify(
+    {
+      $schema: "https://opencode.ai/config.json",
+      providers: {
+        sixtysix: {
+          name: "SixtySix",
+          package: "@opencode/ai/providers/openai-compatible",
+          settings: { baseURL: "https://www.sixtysix.online/v1", apiKey: actualKey },
+          models: { "argon-4": { name: "Argon 4" } },
+        },
+      },
+      model: "sixtysix/argon-4",
+    },
+    null,
+    2,
+  )
   const osLabel = os === "powershell" ? "PowerShell" : os === "cmd" ? "CMD" : "Terminal"
   const sectionTitle = nav.find((v) => v.id === tab)?.label || "Central de ajuda"
   const heading = headings[tab]
@@ -909,7 +922,7 @@ export default function DashboardPage() {
   )
 
   // Bloco que explica de onde vem a chave e mostra a configuração entregue para a ferramenta escolhida.
-  const guideCredential = tool === "codex" ? gptCredential : tool === "glm" ? glmCredential : claudeCredential
+  const guideCredential = tool === "codex" ? gptCredential : tool === "cline" || tool === "opencode" ? null : claudeCredential
 
 
   return (
@@ -1276,7 +1289,7 @@ export default function DashboardPage() {
                     {[
                       ["claude", "Claude Code", "Fable 5.1 no seu terminal", "claude"],
                       ["codex", "Codex", "Astra 6 no seu workspace", "openai"],
-                      ["glm", "Claude Code", "Perfil GLM 5", "glm"],
+                      ["cline", "Cline e OpenCode", "Argon 4 no VS Code e no terminal", "gemini"],
                     ].map(([id, title, desc, icon]) => (
                       <button
                         key={id}
@@ -1566,7 +1579,8 @@ export default function DashboardPage() {
                   ["claude", "Claude Code", "Terminal", "claude"],
                   ["desktop", "Claude Desktop", "Aplicativo", "claude"],
                   ["codex", "Codex", "Terminal e desktop", "openai"],
-                  ["glm", "Claude Code", "Perfil GLM 5", "glm"],
+                  ["cline", "Cline", "VS Code · Argon 4", "vscode"],
+                  ["opencode", "OpenCode", "Terminal · Argon 4", "gemini"],
                 ].map(([id, title, desc, icon]) => (
                   <button
                     key={id}
@@ -1594,12 +1608,14 @@ export default function DashboardPage() {
                             ? "Astra 6 no Codex"
                             : tool === "desktop"
                               ? "Fable 5.1 no Claude Desktop"
-                              : "GLM 5 no Claude Code"}
+                              : tool === "cline"
+                                ? "Argon 4 no Cline"
+                                : "Argon 4 no OpenCode"}
                       </h2>
                     </div>
-                    <span className="six-pill">{tool === "codex" ? "Responses" : "Anthropic"}</span>
+                    <span className="six-pill">{tool === "codex" ? "Responses" : tool === "cline" || tool === "opencode" ? "OpenAI" : "Anthropic"}</span>
                   </div>
-                  {(tool === "claude" || tool === "codex" || tool === "glm") && (
+                  {(tool === "claude" || tool === "codex" || tool === "opencode") && (
                     <div className="six-segmented is-compact" role="tablist" aria-label="Sistema ou terminal">
                       {[
                         ["powershell", "Windows · PowerShell"],
@@ -1669,7 +1685,7 @@ export default function DashboardPage() {
                       <GuideStep number="03" title="Abra o Codex e selecione Astra 6">
                         <p>
                           Reinicie o aplicativo a partir do ambiente configurado. O identificador deste perfil é{" "}
-                          <code>gpt-6-astra</code>. GLM 5 usa outra configuração, no Claude Code.
+                          <code>gpt-6-astra</code>. O Argon 4 fica no Cline e no OpenCode, nas outras abas deste guia.
                         </p>
                       </GuideStep>
                     </>
@@ -1708,41 +1724,54 @@ export default function DashboardPage() {
                           na sua versão, use Claude Code no terminal, conforme a outra aba deste guia.
                         </p>
                       </GuideStep>
-                      <GuideStep number="04" title="Usar GLM 5 pelo Claude">
+                    </>
+                  )}
+                  {tool === "cline" && (
+                    <>
+                      <GuideStep number="01" title="Instale o Cline no VS Code">
                         <p>
-                          Para o perfil GLM 5, use a conexão compatível com Anthropic abaixo. No Claude Code do terminal,
-                          configure ANTHROPIC_BASE_URL com a URL terminando em /glm e inicie com claude --model glm-5. No
-                          Desktop, isso depende de sua versão aceitar um identificador de modelo personalizado: selecione ou
-                          cadastre glm-5. Trocar somente o nome exibido ou deixar Fable selecionado não troca o perfil para GLM.
-                          Se o Desktop não permitir esse modelo, use o Claude Code no terminal.
+                          No VS Code, abra Extensões (Ctrl+Shift+X), busque <strong>Cline</strong> e clique em Instalar. O ícone do
+                          Cline aparece na barra lateral.
+                        </p>
+                      </GuideStep>
+                      <GuideStep number="02" title="Escolha a conexão compatível com OpenAI">
+                        <p>
+                          No painel do Cline, clique na engrenagem (⚙️). Em <strong>API Provider</strong>, escolha{" "}
+                          <strong>OpenAI Compatible</strong> e preencha os três campos com os dados abaixo.
                         </p>
                         <CodeBlock
-                          code={`URL base: ${glmBase}\nModelo: ${glmModel}\nChave: ${actualKey}\nAutenticação: x-api-key`}
+                          code={`Base URL: https://www.sixtysix.online/v1\nAPI Key: ${actualKey}\nModel ID: argon-4`}
                           copy={copy}
-                          label="Perfil GLM 5"
+                          label="Cline · OpenAI Compatible"
                         />
+                      </GuideStep>
+                      <GuideStep number="03" title="Salve e teste">
+                        <p>
+                          Salve, abra uma tarefa nova no Cline e mande uma mensagem curta. Se aparecer que o modelo não foi
+                          encontrado, confira se o Model ID está exatamente <code>argon-4</code>. Se a chave for recusada, cole a
+                          chave completa, sem espaços.
+                        </p>
                       </GuideStep>
                     </>
                   )}
-                  {tool === "glm" && (
+                  {tool === "opencode" && (
                     <>
-                      <GuideStep number="01" title="Adicione um provedor personalizado">
+                      <GuideStep number="01" title="Instale o OpenCode">
+                        <p>Com o Node.js instalado, rode no terminal:</p>
+                        <CodeBlock code="npm install -g @opencode/cli" copy={copy} label={osLabel} />
+                      </GuideStep>
+                      <GuideStep number="02" title="Cadastre a SixtySix como provedor">
                         <p>
-                          Abra o terminal e instale com npm install -g @anthropic-ai/claude-code. Execute os comandos abaixo na
-                          mesma janela. Eles já usam a opção de sistema selecionada neste guia e sua chave individual.
+                          Crie (ou abra) o arquivo{" "}
+                          <code>{os === "bash" ? "~/.config/opencode/opencode.json" : "%USERPROFILE%\\.config\\opencode\\opencode.json"}</code> e
+                          cole a configuração abaixo. Se o arquivo já tiver outros provedores, junte só o bloco "sixtysix".
                         </p>
+                        <CodeBlock code={opencodeConfig} copy={copy} label="opencode.json" />
                       </GuideStep>
-                      <GuideStep number="02" title="Configure o perfil GLM 5">
-                        <CodeBlock
-                          code={glmCode}
-                          copy={copy}
-                          label={osLabel}
-                        />
-                      </GuideStep>
-                      <GuideStep number="03" title="Ative o provedor e teste">
+                      <GuideStep number="03" title="Abra o OpenCode e use o Argon 4">
                         <p>
-                          Inicie com claude --model glm-5 na mesma janela e envie uma mensagem curta. Esta configuração é para
-                          o Claude Code; ela não adiciona GLM ao catálogo atual do Codex.
+                          Na pasta do seu projeto, rode <code>opencode</code>. O Argon 4 já abre como modelo padrão; para trocar,
+                          use o comando <code>/models</code> e escolha SixtySix · Argon 4.
                         </p>
                       </GuideStep>
                     </>
@@ -1826,10 +1855,10 @@ export default function DashboardPage() {
                   {!preview && (
                     <p>
                       {trial?.active && !subscription?.active
-                        ? "Modelos liberados no teste: Fable 5.1, Argon 4, Astra 6 e GLM 5. Todos disponíveis durante as 3 horas, com velocidade reduzida."
+                        ? "Modelos liberados no teste: Fable 5.1 e 5.2, Argon 4 e Astra 6. Todos disponíveis durante as 3 horas, com velocidade reduzida."
                         : subscription
                           ? `Modelos do seu plano: ${subscription.models.map(modelLabel).join(", ")}.`
-                          : "Seu espaço para construir com Fable 5.1, Argon 4, Astra 6 e GLM 5."}
+                          : "Seu espaço para construir com Fable 5.1 e 5.2, Argon 4 e Astra 6."}
                     </p>
                   )}
                   <div className="six-plan-price">
@@ -1971,8 +2000,8 @@ export default function DashboardPage() {
                     "Confira se a chave está completa, sem espaços, se continua ativa e se o aplicativo usa a URL correta. Uma credencial de login Google ou Discord não substitui sua chave individual do gateway.",
                   ],
                   [
-                    "Posso usar GLM 5 no Codex?",
-                    "O catálogo atual do gateway no Codex usa gpt-6-astra. O tutorial de GLM 5 é para Claude Code, com a URL base terminando em /glm.",
+                    "Onde uso o Argon 4?",
+                    "O Argon 4 é um modelo Gemini: use no Cline (VS Code) ou no OpenCode (terminal), com a URL https://www.sixtysix.online/v1 e o modelo argon-4. O passo a passo está em Como conectar. No Claude Code, use o Fable.",
                   ],
                   [
                     "O Claude Desktop não salva a conexão.",
