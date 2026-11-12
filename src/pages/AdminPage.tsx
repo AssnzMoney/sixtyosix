@@ -37,7 +37,9 @@ const brShort = (day: string) => day.split('-').reverse().slice(0, 2).join('/')
 
 const tabs: Array<[string, string]> = [
   ['service', 'Atendimento'],
-  ['users', 'Clientes'],
+  ['customers', 'Clientes'],
+  ['pending', 'Pendentes'],
+  ['users', 'Usuários'],
   ['deliveries', 'Credenciais'],
   ['subscriptions', 'Planos'],
   ['payments', 'Pagamentos'],
@@ -56,7 +58,9 @@ const resourceLabels: Record<string, string> = {
   deliveries: 'Credenciais',
 }
 const columns: Record<string, string[]> = {
-  users: ['name', 'whatsapp', 'email', 'service_status', 'provider', 'created_at', 'last_sign_in_at'],
+  customers: ['name', 'whatsapp', 'email', 'plan_code', 'client_state', 'paid_until', 'service_status'],
+  pending: ['name', 'whatsapp', 'email', 'plan_code', 'amount_cents', 'checkout_status', 'opened_at'],
+  users: ['name', 'whatsapp', 'email', 'situation', 'provider', 'created_at', 'last_sign_in_at'],
   deliveries: ['customer', 'plan_code', 'model_id', 'supplier', 'key_hint', 'base_url', 'delivered_at', 'expires_at', 'state', 'confirmed_at', 'created_by'],
   subscriptions: ['customer', 'plan_code', 'amount_cents', 'provider_status', 'entitled', 'paid_until', 'billing_mode'],
   keys: ['customer', 'token_prefix', 'api_enabled', 'entitled', 'paid_until', 'revoked_at'],
@@ -76,6 +80,7 @@ const titles: Record<string, string> = {
   supplier: 'Fornecedor', key_hint: 'Final da chave', base_url: 'URL base', model_id: 'Modelo', delivered_at: 'Enviada em',
   state: 'Estado', confirmed_at: 'Confirmada em', created_by: 'Registrada por', confirm_ip: 'IP da confirmação',
   confirm_user_agent: 'Navegador da confirmação', confirm_text: 'Texto confirmado', notes: 'Observação',
+  client_state: 'Situação', situation: 'Situação', checkout_status: 'Pagamento', opened_at: 'Abriu o checkout em',
 }
 const planNames: Record<string, string> = { dev: 'Dev', devApi: 'Dev + API', pro: 'Pro' }
 const paymentLabels: Record<string, string> = {
@@ -318,6 +323,31 @@ export default function AdminPage() {
     return 'Sem plano ativo'
   }
 
+  /* -------------------- Clientes, pendentes e usuários -------------------- */
+  // Cliente = já pagou alguma vez (período pago aplicado). Pendente = abriu o checkout e nunca pagou.
+  const people = useMemo(() => {
+    const paid = (s: Row) => Boolean(s.paid_until) || s.provider_status === 'approved'
+    const customers: Row[] = [], pending: Row[] = [], users: Row[] = []
+    for (const u of data.users || []) {
+      const subs = userSubscriptions(u.id)
+      const lastPaid = subs.find(paid)
+      if (lastPaid) {
+        const active = activeSubscription(u.id)
+        customers.push({ ...u, plan_code: (active || lastPaid).plan_code, client_state: active ? 'Ativo' : 'Vencido', paid_until: (active || lastPaid).paid_until, service_status: serviceStatus(u.id) })
+        users.push({ ...u, situation: 'Cliente' })
+      } else if (subs.length) {
+        const last = subs[0]
+        pending.push({ ...u, plan_code: last.plan_code, amount_cents: last.amount_cents, checkout_status: paymentLabels[last.provider_status] || 'Não concluiu', opened_at: last.created_at })
+        users.push({ ...u, situation: 'Pendente' })
+      } else users.push({ ...u, situation: 'Só cadastro' })
+    }
+    customers.sort((a, b) => String(b.paid_until || '').localeCompare(String(a.paid_until || '')))
+    pending.sort((a, b) => String(b.opened_at || '').localeCompare(String(a.opened_at || '')))
+    return { customers, pending, users }
+  }, [data, deliveries, subscriptionsByUser, deliveriesByUser, deliveriesReady])
+  const countOf = (key: string) =>
+    key === 'deliveries' ? deliveries.length : key === 'customers' ? people.customers.length : key === 'pending' ? people.pending.length : data[key]?.length ?? 0
+
   /* ------------------------- Tabelas genéricas ------------------------ */
   const enriched = useMemo<Row[]>(() => {
     if (tab === 'service' || tab === 'router') return []
@@ -329,7 +359,7 @@ export default function AdminPage() {
       const u = usersById.get(id)
       return u ? `${u.name || 'Sem nome'} · ${u.email}` : id || 'Chave legada sem conta vinculada'
     }
-    const source = tab === 'deliveries' ? deliveries : data[tab] || []
+    const source = tab === 'deliveries' ? deliveries : tab === 'customers' || tab === 'pending' || tab === 'users' ? people[tab] : data[tab] || []
     const term = search.toLowerCase()
     return source
       .map((x) => {
@@ -342,11 +372,10 @@ export default function AdminPage() {
           customer: owner || !client?.name ? label(owner) : client.name,
           plan_code: x.plan_code || sub?.plan_code,
           key: client?.key_prefix || x.client_id,
-          ...(tab === 'users' ? { service_status: serviceStatus(x.id) } : {}),
         }
       })
       .filter((x) => !term || JSON.stringify(x).toLowerCase().includes(term))
-  }, [data, tab, search, deliveries, usersById])
+  }, [data, tab, search, deliveries, usersById, people])
 
   // Aba Consumo: soma por cliente (todas as chaves dele), do maior consumo para o menor. Respeita período e busca.
   const usageByCustomer = useMemo(() => {
@@ -540,7 +569,8 @@ export default function AdminPage() {
     [deliveriesReady ? 'Pagou, aguarda entrega' : 'Pagantes ativos', queues.paidWaiting.length, queues.paidWaiting.length ? 'alert' : ''],
     ['Aguardando confirmação', deliveriesReady ? queues.awaitingConfirmation.length : '—', ''],
     ['Rotação em até 3 dias', deliveriesReady ? queues.rotation.length : '—', queues.rotation.length ? 'warn' : ''],
-    ['Clientes', number(data.users?.length || 0), ''],
+    ['Clientes (já pagaram)', number(people.customers.length), ''],
+    ['Pendentes', number(people.pending.length), people.pending.length ? 'warn' : ''],
     ['Sem WhatsApp', number(queues.noWhatsapp.length), ''],
     ['Planos ativos', number(activePlans), ''],
     ['Receita aprovada no período', money(revenue), ''],
@@ -631,7 +661,7 @@ export default function AdminPage() {
                 }}
               >
                 {label}
-                {key !== 'service' && key !== 'router' && <small>{(key === 'deliveries' ? deliveries : data[key])?.length ?? 0}</small>}
+                {key !== 'service' && key !== 'router' && <small>{countOf(key)}</small>}
               </button>
             ))}
           </nav>
@@ -900,7 +930,7 @@ export default function AdminPage() {
                       {columns[tab].map((c) => (
                         <th key={c}>{titles[c]}</th>
                       ))}
-                      {['users', 'deliveries'].includes(tab) && <th>Ações</th>}
+                      {['customers', 'pending', 'users', 'deliveries'].includes(tab) && <th>Ações</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -911,7 +941,7 @@ export default function AdminPage() {
                             {c === 'state' ? <span className={`sx-state is-${row.state}`}>{format(c, row[c])}</span> : format(c, row[c])}
                           </td>
                         ))}
-                        {tab === 'users' && (
+                        {['customers', 'users'].includes(tab) && (
                           <td>
                             <div className="sx-actions">
                               <button type="button" className="sx-btn" onClick={() => setProfileId(row.id)}>
@@ -923,6 +953,16 @@ export default function AdminPage() {
                                   <KeyRound size={15} /> Entregar chave
                                 </button>
                               )}
+                            </div>
+                          </td>
+                        )}
+                        {tab === 'pending' && (
+                          <td>
+                            <div className="sx-actions">
+                              <button type="button" className="sx-btn" onClick={() => setProfileId(row.id)}>
+                                <UserRound size={15} /> Ficha
+                              </button>
+                              {whatsappButton(customer(row.id), `${row.name ? `Olá, ${row.name}!` : 'Olá!'} Aqui é da SixtySix. Vi que você começou a contratar o plano ${planNames[row.plan_code] || ''}. Posso ajudar a concluir?`)}
                             </div>
                           </td>
                         )}
