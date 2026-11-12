@@ -102,18 +102,45 @@ export class UsageTap {
   }
 }
 
+/**
+ * Colunas obrigatórias que a tabela gateway_usage herdou da API antiga (ex.: upstream_tier).
+ * Quando o banco recusa por uma delas, o valor é copiado de um registro antigo e fica guardado.
+ */
+const inheritedColumns: Record<string, unknown> = {}
+
 /** Grava a chamada em gateway_usage. Falhar aqui nunca derruba a resposta do cliente. */
 export async function recordUsage(env: Env, request: typeof fetch, row: UsageRow) {
   const base = env.SUPABASE_URL?.replace(/\/+$/, ''), secret = env.SUPABASE_SERVICE_ROLE_KEY
   if (!base || !secret) return
+  const auth = { apikey: secret, ...(!secret.startsWith('sb_secret_') ? { Authorization: `Bearer ${secret}` } : {}) }
   try {
-    const response = await request(`${base}/rest/v1/gateway_usage`, {
-      method: 'POST',
-      headers: { apikey: secret, ...(!secret.startsWith('sb_secret_') ? { Authorization: `Bearer ${secret}` } : {}), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify(row),
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!response.ok) console.error('gateway_usage recusou o registro', response.status, (await response.text().catch(() => '')).slice(0, 300))
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const response = await request(`${base}/rest/v1/gateway_usage`, {
+        method: 'POST',
+        headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ ...row, ...inheritedColumns }),
+        signal: AbortSignal.timeout(8000),
+      })
+      if (response.ok) return
+      const detail = await response.text().catch(() => '')
+      let column = ''
+      try {
+        const error = JSON.parse(detail) as { code?: string; message?: string }
+        if (error.code === '23502') column = /column "([a-z_][a-z0-9_]*)"/.exec(String(error.message))?.[1] || ''
+      } catch { /* resposta que não é JSON */ }
+      if (!column || column in inheritedColumns || column in row) {
+        console.error('gateway_usage recusou o registro', response.status, detail.slice(0, 300))
+        return
+      }
+      const query = new URLSearchParams({ select: column, [column]: 'not.is.null', order: 'id.desc', limit: '1' })
+      const sample = await request(`${base}/rest/v1/gateway_usage?${query}`, { headers: auth, signal: AbortSignal.timeout(8000) })
+      const value = sample.ok ? ((await sample.json()) as Record<string, unknown>[])[0]?.[column] : undefined
+      if (value === undefined || value === null) {
+        console.error('gateway_usage exige', column, 'e não há registro antigo para copiar o valor')
+        return
+      }
+      inheritedColumns[column] = value
+    }
   } catch (error) {
     console.error('Falha ao gravar gateway_usage', error)
   }

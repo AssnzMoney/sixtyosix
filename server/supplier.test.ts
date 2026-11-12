@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { UsageTap, supplierRequestBody, supplierUrl } from './supplier.ts'
+import { UsageTap, recordUsage, supplierRequestBody, supplierUrl } from './supplier.ts'
 
 const encode = (text: string) => new TextEncoder().encode(text)
 
@@ -42,4 +42,36 @@ test('conta tokens no formato Anthropic, Responses e resposta comum', () => {
   const body = plain.end()
   assert.ok(body.includes('"model":"argon-4"'))
   assert.deepEqual(plain.usage, { input: 3, output: 2 })
+})
+
+test('consumo: coluna obrigatória herdada da API antiga é preenchida com o valor de um registro antigo', async () => {
+  const env = { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'service-role' }
+  const row = { client_id: 'c1', requested_alias: 'claude-fable-5.1', status_code: 200, input_tokens: 10, output_tokens: 2, latency_ms: 900 }
+  const posts: Record<string, unknown>[] = [], gets: string[] = []
+  const request = (async (input: string, init: RequestInit = {}) => {
+    if (init.method === 'POST') {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>
+      posts.push(body)
+      if (!('upstream_tier' in body)) return Response.json({ code: '23502', message: 'null value in column "upstream_tier" of relation "gateway_usage" violates not-null constraint' }, { status: 400 })
+      return new Response(null, { status: 201 })
+    }
+    gets.push(decodeURIComponent(String(input)))
+    return Response.json([{ upstream_tier: 'standard' }])
+  }) as typeof fetch
+  await recordUsage(env, request, row)
+  assert.equal(posts.length, 2)
+  assert.deepEqual(posts[1], { ...row, upstream_tier: 'standard' })
+  assert.ok(gets[0].includes('select=upstream_tier') && gets[0].includes('upstream_tier=not.is.null'))
+  // Da segunda vez já vai certo, sem tentar de novo nem consultar.
+  await recordUsage(env, request, row)
+  assert.equal(posts.length, 3)
+  assert.equal(gets.length, 1)
+  assert.equal(posts[2].upstream_tier, 'standard')
+})
+
+test('consumo: outro erro do banco não fica tentando de novo', async () => {
+  let calls = 0
+  const request = (async () => { calls++; return Response.json({ code: '23503', message: 'insert or update violates foreign key constraint' }, { status: 409 }) }) as typeof fetch
+  await recordUsage({ SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k' }, request, { client_id: 'x', requested_alias: 'a', status_code: 200, input_tokens: 0, output_tokens: 0, latency_ms: 1 })
+  assert.equal(calls, 1)
 })
