@@ -43,8 +43,6 @@ const tabs: Array<[string, string]> = [
   ['deliveries', 'Credenciais'],
   ['subscriptions', 'Planos'],
   ['payments', 'Pagamentos'],
-  ['keys', 'Chaves do gateway'],
-  ['trials', 'Testes grátis'],
   ['usage', 'Consumo e falhas'],
   ['router', 'Roteador'],
 ]
@@ -290,6 +288,28 @@ export default function AdminPage() {
     for (const list of map.values()) list.sort((a, b) => String(b.approved_at || b.recorded_at).localeCompare(String(a.approved_at || a.recorded_at)))
     return map
   }, [data.payments])
+  // Chaves dos planos do site (nascem no pagamento): ficam no Roteador, no filtro "Planos do site".
+  const siteKeys = useMemo(
+    () =>
+      (data.keys || [])
+        .filter((k) => k.subscription_id)
+        .map((k) => {
+          const u = usersById.get(k.user_id), s = subscriptionsById.get(k.subscription_id)
+          const active = k.entitled && !k.revoked_at && Date.parse(k.paid_until) > Date.now()
+          return {
+            id: `${k.subscription_id}:${k.gateway_client_id}`,
+            client_id: String(k.gateway_client_id),
+            customer: String(u?.name || u?.email || 'Sem conta'),
+            email: String(u?.email || ''),
+            plan: planNames[s?.plan_code] || String(s?.plan_code || '—'),
+            prefix: String(k.token_prefix || ''),
+            paid_until: k.paid_until || null,
+            api: Boolean(k.api_enabled),
+            state: k.revoked_at ? 'Revogada' : active ? 'Ativa' : 'Vencida',
+          }
+        }),
+    [data.keys, usersById, subscriptionsById],
+  )
   /** Quando o plano foi pago: último pagamento aprovado, ou a criação do pedido. */
   const paidAt = (s: Row) => (paymentsBySubscription.get(s.id) || []).find((p) => p.status === 'approved' && p.approved_at)?.approved_at || s.created_at
   const userSubscriptions = (userId: string) =>
@@ -667,7 +687,7 @@ export default function AdminPage() {
           </nav>
 
           {tab === 'router' ? (
-            <RouterPanel token={session!.access_token} usage={data.usage || []} users={data.users || []} period={`${brShort(from)} a ${brShort(to)}`} />
+            <RouterPanel token={session!.access_token} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} />
           ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(

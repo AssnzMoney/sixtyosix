@@ -19,6 +19,8 @@ type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: num
 type EditForm = { name: string; contact: string; email: string; expires: string; all: boolean; models: string[] }
 type Draft = { key: string; upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
+/** Chave de plano do site (nasce no pagamento), mostrada no filtro "Planos do site". */
+type SiteKey = { id: string; client_id: string; customer: string; email: string; plan: string; prefix: string; paid_until: string | null; api: boolean; state: string }
 type KeyForm = { name: string; contact: string; email: string; days: string; custom: string; unit: 'dias' | 'horas'; slow: boolean; all: boolean; models: string[] }
 
 const DAY = 86400000
@@ -69,7 +71,7 @@ function Modal({ eyebrow, title, onClose, children }: { eyebrow: string; title: 
   )
 }
 
-export default function RouterPanel({ token, usage, period, users = [] }: { token: string; usage: Row[]; period: string; users?: Row[] }) {
+export default function RouterPanel({ token, usage, period, users = [], siteKeys = [] }: { token: string; usage: Row[]; period: string; users?: Row[]; siteKeys?: SiteKey[] }) {
   // Contas cadastradas: para ligar uma chave ao e-mail do cliente e mostrar a quem ela pertence.
   const accounts = useMemo(() => new Map(users.map((u) => [String(u.id), u])), [users])
   const accountEmail = (id?: string | null) => (id ? String(accounts.get(id)?.email || '') : '')
@@ -172,7 +174,18 @@ export default function RouterPanel({ token, usage, period, users = [] }: { toke
     return totals
   }, [usage])
 
-  const keys = (overview?.keys || []).filter((k) => !search || `${k.name} ${k.contact || ''} ${k.token_prefix}`.toLowerCase().includes(search.toLowerCase()))
+  // Filtro das chaves: testes (validade de poucas horas), pagas, vencidas ou bloqueadas, e os planos do site.
+  const [keyFilter, setKeyFilter] = useState<'all' | 'test' | 'paid' | 'ended' | 'site'>('all')
+  const isTestKey = (k: RouterKey) => {
+    const life = Date.parse(k.expires_at) - Date.parse(k.created_at)
+    return life > 0 && life < 23 * 3600000
+  }
+  const isEnded = (k: RouterKey) => Boolean(k.revoked_at) || !(Date.parse(k.expires_at) > now)
+  const matches = (value: string) => !search || value.toLowerCase().includes(search.toLowerCase())
+  const allKeys = (overview?.keys || []).filter((k) => matches(`${k.name} ${k.contact || ''} ${k.token_prefix} ${accountEmail(k.user_id)}`))
+  const shownSiteKeys = siteKeys.filter((s) => matches(`${s.customer} ${s.email} ${s.prefix} ${s.plan}`))
+  const keyCounts = { all: allKeys.length, test: allKeys.filter(isTestKey).length, paid: allKeys.filter((k) => !isTestKey(k)).length, ended: allKeys.filter(isEnded).length, site: shownSiteKeys.length }
+  const keys = allKeys.filter((k) => (keyFilter === 'test' ? isTestKey(k) : keyFilter === 'paid' ? !isTestKey(k) : keyFilter === 'ended' ? isEnded(k) : true))
 
   /* ----------------------------- Provedores ----------------------------- */
   async function saveProvider() {
@@ -579,7 +592,7 @@ export default function RouterPanel({ token, usage, period, users = [] }: { toke
       <section className="sx-admin-panel">
         <div className="sx-router-head">
           <h3>
-            <KeyRound size={17} /> Chaves criadas na mão
+            <KeyRound size={17} /> Chaves
           </h3>
           <div className="sx-actions">
             <label className="sx-search">
@@ -597,9 +610,70 @@ export default function RouterPanel({ token, usage, period, users = [] }: { toke
             </button>
           </div>
         </div>
-        {!keys.length ? (
+        <div className="sx-quick sx-router-filter" role="group" aria-label="Filtrar chaves">
+          {([['all', 'Todas'], ['test', 'Testes'], ['paid', 'Pagas'], ['ended', 'Vencidas ou bloqueadas'], ['site', 'Planos do site']] as const).map(([value, label]) => (
+            <button key={value} type="button" className={keyFilter === value ? 'is-on' : ''} aria-pressed={keyFilter === value} onClick={() => setKeyFilter(value)}>
+              {label} ({keyCounts[value]})
+            </button>
+          ))}
+        </div>
+        {keyFilter === 'site' ? (
+          !shownSiteKeys.length ? (
+            <p className="sx-admin-empty">{search ? 'Nenhuma chave encontrada.' : 'Nenhuma chave de plano do site ainda.'}</p>
+          ) : (
+            <div className="sx-admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Chave</th>
+                    <th>Plano</th>
+                    <th>Situação</th>
+                    <th>Consumo ({period})</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shownSiteKeys.map((s) => {
+                    const use = spent.get(s.client_id)
+                    return (
+                      <tr key={s.id}>
+                        <td>
+                          <strong>{s.customer}</strong>
+                          {s.email && <small className="sx-router-sub">{s.email}</small>}
+                        </td>
+                        <td>
+                          <code>{s.prefix}…</code>
+                        </td>
+                        <td>
+                          {s.plan}
+                          {!s.api && <small className="sx-router-sub">Só no site, sem API</small>}
+                        </td>
+                        <td>
+                          <span className={`sx-state ${s.state === 'Ativa' ? 'is-confirmed' : 'is-expired'}`}>{s.state}</span>
+                          {s.paid_until && <small className="sx-router-sub">vence em {date(s.paid_until)}</small>}
+                        </td>
+                        <td>
+                          {use ? (
+                            <>
+                              {tokens(use.input + use.output)} tokens
+                              <small className="sx-router-sub">
+                                {use.requests} chamadas{use.errors ? ` · ${use.errors} com erro` : ''}
+                              </small>
+                            </>
+                          ) : (
+                            <span className="sx-router-sub">Sem uso</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : !keys.length ? (
           <p className="sx-admin-empty">
-            {loading ? 'Carregando…' : search ? 'Nenhuma chave encontrada.' : 'Nenhuma chave criada na mão ainda. As chaves de quem paga no site ficam na aba Chaves do gateway.'}
+            {loading ? 'Carregando…' : search || keyFilter !== 'all' ? 'Nenhuma chave neste filtro.' : 'Nenhuma chave criada na mão ainda.'}
           </p>
         ) : (
           <div className="sx-admin-table">
@@ -717,7 +791,11 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
             </table>
           </div>
         )}
-        <p className="sx-admin-hint sx-router-note">Venceu, a chave para sozinha. "+30 dias" soma a partir do vencimento (ou de hoje, se já venceu) e reativa a chave.</p>
+        <p className="sx-admin-hint sx-router-note">
+          {keyFilter === 'site'
+            ? 'Estas chaves nascem sozinhas quando o cliente paga no site e seguem a validade do plano (aba Planos).'
+            : 'Venceu, a chave para sozinha. "+30 dias" soma a partir do vencimento (ou de hoje, se já venceu) e reativa a chave. Teste = chave de poucas horas.'}
+        </p>
       </section>
 
       {providerForm && (
