@@ -45,8 +45,8 @@ export default function App() {
       <BrowserRouter>
         <ScrollToTop />
         <Routes>
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/administracao" element={<AdminPage />} />
+          {/* Endereço do admin difícil de adivinhar; /admin e /administracao não existem mais. */}
+          <Route path="/adminxv1" element={<AdminPage />} />
           <Route path="/" element={<HomePage />} />
           <Route path="/planos" element={<Navigate to="/#planos" replace />} />
           <Route path="/teste-gratis" element={<TrialPage />} />

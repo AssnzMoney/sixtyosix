@@ -102,6 +102,25 @@ Você recebe este e-mail porque tem uma conta na SixtySix. <a href="${SITE_URL}/
   return { html, text }
 }
 
+/** Código de 6 dígitos para entrar na administração (verificação em duas etapas). */
+export function adminCodeEmail(input: { to: string; code: string }): EmailMessage {
+  const code = String(input.code || '').replace(/\D/g, '').slice(0, 6)
+  return {
+    to: input.to,
+    subject: `Código de acesso à administração: ${code}`,
+    ...layout({
+      preheader: `Seu código é ${code}. Ele vale por 10 minutos.`,
+      title: 'Código de acesso à administração',
+      blocks: [
+        { kind: 'p', text: 'Use este código para entrar na administração da SixtySix:' },
+        { kind: 'note', text: code },
+        { kind: 'p', text: 'Ele vale por 10 minutos. Depois de entrar, este aparelho fica liberado por 30 dias.' },
+        { kind: 'p', text: 'Se não foi você que tentou entrar, ignore este e-mail e troque a senha da sua conta.' },
+      ],
+    }),
+  }
+}
+
 export function welcomeEmail(input: { to: string; name?: string }): EmailMessage {
   const name = firstName(input.name)
   const title = name ? `Boas-vindas, ${name}!` : 'Boas-vindas à SixtySix!'

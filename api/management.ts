@@ -1,11 +1,37 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { randomUUID } from 'node:crypto'
+import { createHash, createHmac, randomInt, randomUUID, timingSafeEqual } from 'node:crypto'
 import { formatWhatsapp, normalizeWhatsapp } from '../src/lib/whatsapp.js'
 import { credentialTitle, isUuid, validateDeliveryInput } from '../src/lib/deliveries.js'
-import { emailConfig } from '../server/email.js'
+import { adminCodeEmail, emailConfig, sendEmail } from '../server/email.js'
 import { createNotifier, userFromAuth, type NotifyResult } from '../server/notifications.js'
 import { createRouterAdmin, RouterError } from '../server/router.js'
-class AccountError extends Error { status:number; constructor(status:number,message:string){super(message);this.status=status} }
+class AccountError extends Error { status:number; code?:string; constructor(status:number,message:string,code?:string){super(message);this.status=status;this.code=code} }
+
+/*
+ * Verificação em duas etapas do admin: depois do login normal, um código de 6 dígitos vai para o e-mail
+ * do administrador. Com o código certo, o aparelho recebe uma sessão assinada que vale 30 dias.
+ * Tudo é assinado com uma chave derivada da SUPABASE_SERVICE_ROLE_KEY: não precisa de tabela nova.
+ * Sem envio de e-mail configurado (RESEND_API_KEY), a verificação fica desligada para ninguém ficar trancado.
+ */
+export const ADMIN_SESSION_DAYS=30
+const ADMIN_CODE_MINUTES=10
+const sha=(value:string)=>createHash('sha256').update(value).digest('hex')
+function adminSigner(secret:string){
+ const key=createHmac('sha256','sixtysix-admin-2fa').update(secret).digest()
+ const mac=(body:string)=>createHmac('sha256',key).update(body).digest('base64url')
+ return {
+  sign:(payload:Row)=>{const body=Buffer.from(JSON.stringify(payload)).toString('base64url');return `${body}.${mac(body)}`},
+  open:(token:unknown):Row|null=>{
+   if(typeof token!=='string'||token.length>2000)return null
+   const [body,signature,extra]=token.split('.')
+   if(!body||!signature||extra!==undefined)return null
+   const a=Buffer.from(signature),b=Buffer.from(mac(body))
+   if(a.length!==b.length||!timingSafeEqual(a,b))return null
+   try{const payload=JSON.parse(Buffer.from(body,'base64url').toString('utf8'));return payload&&typeof payload==='object'&&Number(payload.exp)>Date.now()?payload as Row:null}catch{return null}
+  },
+ }
+}
+const maskEmail=(email:string)=>email.replace(/^(.{1,2})[^@]*(@.*)$/,(_,start:string,domain:string)=>`${start}***${domain}`)
 function configuration(env:NodeJS.ProcessEnv){
  const url=env.SUPABASE_URL?.replace(/\/+$/,''),secret=env.SUPABASE_SERVICE_ROLE_KEY,publicKey=env.VITE_SUPABASE_ANON_KEY||env.SUPABASE_PUBLISHABLE_KEY
  if(!url?.startsWith('https://')||!secret||!publicKey)throw new AccountError(503,'Administração temporariamente indisponível.')
@@ -26,8 +52,11 @@ const tables:Record<string,string>={clients:'gateway_clients',subscriptions:'bil
 const orders:Record<string,string>={usage:'created_at.desc,id.desc',payments:'recorded_at.desc,id.desc',keys:'created_at.desc,subscription_id',trials:'created_at.desc,user_id',deliveries:'delivered_at.desc,id'}
 const serviceHeaders=(secret:string)=>({apikey:secret,...(!secret.startsWith('sb_secret_')?{Authorization:`Bearer ${secret}`}:{})})
 
-/** Valida a sessão e exige um e-mail confirmado da lista de administradores. */
-async function requireAdmin(env:NodeJS.ProcessEnv,request:typeof fetch,authorization:string|undefined){
+/**
+ * Valida a sessão, exige um e-mail confirmado da lista de administradores e, com o envio de e-mail
+ * configurado, a sessão do aparelho confirmada pelo código (cabeçalho x-admin-session).
+ */
+async function requireAdmin(env:NodeJS.ProcessEnv,request:typeof fetch,authorization:string|undefined,adminSession?:string,skipCode=false){
  if(!authorization?.startsWith('Bearer ')||authorization.length>16000)throw new AccountError(401,'Entre na sua conta para acessar a administração.')
  const config=configuration(env)
  const identity=await request(`${config.url}/auth/v1/user`,{headers:{apikey:config.publicKey,Authorization:authorization},signal:AbortSignal.timeout(10000)})
@@ -35,12 +64,43 @@ async function requireAdmin(env:NodeJS.ProcessEnv,request:typeof fetch,authoriza
  const user=await identity.json() as Row
  const allowed=(env.SIXTYSIX_ADMIN_EMAILS||'alissonmedeiroz007@gmail.com,alysontrx@gmail.com').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean)
  if(!user.id||user.is_anonymous||!user.email_confirmed_at||!allowed.includes(String(user.email||'').toLowerCase()))throw new AccountError(403,'Esta área é exclusiva da administração.')
- return {config,email:String(user.email).toLowerCase()}
+ const email=String(user.email).toLowerCase(),userId=String(user.id)
+ const twoFactor=emailConfig(env)?'on':'off'
+ if(twoFactor==='on'&&!skipCode){
+  const session=adminSigner(config.secret).open(adminSession)
+  if(!session||session.kind!=='session'||session.u!==userId||session.e!==email)throw new AccountError(401,'Confirme o código enviado para o seu e-mail para entrar na administração.','admin_2fa_required')
+ }
+ return {config,email,userId,twoFactor}
+}
+
+/** Envio e conferência do código do admin. Funciona antes da sessão do aparelho existir. */
+async function adminTwoFactor(env:NodeJS.ProcessEnv,request:typeof fetch,authorization:string|undefined,body:Row){
+ const {config,email,userId}=await requireAdmin(env,request,authorization,undefined,true)
+ const mail=emailConfig(env)
+ if(!mail)return {twoFactor:'off'}
+ const signer=adminSigner(config.secret)
+ if(body.action==='admin-2fa-send'){
+  const code=String(randomInt(0,1000000)).padStart(6,'0')
+  const challenge=signer.sign({kind:'code',u:userId,e:email,h:sha(code),n:randomUUID(),exp:Date.now()+ADMIN_CODE_MINUTES*60000})
+  try{await sendEmail(mail,adminCodeEmail({to:email,code}),request)}catch{throw new AccountError(503,'Não foi possível enviar o código agora. Tente de novo em instantes.')}
+  return {challenge,sentTo:maskEmail(email),minutes:ADMIN_CODE_MINUTES}
+ }
+ const pending=signer.open(body.challenge)
+ if(!pending||pending.kind!=='code'||pending.u!==userId||pending.e!==email)throw new AccountError(400,'O código venceu. Peça um novo.')
+ const code=String(body.code??'').replace(/\D/g,'')
+ const a=Buffer.from(sha(code)),b=Buffer.from(String(pending.h))
+ if(code.length!==6||a.length!==b.length||!timingSafeEqual(a,b)){
+  // Pausa curta a cada erro para não dar para testar códigos em sequência.
+  await new Promise(resolve=>setTimeout(resolve,800))
+  throw new AccountError(400,'Código incorreto. Confira o e-mail e tente de novo.')
+ }
+ const expires=Date.now()+ADMIN_SESSION_DAYS*86400000
+ return {session:signer.sign({kind:'session',u:userId,e:email,exp:expires}),expiresAt:new Date(expires).toISOString()}
 }
 
 export function createAdminService(env=process.env,request:typeof fetch=fetch){
- return async (authorization:string|undefined,query:URLSearchParams)=>{
-  const {config,email}=await requireAdmin(env,request,authorization)
+ return async (authorization:string|undefined,query:URLSearchParams,adminSession?:string)=>{
+  const {config,email,twoFactor}=await requireAdmin(env,request,authorization,adminSession)
   const resource=query.get('resource')||'clients',offset=Number(query.get('offset')||0)
   if(!Number.isSafeInteger(offset)||offset<0||offset>1000000||(!resources[resource]&&resource!=='users'&&resource!=='router'))throw new AccountError(400,'Consulta inválida.')
   // Aba Roteador: provedores (sem a key), modelos vendidos e chaves manuais.
@@ -63,14 +123,15 @@ export function createAdminService(env=process.env,request:typeof fetch=fetch){
   if(!response.ok)throw new AccountError(503,resource==='deliveries'?'Credenciais indisponíveis: aplique a migração supabase/whatsapp-delivery.sql.':'Não foi possível carregar '+resource+'. Tente atualizar o painel.')
   const data=await response.json()
   const rows:Row[]=resource==='users'?(data.users||[]).map((u:Row)=>({id:u.id,email:u.email,created_at:u.created_at,last_sign_in_at:u.last_sign_in_at,email_confirmed_at:u.email_confirmed_at,name:u.user_metadata?.custom_name||u.user_metadata?.preferred_name||u.user_metadata?.full_name||u.user_metadata?.name||'',whatsapp:normalizeWhatsapp(u.user_metadata?.whatsapp)||'',provider:u.app_metadata?.provider||''})):data
-  return {rows,hasMore:rows.length===500,admin:email}
+  return {rows,hasMore:rows.length===500,admin:email,twoFactor}
  }
 }
 
 /** Ações do admin. Sempre exigem `action` explícita — nunca uma ação em massa por acidente. */
 export function createAdminActions(env=process.env,request:typeof fetch=fetch){
- return async (authorization:string|undefined,body:Row)=>{
-  const {config,email}=await requireAdmin(env,request,authorization)
+ return async (authorization:string|undefined,body:Row,adminSession?:string)=>{
+  if(body.action==='admin-2fa-send'||body.action==='admin-2fa-verify')return adminTwoFactor(env,request,authorization,body)
+  const {config,email}=await requireAdmin(env,request,authorization,adminSession)
   const headers={...serviceHeaders(config.secret),'Content-Type':'application/json'}
   const rpc=async<T>(name:string,args:Row):Promise<T>=>{
    const response=await request(`${config.url}/rest/v1/rpc/${name}`,{method:'POST',headers,body:JSON.stringify(args),signal:AbortSignal.timeout(15000)})
@@ -109,7 +170,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
   }
   if(action==='revoke-old-trials'){
    const query=new URLSearchParams({resource:'trials',history:'1'}),read=createAdminService(env,request);let count=0
-   for(let offset=0;offset<=1000000;offset+=500){query.set('offset',String(offset));const page=await read(authorization,query);for(const trial of page.rows){if(Date.parse(trial.created_at)>=Date.parse(TRIAL_CUTOFF)||trial.revoked_at)continue;if(await rpc<boolean>('account_revoke_trial',{p_user_id:trial.user_id,p_client_id:trial.gateway_client_id})!==true)throw new AccountError(503,'Revogação incompleta. Atualize e tente novamente.');count++}if(!page.hasMore)break}
+   for(let offset=0;offset<=1000000;offset+=500){query.set('offset',String(offset));const page=await read(authorization,query,adminSession);for(const trial of page.rows){if(Date.parse(trial.created_at)>=Date.parse(TRIAL_CUTOFF)||trial.revoked_at)continue;if(await rpc<boolean>('account_revoke_trial',{p_user_id:trial.user_id,p_client_id:trial.gateway_client_id})!==true)throw new AccountError(503,'Revogação incompleta. Atualize e tente novamente.');count++}if(!page.hasMore)break}
    return {revoked:count,cutoff:TRIAL_CUTOFF}
   }
   // Entrega da operação atual: cria a chave SixtySix (sk-rt-) no Roteador, liga à conta do cliente
@@ -194,12 +255,13 @@ async function readBody(req:IncomingMessage&{body?:unknown}):Promise<Row>{
 export default async function handler(req:IncomingMessage&{body?:unknown},res:ServerResponse){
  res.setHeader('Cache-Control','private, no-store');res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('X-Content-Type-Options','nosniff')
  try{
+  const header=req.headers['x-admin-session'],adminSession=typeof header==='string'?header:undefined
   if(req.method==='POST'){
-   const result=await createAdminActions()(req.headers.authorization,await readBody(req))
+   const result=await createAdminActions()(req.headers.authorization,await readBody(req),adminSession)
    res.statusCode=200;res.end(JSON.stringify(result));return
   }
   if(req.method!=='GET')throw new AccountError(405,'Operação não disponível.')
-  const result=await createAdminService()(req.headers.authorization,new URL(req.url||'/', 'http://localhost').searchParams)
+  const result=await createAdminService()(req.headers.authorization,new URL(req.url||'/', 'http://localhost').searchParams,adminSession)
   res.statusCode=200;res.end(JSON.stringify(result))
- }catch(error){res.statusCode=error instanceof AccountError?error.status:503;res.end(JSON.stringify({error:error instanceof AccountError?error.message:'Administração temporariamente indisponível.'}))}
+ }catch(error){res.statusCode=error instanceof AccountError?error.status:503;res.end(JSON.stringify({error:error instanceof AccountError?error.message:'Administração temporariamente indisponível.',...(error instanceof AccountError&&error.code?{code:error.code}:{})}))}
 }

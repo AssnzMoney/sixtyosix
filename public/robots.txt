@@ -1,7 +1,5 @@
 User-agent: *
 Allow: /
-Disallow: /admin
-Disallow: /administracao
 Disallow: /dashboard
 Disallow: /onboarding
 Disallow: /assinatura

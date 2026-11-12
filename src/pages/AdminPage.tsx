@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
+import { AdminCodeRequired, adminHeaders, clearAdminSession, saveAdminSession } from '../lib/adminSession'
 import { confirmationReminder, customerGreeting, deliveryMessage, formatWhatsapp, shortOrder, whatsappLink } from '../lib/whatsapp'
 import {
   PRODUCT_LABELS,
@@ -158,6 +159,9 @@ export default function AdminPage() {
   const [delivered, setDelivered] = useState<KeyDelivered | null>(null)
   const [routerModels, setRouterModels] = useState<{ alias: string; label: string }[] | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
+  // Verificação em duas etapas: 'on' exige o código do e-mail; 'off' = envio de e-mail não configurado.
+  const [twoFactor, setTwoFactor] = useState<'on' | 'off' | ''>('')
+  const [codeStep, setCodeStep] = useState<{ challenge: string; sentTo: string; code: string; sending: boolean; error: string } | null>(null)
 
   useEffect(() => {
     if (!session) return
@@ -172,10 +176,11 @@ export default function AdminPage() {
       let capped = false
       const fetchPage = async (resource: string, offset: number) => {
         const response = await fetch('/api/management?' + new URLSearchParams({ resource, offset: String(offset), from, to }), {
-          headers: { Authorization: `Bearer ${session!.access_token}` },
+          headers: adminHeaders(session!.access_token),
           signal: controller.signal,
         })
         const body = await response.json().catch(() => ({}))
+        if (!response.ok && body.code === 'admin_2fa_required') throw new AdminCodeRequired(body.error)
         if (!response.ok) throw new Error(body.error || 'Falha ao carregar a administração.')
         return body
       }
@@ -198,7 +203,11 @@ export default function AdminPage() {
       }
       // Valida o administrador antes de pedir o restante.
       const first = await fetchPage('users', 0)
-      if (alive) setAdminEmail(first.admin || '')
+      if (alive) {
+        setAdminEmail(first.admin || '')
+        setTwoFactor(first.twoFactor === 'on' ? 'on' : 'off')
+        setCodeStep(null)
+      }
       await rest('users', first)
       const missing: string[] = []
       await Promise.all(
@@ -227,7 +236,14 @@ export default function AdminPage() {
     }
     load()
       .catch((e) => {
-        if (alive && e.name !== 'AbortError') setError(e.message)
+        if (!alive || e.name === 'AbortError') return
+        // Falta o código do e-mail neste aparelho: mostra a tela do código no lugar do erro.
+        if (e instanceof AdminCodeRequired) {
+          clearAdminSession()
+          setCodeStep((step) => step || { challenge: '', sentTo: '', code: '', sending: false, error: '' })
+          return
+        }
+        setError(e.message)
       })
       .finally(() => {
         if (alive) setBusy(false)
@@ -248,12 +264,44 @@ export default function AdminPage() {
   async function adminAction<T>(body: Row): Promise<T> {
     const response = await fetch('/api/management', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${session!.access_token}`, 'Content-Type': 'application/json' },
+      headers: { ...adminHeaders(session!.access_token), 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
     const result = await response.json().catch(() => ({}))
+    if (!response.ok && result.code === 'admin_2fa_required') {
+      clearAdminSession()
+      setCodeStep({ challenge: '', sentTo: '', code: '', sending: false, error: '' })
+    }
     if (!response.ok) throw new Error(result.error || 'Não foi possível concluir.')
     return result as T
+  }
+
+  /* --------------------- Código do e-mail (2 etapas) --------------------- */
+  async function sendAdminCode() {
+    setCodeStep((s) => (s ? { ...s, sending: true, error: '' } : s))
+    try {
+      const result = await adminAction<{ challenge?: string; sentTo?: string; twoFactor?: string }>({ action: 'admin-2fa-send' })
+      if (result.twoFactor === 'off') {
+        setCodeStep(null)
+        setRevision((x) => x + 1)
+        return
+      }
+      setCodeStep({ challenge: result.challenge || '', sentTo: result.sentTo || '', code: '', sending: false, error: '' })
+    } catch (e) {
+      setCodeStep((s) => (s ? { ...s, sending: false, error: e instanceof Error ? e.message : 'Não foi possível enviar o código.' } : s))
+    }
+  }
+  async function verifyAdminCode() {
+    if (!codeStep?.challenge) return
+    setCodeStep({ ...codeStep, sending: true, error: '' })
+    try {
+      const result = await adminAction<{ session: string }>({ action: 'admin-2fa-verify', challenge: codeStep.challenge, code: codeStep.code })
+      saveAdminSession(result.session)
+      setCodeStep(null)
+      setRevision((x) => x + 1)
+    } catch (e) {
+      setCodeStep((s) => (s ? { ...s, sending: false, error: e instanceof Error ? e.message : 'Código incorreto.' } : s))
+    }
   }
 
   /* ----------------------------- Junções ----------------------------- */
@@ -479,7 +527,7 @@ export default function AdminPage() {
   async function loadRouterModels() {
     if (routerModels || !session) return
     try {
-      const response = await fetch('/api/management?resource=router', { headers: { Authorization: `Bearer ${session.access_token}` } })
+      const response = await fetch('/api/management?resource=router', { headers: adminHeaders(session.access_token) })
       const body = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(body.error || 'Não foi possível carregar os modelos do Roteador.')
       const providers = new Map((body.providers || []).map((p: Row) => [p.id, p]))
@@ -648,12 +696,66 @@ export default function AdminPage() {
             Entrar na SixtySix
           </Link>
         </div>
+      ) : codeStep ? (
+        <section className="sx-admin-message sx-admin-code" aria-labelledby="sx-code-title">
+          <h2 id="sx-code-title">Confirme que é você</h2>
+          {!codeStep.challenge ? (
+            <>
+              <p>Para entrar na administração neste aparelho, enviamos um código de 6 dígitos para o e-mail da sua conta de administrador.</p>
+              <button type="button" className="sx-btn is-primary" disabled={codeStep.sending} onClick={() => void sendAdminCode()}>
+                {codeStep.sending ? 'Enviando…' : 'Enviar código por e-mail'}
+              </button>
+            </>
+          ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void verifyAdminCode()
+              }}
+            >
+              <p>
+                Enviamos o código para <strong>{codeStep.sentTo}</strong>. Ele vale por 10 minutos. Depois de entrar, este aparelho fica
+                liberado por 30 dias.
+              </p>
+              <input
+                className="sx-admin-code-input"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                aria-label="Código de 6 dígitos"
+                placeholder="000000"
+                value={codeStep.code}
+                onChange={(e) => setCodeStep({ ...codeStep, code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                autoFocus
+              />
+              <div className="sx-actions">
+                <button type="submit" className="sx-btn is-primary" disabled={codeStep.sending || codeStep.code.length !== 6}>
+                  {codeStep.sending ? 'Conferindo…' : 'Entrar'}
+                </button>
+                <button type="button" className="sx-btn" disabled={codeStep.sending} onClick={() => void sendAdminCode()}>
+                  Enviar outro código
+                </button>
+              </div>
+            </form>
+          )}
+          {codeStep.error && (
+            <p role="alert" className="sx-admin-code-error">
+              <CircleAlert size={15} /> {codeStep.error}
+            </p>
+          )}
+        </section>
       ) : error && !data.users ? (
         <div role="alert" className="sx-admin-message is-error">
           <CircleAlert size={18} /> {error}
         </div>
       ) : (
         <>
+          {twoFactor === 'off' && (
+            <p className="sx-admin-message is-warning">
+              <CircleAlert size={16} /> Verificação por e-mail desligada: falta configurar o envio de e-mails (RESEND_API_KEY na Vercel). Com ela
+              configurada, o admin passa a pedir o código.
+            </p>
+          )}
           {error && (
             <p role="alert" className="sx-admin-message is-error">
               <CircleAlert size={16} /> {error}

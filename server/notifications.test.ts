@@ -163,10 +163,15 @@ test('entrega registrada avisa o cliente por e-mail, sem a chave', async () => {
     throw new Error('Destino inesperado ' + url.pathname)
   }) as typeof fetch
   const env = { SUPABASE_URL: supabase.url, SUPABASE_SERVICE_ROLE_KEY: supabase.secret, VITE_SUPABASE_ANON_KEY: 'public', RESEND_API_KEY: 're_test' }
-  const result = await createAdminActions(env, request)('Bearer ok', {
+  const actions = createAdminActions(env, request)
+  // Com e-mail configurado o admin pede o código: entra primeiro com o código que chegou por e-mail.
+  const challenge = await actions('Bearer ok', { action: 'admin-2fa-send' }) as { challenge: string }
+  const code = /\b(\d{6})\b/.exec(sent.pop().text)![1]
+  const { session } = await actions('Bearer ok', { action: 'admin-2fa-verify', challenge: challenge.challenge, code }) as { session: string }
+  const result = await actions('Bearer ok', {
     action: 'register-delivery',
     delivery: { id, user_id: uid, subscription_id: null, product: '', supplier: '', key_hint: '9f3a', base_url: 'https://api.fornecedor.com', model_id: 'argon-4', notes: null, expires_at: null, replaces: null },
-  })
+  }, session)
   assert.deepEqual(result, { id, email: 'sent' })
   assert.equal(sent.length, 1)
   assert.deepEqual(sent[0].to, ['cliente@exemplo.com'])

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Ban, Check, CircleAlert, Copy, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X } from 'lucide-react'
 import { suggestAlias, suggestLabel } from '../lib/routerModels'
+import { adminHeaders } from '../lib/adminSession'
 
 /**
  * Aba "Roteador" do /admin, no estilo 9router:
@@ -102,7 +103,7 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
   async function call<T>(body: Row): Promise<T> {
     const response = await fetch('/api/management', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { ...adminHeaders(token), 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
     const result = await response.json().catch(() => ({}))
@@ -113,7 +114,7 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
-    fetch('/api/management?resource=router', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
+    fetch('/api/management?resource=router', { headers: adminHeaders(token), signal: controller.signal })
       .then(async (response) => {
         const body = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(body.error || 'Não foi possível carregar o Roteador.')

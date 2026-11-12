@@ -1482,3 +1482,50 @@
   height: 30px;
   padding: 0 12px;
 }
+
+/* Verificação em duas etapas: código do e-mail para entrar no admin */
+.sx-admin-code {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 520px;
+  padding: 22px 24px;
+}
+.sx-admin-code p {
+  margin: 0;
+  font-weight: 500;
+  color: var(--muted);
+}
+.sx-admin-code form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.sx-admin-code-input {
+  width: 100%;
+  max-width: 240px;
+  height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 700 26px/1 'Fustat', sans-serif;
+  letter-spacing: 0.35em;
+}
+.sx-admin-code-input:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 4px var(--green-soft);
+}
+.sx-admin-code .sx-actions {
+  justify-content: flex-start;
+}
+.sx-admin-code-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger) !important;
+  font-weight: 700 !important;
+}
