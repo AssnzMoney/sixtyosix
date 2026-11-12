@@ -229,6 +229,9 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       res.end(req.method==='HEAD'?undefined:JSON.stringify({object:'list',data,has_more:false,first_id:data[0]?.id??null,last_id:data[data.length-1]?.id??null}));return
     }
     if(req.method==='POST'&&payload&&path.startsWith('/v1/')){
+      // Contagem de tokens do Claude Code: o fornecedor não tem e respondia 404, e isso aparecia para ele como
+      // erro vindo da nossa chave. Respondemos aqui mesmo; o Claude Code já seguia normal com o 404.
+      if(/\/messages\/count_tokens\/?$/.test(path)){if(!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.');throw new AccessError(404,'Contagem de tokens não disponível neste gateway.')}
       const route=findRoute(router,model)||claudeInternalRoute(router,allowed,model)
       if(!route)throw new AccessError(404,'Este modelo não está disponível. Veja os modelos liberados para a sua chave em /v1/models.')
       if(!allowed.includes(route.alias)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
