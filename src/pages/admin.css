@@ -1434,3 +1434,34 @@
   width: auto !important;
   flex-shrink: 0;
 }
+
+/* Aba Consumo: resumo por cliente */
+.sx-usage-summary {
+  padding: 14px 18px 0;
+}
+.sx-usage-summary h3 {
+  margin: 8px 0 12px;
+  font: 700 16px/1.2 'Fustat', sans-serif;
+  letter-spacing: -0.01em;
+}
+.sx-usage-summary .sx-admin-metrics {
+  margin-bottom: 14px;
+}
+.sx-usage-summary .sx-admin-metrics strong {
+  font-size: 22px;
+}
+.sx-usage-summary .sx-admin-table {
+  margin: 0 -18px 18px;
+}
+.sx-usage-summary .sx-admin-hint {
+  padding: 0 0 14px;
+}
+.sx-usage-keys {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font: 500 11.5px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.sx-usage-models {
+  color: var(--muted);
+}

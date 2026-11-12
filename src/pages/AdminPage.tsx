@@ -90,6 +90,7 @@ const paymentLabels: Record<string, string> = {
 }
 const money = (n: number) => (n / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const number = (n: number) => n.toLocaleString('pt-BR')
+const compact = (n: number) => (n >= 10000 ? new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(n) : n.toLocaleString('pt-BR'))
 const shortDate = (value: string | null | undefined) =>
   value ? new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'
 function format(key: string, value: any) {
@@ -346,6 +347,28 @@ export default function AdminPage() {
       })
       .filter((x) => !term || JSON.stringify(x).toLowerCase().includes(term))
   }, [data, tab, search, deliveries, usersById])
+
+  // Aba Consumo: soma por cliente (todas as chaves dele), do maior consumo para o menor. Respeita período e busca.
+  const usageByCustomer = useMemo(() => {
+    if (tab !== 'usage') return null
+    type Group = { customer: string; keys: Set<string>; requests: number; input: number; output: number; errors: number; last: string; models: Map<string, number> }
+    const groups = new Map<string, Group>()
+    for (const row of enriched) {
+      const name = String(row.customer || 'Sem cliente')
+      const g = groups.get(name) || { customer: name, keys: new Set<string>(), requests: 0, input: 0, output: 0, errors: 0, last: '', models: new Map<string, number>() }
+      g.requests++
+      g.input += Number(row.input_tokens || 0)
+      g.output += Number(row.output_tokens || 0)
+      if (Number(row.status_code) >= 400) g.errors++
+      if (String(row.created_at || '') > g.last) g.last = String(row.created_at)
+      if (String(row.key || '').startsWith('sk-')) g.keys.add(String(row.key))
+      if (row.requested_alias) g.models.set(String(row.requested_alias), (g.models.get(String(row.requested_alias)) || 0) + 1)
+      groups.set(name, g)
+    }
+    const list = [...groups.values()].sort((a, b) => b.input + b.output - (a.input + a.output) || b.requests - a.requests)
+    const total = list.reduce((t, g) => ({ requests: t.requests + g.requests, tokens: t.tokens + g.input + g.output, errors: t.errors + g.errors }), { requests: 0, tokens: 0, errors: 0 })
+    return { list, total }
+  }, [tab, enriched])
 
   const revenue = (data.payments || []).filter((x) => x.status === 'approved').reduce((a, x) => a + Number(x.amount_cents || 0), 0)
   const activePlans = (data.subscriptions || []).filter((x) => x.entitled && Date.parse(x.paid_until) > now).length
@@ -812,6 +835,64 @@ export default function AdminPage() {
                 </button>
               </div>
               {['usage', 'payments'].includes(tab) && <p className="sx-admin-hint">Período aplicado ao consumo e aos pagamentos, em UTC.</p>}
+              {tab === 'usage' && usageByCustomer && (
+                <div className="sx-usage-summary">
+                  <h3>Consumo por cliente</h3>
+                  <div className="sx-admin-metrics">
+                    <article><span>Chamadas</span><strong>{number(usageByCustomer.total.requests)}</strong></article>
+                    <article><span>Tokens (entrada + saída)</span><strong>{compact(usageByCustomer.total.tokens)}</strong></article>
+                    <article><span>Clientes que usaram</span><strong>{number(usageByCustomer.list.length)}</strong></article>
+                    <article className={usageByCustomer.total.errors ? 'is-warn' : ''}>
+                      <span>Chamadas com erro</span>
+                      <strong>{number(usageByCustomer.total.errors)}{usageByCustomer.total.requests ? ` (${Math.round((usageByCustomer.total.errors / usageByCustomer.total.requests) * 100)}%)` : ''}</strong>
+                    </article>
+                  </div>
+                  {usageByCustomer.list.length ? (
+                    <div className="sx-admin-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Cliente</th>
+                            <th>Chamadas</th>
+                            <th>Tokens de entrada</th>
+                            <th>Tokens de saída</th>
+                            <th>Com erro</th>
+                            <th>Modelos mais usados</th>
+                            <th>Última chamada</th>
+                            <th>Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usageByCustomer.list.slice(0, 200).map((g) => (
+                            <tr key={g.customer}>
+                              <td title={g.customer}>
+                                <strong>{g.customer}</strong>
+                                {g.keys.size > 0 && <small className="sx-usage-keys">{[...g.keys].join(' · ')}</small>}
+                              </td>
+                              <td>{number(g.requests)}</td>
+                              <td>{compact(g.input)}</td>
+                              <td>{compact(g.output)}</td>
+                              <td className={g.errors ? 'sx-admin-failure' : ''}>{number(g.errors)}</td>
+                              <td className="sx-usage-models">
+                                {[...g.models.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([m, n]) => `${m} (${number(n)})`).join(' · ')}
+                              </td>
+                              <td>{g.last ? shortDate(g.last) : '—'}</td>
+                              <td>
+                                <button type="button" className="sx-btn" onClick={() => setSearch(g.customer)}>
+                                  <Search size={15} /> Ver chamadas
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="sx-admin-hint">Ninguém usou neste período{search ? ' com essa busca' : ''}.</p>
+                  )}
+                  <h3>Chamadas, uma por uma</h3>
+                </div>
+              )}
               <div className="sx-admin-table">
                 <table>
                   <thead>
