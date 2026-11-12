@@ -142,7 +142,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     if(response.body){const reader=response.body.getReader();for(;;){const {done,value}=await reader.read();if(done)break;await write(tap.push(value))}}
     await write(tap.end())
   }finally{
-    await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:status,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
+    // Contar tokens (/v1/messages/count_tokens) não é uso do modelo: não entra no consumo.
+    if(!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:status,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
   }
   res.end()
 }

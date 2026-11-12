@@ -209,7 +209,8 @@ async function fetchGatewayStatus(): Promise<GatewayStatus> {
     const response = await fetch("/api/health", { cache: "no-store" })
     if (!response.headers.get("content-type")?.includes("application/json")) return "unknown"
     const body = await response.json()
-    return response.ok && body?.status === "ready" ? "ready" : "down"
+    // Gateway novo responde { ok: true, models }; o antigo respondia { status: "ready" }.
+    return response.ok && (body?.ok === true || body?.status === "ready") ? "ready" : "down"
   } catch {
     return "unknown"
   }
@@ -346,6 +347,8 @@ export default function DashboardPage() {
   const [toast, setToast] = useState("")
   const [tool, setTool] = useState("claude")
   const [os, setOs] = useState("powershell")
+  // Claude Desktop: a instalação e o lugar do menu mudam entre Windows, macOS e Linux.
+  const [desktopOs, setDesktopOs] = useState<"windows" | "mac" | "linux">("windows")
   const [clientKey, setClientKey] = useState("")
   const [reveal, setReveal] = useState(false)
   const [accountData, setAccountData] = useState<{
@@ -1635,6 +1638,28 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   )}
+                  {tool === "desktop" && (
+                    <div className="six-segmented is-compact" role="tablist" aria-label="Sistema">
+                      {(
+                        [
+                          ["windows", "Windows"],
+                          ["mac", "macOS"],
+                          ["linux", "Linux (Ubuntu e Debian)"],
+                        ] as const
+                      ).map(([id, label]) => (
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={desktopOs === id}
+                          className={desktopOs === id ? "selected" : ""}
+                          key={id}
+                          onClick={() => setDesktopOs(id)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {tool === "claude" && (
                     <>
                       <GuideStep number="01" title="Instale o Claude Code">
@@ -1692,36 +1717,60 @@ export default function DashboardPage() {
                   )}
                   {tool === "desktop" && (
                     <>
-                      <GuideStep number="01" title="Ative a conexão com terceiros">
+                      <GuideStep number="01" title="Instale o app Claude">
+                        {desktopOs === "linux" ? (
+                          <>
+                            <p>O app para Linux está em beta e funciona no Ubuntu 22.04+ e no Debian 12+. No terminal, rode:</p>
+                            <CodeBlock
+                              code={`sudo apt install curl gnupg
+sudo curl -fsSLo /usr/share/keyrings/claude-desktop-archive-keyring.asc https://downloads.claude.ai/claude-desktop/key.asc
+echo "deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] https://downloads.claude.ai/claude-desktop/apt/stable stable main" | sudo tee /etc/apt/sources.list.d/claude-desktop.list
+sudo apt update && sudo apt install claude-desktop`}
+                              copy={copy}
+                              label="Terminal"
+                            />
+                            <p>Abra pelo menu de aplicativos (Claude) com o seu usuário normal, não como root.</p>
+                          </>
+                        ) : (
+                          <p>
+                            Baixe em <strong>claude.com/download</strong>
+                            {desktopOs === "mac" ? ", abra o arquivo .dmg e arraste o Claude para Aplicativos." : " e instale."} Abra o app,
+                            sem entrar com conta da Anthropic.
+                          </p>
+                        )}
+                      </GuideStep>
+                      <GuideStep number="02" title="Ligue o modo desenvolvedor">
                         <p>
-                          Abra o Claude Desktop atualizado e clique na engrenagem de Configurações. Procure Conexão ou
-                          Inferência de terceiros. Ative a opção de usar um provedor de terceiros, se ela aparecer, e escolha
-                          Gateway no campo Conexão. Os nomes podem variar conforme a versão. Esta configuração precisa ser feita
-                          no aplicativo: colar a chave no chat ou configurar um conector MCP não conecta o gateway de modelos.
+                          {desktopOs === "windows"
+                            ? "Na tela de login, clique no menu ☰ no canto superior esquerdo"
+                            : desktopOs === "mac"
+                              ? "Na barra de menus, no topo da tela"
+                              : "Na tela de login, abra o menu do app"}{" "}
+                          e vá em <strong>Help → Troubleshooting → Enable Developer Mode</strong>. O app reinicia e aparece o menu{" "}
+                          <strong>Developer</strong>.
                         </p>
                       </GuideStep>
-                      <GuideStep number="02" title="Preencha as credenciais">
+                      <GuideStep number="03" title="Coloque a URL e a sua chave">
                         <p>
-                          Em Credenciais de gateway, escolha Chave de API estática. Use a chave que você recebeu pelo
-                          WhatsApp e cole no campo Chave de API do gateway. Use a URL inteira abaixo, sem acrescentar
-                          /v1/messages. Em Esquema de autenticação, selecione x-api-key. O campo Origem do iframe de
-                          visualização de artefato é separado da conexão; deixe vazio se você não configurou uma origem de
-                          artefatos.
+                          Vá em <strong>Developer → Configure Third-Party Inference…</strong> e, na parte <strong>Connection</strong>,
+                          preencha os campos abaixo. Deixe <strong>Server-side Auto mode checks</strong> desligado.
                         </p>
                         <CodeBlock
-                          code={`Tipo: Chave de API estática\nURL base: ${claudeBase}\nChave: ${actualKey}\nAutenticação: x-api-key\nModelo: ${claudeModel}`}
+                          code={`Inference provider: Gateway\nGateway base URL: ${claudeBase}\nGateway API key: ${actualKey}\nCredential kind: Static API key\nGateway auth scheme: Bearer`}
                           copy={copy}
-                          label="Claude Desktop"
+                          label="Connection"
                         />
                       </GuideStep>
-                      <GuideStep number="03" title="Salve, reinicie e teste">
+                      <GuideStep number="04" title="Escolha os modelos">
+                        <p>Na parte <strong>Models</strong>, adicione um por um. O primeiro da lista é o padrão.</p>
+                        <CodeBlock code={`${claudeModel}\nclaude-fable-5-2`} copy={copy} label="Models" />
+                      </GuideStep>
+                      <GuideStep number="05" title="Salve e teste">
                         <p>
-                          Clique em Testar conexão. Depois clique em Salvar e Reiniciar e aguarde o aplicativo abrir novamente.
-                          Crie uma conversa nova na área Code e escolha Fable 5.1 no seletor de modelos. Conversas
-                          antigas podem manter o modelo anterior. Se o teste ficar vermelho, confira a chave completa, a URL e
-                          x-api-key. Se aparecer Não foi possível atualizar as configurações salvas, o aplicativo ainda não
-                          salvou a conexão: feche e abra o Claude e tente salvar novamente. Se a opção de terceiros não existir
-                          na sua versão, use Claude Code no terminal, conforme a outra aba deste guia.
+                          Clique em <strong>Apply Changes</strong> e depois em <strong>Relaunch now</strong>. O app abre direto, sem
+                          pedir login. Abra a aba <strong>Code</strong>, escolha a pasta do seu projeto e mande um "oi". Se o menu
+                          Developer sumir, faça Help → Troubleshooting → Enable Developer Mode de novo. Se aparecer Gateway was
+                          unreachable, confira a URL, sem /v1 no final.
                         </p>
                       </GuideStep>
                     </>
@@ -1730,8 +1779,8 @@ export default function DashboardPage() {
                     <>
                       <GuideStep number="01" title="Instale o Cline no VS Code">
                         <p>
-                          No VS Code, abra Extensões (Ctrl+Shift+X), busque <strong>Cline</strong> e clique em Instalar. O ícone do
-                          Cline aparece na barra lateral.
+                          No VS Code, abra Extensões (Ctrl+Shift+X; no Mac, Cmd+Shift+X), busque <strong>Cline</strong> e clique em
+                          Instalar. O ícone do Cline aparece na barra lateral. Funciona igual no Windows, no Mac e no Linux.
                         </p>
                       </GuideStep>
                       <GuideStep number="02" title="Escolha a conexão compatível com OpenAI">
@@ -1757,8 +1806,12 @@ export default function DashboardPage() {
                   {tool === "opencode" && (
                     <>
                       <GuideStep number="01" title="Instale o OpenCode">
-                        <p>Com o Node.js instalado, rode no terminal:</p>
-                        <CodeBlock code="npm install -g @opencode/cli" copy={copy} label={osLabel} />
+                        <p>{os === "bash" ? "No macOS ou no Linux, rode no terminal:" : "Com o Node.js instalado, rode no terminal:"}</p>
+                        <CodeBlock
+                          code={os === "bash" ? "curl -fsSL https://opencode.ai/v2/install | bash" : "npm install -g @opencode/cli"}
+                          copy={copy}
+                          label={osLabel}
+                        />
                       </GuideStep>
                       <GuideStep number="02" title="Cadastre a SixtySix como provedor">
                         <p>

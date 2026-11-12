@@ -154,9 +154,13 @@ test('modelo fora do Roteador é recusado e a lista mostra só o Roteador', asyn
 })
 
 test('endereços antigos /glm/v1 e /api/codex chegam ao provedor como /v1', async () => {
-  await withAccess({ supplier: () => Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } }) }, async (base, _usage, calls) => {
+  await withAccess({ supplier: () => Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } }) }, async (base, usage, calls) => {
     assert.equal((await post(base, '/glm/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] })).status, 200)
     assert.equal(calls[0].url, 'https://fornecedor.example/v1/messages')
+    // Contagem de tokens passa pelo fornecedor, mas não vira consumo.
+    const before = usage.length
+    await post(base, '/v1/messages/count_tokens', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] })
+    assert.equal(usage.length, before)
     const catalog = await (await client(base + '/api/codex/models', { headers: { 'x-api-key': 'sk-sx-cliente' } })).json() as { data: { id: string }[] }
     assert.ok(catalog.data.some(item => item.id === 'claude-opus-5-5'))
     // URL configurada já com /v1 (app Claude desktop): /v1/v1/... vira /v1/...
