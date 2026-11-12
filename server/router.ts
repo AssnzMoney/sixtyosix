@@ -117,7 +117,7 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
   const db = database(env)
   if (!db) return { ok: false, problem: 'O gateway não tem SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY na Vercel.' }
   const params = new URLSearchParams({
-    select: 'alias,enabled,provider:router_providers(id,name,enabled,encrypted_key)',
+    select: 'alias,enabled,in_pro,provider:router_providers(id,name,enabled,encrypted_key)',
     order: 'created_at.asc,alias.asc',
   })
   let response: Response
@@ -132,7 +132,7 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
   }
   const rows = (await response.json()) as Row[]
   const providers = new Map<string, { name: string; enabled: boolean; keyOpens: boolean; models: number; activeModels: number }>()
-  const aliases: string[] = []
+  const aliases: string[] = [], proAliases: string[] = []
   for (const row of rows) {
     const p = row.provider as Row | null
     if (!p) continue
@@ -143,7 +143,11 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
     }
     const info = providers.get(p.id)!
     info.models++
-    if (row.enabled && info.enabled && info.keyOpens) { info.activeModels++; aliases.push(String(row.alias)) }
+    if (row.enabled && info.enabled && info.keyOpens) {
+      info.activeModels++
+      aliases.push(String(row.alias))
+      if (row.in_pro) proAliases.push(String(row.alias))
+    }
   }
   const list = [...providers.values()]
   const active = list.reduce((sum, p) => sum + p.activeModels, 0)
@@ -167,7 +171,8 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
       break
     } catch { /* tenta sem o máximo de IPs */ }
   }
-  return { ok: active > 0, models: rows.length, activeModels: active, aliases, missingPlanAliases: planAliases, providers: list, guard, problem }
+  // proAliases: modelos ativos que entram no plano Pro do site (e no teste do site).
+  return { ok: active > 0, models: rows.length, activeModels: active, aliases, proAliases, missingPlanAliases: planAliases, providers: list, guard, problem }
 }
 
 /** Confere uma chave manual sk-rt-: existe, não está bloqueada nem vencida. Devolve os modelos liberados. */
