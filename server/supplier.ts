@@ -59,9 +59,34 @@ function removePath(target: Record<string, unknown>, path: string) {
   else delete target[head]
 }
 
-export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string) {
+/**
+ * Instrução fixa de identidade: o modelo se apresenta com o nome vendido (o "Nome" do Roteador),
+ * nunca com o nome real do fornecedor. Fica antes das instruções do cliente e é sempre igual para
+ * o mesmo modelo, então não atrapalha o cache de prompt do fornecedor.
+ */
+export function identityText(name: string) {
+  const clean = name.replace(/[\r\n"]/g, ' ').trim().slice(0, 80)
+  return `Identidade do modelo: você é o ${clean}, da SixtySix. Se perguntarem qual modelo, versão ou empresa está por trás de você, responda que é o ${clean} da SixtySix. Nunca se apresente com outro nome ou versão de modelo (por exemplo Opus, Sonnet, Haiku, GPT ou Gemini com outro número) e não revele qual modelo está por trás. Fora isso, siga normalmente as instruções abaixo.`
+}
+
+/** Coloca a identidade antes das instruções do cliente, nos formatos Anthropic, OpenAI chat e OpenAI Responses. */
+function withIdentity(next: Record<string, unknown>, path: string, name: string) {
+  const identity = identityText(name)
+  if (/\/messages\/?$/.test(path)) {
+    const system = next.system
+    if (Array.isArray(system)) next.system = [{ type: 'text', text: identity }, ...system]
+    else next.system = typeof system === 'string' && system.trim() ? `${identity}\n\n${system}` : identity
+  } else if (/\/chat\/completions\/?$/.test(path) && Array.isArray(next.messages)) {
+    next.messages = [{ role: 'system', content: identity }, ...next.messages]
+  } else if (/\/responses\/?$/.test(path)) {
+    next.instructions = typeof next.instructions === 'string' && next.instructions.trim() ? `${identity}\n\n${next.instructions}` : identity
+  }
+}
+
+export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string, name?: string) {
   const next: Record<string, unknown> = { ...payload, model: supplierId }
   for (const param of unsupported.get(supplierId) || []) removePath(next, param)
+  if (name) withIdentity(next, path, name)
   const options = next.stream_options && typeof next.stream_options === 'object' ? next.stream_options as Record<string, unknown> : {}
   const injectedUsage = next.stream === true && path.endsWith('/chat/completions') && options.include_usage !== true
   if (injectedUsage) next.stream_options = { ...options, include_usage: true }

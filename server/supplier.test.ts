@@ -44,6 +44,24 @@ test('conta tokens no formato Anthropic, Responses e resposta comum', () => {
   assert.deepEqual(plain.usage, { input: 3, output: 2 })
 })
 
+test('identidade: o modelo recebe o nome vendido antes das instruções do cliente, nos três formatos', () => {
+  const anthropicArray = JSON.parse(supplierRequestBody({ model: 'x', system: [{ type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }] }, '/v1/messages', 'anthropic/claude-opus-5-5', 'Claude Fable 5.2').body)
+  assert.match(anthropicArray.system[0].text, /você é o Claude Fable 5\.2/)
+  assert.deepEqual(anthropicArray.system[1], { type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }, 'as instruções do cliente ficam intactas')
+  const anthropicString = JSON.parse(supplierRequestBody({ model: 'x', system: 'Seja breve.' }, '/v1/messages', 'y', 'Argon 4').body)
+  assert.match(anthropicString.system, /^Identidade do modelo: você é o Argon 4.*\n\nSeja breve\.$/s)
+  assert.match(JSON.parse(supplierRequestBody({ model: 'x' }, '/v1/messages', 'y', 'Argon 4').body).system, /Argon 4/)
+  const chat = JSON.parse(supplierRequestBody({ model: 'x', messages: [{ role: 'user', content: 'oi' }] }, '/v1/chat/completions', 'y', 'GPT Astra 6').body)
+  assert.equal(chat.messages[0].role, 'system')
+  assert.match(chat.messages[0].content, /GPT Astra 6/)
+  assert.deepEqual(chat.messages[1], { role: 'user', content: 'oi' })
+  const responses = JSON.parse(supplierRequestBody({ model: 'x', instructions: 'Use português.' }, '/v1/responses', 'y', 'GPT Astra 6').body)
+  assert.match(responses.instructions, /GPT Astra 6.*\n\nUse português\.$/s)
+  // Sem nome (ou em rotas sem conversa), nada muda.
+  assert.equal(JSON.parse(supplierRequestBody({ model: 'x', system: 'a' }, '/v1/messages', 'y').body).system, 'a')
+  assert.equal(JSON.parse(supplierRequestBody({ model: 'x', input: 'a' }, '/v1/embeddings', 'y', 'Nome').body).instructions, undefined)
+})
+
 test('o cliente nunca vê o modelo real, mesmo quando o fornecedor devolve outro formato de nome', () => {
   // Visto em produção: pediu "anthropic/claude-opus-5-5" e o fornecedor respondeu "claude-opus-5-5".
   const plain = new UsageTap({ stream: false, alias: 'claude-fable-5.2', supplierId: 'anthropic/claude-opus-5-5', dropInjectedUsage: false })

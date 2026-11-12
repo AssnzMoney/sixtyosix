@@ -135,7 +135,9 @@ type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:
 /** Chama o provedor do Roteador com a key mestra, repassa a resposta e grava o consumo do cliente. */
 async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:SupplierCall){
   const {route}=call,{provider}=route
-  const {body,injectedUsage}=supplierRequestBody(call.payload,call.path,route.upstream)
+  // O modelo se apresenta com o nome vendido (Nome do Roteador; sem nome, o apelido), nunca o real.
+  const name=route.label||route.alias
+  const {body,injectedUsage}=supplierRequestBody(call.payload,call.path,route.upstream,name)
   const headers:Record<string,string>={'content-type':'application/json','x-api-key':provider.key,Authorization:`Bearer ${provider.key}`}
   for(const key of ['accept','anthropic-version','anthropic-beta','openai-beta']){const value=single(req.headers[key]);if(value)headers[key]=value}
   const controller=new AbortController(),started=Date.now()
@@ -149,7 +151,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     if(status===400){
       const text=await response.text().catch(()=>'')
       const param=unsupportedParam(status,text)
-      if(param){rememberUnsupported(route.upstream,param);response=await send(supplierRequestBody(call.payload,call.path,route.upstream).body);status=response.status}
+      if(param){rememberUnsupported(route.upstream,param);response=await send(supplierRequestBody(call.payload,call.path,route.upstream,name).body);status=response.status}
       else response=new Response(text,{status,headers:response.headers})
     }
     // Recusa da key mestra (saldo, bloqueio) ou falha do fornecedor: o cliente não vê detalhes do fornecedor.
