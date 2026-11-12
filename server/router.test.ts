@@ -121,6 +121,25 @@ test('teste grátis usa o provedor do Roteador com a key mestra, esconde o prove
   })
 })
 
+test('modelos internos do Claude Code (avaliador do modo Automático, haiku de fundo) vão para um Claude da chave', async () => {
+  const manual = { models: null, expires_at: new Date(Date.now() + 30 * day).toISOString(), revoked_at: null }
+  await withAccess({ manual, supplier: () => Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 3, output_tokens: 1 } }) }, async (base, usage, calls) => {
+    for (const model of ['claude-opus-5', 'claude-haiku-4-5']) {
+      const response = await post(base, '/v1/messages', 'sk-rt-manual', { model, max_tokens: 1, messages: [{ role: 'user', content: '.' }] })
+      assert.equal(response.status, 200, model)
+      assert.equal(JSON.parse(String(calls.at(-1)!.init.body)).model, 'anthropic/claude-opus-5-5', model)
+    }
+    assert.equal(usage.at(-1)!.requested_alias, 'claude-opus-5-5', 'o consumo mostra o modelo que respondeu de verdade')
+    // Nome que não é Claude continua sem modelo.
+    assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'llama-9', messages: [] })).status, 404)
+  })
+  // Chave sem nenhum modelo Claude: continua 404, não ganha um Claude de brinde.
+  const onlyGpt = { models: ['gpt-6.1-sol'], expires_at: new Date(Date.now() + 30 * day).toISOString(), revoked_at: null }
+  await withAccess({ manual: onlyGpt }, async (base) => {
+    assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-opus-5', messages: [] })).status, 404)
+  })
+})
+
 test('modelo do Roteador fora do Pro não entra no teste grátis', async () => {
   await withAccess({}, async (base) => {
     const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'gpt-6.1-sol', messages: [] })

@@ -8,7 +8,7 @@ const sub = '33333333-3333-4333-8333-333333333333'
 const keyId = '44444444-4444-4444-8444-444444444444'
 const client = '55555555-5555-4555-8555-555555555555'
 
-function fixture() {
+function fixture(options: { linkFails?: boolean } = {}) {
   const calls: { method: string; path: string; body: any; prefer: string }[] = []
   const request = (async (input: string, init: RequestInit = {}) => {
     const url = new URL(String(input))
@@ -19,7 +19,7 @@ function fixture() {
     if (url.pathname === `/auth/v1/admin/users/${uid}`) return Response.json({ id: uid, email: 'andre@exemplo.com', user_metadata: { custom_name: 'Andre', whatsapp: '5581987654321' } })
     if (url.pathname === '/rest/v1/rpc/router_create_key') return Response.json({ id: keyId, gateway_client_id: client, expires_at: '2026-12-11T12:00:00Z' })
     if (url.pathname === '/rest/v1/router_keys') return String(headers.Prefer || '').includes('return=representation') ? Response.json([{ id: keyId, gateway_client_id: client }]) : new Response(null, { status: 204 })
-    if (url.pathname === '/rest/v1/gateway_clients') return new Response(null, { status: 204 })
+    if (url.pathname === '/rest/v1/gateway_clients') return options.linkFails ? Response.json({ message: 'coluna inesperada' }, { status: 400 }) : new Response(null, { status: 204 })
     if (url.pathname === '/rest/v1/rpc/admin_register_delivery') return Response.json(body.p_id)
     throw new Error('Destino inesperado ' + url.pathname)
   }) as typeof fetch
@@ -54,6 +54,24 @@ test('entregar chave: cria no Roteador, liga à conta do cliente e registra para
   assert.equal(delivery.body.p_user_id, uid)
   assert.equal(result.deliveryId, delivery.body.p_id)
   assert.equal(result.email, 'skipped')
+})
+
+test('entregar chave: se não der para ligar à conta, avisa (linked: false) em vez de seguir calado', async () => {
+  const errors: unknown[][] = []
+  const originalError = console.error
+  console.error = (...args: unknown[]) => errors.push(args)
+  try {
+    const { calls, actions } = fixture({ linkFails: true })
+    const later = new Date(Date.now() + 10 * 86400000).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' })
+    const result = await actions('Bearer ok', { action: 'deliver-key', user_id: uid, expires: later, models: ['claude-fable-5-1'] }) as Record<string, any>
+    assert.equal(result.linked, false)
+    assert.match(result.key, /^sk-rt-/, 'a chave é criada mesmo quando não dá para ligar à conta')
+    assert.ok(result.deliveryId, 'a entrega continua sendo registrada')
+    assert.ok(calls.some((c) => c.path === '/rest/v1/gateway_clients'), 'tentou ligar à conta')
+    assert.ok(errors.length > 0, 'a falha fica registrada no log, não some em silêncio')
+  } finally {
+    console.error = originalError
+  }
 })
 
 test('entregar chave recusa validade no passado, cliente inválido e lista de modelos vazia', async () => {

@@ -92,6 +92,21 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
   }
 }
 
+/**
+ * Modelos internos do Claude Code e do app Claude: o avaliador do modo Automático (claude-opus-5), títulos e
+ * tarefas de fundo (claude-haiku-…) pedem nomes oficiais que o Roteador não vende. Sem isto o gateway respondia
+ * "modelo não disponível" e o app, no modo Automático, bloqueava todo comando. Um nome oficial claude-opus-…,
+ * claude-sonnet-… ou claude-haiku-… que não existe no Roteador vai para um modelo Claude liberado na chave: de
+ * preferência da mesma família; senão, o primeiro Claude da chave. Os modelos que vendemos (ex.: claude-fable-…)
+ * não entram: se saírem do Roteador, continuam dando 404. Quem não tem nenhum modelo Claude também recebe 404.
+ */
+export function claudeInternalRoute(router:RouterConfig,allowed:readonly string[],model:string):RouterRoute|undefined{
+  const family=/^claude-(opus|sonnet|haiku)\b/i.exec(model)?.[1]?.toLowerCase()
+  if(!family)return undefined
+  const claude=allowed.filter(alias=>/^claude-/i.test(alias)).map(alias=>router.routes.get(alias)).filter((r):r is RouterRoute=>Boolean(r))
+  return claude.find(r=>r.alias.toLowerCase().includes(family))||claude[0]
+}
+
 /** /glm/v1/... e /api/codex/... (endereços antigos) → /v1/... no provedor. /v1/v1/... (URL configurada já com /v1, como no app Claude desktop) → /v1/... */
 export function supplierPath(path:string){
   if(path==='/v1/v1'||path.startsWith('/v1/v1/'))return path.slice(3)
@@ -200,7 +215,8 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     const router=await loadRouter(process.env)
     let allowed:string[]=[],clientId=''
     if(token.startsWith('sk-sx-')){const trial=await service.authorize(token,router);allowed=trial.models;clientId=trial.clientId}
-    if(token.startsWith('sk-sp-')){const paid=await service.authorizePaid(token,model||undefined,router.proAliases);allowed=paid.models;clientId=paid.clientId}
+    // O modelo pedido é conferido mais abaixo, depois de resolver o nome no Roteador (inclui o caso dos modelos internos do Claude Code).
+    if(token.startsWith('sk-sp-')){const paid=await service.authorizePaid(token,undefined,router.proAliases);allowed=paid.models;clientId=paid.clientId}
     if(token.startsWith(ROUTER_KEY_PREFIX)){
       try{const key=await authorizeRouterKey(process.env,fetch,token,router);allowed=key.allowed;clientId=key.clientId}
       catch(error){if(error instanceof RouterError)throw new AccessError(error.status,error.message);throw error}
@@ -213,7 +229,7 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       res.end(req.method==='HEAD'?undefined:JSON.stringify({object:'list',data,has_more:false,first_id:data[0]?.id??null,last_id:data[data.length-1]?.id??null}));return
     }
     if(req.method==='POST'&&payload&&path.startsWith('/v1/')){
-      const route=findRoute(router,model)
+      const route=findRoute(router,model)||claudeInternalRoute(router,allowed,model)
       if(!route)throw new AccessError(404,'Este modelo não está disponível. Veja os modelos liberados para a sua chave em /v1/models.')
       if(!allowed.includes(route.alias)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
       // Proteção contra sobrecarga e IP bloqueado: acima do limite, 429 com Retry-After (a ferramenta tenta de novo).

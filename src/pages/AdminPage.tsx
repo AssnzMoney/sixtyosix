@@ -134,7 +134,7 @@ const subscriptionLabel = (s: Row) =>
 
 /** Entrega da operação atual: uma chave SixtySix (sk-rt-) criada no Roteador para o cliente. */
 type KeyDraft = { userId: string; subscription_id: string; expires: string; all: boolean; models: string[] }
-type KeyDelivered = { key: string; hint: string; expires_at: string; models: string[] | null; deliveryId: string | null; email?: string }
+type KeyDelivered = { key: string; hint: string; expires_at: string; models: string[] | null; deliveryId: string | null; email?: string; linked?: boolean }
 type Customer = { id: string; name: string; email: string; whatsapp: string }
 
 export default function AdminPage() {
@@ -400,12 +400,14 @@ export default function AdminPage() {
   // Aba Consumo: soma por cliente (todas as chaves dele), do maior consumo para o menor. Respeita período e busca.
   const usageByCustomer = useMemo(() => {
     if (tab !== 'usage') return null
-    type Group = { customer: string; keys: Set<string>; requests: number; input: number; output: number; errors: number; last: string; models: Map<string, number> }
+    type Group = { customer: string; keys: Set<string>; requests: number; input: number; output: number; errors: number; last: string; models: Map<string, number>; times: number[]; peak: number }
     const groups = new Map<string, Group>()
     for (const row of enriched) {
       const name = String(row.customer || 'Sem cliente')
-      const g = groups.get(name) || { customer: name, keys: new Set<string>(), requests: 0, input: 0, output: 0, errors: 0, last: '', models: new Map<string, number>() }
+      const g = groups.get(name) || { customer: name, keys: new Set<string>(), requests: 0, input: 0, output: 0, errors: 0, last: '', models: new Map<string, number>(), times: [], peak: 0 }
       g.requests++
+      const at = Date.parse(String(row.created_at || ''))
+      if (Number.isFinite(at)) g.times.push(at)
       g.input += Number(row.input_tokens || 0)
       g.output += Number(row.output_tokens || 0)
       if (Number(row.status_code) >= 400) g.errors++
@@ -413,6 +415,16 @@ export default function AdminPage() {
       if (String(row.key || '').startsWith('sk-')) g.keys.add(String(row.key))
       if (row.requested_alias) g.models.set(String(row.requested_alias), (g.models.get(String(row.requested_alias)) || 0) + 1)
       groups.set(name, g)
+    }
+    // Pico por minuto: o maior número de chamadas dentro de 60 segundos seguidos. Uso de uma pessoa
+    // fica baixo; chave repassada para várias pessoas (ou um servidor revendendo) sobe muito.
+    for (const g of groups.values()) {
+      const times = g.times.sort((a, b) => a - b)
+      let start = 0
+      for (let end = 0; end < times.length; end++) {
+        while (times[end] - times[start] >= 60000) start++
+        g.peak = Math.max(g.peak, end - start + 1)
+      }
     }
     const list = [...groups.values()].sort((a, b) => b.input + b.output - (a.input + a.output) || b.requests - a.requests)
     const total = list.reduce((t, g) => ({ requests: t.requests + g.requests, tokens: t.tokens + g.input + g.output, errors: t.errors + g.errors }), { requests: 0, tokens: 0, errors: 0 })
@@ -904,6 +916,7 @@ export default function AdminPage() {
                           <tr>
                             <th>Cliente</th>
                             <th>Chamadas</th>
+                            <th title="O maior número de chamadas dentro de 60 segundos seguidos">Pico por minuto</th>
                             <th>Tokens de entrada</th>
                             <th>Tokens de saída</th>
                             <th>Com erro</th>
@@ -920,6 +933,7 @@ export default function AdminPage() {
                                 {g.keys.size > 0 && <small className="sx-usage-keys">{[...g.keys].join(' · ')}</small>}
                               </td>
                               <td>{number(g.requests)}</td>
+                              <td>{number(g.peak)}</td>
                               <td>{compact(g.input)}</td>
                               <td>{compact(g.output)}</td>
                               <td className={g.errors ? 'sx-admin-failure' : ''}>{number(g.errors)}</td>
@@ -1188,11 +1202,16 @@ export default function AdminPage() {
             {delivered ? (
               <div className="sx-modal-done">
                 <p>
-                  <Check size={16} /> A chave já está valendo e aparece no painel do cliente. Ele só precisa confirmar que recebeu a chave terminada em …{delivered.hint}.
+                  <Check size={16} /> A chave já está valendo{delivered.linked === false ? '' : ' e aparece no painel do cliente'}. Ele só precisa confirmar que recebeu a chave terminada em …{delivered.hint}.
                 </p>
                 {delivered.email === 'sent' && (
                   <p>
                     <Check size={16} /> Também avisamos o cliente por e-mail (sem a chave).
+                  </p>
+                )}
+                {delivered.linked === false && (
+                  <p>
+                    <CircleAlert size={16} /> Não foi possível ligar a chave à conta do cliente: ela não aparece no painel dele, nem o consumo. A chave funciona normalmente; ligue em Roteador → Editar, com o e-mail do cliente.
                   </p>
                 )}
                 {!delivered.deliveryId && (

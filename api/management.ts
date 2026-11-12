@@ -139,7 +139,12 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    }catch(error){if(error instanceof RouterError)throw new AccountError(error.status,error.message);throw error}
    const headers2={...serviceHeaders(config.secret),'Content-Type':'application/json'}
    // Liga a chave à conta do cliente: ela e o consumo aparecem no painel dele.
-   await request(`${config.url}/rest/v1/gateway_clients?${new URLSearchParams({id:`eq.${created.row.gateway_client_id}`})}`,{method:'PATCH',headers:headers2,body:JSON.stringify({user_id:customer.id}),signal:AbortSignal.timeout(10000)}).catch(()=>undefined)
+   // Antes, uma falha aqui (ex.: id errado, erro do banco) era engolida em silêncio: a chave saía
+   // sem dono e nunca aparecia no painel do cliente, sem nenhum aviso para o admin. Agora o resultado
+   // avisa (campo "linked") em vez de só seguir como se tivesse dado certo.
+   const linkResponse=await request(`${config.url}/rest/v1/gateway_clients?${new URLSearchParams({id:`eq.${created.row.gateway_client_id}`})}`,{method:'PATCH',headers:headers2,body:JSON.stringify({user_id:customer.id}),signal:AbortSignal.timeout(10000)}).catch(()=>null)
+   const linked=Boolean(linkResponse?.ok)
+   if(!linked)console.error('deliver-key: não foi possível ligar a chave à conta',customer.id,created.row.gateway_client_id,linkResponse?.status,await linkResponse?.text().catch(()=>''))
    // Registro da entrega: o cliente confirma no painel que recebeu a chave terminada em …xxxx.
    const hint=created.key.slice(-4),deliveryId=randomUUID()
    let delivered:string|null=null
@@ -149,7 +154,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    let notice:NotifyResult='skipped'
    const mail=emailConfig(env)
    if(mail&&delivered)notice=await createNotifier(config,mail,request).delivery(customer,{id:deliveryId,title:'SixtySix',key_hint:hint}).catch(()=>'failed' as NotifyResult)
-   return {key:created.key,hint,expires_at:new Date(until).toISOString(),models,keyId:created.row.id,deliveryId:delivered,email:notice}
+   return {key:created.key,hint,expires_at:new Date(until).toISOString(),models,keyId:created.row.id,deliveryId:delivered,email:notice,linked}
   }
   if(action==='register-delivery'){
    let input
