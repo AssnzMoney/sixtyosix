@@ -91,8 +91,9 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
   }
 }
 
-/** /glm/v1/... e /api/codex/... (endereços antigos) → /v1/... no provedor. */
+/** /glm/v1/... e /api/codex/... (endereços antigos) → /v1/... no provedor. /v1/v1/... (URL configurada já com /v1, como no app Claude desktop) → /v1/... */
 export function supplierPath(path:string){
+  if(path==='/v1/v1'||path.startsWith('/v1/v1/'))return path.slice(3)
   if(path.startsWith('/glm/v1'))return '/v1'+path.slice('/glm/v1'.length)
   if(path.startsWith('/api/codex'))return '/v1'+path.slice('/api/codex'.length)
   return path

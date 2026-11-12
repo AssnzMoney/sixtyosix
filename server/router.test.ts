@@ -159,6 +159,11 @@ test('endereços antigos /glm/v1 e /api/codex chegam ao provedor como /v1', asyn
     assert.equal(calls[0].url, 'https://fornecedor.example/v1/messages')
     const catalog = await (await client(base + '/api/codex/models', { headers: { 'x-api-key': 'sk-sx-cliente' } })).json() as { data: { id: string }[] }
     assert.ok(catalog.data.some(item => item.id === 'claude-opus-5-5'))
+    // URL configurada já com /v1 (app Claude desktop): /v1/v1/... vira /v1/...
+    assert.equal((await post(base, '/v1/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] })).status, 200)
+    assert.equal(calls.at(-1)!.url, 'https://fornecedor.example/v1/messages')
+    const doubled = await (await client(base + '/v1/v1/models', { headers: { 'x-api-key': 'sk-sx-cliente' } })).json() as { data: { id: string }[] }
+    assert.ok(doubled.data.some(item => item.id === 'claude-opus-5-5'))
   })
 })
 
