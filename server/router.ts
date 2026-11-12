@@ -174,13 +174,18 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
 export async function authorizeRouterKey(env: Env, request: typeof fetch, token: string, router: RouterConfig) {
   const db = database(env)
   if (!db) throw new RouterError(503, 'Conexão temporariamente indisponível.')
-  const params = new URLSearchParams({ token_hash: `eq.${sha(token)}`, select: 'gateway_client_id,models,expires_at,revoked_at', limit: '1' })
+  const params = new URLSearchParams({ token_hash: `eq.${sha(token)}`, select: 'gateway_client_id,models,expires_at,revoked_at,created_at', limit: '1' })
   const response = await request(`${db.url}/rest/v1/router_keys?${params}`, { headers: serviceHeaders(db.secret), signal: AbortSignal.timeout(10000) })
   if (!response.ok) throw new RouterError(503, 'Não foi possível conferir sua chave. Tente novamente.')
   const row = (await response.json() as Row[])[0]
   if (!row) throw new RouterError(401, 'Chave de acesso inválida.')
   if (row.revoked_at) throw new RouterError(403, 'Esta chave foi bloqueada. Fale com a SixtySix.')
-  if (!(Date.parse(row.expires_at) > Date.now())) throw new RouterError(403, 'Sua chave venceu. Fale com a SixtySix para renovar.')
+  if (!(Date.parse(row.expires_at) > Date.now())) {
+    // Chave de poucas horas (teste grátis feito no Roteador): convida a contratar.
+    const life = Date.parse(row.expires_at) - Date.parse(row.created_at)
+    if (life > 0 && life < 23 * 3600000) throw new RouterError(403, 'Seu teste grátis acabou. Para continuar, escolha um plano em sixtysix.online ou chame no WhatsApp (81) 99237-6036.')
+    throw new RouterError(403, 'Sua chave venceu. Fale com a SixtySix para renovar.')
+  }
   const active = [...router.routes.keys()]
   const allowed = Array.isArray(row.models) ? canonicalModels(router, row.models as string[]) : active
   return { clientId: String(row.gateway_client_id), allowed }
@@ -497,6 +502,15 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
     async setKeyBlocked(body: Row) {
       const changed = await rest<boolean>('rpc/router_set_blocked', { method: 'POST', body: JSON.stringify({ p_id: text(body.id, 40), p_blocked: body.blocked === true }) })
       if (!changed) throw new RouterError(404, 'Chave não encontrada.')
+      return { ok: true }
+    },
+
+    /** Apaga a chave de vez: some da lista e para de funcionar na hora. O consumo fica no histórico. */
+    async deleteKey(body: Row) {
+      const id = text(body.id, 40)
+      if (!/^[0-9a-f-]{36}$/i.test(id)) throw new RouterError(400, 'Chave inválida.')
+      const deleted = await rest<boolean>('rpc/router_delete_key', { method: 'POST', body: JSON.stringify({ p_id: id }) }, 'Não foi possível apagar. Confira se a migração supabase/router-delete-key.sql foi aplicada no Supabase.')
+      if (!deleted) throw new RouterError(404, 'Chave não encontrada.')
       return { ok: true }
     },
 

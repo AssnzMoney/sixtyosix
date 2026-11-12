@@ -670,6 +670,21 @@ export default function RouterPanel({ token, usage, period }: { token: string; u
                           >
                             {blocked ? <Check size={15} /> : <Ban size={15} />} {blocked ? 'Desbloquear' : 'Bloquear'}
                           </button>
+                          <button
+                            type="button"
+                            className="sx-btn is-danger"
+                            aria-label={`Apagar a chave de ${k.name}`}
+                            title="Apagar chave"
+                            disabled={working === k.id}
+                            onClick={() => {
+                              if (!window.confirm(`Apagar a chave de ${k.name}?
+
+Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
+                              run(k.id, async () => { await call({ action: 'router-key-delete', id: k.id }); return `Chave de ${k.name} apagada.` })
+                            }}
+                          >
+                            <Trash2 size={15} /> Apagar
+                          </button>
                         </div>
                       </td>
                     </tr>

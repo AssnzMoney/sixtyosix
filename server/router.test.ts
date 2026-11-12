@@ -55,7 +55,7 @@ test('o roteador ignora provedor desligado e fica vazio sem a migração', async
 })
 
 type Call = { url: string; init: RequestInit }
-type Manual = { models: string[] | null; expires_at: string; revoked_at: string | null }
+type Manual = { models: string[] | null; expires_at: string; revoked_at: string | null; created_at?: string }
 /** Sobe o /api/access de verdade com Supabase e provedor simulados. */
 type Gate = { ok: boolean; reason?: string; retry_after?: number; leased?: boolean }
 const guardCalls: { name: string; body: any }[] = []
@@ -179,7 +179,8 @@ test('chave manual sk-rt- usa só os modelos dela', async () => {
 
 test('chave manual vencida ou bloqueada é cortada na hora', async () => {
   for (const [manual, message] of [
-    [{ models: null, expires_at: new Date(Date.now() - 1000).toISOString(), revoked_at: null }, 'venceu'],
+    [{ models: null, expires_at: new Date(Date.now() - 1000).toISOString(), revoked_at: null, created_at: new Date(Date.now() - 31 * day).toISOString() }, 'venceu'],
+    [{ models: null, expires_at: new Date(Date.now() - 1000).toISOString(), revoked_at: null, created_at: new Date(Date.now() - 3 * 3600000 - 1000).toISOString() }, 'teste grátis acabou'],
     [{ models: null, expires_at: new Date(Date.now() + day).toISOString(), revoked_at: new Date().toISOString() }, 'bloqueada'],
   ] as [Manual, string][]) {
     await withAccess({ manual }, async (base, usage) => {
@@ -387,4 +388,23 @@ test('admin: chave de teste em horas vale até a hora certa e usa o ritmo do tes
   assert.deepEqual([controls.body.client_id, controls.body.rpm, controls.body.concurrency], ['55555555-5555-4555-8555-555555555555', 6, 1])
   await assert.rejects(admin.createKey({ name: 'x', hours: 0 }), /horas/)
   await assert.rejects(admin.createKey({ name: 'x', hours: 721 }), /horas/)
+})
+
+test('admin: apagar chave chama router_delete_key e avisa quando não existe ou falta a migração', async () => {
+  const calls: { url: string; body: any }[] = []
+  let answer: Response = Response.json(true)
+  const request = (async (input: string, init: RequestInit = {}) => {
+    calls.push({ url: String(input), body: init.body ? JSON.parse(String(init.body)) : undefined })
+    return answer.clone()
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
+  const id = '66666666-6666-4666-8666-666666666666'
+  assert.deepEqual(await admin.deleteKey({ id }), { ok: true })
+  assert.ok(calls[0].url.endsWith('/rest/v1/rpc/router_delete_key'))
+  assert.deepEqual(calls[0].body, { p_id: id })
+  answer = Response.json(false)
+  await assert.rejects(admin.deleteKey({ id }), /não encontrada/)
+  answer = Response.json({ message: 'Could not find the function public.router_delete_key(p_id)' }, { status: 404 })
+  await assert.rejects(admin.deleteKey({ id }), /router-delete-key.sql/)
+  await assert.rejects(admin.deleteKey({ id: 'x' }), /inválida/)
 })
