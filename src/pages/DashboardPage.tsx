@@ -78,11 +78,14 @@ type GatewayStatus = "checking" | "ready" | "down" | "unknown"
 // Nomes de exibição dos perfis já usados pelo gateway e pelos guias.
 const MODEL_LABELS: Record<string, string> = {
   "claude-fable-5-1": "Fable 5.1",
+  "claude-fable-5-2": "Fable 5.2",
   "argon-4": "Argon 4",
   "gpt-6-astra": "Astra 6",
   "glm-5": "GLM 5",
   ...ROUTER_MODEL_NAMES,
 }
+/** Nome do modelo para o cliente. Ponto e hífen valem o mesmo: claude-fable-5.2 do Roteador = Fable 5.2. */
+const modelLabel = (alias: string) => MODEL_LABELS[alias] || MODEL_LABELS[alias.split(".").join("-")] || alias
 const KNOWN_MODELS = Object.values(MODEL_LABELS)
 const ALL_MODELS = "Todos os modelos"
 const supportLink = (message: string) => supportWhatsappLink(message)
@@ -425,7 +428,7 @@ export default function DashboardPage() {
           rows: data.usage.map((r) => ({
             id: String(r.id),
             date: r.created_at,
-            model: MODEL_LABELS[r.requested_alias] || r.requested_alias,
+            model: modelLabel(r.requested_alias),
             input: r.input_tokens,
             output: r.output_tokens,
             duration: r.latency_ms / 1000,
@@ -1841,7 +1844,7 @@ export default function DashboardPage() {
                       {trial?.active && !subscription?.active
                         ? "Modelos liberados no teste: Fable 5.1, Argon 4, Astra 6 e GLM 5. Todos disponíveis durante as 3 horas, com velocidade reduzida."
                         : subscription
-                          ? `Modelos do seu plano: ${subscription.models.map((model) => MODEL_LABELS[model] || model).join(", ")}.`
+                          ? `Modelos do seu plano: ${subscription.models.map(modelLabel).join(", ")}.`
                           : "Seu espaço para construir com Fable 5.1, Argon 4, Astra 6 e GLM 5."}
                     </p>
                   )}
