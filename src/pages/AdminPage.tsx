@@ -353,6 +353,7 @@ export default function AdminPage() {
           return {
             id: `${k.subscription_id}:${k.gateway_client_id}`,
             client_id: String(k.gateway_client_id),
+            user_id: String(k.user_id || ''),
             customer: String(u?.name || u?.email || 'Sem conta'),
             email: String(u?.email || ''),
             plan: planNames[s?.plan_code] || String(s?.plan_code || '—'),

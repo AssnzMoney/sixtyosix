@@ -21,7 +21,7 @@ type EditForm = { name: string; contact: string; email: string; expires: string;
 type Draft = { key: string; upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
 /** Chave de plano do site (nasce no pagamento), mostrada no filtro "Planos do site". */
-type SiteKey = { id: string; client_id: string; customer: string; email: string; plan: string; prefix: string; paid_until: string | null; api: boolean; state: string }
+type SiteKey = { id: string; client_id: string; user_id: string; customer: string; email: string; plan: string; prefix: string; paid_until: string | null; api: boolean; state: string }
 type KeyForm = { name: string; contact: string; email: string; days: string; custom: string; unit: 'dias' | 'horas'; slow: boolean; all: boolean; models: string[] }
 
 const DAY = 86400000
@@ -636,6 +636,15 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
                 <tbody>
                   {shownSiteKeys.map((s) => {
                     const use = spent.get(s.client_id)
+                    // Chaves do Roteador ligadas à mesma conta: quem recebeu a chave pelo WhatsApp usa essa, não a do plano.
+                    const routerKeys = s.user_id ? (overview?.keys || []).filter((k) => k.user_id === s.user_id) : []
+                    const routerUse = routerKeys.reduce(
+                      (t, k) => {
+                        const u = spent.get(k.gateway_client_id)
+                        return u ? { requests: t.requests + u.requests, tokens: t.tokens + u.input + u.output } : t
+                      },
+                      { requests: 0, tokens: 0 },
+                    )
                     return (
                       <tr key={s.id}>
                         <td>
@@ -662,7 +671,13 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
                               </small>
                             </>
                           ) : (
-                            <span className="sx-router-sub">Sem uso</span>
+                            <span className="sx-router-sub">Sem uso nesta chave</span>
+                          )}
+                          {routerKeys.length > 0 && (
+                            <small className="sx-router-sub is-linked">
+                              Usa a chave do Roteador {routerKeys.map((k) => `${k.token_prefix}…`).join(', ')}
+                              {routerUse.requests ? `: ${tokens(routerUse.tokens)} tokens em ${routerUse.requests} chamadas` : ', ainda sem uso'}
+                            </small>
                           )}
                         </td>
                       </tr>
