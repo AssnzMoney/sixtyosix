@@ -13,6 +13,7 @@ import TrialPage from './pages/TrialPage'
 import CheckoutPage from './pages/CheckoutPage'
 import SubscriptionPage from './pages/SubscriptionPage'
 import AdminPage from './pages/AdminPage'
+import { captureReferral, claimReferral } from './lib/referral'
 
 function ScrollToTop() {
   const { pathname, hash, key } = useLocation()
@@ -30,6 +31,15 @@ function ScrollToTop() {
   return null
 }
 
+/** Link de afiliado (?ref=): guarda o código e, com a conta aberta, liga a conta ao afiliado. */
+function ReferralTracker() {
+  const { search } = useLocation()
+  const { session } = useAuth()
+  useEffect(() => { captureReferral(search) }, [search])
+  useEffect(() => { if (session?.access_token) void claimReferral(session.access_token) }, [session?.access_token])
+  return null
+}
+
 function AccountRoute({ onboarding = false }: { onboarding?: boolean }) {
   const { session, user, loading } = useAuth()
   const demo = ['localhost','127.0.0.1'].includes(window.location.hostname) && new URLSearchParams(window.location.search).get('demo') === '1'
@@ -44,6 +54,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <ReferralTracker />
         <Routes>
           {/* Endereço do admin difícil de adivinhar; /admin e /administracao não existem mais. */}
           <Route path="/adminxv1" element={<AdminPage />} />

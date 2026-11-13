@@ -2987,3 +2987,95 @@
 .six-consumption-locked p {
   margin: 0;
 }
+
+/* Indique e ganhe dias (só para afiliados) */
+.six-affiliate .six-panel-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.six-affiliate-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--code-bg);
+}
+
+.six-affiliate-link code {
+  flex: 1 1 240px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.six-affiliate-hint {
+  margin: 10px 2px 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.six-affiliate-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.six-affiliate-stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--track);
+}
+
+.six-affiliate-stats strong {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink-deep);
+  letter-spacing: -0.02em;
+}
+
+.six-affiliate-stats span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.six-affiliate-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.six-affiliate-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.six-affiliate-list li span:last-child {
+  font-weight: 700;
+  color: var(--green-text);
+}
+
+.six-affiliate-list li.is-revoked span:last-child {
+  color: var(--danger);
+}
+
+@media (max-width: 560px) {
+  .six-affiliate-stats {
+    grid-template-columns: 1fr;
+  }
+}

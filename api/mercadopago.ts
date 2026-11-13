@@ -37,6 +37,12 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     if(!response.ok){const error=await response.json().catch(()=>({}));if(error.code==='P0001')throw new WebhookError(409,error.message?.includes('active plan')?'Você já tem um plano ativo. Gerencie sua assinatura no painel.':'Aguarde alguns instantes e tente novamente.');throw new WebhookError(503,'Não foi possível atualizar sua assinatura.')}
     const text=await response.text();return (text?JSON.parse(text):null) as T
   }
+  // Afiliados (supabase/affiliates.sql): pagamento aprovado de um indicado dá dias ao afiliado; estorno tira.
+  // Falha aqui (ex.: migração ainda não aplicada) só vai para o log: nunca desfaz nem trava o registro do pagamento.
+  async function rewardAffiliate(paymentId:string){
+    try{await db('rpc/affiliate_payment',{},'POST',{p_payment_id:paymentId})}
+    catch(error){console.error('afiliados: não foi possível conferir a indicação do pagamento',paymentId,error instanceof Error?error.message:error)}
+  }
   async function mp(path:string,method='GET',body?:unknown,idempotency?:string):Promise<ObjectValue>{
     if(!token||!env.MERCADOPAGO_WEBHOOK_SECRET)throw new WebhookError(503,'A conexão de pagamentos está sendo configurada.')
     const response=await request(`https://api.mercadopago.com/${path}`,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(idempotency?{'X-Idempotency-Key':idempotency}:{})},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(20000)})
@@ -102,6 +108,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
       p_hash:createHash('sha256').update(publicToken).digest('hex'),p_prefix:publicToken.slice(0,14),p_encrypted_token:encrypt(publicToken,secret,`${item.user_id}:paid:${item.id}:public`),
       p_upstream_hash:createHash('sha256').update(upstream).digest('hex'),p_encrypted_upstream:encrypt(upstream,secret,`${item.user_id}:paid:${item.id}:upstream`),
     })
+    await rewardAffiliate(String(payment.id))
     return 'processed'
   }
   async function processEvent(topic:string,resource:ObjectValue){
@@ -133,6 +140,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     if(!Number.isFinite(Date.parse(start))||!Number.isFinite(Date.parse(modified)))throw new WebhookError(503,'Data do Pix indisponível.')
     const publicToken=`sk-sp-${randomBytes(32).toString('base64url')}`,upstream=`sk-flg-${randomBytes(32).toString('base64url')}`
     await db('rpc/billing_apply_payment',{},'POST',{p_id:item.id,p_payment_id:identifier(payment.id),p_invoice_id:`pix-${identifier(payment.id)}`,p_status:status,p_amount:expected,p_currency:'BRL',p_live:true,p_start:start,p_end:new Date(Date.parse(start)+30*86400000).toISOString(),p_approved:approved,p_modified:modified,p_hash:createHash('sha256').update(publicToken).digest('hex'),p_prefix:publicToken.slice(0,14),p_encrypted_token:encrypt(publicToken,secret,`${item.user_id}:paid:${item.id}:public`),p_upstream_hash:createHash('sha256').update(upstream).digest('hex'),p_encrypted_upstream:encrypt(upstream,secret,`${item.user_id}:paid:${item.id}:upstream`)})
+    await rewardAffiliate(identifier(payment.id))
     return 'processed'
   }
   async function status(userId:string){

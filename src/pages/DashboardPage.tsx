@@ -37,6 +37,7 @@ import {
 } from "lucide-react"
 import { motion, useInView } from "framer-motion"
 import { useAuth } from "../lib/AuthContext"
+import AffiliatePanel from "../components/AffiliatePanel"
 import {
   accountRequest,
   accountSummary,
@@ -1144,6 +1145,8 @@ export default function DashboardPage() {
               <div className="six-credential-list">{pendingCredentials.map(credentialCard)}</div>
             </section>
           )}
+
+          {tab === "overview" && session?.access_token && <AffiliatePanel token={session.access_token} />}
 
           {tab === "overview" && paidWithoutCredential && (
             <div className="six-paid-banner" role="status">

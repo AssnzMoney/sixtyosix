@@ -233,6 +233,63 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    }catch{notice='failed'}
    return {id,email:notice}
   }
+  // Afiliados (supabase/affiliates.sql): só as contas que o admin ativar. Cada pagamento aprovado de quem
+  // chegou pelo link do afiliado (inclusive renovações) dá a ele `days` dias de acesso.
+  if(action==='affiliate-list'||action==='affiliate-save'){
+   const read=async<T>(path:string,params:Record<string,string>):Promise<T>=>{
+    const response=await request(`${config.url}/rest/v1/${path}?${new URLSearchParams(params)}`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(15000)})
+    if(!response.ok)throw new AccountError(503,'Afiliados indisponíveis: aplique a migração supabase/affiliates.sql.')
+    return await response.json() as T
+   }
+   if(action==='affiliate-save'){
+    const wanted=typeof body.email==='string'?body.email.trim().toLowerCase():''
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(wanted)||wanted.length>200)throw new AccountError(400,'Digite o e-mail da conta do afiliado.')
+    let user:Row|null=null
+    for(let page=1;page<=40&&!user;page++){
+     const response=await request(`${config.url}/auth/v1/admin/users?page=${page}&per_page=500`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(15000)})
+     if(!response.ok)throw new AccountError(503,'Não foi possível consultar as contas. Tente de novo.')
+     const list=(((await response.json()) as Row).users||[]) as Row[]
+     user=list.find(u=>String(u.email||'').toLowerCase()===wanted)||null
+     if(list.length<500)break
+    }
+    if(!user)throw new AccountError(404,'Nenhuma conta com esse e-mail. Peça para o afiliado criar a conta em sixtysix.online e tente de novo.')
+    const days=body.days===undefined||body.days===''?7:Number(body.days)
+    if(!Number.isInteger(days)||days<1||days>60)throw new AccountError(400,'Escolha de 1 a 60 dias por pagamento.')
+    const enabled=body.enabled!==false
+    const current=(await read<Row[]>('affiliates',{user_id:`eq.${user.id}`,select:'code',limit:'1'}))[0]
+    const typed=typeof body.code==='string'?body.code.trim().toLowerCase():''
+    if(typed&&!/^[a-z0-9][a-z0-9-]{2,29}$/.test(typed))throw new AccountError(400,'O código do link usa de 3 a 30 letras minúsculas, números ou hífen.')
+    const base=(wanted.split('@')[0].replace(/[^a-z0-9]/g,'').slice(0,20)||'six').padEnd(3,'6')
+    const candidates=typed?[typed]:current?[String(current.code)]:[base,...Array.from({length:5},()=>`${base}${randomInt(10,1000)}`)]
+    let saved:Row|null=null
+    for(const code of candidates){
+     const response=await request(`${config.url}/rest/v1/affiliates?on_conflict=user_id`,{method:'POST',headers:{...headers,Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({user_id:user.id,code,days_per_payment:days,enabled,created_by:email}),signal:AbortSignal.timeout(15000)})
+     if(response.ok){saved=((await response.json()) as Row[])[0];break}
+     const error=(await response.json().catch(()=>({}))) as Row
+     if(error.code!=='23505')throw new AccountError(503,'Afiliados indisponíveis: aplique a migração supabase/affiliates.sql.')
+     if(typed)throw new AccountError(409,'Esse código de link já é de outro afiliado. Escolha outro.')
+    }
+    if(!saved)throw new AccountError(409,'Não foi possível criar um código de link. Digite um código.')
+    console.log('affiliate-save:',email,enabled?'ativou':'desativou','o afiliado',user.id,'código',saved.code,'dias',days)
+    return {ok:true,code:saved.code,enabled:saved.enabled,days:saved.days_per_payment,link:`https://www.sixtysix.online/?ref=${saved.code}`}
+   }
+   const affiliates=await read<Row[]>('affiliates',{select:'user_id,code,days_per_payment,enabled,created_at',order:'created_at.desc'})
+   if(!affiliates.length)return {affiliates:[]}
+   const ids=affiliates.map(a=>a.user_id).join(',')
+   const [referrals,rewards]=await Promise.all([
+    read<Row[]>('affiliate_referrals',{affiliate_user_id:`in.(${ids})`,select:'affiliate_user_id,referred_user_id'}),
+    read<Row[]>('affiliate_rewards',{affiliate_user_id:`in.(${ids})`,select:'affiliate_user_id,referred_user_id,days,revoked_at'}),
+   ])
+   const out=[]
+   for(const a of affiliates){
+    const found=await request(`${config.url}/auth/v1/admin/users/${a.user_id}`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(10000)}).catch(()=>null)
+    const user=found?.ok?userFromAuth(await found.json()):null
+    const valid=rewards.filter(r=>r.affiliate_user_id===a.user_id&&!r.revoked_at)
+    out.push({user_id:a.user_id,email:user?.email||'',name:user?.name||'',code:a.code,days:a.days_per_payment,enabled:a.enabled,created_at:a.created_at,link:`https://www.sixtysix.online/?ref=${a.code}`,
+     referred:referrals.filter(r=>r.affiliate_user_id===a.user_id).length,paying:new Set(valid.map(r=>r.referred_user_id)).size,payments:valid.length,totalDays:valid.reduce((s,r)=>s+Number(r.days||0),0)})
+   }
+   return {affiliates:out}
+  }
   // Cliente comprou o plano errado: troca o plano de uma assinatura paga por Pix, sem mexer no período pago.
   // O painel dele, a chave do plano (sk-sp-), o chat do site e a renovação passam a seguir o plano novo.
   // Chaves do Roteador ligadas à conta com uma lista de modelos ganham os modelos do plano novo;

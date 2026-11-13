@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
+import AffiliatesPanel from '../components/AffiliatesPanel'
 import { AdminCodeRequired, adminHeaders, clearAdminSession, saveAdminSession } from '../lib/adminSession'
 import { rememberReturn } from '../lib/authDestination'
 import { confirmationReminder, customerGreeting, deliveryMessage, formatWhatsapp, shortOrder, whatsappLink } from '../lib/whatsapp'
@@ -47,6 +48,7 @@ const tabs: Array<[string, string]> = [
   ['payments', 'Pagamentos'],
   ['usage', 'Consumo e falhas'],
   ['router', 'Roteador'],
+  ['affiliates', 'Afiliados'],
 ]
 const resourceLabels: Record<string, string> = {
   clients: 'Vínculo das chaves',
@@ -428,7 +430,7 @@ export default function AdminPage() {
 
   /* ------------------------- Tabelas genéricas ------------------------ */
   const enriched = useMemo<Row[]>(() => {
-    if (tab === 'service' || tab === 'router') return []
+    if (tab === 'service' || tab === 'router' || tab === 'affiliates') return []
     const subs = new Map((data.subscriptions || []).map((x) => [x.id, x]))
     const clients = new Map<string, Row>((data.clients || []).map((x) => [x.id, { ...x, owner: x.user_id }]))
     for (const x of [...(data.keys || []), ...(data.trials || [])])
@@ -840,12 +842,14 @@ export default function AdminPage() {
                 }}
               >
                 {label}
-                {key !== 'service' && key !== 'router' && <small>{countOf(key)}</small>}
+                {key !== 'service' && key !== 'router' && key !== 'affiliates' && <small>{countOf(key)}</small>}
               </button>
             ))}
           </nav>
 
-          {tab === 'router' ? (
+          {tab === 'affiliates' ? (
+            <AffiliatesPanel token={session!.access_token} />
+          ) : tab === 'router' ? (
             <RouterPanel token={session!.access_token} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} />
           ) : tab === 'service' ? (
             <div className="sx-queues">
