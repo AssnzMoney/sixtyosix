@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import HomePage from './pages/HomePage'
@@ -13,7 +13,8 @@ import TrialPage from './pages/TrialPage'
 import CheckoutPage from './pages/CheckoutPage'
 import SubscriptionPage from './pages/SubscriptionPage'
 import AdminPage from './pages/AdminPage'
-import { captureReferral, claimReferral } from './lib/referral'
+import { captureReferral, claimReferral, referralFromSearch } from './lib/referral'
+import InvitePage from './pages/InvitePage'
 
 function ScrollToTop() {
   const { pathname, hash, key } = useLocation()
@@ -33,9 +34,15 @@ function ScrollToTop() {
 
 /** Link de afiliado (?ref=): guarda o código e, com a conta aberta, liga a conta ao afiliado. */
 function ReferralTracker() {
-  const { search } = useLocation()
+  const { pathname, search } = useLocation()
+  const navigate = useNavigate()
   const { session } = useAuth()
-  useEffect(() => { captureReferral(search) }, [search])
+  useEffect(() => {
+    captureReferral(search)
+    // Link antigo na página inicial (/?ref=CODIGO): leva para a página do convite, que mostra quem convidou.
+    const code = referralFromSearch(search)
+    if (code && pathname === '/') navigate(`/convite/${code}`, { replace: true })
+  }, [pathname, search, navigate])
   useEffect(() => { if (session?.access_token) void claimReferral(session.access_token) }, [session?.access_token])
   return null
 }
@@ -61,6 +68,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/planos" element={<Navigate to="/#planos" replace />} />
           <Route path="/teste-gratis" element={<TrialPage />} />
+          <Route path="/convite/:code" element={<InvitePage />} />
           <Route path="/comprar/:plan" element={<CheckoutPage />} />
           <Route path="/assinatura" element={<SubscriptionPage />} />
           <Route path="/claude-code" element={<ClaudeCodePage />} />

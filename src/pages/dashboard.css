@@ -3006,9 +3006,19 @@
   background: var(--code-bg);
 }
 
-.six-affiliate-link code {
+.six-affiliate-link a {
   flex: 1 1 240px;
   min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.six-affiliate-link a:hover code {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.six-affiliate-link code {
   overflow-wrap: anywhere;
   font-size: 14px;
   font-weight: 600;

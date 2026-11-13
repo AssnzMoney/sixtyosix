@@ -271,7 +271,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
     }
     if(!saved)throw new AccountError(409,'Não foi possível criar um código de link. Digite um código.')
     console.log('affiliate-save:',email,enabled?'ativou':'desativou','o afiliado',user.id,'código',saved.code,'dias',days)
-    return {ok:true,code:saved.code,enabled:saved.enabled,days:saved.days_per_payment,link:`https://www.sixtysix.online/?ref=${saved.code}`}
+    return {ok:true,code:saved.code,enabled:saved.enabled,days:saved.days_per_payment,link:`https://www.sixtysix.online/convite/${saved.code}`}
    }
    const affiliates=await read<Row[]>('affiliates',{select:'user_id,code,days_per_payment,enabled,created_at',order:'created_at.desc'})
    if(!affiliates.length)return {affiliates:[]}
@@ -285,7 +285,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
     const found=await request(`${config.url}/auth/v1/admin/users/${a.user_id}`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(10000)}).catch(()=>null)
     const user=found?.ok?userFromAuth(await found.json()):null
     const valid=rewards.filter(r=>r.affiliate_user_id===a.user_id&&!r.revoked_at)
-    out.push({user_id:a.user_id,email:user?.email||'',name:user?.name||'',code:a.code,days:a.days_per_payment,enabled:a.enabled,created_at:a.created_at,link:`https://www.sixtysix.online/?ref=${a.code}`,
+    out.push({user_id:a.user_id,email:user?.email||'',name:user?.name||'',code:a.code,days:a.days_per_payment,enabled:a.enabled,created_at:a.created_at,link:`https://www.sixtysix.online/convite/${a.code}`,
      referred:referrals.filter(r=>r.affiliate_user_id===a.user_id).length,paying:new Set(valid.map(r=>r.referred_user_id)).size,payments:valid.length,totalDays:valid.reduce((s,r)=>s+Number(r.days||0),0)})
    }
    return {affiliates:out}

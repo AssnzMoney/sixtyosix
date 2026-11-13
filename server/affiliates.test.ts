@@ -42,7 +42,7 @@ test('painel do afiliado: link, indicados, quem pagou e dias ganhos (estorno nã
     ],
   })
   const result = await service.execute('GET', 'affiliate', 'Bearer t') as any
-  assert.equal(result.link, 'https://www.sixtysix.online/?ref=joao')
+  assert.equal(result.link, 'https://www.sixtysix.online/convite/joao')
   assert.equal(result.referred, 3)
   assert.equal(result.paying, 1, 'b teve o pagamento estornado')
   assert.equal(result.totalDays, 14, 'renovação de a também conta')
@@ -96,7 +96,7 @@ function admin(taken: string[] = []) {
 test('admin: ativa o afiliado pelo e-mail, com código tirado do e-mail e 7 dias por padrão', async () => {
   const { calls, act } = admin()
   const result = await act('Bearer t', { action: 'affiliate-save', email: 'joao.silva@exemplo.com' }) as any
-  assert.equal(result.link, 'https://www.sixtysix.online/?ref=joaosilva')
+  assert.equal(result.link, 'https://www.sixtysix.online/convite/joaosilva')
   const saved = calls.find((c) => c.url.pathname === '/rest/v1/affiliates' && c.method === 'POST')!
   assert.deepEqual({ user_id: saved.body.user_id, code: saved.body.code, days: saved.body.days_per_payment, enabled: saved.body.enabled }, { user_id: OTHER, code: 'joaosilva', days: 7, enabled: true })
 })

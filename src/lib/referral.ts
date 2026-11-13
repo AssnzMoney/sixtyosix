@@ -1,9 +1,15 @@
-// Link de afiliado: www.sixtysix.online/?ref=CODIGO. O código fica guardado no navegador por 30 dias
-// (vale o primeiro link) e, quando a pessoa entra na conta, o site pede ao servidor para ligar a conta
-// ao afiliado. O servidor só liga quem ainda não é cliente e ainda não foi indicado por ninguém.
+// Link de afiliado: www.sixtysix.online/convite/CODIGO (o antigo ?ref=CODIGO leva para lá). O código fica
+// guardado no navegador por 30 dias (vale o primeiro link) e, quando a pessoa entra na conta, o site pede ao
+// servidor para ligar a conta ao afiliado. O servidor só liga quem ainda não é cliente e ainda não foi indicado.
 const KEY = 'six-ref'
 const DAYS = 30
-const CODE = /^[a-z0-9][a-z0-9-]{2,29}$/
+export const REFERRAL_CODE = /^[a-z0-9][a-z0-9-]{2,29}$/
+const CODE = REFERRAL_CODE
+/** Código do link antigo (?ref=CODIGO), se for válido. */
+export const referralFromSearch = (search: string) => {
+  const code = new URLSearchParams(search).get('ref')?.trim().toLowerCase() || ''
+  return CODE.test(code) ? code : null
+}
 
 type Stored = { code: string; at: number }
 
@@ -19,8 +25,8 @@ function read(): Stored | null {
 
 /** Guarda o código do link (?ref=) se ainda não houver um válido. */
 export function captureReferral(search = window.location.search) {
-  const code = new URLSearchParams(search).get('ref')?.trim().toLowerCase() || ''
-  if (!CODE.test(code) || read()) return
+  const code = referralFromSearch(search)
+  if (!code || read()) return
   try { localStorage.setItem(KEY, JSON.stringify({ code, at: Date.now() })) } catch { /* navegador sem armazenamento */ }
 }
 

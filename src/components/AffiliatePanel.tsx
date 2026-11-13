@@ -82,7 +82,9 @@ export function AffiliateWelcome({ data, blocked, onOpen }: { data: Affiliate | 
           <strong> +{days} dias</strong> de acesso para você, direto no seu plano e na validade da sua chave.
         </p>
         <div className="six-affiliate-link">
-          <code>{data.link}</code>
+          <a href={data.link} target="_blank" rel="noopener noreferrer" title="Abrir a página do seu convite">
+            <code>{data.link}</code>
+          </a>
           <button type="button" className="six-primary" onClick={() => void copy()}>
             {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copiado' : 'Copiar link'}
           </button>
@@ -135,7 +137,9 @@ export default function AffiliatePanel({ data }: { data: Affiliate | null }) {
       </div>
 
       <div className="six-affiliate-link">
-        <code>{data.link}</code>
+        <a href={data.link} target="_blank" rel="noopener noreferrer" title="Abrir a página do seu convite">
+          <code>{data.link}</code>
+        </a>
         <button type="button" className="six-primary" onClick={() => void copy()}>
           {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copiado' : 'Copiar link'}
         </button>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Copy, Gift, UserPlus } from 'lucide-react'
+import { Check, Copy, ExternalLink, Gift, UserPlus } from 'lucide-react'
 import { adminHeaders } from '../lib/adminSession'
 
 type Affiliate = {
@@ -118,7 +118,7 @@ export default function AffiliatesPanel({ token }: { token: string }) {
           <label>
             Código do link (opcional)
             <input type="text" placeholder="ex.: joao" pattern="[a-z0-9][a-z0-9-]{2,29}" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toLowerCase() })} />
-            <small>Vazio: usa o começo do e-mail. O link fica sixtysix.online/?ref=código.</small>
+            <small>Vazio: usa o começo do e-mail. O link fica sixtysix.online/convite/código.</small>
           </label>
           <label>
             Dias por pagamento indicado
@@ -165,8 +165,11 @@ export default function AffiliatesPanel({ token }: { token: string }) {
                     </td>
                     <td>
                       <button type="button" className="sx-btn" onClick={() => void copy(a.link)} title={a.link}>
-                        {copied === a.link ? <Check size={14} /> : <Copy size={14} />} ?ref={a.code}
-                      </button>
+                        {copied === a.link ? <Check size={14} /> : <Copy size={14} />} /convite/{a.code}
+                      </button>{' '}
+                      <a className="sx-btn" href={a.link} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink size={14} /> Abrir
+                      </a>
                     </td>
                     <td>{a.referred}</td>
                     <td>

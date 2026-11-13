@@ -110,7 +110,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         ])
         const valid = rewards.filter(r => !r.revoked_at)
         return {
-          enabled: true, code: me.code, link: `https://www.sixtysix.online/?ref=${me.code}`, days: me.days_per_payment,
+          enabled: true, code: me.code, link: `https://www.sixtysix.online/convite/${me.code}`, days: me.days_per_payment,
           referred: referrals.length, paying: new Set(valid.map(r => r.referred_user_id)).size,
           totalDays: valid.reduce((sum, r) => sum + r.days, 0),
           rewards: rewards.slice(0, 30).map(r => ({ at: r.created_at, days: r.days, revoked: Boolean(r.revoked_at) })),
