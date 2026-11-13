@@ -206,6 +206,14 @@ const CHAT_CHOICE = ['index', 'message', 'delta', 'finish_reason', 'logprobs']
 const CHAT_MESSAGE = ['role', 'content', 'refusal', 'tool_calls', 'function_call', 'reasoning', 'reasoning_content', 'reasoning_details', 'annotations', 'audio']
 const CHAT_USAGE = ['prompt_tokens', 'completion_tokens', 'total_tokens', 'prompt_tokens_details', 'completion_tokens_details']
 const RESPONSES_USAGE = ['input_tokens', 'input_tokens_details', 'output_tokens', 'output_tokens_details', 'total_tokens']
+// Objeto "response" da API Responses (Codex). Sai o que o fornecedor acrescenta: content_filters, moderation, access_programs...
+const RESPONSES_OBJECT = [
+  'id', 'object', 'created_at', 'completed_at', 'status', 'background', 'conversation', 'error', 'incomplete_details',
+  'instructions', 'max_output_tokens', 'max_tool_calls', 'metadata', 'model', 'output', 'output_text', 'parallel_tool_calls',
+  'previous_response_id', 'prompt', 'prompt_cache_key', 'prompt_cache_retention', 'reasoning', 'safety_identifier', 'store',
+  'temperature', 'frequency_penalty', 'presence_penalty', 'text', 'tool_choice', 'tools', 'top_logprobs', 'top_p', 'truncation',
+  'usage', 'user',
+]
 
 type Obj = Record<string, any>
 const isObj = (v: unknown): v is Obj => Boolean(v) && typeof v === 'object' && !Array.isArray(v)
@@ -315,7 +323,7 @@ export class UsageTap {
     if (kind === 'responses') {
       const response = obj.object === 'response' ? obj : isObj(obj.response) ? obj.response : null
       if (response) {
-        drop(response, LEAKY)
+        keep(response, RESPONSES_OBJECT)
         if (typeof response.id === 'string' && response.id !== this.id) rememberResponseId(this.id, response.id)
         response.id = this.id
         if ('model' in response) response.model = alias

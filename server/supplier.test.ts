@@ -108,6 +108,24 @@ test('Responses em stream: ID resp_ igual em todos os eventos e o previous_respo
   assert.equal(next.previous_response_id, 'gen-xyz')
 })
 
+test('Responses sem stream: só os campos oficiais do objeto response (sem content_filters, moderation...)', () => {
+  const tap = new UsageTap({ stream: false, alias: 'gpt-6-astra', supplierId: 'openai/gpt-6.1-sol', dropInjectedUsage: false, kind: 'responses' })
+  tap.push(encode(JSON.stringify({
+    id: 'resp_fornecedor', object: 'response', created_at: 1, status: 'completed', model: 'openai/gpt-6.1-sol',
+    output: [{ id: 'msg_1', type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'funcionando.', annotations: [] }] }],
+    tools: [], tool_choice: 'auto', reasoning: { effort: 'medium' }, text: { format: { type: 'text' } }, store: false,
+    usage: { input_tokens: 9, output_tokens: 3, total_tokens: 12 },
+    access_programs: ['x'], content_filters: [{ blocked: false }], moderation: null, tool_usage: { web_search: 0 }, service_tier: 'default',
+  })))
+  const body = JSON.parse(tap.end())
+  for (const leak of ['access_programs', 'content_filters', 'moderation', 'tool_usage', 'service_tier']) assert.equal(leak in body, false, leak)
+  assert.match(body.id, /^resp_[A-Za-z0-9]{24}$/)
+  assert.equal(body.model, 'gpt-6-astra')
+  assert.equal(body.output[0].content[0].text, 'funcionando.', 'o conteúdo não muda')
+  assert.deepEqual(Object.keys(body).sort(), ['created_at', 'id', 'model', 'object', 'output', 'reasoning', 'status', 'store', 'text', 'tool_choice', 'tools', 'usage'])
+  assert.deepEqual(tap.usage, { input: 9, output: 3 })
+})
+
 test('erro no meio do stream não mostra a mensagem do fornecedor', () => {
   const tap = new UsageTap({ stream: true, alias: 'a', supplierId: 'b', dropInjectedUsage: false, kind: 'anthropic' })
   const out = tap.push(encode('event: error\ndata: {"type":"error","error":{"type":"overloaded_error","message":"DelverTokens upstream sobrecarregado"}}\n\n'))
