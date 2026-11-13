@@ -709,3 +709,16 @@ test('Claude Code 2.1.323 no VS Code: system vazio sai, between_tools sai e assi
     console.error = errors
   }
 })
+
+test('conversa com prints (até 32 MB, como na Anthropic) passa; acima disso o gateway recusa sem chamar o fornecedor', async () => {
+  const supplier = () => Response.json({ model: 'anthropic/claude-opus-5-5', content: [{ type: 'text', text: 'oi' }], usage: { input_tokens: 2, output_tokens: 1 } })
+  await withAccess({ supplier }, async (base, _usage, calls) => {
+    const image = 'A'.repeat(6 * 1024 * 1024)
+    const ok = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 10, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: image } }, { type: 'text', text: 'o que é isso?' }] }] })
+    assert.equal(ok.status, 200, 'antes, acima de 4 MB dava 413')
+    assert.equal(calls.length, 1)
+    const huge = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 10, messages: [{ role: 'user', content: 'A'.repeat(33 * 1024 * 1024) }] })
+    assert.equal(huge.status, 413)
+    assert.equal(calls.length, 1, 'não chega ao fornecedor')
+  })
+})

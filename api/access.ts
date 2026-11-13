@@ -118,14 +118,17 @@ export function proxyPath(value:string){
   if(!/^\/(?:v1|glm\/v1|api\/codex)(?:\/[A-Za-z0-9_.-]+)*\/?$/.test(value)||value.split('/').some(s=>s==='.'||s==='..'))throw new AccessError(400,'Endereço inválido.')
   return value
 }
+// Até 32 MB por pedido, o mesmo limite da Anthropic: conversas com prints colados passam fácil de 4 MB (o teto que
+// existia por causa da Vercel). Acima disso o Claude Code mostra "Request too large (max 32MB)" e pede para compactar.
+const MAX_BODY=32*1024*1024
 async function rawBody(req:IncomingMessage & {body?:unknown}){
   if(req.body!==undefined){
     const value=Buffer.isBuffer(req.body)?req.body:Buffer.from(typeof req.body==='string'?req.body:JSON.stringify(req.body))
-    if(value.length>4*1024*1024)throw new AccessError(413,'Solicitação muito grande.')
+    if(value.length>MAX_BODY)throw new AccessError(413,'Solicitação muito grande.')
     return value
   }
   const chunks:Buffer[]=[];let size=0
-  for await(const chunk of req){const bytes=Buffer.from(chunk);size+=bytes.length;if(size>4*1024*1024)throw new AccessError(413,'Solicitação muito grande.');chunks.push(bytes)}
+  for await(const chunk of req){const bytes=Buffer.from(chunk);size+=bytes.length;if(size>MAX_BODY)throw new AccessError(413,'Solicitação muito grande.');chunks.push(bytes)}
   return Buffer.concat(chunks)
 }
 const single=(value:string|string[]|undefined)=>typeof value==='string'?value:undefined
