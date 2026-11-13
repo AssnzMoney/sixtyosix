@@ -60,44 +60,109 @@ export const planName = (code: string) => ({ dev: 'Dev', devApi: 'Dev + API', pr
 export const brDate = (value: string) =>
   new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: 'long', year: 'numeric' })
 
-type Block = { kind: 'p'; text: string } | { kind: 'note'; text: string }
-/** Layout único: papel, card branco, tinta verde-petróleo e botão verde-limão, como o site. */
-function layout(input: { preheader: string; title: string; blocks: Block[]; button?: { label: string; url: string } }) {
-  const paragraphs = input.blocks
-    .map((b) =>
-      b.kind === 'p'
-        ? `<p style="margin:0 0 16px;font:400 16px/1.6 Arial,Helvetica,sans-serif;color:#1f4647;">${escapeHtml(b.text)}</p>`
-        : `<p style="margin:0 0 16px;padding:12px 14px;border-radius:12px;background:#e4f9ee;font:600 14px/1.5 Arial,Helvetica,sans-serif;color:#15803d;">${escapeHtml(b.text)}</p>`,
-    )
-    .join('')
+type Step = { title: string; text: string }
+type Block =
+  | { kind: 'p'; text: string }
+  | { kind: 'note'; text: string }
+  | { kind: 'heading'; text: string }
+  | { kind: 'steps'; items: Step[] }
+  | { kind: 'chips'; label: string; items: string[] }
+type Link = { label: string; url: string }
+
+// Cores do site (src/index.css): tinta verde-petróleo, papel, menta e o verde-limão dos botões.
+const C = { ink: '#1f4647', muted: '#4e6b68', dark: '#123435', paper: '#fbf9f4', cream: '#f3efe6', mint: '#e4f9ee', green: '#15803d', lime: '#9eea6c', limeInk: '#0b3824', line: '#e6ebe8' }
+const FONT = "Arial,Helvetica,sans-serif"
+
+function blockHtml(b: Block): string {
+  if (b.kind === 'p') return `<p style="margin:0 0 16px;font:400 16px/1.6 ${FONT};color:${C.ink};">${escapeHtml(b.text)}</p>`
+  if (b.kind === 'note')
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 18px;"><tr><td style="padding:14px 16px;border-radius:14px;background:${C.mint};font:600 14px/1.5 ${FONT};color:${C.green};">${escapeHtml(b.text)}</td></tr></table>`
+  if (b.kind === 'heading')
+    return `<p style="margin:8px 0 14px;font:700 12px/1.4 ${FONT};letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${escapeHtml(b.text)}</p>`
+  if (b.kind === 'steps')
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px;">${b.items
+      .map(
+        (s, i) => `<tr>
+<td width="44" valign="top" style="padding:0 0 18px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="32" height="32" align="center" valign="middle" style="width:32px;height:32px;border-radius:999px;background:${C.lime};font:700 15px/32px ${FONT};color:${C.limeInk};">${i + 1}</td></tr></table></td>
+<td valign="top" style="padding:3px 0 18px;"><p style="margin:0 0 4px;font:700 16px/1.35 ${FONT};color:${C.ink};">${escapeHtml(s.title)}</p><p style="margin:0;font:400 14.5px/1.55 ${FONT};color:${C.muted};">${escapeHtml(s.text)}</p></td>
+</tr>`,
+      )
+      .join('')}</table>`
+  return `<p style="margin:0 0 10px;font:700 12px/1.4 ${FONT};letter-spacing:1.4px;text-transform:uppercase;color:${C.muted};">${escapeHtml(b.label)}</p>
+<p style="margin:0 0 22px;line-height:2.4;">${b.items
+    .map((item) => `<span style="display:inline-block;margin:0 6px 0 0;padding:7px 13px;border-radius:999px;background:${C.cream};border:1px solid ${C.line};font:700 13px/1 ${FONT};color:${C.ink};white-space:nowrap;">${escapeHtml(item)}</span>`)
+    .join(' ')}</p>`
+}
+
+const blockText = (b: Block): string[] =>
+  b.kind === 'steps' ? b.items.map((s, i) => `${i + 1}. ${s.title}: ${s.text}`)
+  : b.kind === 'chips' ? [`${b.label}: ${b.items.join(', ')}`]
+  : b.kind === 'heading' ? ['', b.text.toUpperCase()]
+  : [b.text]
+
+/**
+ * Layout único de todos os e-mails: papel, card branco e botão verde-limão, como o site.
+ * Com `hero`, o topo do card vira uma faixa verde-escura com o título em destaque (boas-vindas, acesso).
+ * Tabelas e estilo em linha para funcionar no Gmail, Outlook e no app de e-mail do celular.
+ */
+export function layout(input: {
+  preheader: string
+  title: string
+  hero?: { eyebrow: string; subtitle: string }
+  blocks: Block[]
+  button?: Link
+  secondary?: Link
+  footnote?: string
+}) {
+  const body = input.blocks.map(blockHtml).join('')
   const button = input.button
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 8px;"><tr><td style="border-radius:999px;background:#9eea6c;">
-<a href="${escapeHtml(input.button.url)}" style="display:inline-block;padding:14px 26px;font:700 15px/1 Arial,Helvetica,sans-serif;color:#0b3824;text-decoration:none;border-radius:999px;">${escapeHtml(input.button.label)}</a>
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:10px 0 6px;"><tr><td align="center" style="border-radius:999px;background:${C.lime};">
+<a href="${escapeHtml(input.button.url)}" style="display:inline-block;padding:16px 30px;font:700 16px/1 ${FONT};color:${C.limeInk};text-decoration:none;border-radius:999px;">${escapeHtml(input.button.label)} &rarr;</a>
 </td></tr></table>`
     : ''
-  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.title)}</title></head>
-<body style="margin:0;padding:0;background:#fbf9f4;">
-<span style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(input.preheader)}</span>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fbf9f4;padding:28px 12px;"><tr><td align="center">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
-<tr><td style="padding:0 4px 18px;"><img src="${LOGO_URL}" width="44" height="44" alt="SixtySix" style="display:block;border:0;"></td></tr>
-<tr><td style="padding:30px 28px;background:#ffffff;border:1px solid #e6ebe8;border-radius:24px;">
-<h1 style="margin:0 0 16px;font:700 26px/1.2 Arial,Helvetica,sans-serif;color:#1f4647;letter-spacing:-0.5px;">${escapeHtml(input.title)}</h1>
-${paragraphs}${button}
+  const secondary = input.secondary
+    ? `<p style="margin:12px 0 0;font:400 14px/1.5 ${FONT};color:${C.muted};">ou <a href="${escapeHtml(input.secondary.url)}" style="color:${C.green};font-weight:700;text-decoration:underline;">${escapeHtml(input.secondary.label)}</a></p>`
+    : ''
+  const top = input.hero
+    ? `<tr><td style="padding:38px 32px 34px;background:${C.dark};border-radius:24px 24px 0 0;">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="padding:6px 12px;border-radius:999px;background:#1d4a4b;font:700 11.5px/1 ${FONT};letter-spacing:1.4px;text-transform:uppercase;color:${C.lime};">${escapeHtml(input.hero.eyebrow)}</td></tr></table>
+<h1 style="margin:18px 0 10px;font:700 30px/1.15 ${FONT};color:#ffffff;letter-spacing:-0.6px;">${escapeHtml(input.title)}</h1>
+<p style="margin:0;font:400 16px/1.55 ${FONT};color:#cfe3dc;">${escapeHtml(input.hero.subtitle)}</p>
 </td></tr>
-<tr><td style="padding:18px 6px 0;font:400 12.5px/1.6 Arial,Helvetica,sans-serif;color:#4e6b68;">
-Dúvidas? Fale com a gente no WhatsApp <a href="${SUPPORT_WHATSAPP_LINK}" style="color:#15803d;font-weight:700;">${SUPPORT_WHATSAPP_LABEL}</a>.<br>
-Você recebe este e-mail porque tem uma conta na SixtySix. <a href="${SITE_URL}/privacidade.html" style="color:#4e6b68;">Privacidade</a>
+<tr><td style="padding:30px 32px 32px;background:#ffffff;border:1px solid ${C.line};border-top:0;border-radius:0 0 24px 24px;">`
+    : `<tr><td style="padding:32px 32px 32px;background:#ffffff;border:1px solid ${C.line};border-radius:24px;">
+<h1 style="margin:0 0 16px;font:700 26px/1.2 ${FONT};color:${C.ink};letter-spacing:-0.5px;">${escapeHtml(input.title)}</h1>`
+  const footnote = input.footnote || 'Você recebe este e-mail porque tem uma conta na SixtySix.'
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escapeHtml(input.title)}</title></head>
+<body style="margin:0;padding:0;background:${C.paper};">
+<span style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(input.preheader)}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.paper};"><tr><td align="center" style="padding:28px 12px 36px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+<tr><td style="padding:0 6px 18px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td valign="middle"><a href="${SITE_URL}" style="text-decoration:none;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td valign="middle"><img src="${LOGO_URL}" width="36" height="36" alt="" style="display:block;border:0;border-radius:10px;"></td>
+<td valign="middle" style="padding-left:10px;font:700 19px/1 ${FONT};color:${C.ink};letter-spacing:-0.3px;">SixtySix</td>
+</tr></table></a></td>
+<td align="right" valign="middle" style="font:400 13px/1 ${FONT};color:${C.muted};"><a href="${SITE_URL}" style="color:${C.muted};text-decoration:none;">sixtysix.online</a></td>
+</tr></table></td></tr>
+${top}
+${body}${button}${secondary}
+</td></tr>
+<tr><td align="center" style="padding:24px 18px 0;font:400 13px/1.7 ${FONT};color:${C.muted};">
+Dúvidas? Fale com a gente no WhatsApp <a href="${SUPPORT_WHATSAPP_LINK}" style="color:${C.green};font-weight:700;text-decoration:none;">${SUPPORT_WHATSAPP_LABEL}</a><br>
+<span style="font-size:12px;">${escapeHtml(footnote)} <a href="${SITE_URL}/privacidade.html" style="color:${C.muted};">Privacidade</a></span>
 </td></tr>
 </table></td></tr></table></body></html>`
   const text = [
     input.title,
+    ...(input.hero ? [input.hero.subtitle] : []),
     '',
-    ...input.blocks.map((b) => b.text),
+    ...input.blocks.flatMap(blockText),
     ...(input.button ? ['', `${input.button.label}: ${input.button.url}`] : []),
+    ...(input.secondary ? [`Ou ${input.secondary.label}: ${input.secondary.url}`] : []),
     '',
     `Dúvidas? WhatsApp ${SUPPORT_WHATSAPP_LABEL}: ${SUPPORT_WHATSAPP_LINK}`,
-    'Você recebe este e-mail porque tem uma conta na SixtySix.',
+    footnote,
   ].join('\n')
   return { html, text }
 }
@@ -126,17 +191,48 @@ export function welcomeEmail(input: { to: string; name?: string }): EmailMessage
   const title = name ? `Boas-vindas, ${name}!` : 'Boas-vindas à SixtySix!'
   return {
     to: input.to,
-    subject: 'Sua conta na SixtySix está pronta',
+    subject: name ? `${name}, sua conta na SixtySix está pronta` : 'Sua conta na SixtySix está pronta',
     ...layout({
-      preheader: 'Escolha seu plano e receba sua chave pelo WhatsApp.',
+      preheader: 'Veja como começar em 3 passos: plano, Pix e sua chave no WhatsApp.',
       title,
+      hero: { eyebrow: 'Conta criada', subtitle: 'Claude Code, Codex e os melhores modelos de IA no seu terminal, pagos em reais.' },
       blocks: [
-        { kind: 'p', text: 'Sua conta está criada. No painel você acompanha seu plano, suas credenciais e o passo a passo para conectar o Claude Code, o Codex e outras ferramentas.' },
-        { kind: 'p', text: 'Para começar, escolha um plano e pague por Pix ou cartão. Logo depois do pagamento, enviamos sua chave e a URL de configuração pelo seu WhatsApp.' },
+        { kind: 'p', text: 'Que bom ter você aqui. Sua conta está pronta, e em poucos minutos você já está programando com IA no seu terminal ou editor.' },
+        { kind: 'heading', text: 'Como começar' },
+        {
+          kind: 'steps',
+          items: [
+            { title: 'Escolha seu plano', text: 'Dev, Dev + API ou Pro. Cada um vale 30 dias, e você renova quando quiser.' },
+            { title: 'Pague por Pix ou cartão', text: 'Direto no site, em reais. A confirmação do Pix sai na hora.' },
+            { title: 'Receba sua chave no WhatsApp', text: 'Enviamos a chave e a URL de configuração para o número do seu cadastro. O painel tem o passo a passo de cada ferramenta.' },
+          ],
+        },
+        { kind: 'chips', label: 'Funciona com', items: ['Claude Code', 'Claude Desktop', 'Codex', 'Cline', 'OpenCode'] },
+        { kind: 'note', text: 'Por segurança, sua chave nunca vai por e-mail: ela chega só pelo WhatsApp.' },
       ],
-      button: { label: 'Abrir meu painel', url: `${SITE_URL}/dashboard` },
+      button: { label: 'Escolher meu plano', url: `${SITE_URL}/#planos` },
+      secondary: { label: 'abra seu painel', url: `${SITE_URL}/dashboard` },
     }),
   }
+}
+
+/**
+ * Modelo do e-mail de acesso que o Supabase manda no cadastro e no login por e-mail
+ * ("Confirm signup" e "Magic Link" em Authentication → Emails). O Supabase troca
+ * {{ .ConfirmationURL }} pelo link; gerado em supabase/email-acesso.html por scripts/email-previews.ts.
+ */
+export function supabaseAccessTemplate() {
+  return layout({
+    preheader: 'Clique no botão para entrar na SixtySix. O link vale por 1 hora.',
+    title: 'Seu link de acesso',
+    hero: { eyebrow: 'Entrar na SixtySix', subtitle: 'Falta só um clique para abrir sua conta.' },
+    blocks: [
+      { kind: 'p', text: 'Use o botão abaixo para confirmar seu e-mail e entrar. Se você está criando a conta agora, ela fica pronta no mesmo clique.' },
+      { kind: 'note', text: 'O link vale por 1 hora e funciona uma vez só. Se não foi você que pediu, pode ignorar este e-mail.' },
+    ],
+    button: { label: 'Entrar na SixtySix', url: '{{ .ConfirmationURL }}' },
+    footnote: 'Você recebe este e-mail porque alguém pediu para entrar na SixtySix com este endereço.',
+  })
 }
 
 export function deliveryEmail(input: { to: string; name?: string; title: string; hint: string }): EmailMessage {

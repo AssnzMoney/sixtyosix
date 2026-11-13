@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { deliveryEmail, emailConfig, expiredEmail, expiringEmail, sendEmail, welcomeEmail } from './email.ts'
+import { readFileSync } from 'node:fs'
+import { deliveryEmail, emailConfig, expiredEmail, expiringEmail, sendEmail, supabaseAccessTemplate, welcomeEmail } from './email.ts'
 import { createNotifier, userFromAuth } from './notifications.ts'
 import { createCronHandler } from '../api/notifications.ts'
 import { createAdminActions } from '../api/management.ts'
@@ -19,6 +20,26 @@ test('e-mails escapam o nome e nunca levam a chave', () => {
   assert.match(d.text, /…9f3a/)
   assert.match(d.text, /nunca vai por e-mail/)
   assert.ok(!/sk-[A-Za-z0-9]/.test(d.html))
+})
+
+test('boas-vindas: 3 passos, ferramentas e botão para os planos, em HTML e em texto', () => {
+  const w = welcomeEmail({ to: 'ana@exemplo.com', name: 'Ana' })
+  assert.equal(w.subject, 'Ana, sua conta na SixtySix está pronta')
+  assert.match(w.html, /Boas-vindas, Ana!/)
+  for (const step of ['Escolha seu plano', 'Pague por Pix ou cartão', 'Receba sua chave no WhatsApp']) {
+    assert.ok(w.html.includes(step), step)
+    assert.ok(w.text.includes(step), `${step} (texto)`)
+  }
+  assert.ok(w.html.includes('href="https://www.sixtysix.online/#planos"'))
+  assert.match(w.text, /Funciona com: Claude Code, Claude Desktop, Codex, Cline, OpenCode/)
+  assert.ok(!/sk-[A-Za-z0-9]/.test(w.html + w.text), 'nunca leva chave')
+  assert.equal(welcomeEmail({ to: 'a@b.com' }).subject, 'Sua conta na SixtySix está pronta')
+})
+
+test('modelo do e-mail de acesso do Supabase leva o link dele e combina com o arquivo do repositório', () => {
+  const access = supabaseAccessTemplate()
+  assert.ok(access.html.includes('href="{{ .ConfirmationURL }}"'))
+  assert.equal(readFileSync('supabase/email-acesso.html', 'utf8').trim(), access.html.trim(), 'rode scripts/email-previews.ts')
 })
 
 test('lembrete de vencimento fala do prazo e leva para renovar', () => {
@@ -130,7 +151,7 @@ test('rodada diária: vence em breve, venceu e boas-vindas pendentes', async () 
   const byRecipient = Object.fromEntries(backend.sent.map((m) => [m.to[0], m.subject]))
   assert.equal(byRecipient['pix@exemplo.com'], 'Seu plano Pro vence em 2 dias')
   assert.equal(byRecipient['ended@exemplo.com'], 'Seu plano Dev + API venceu')
-  assert.equal(byRecipient['new@exemplo.com'], 'Sua conta na SixtySix está pronta')
+  assert.equal(byRecipient['new@exemplo.com'], 'Nova, sua conta na SixtySix está pronta')
   assert.ok(!byRecipient['card@exemplo.com'], 'cartão ativo renova sozinho')
   assert.ok(!byRecipient['renewed@exemplo.com'], 'quem já renovou não recebe "venceu"')
   assert.ok(!byRecipient['incomplete@exemplo.com'], 'cadastro incompleto não recebe boas-vindas')
