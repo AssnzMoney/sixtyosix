@@ -24,9 +24,18 @@ export const EMPTY_ROUTER: RouterConfig = { routes: new Map(), proAliases: [] }
 
 /** Ponto e hífen valem o mesmo no nome do modelo: claude-fable-5.1 e claude-fable-5-1 são o mesmo. */
 export const normalizeAlias = (name: string) => String(name || '').trim().toLowerCase().replace(/\./g, '-')
-/** Acha o modelo pelo nome exato ou pela forma com hífen. */
+/**
+ * Nomes que saíram do Roteador e passam a usar outro modelo, para não quebrar quem já configurou
+ * a ferramenta com o nome antigo (o guia mandava usar claude-fable-5-1). Só vale se o nome antigo
+ * não estiver mais no Roteador.
+ */
+const RETIRED: Record<string, string> = { 'claude-fable-5-1': 'claude-fable-5-2' }
+/** Acha o modelo pelo nome exato ou pela forma com hífen (ou o substituto de um nome que saiu). */
 export function findRoute(router: RouterConfig, name: string): RouterRoute | undefined {
-  return router.routes.get(name) || router.lookup?.get(normalizeAlias(name))
+  const found = router.routes.get(name) || router.lookup?.get(normalizeAlias(name))
+  if (found) return found
+  const next = RETIRED[normalizeAlias(name)]
+  return next ? router.routes.get(next) || router.lookup?.get(normalizeAlias(next)) : undefined
 }
 /** Nomes como estão salvos no Roteador, sem repetir, para uma lista vinda do plano ou da chave. */
 export function canonicalModels(router: RouterConfig, names: readonly string[]): string[] {
@@ -159,7 +168,7 @@ export async function routerStatus(env: Env, request: typeof fetch = fetch) {
         ? 'Os modelos existem, mas o provedor está desligado ou os modelos estão desativados.'
         : null
   // Nomes dos planos que precisam existir para quem já é cliente (o Dev usa gpt-6-astra; o Pro, os três).
-  const planAliases = ['claude-fable-5-1', 'argon-4', 'gpt-6-astra'].filter((alias) => !aliases.some((name) => normalizeAlias(name) === normalizeAlias(alias)))
+  const planAliases = ['claude-fable-5-2', 'argon-4', 'gpt-6-astra'].filter((alias) => !aliases.some((name) => normalizeAlias(name) === normalizeAlias(alias)))
   // Proteção contra sobrecarga (gateway-guard.sql) e máximo de IPs (gateway-guard-ips.sql): só os números dos limites.
   let guard: Row = { ready: false, ipLimit: false }
   for (const [withIps, withTrial] of [[true, true], [true, false], [false, false]] as const) {

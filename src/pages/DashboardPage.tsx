@@ -608,7 +608,7 @@ export default function DashboardPage() {
         ? `set ANTHROPIC_BASE_URL=${baseUrl}\nset "ANTHROPIC_API_KEY=${actualKey.replace(/[\r\n"]/g, "")}"\nset ANTHROPIC_MODEL=${model}\nclaude --model ${model}`
         : `export ANTHROPIC_BASE_URL='${baseUrl}'\nexport ANTHROPIC_API_KEY=${shellKey}\nexport ANTHROPIC_MODEL='${model}'\nclaude --model ${model}`
   const claudeBase = claudeCredential?.base_url || "https://www.sixtysix.online"
-  const claudeModel = claudeCredential?.model_id || "claude-fable-5-1"
+  const claudeModel = claudeCredential?.model_id || "claude-fable-5-2"
   const claudeCode = anthropicCommands(claudeBase, claudeModel)
   const codexConfig = `model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://www.sixtysix.online/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://www.sixtysix.online/api/codex/models"`
   // OpenCode (Argon 4): provedor compatível com OpenAI no opencode.json, já com a chave do cliente.
@@ -1290,7 +1290,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="six-feature-tools">
                     {[
-                      ["claude", "Claude Code", "Fable 5.1 no seu terminal", "claude"],
+                      ["claude", "Claude Code", "Fable 5.2 no seu terminal", "claude"],
                       ["codex", "Codex", "Astra 6 no seu workspace", "openai"],
                       ["cline", "Cline e OpenCode", "Argon 4 no VS Code e no terminal", "gemini"],
                     ].map(([id, title, desc, icon]) => (
@@ -1606,11 +1606,11 @@ export default function DashboardPage() {
                       <span className="six-step-badge">Passo a passo</span>
                       <h2>
                         {tool === "claude"
-                          ? "Fable 5.1 no seu terminal"
+                          ? "Fable 5.2 no seu terminal"
                           : tool === "codex"
                             ? "Astra 6 no Codex"
                             : tool === "desktop"
-                              ? "Fable 5.1 no Claude Desktop"
+                              ? "Fable 5.2 no Claude Desktop"
                               : tool === "cline"
                                 ? "Argon 4 no Cline"
                                 : "Argon 4 no OpenCode"}
@@ -1908,10 +1908,10 @@ sudo apt update && sudo apt install claude-desktop`}
                   {!preview && (
                     <p>
                       {trial?.active && !subscription?.active
-                        ? "Modelos liberados no teste: Fable 5.1 e 5.2, Argon 4 e Astra 6. Todos disponíveis durante as 3 horas, com velocidade reduzida."
+                        ? "Modelos liberados no teste: Fable 5.2, Argon 4 e Astra 6. Todos disponíveis durante as 3 horas, com velocidade reduzida."
                         : subscription
                           ? `Modelos do seu plano: ${subscription.models.map(modelLabel).join(", ")}.`
-                          : "Seu espaço para construir com Fable 5.1 e 5.2, Argon 4 e Astra 6."}
+                          : "Seu espaço para construir com Fable 5.2, Argon 4 e Astra 6."}
                     </p>
                   )}
                   <div className="six-plan-price">

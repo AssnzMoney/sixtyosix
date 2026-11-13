@@ -416,7 +416,7 @@ export default function LoginPage() {
                       <span className="showcase-green">zero rateio de chave</span>
                     </h2>
                     <p className="showcase-sub">
-                      Fable 5.1 para Claude Code, GPT Astra 6, GLM-4 Plus e Argon 4 com estabilidade de 99.9% e sem surpresas na fatura em Dólar.
+                      Fable 5.2 para Claude Code, GPT Astra 6, GLM-4 Plus e Argon 4 com estabilidade de 99.9% e sem surpresas na fatura em Dólar.
                     </p>
                   </motion.div>
                 )}

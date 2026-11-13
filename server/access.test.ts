@@ -21,7 +21,9 @@ test('paid API blocks expired, refunded, revoked, site-only and excluded models'
  // Pro com o Fable 5.2 marcado no Roteador (salvo com ponto): o cliente pede com hífen e funciona.
  const pro=createAccessService(env,(async()=>Response.json([{...paid,models:['claude-fable-5-1','gpt-6-astra']}])) as typeof fetch)
  assert.equal((await pro.authorizePaid('sk-sp-test','claude-fable-5-2',['claude-fable-5.2'])).token,'private-bridge')
- await assert.rejects(pro.authorizePaid('sk-sp-test','claude-fable-5-2'),{status:403})
+ // O Fable 5.2 faz parte do Pro (assinaturas antigas com o 5.1 passam a ter o 5.2); o Dev continua sem ele.
+ assert.equal((await pro.authorizePaid('sk-sp-test','claude-fable-5-2')).token,'private-bridge')
+ await assert.rejects(service.authorizePaid('sk-sp-test','claude-fable-5-2'),{status:403})
 })
 test('expired or revoked trials cannot recover an upstream credential',async()=>{
   for(const dates of [{expires_at:new Date(Date.now()-1).toISOString(),revoked_at:null},{expires_at:new Date(Date.now()+86400000).toISOString(),revoked_at:new Date().toISOString()}]){

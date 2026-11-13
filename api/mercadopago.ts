@@ -12,7 +12,7 @@ type PaidAccess = {subscription_id:string;user_id:string;gateway_client_id:strin
 export const billingPlans = {
   dev:{name:'Dev',amount:7999,api:false,models:['gpt-6-astra','glm-5']},
   devApi:{name:'Dev + API',amount:9499,api:true,models:['gpt-6-astra','glm-5']},
-  pro:{name:'Pro',amount:11999,api:true,models:['claude-fable-5-1','argon-4','gpt-6-astra','glm-5']},
+  pro:{name:'Pro',amount:11999,api:true,models:['claude-fable-5-2','argon-4','gpt-6-astra','glm-5']},
 } as const
 const validUuid=(value:unknown):value is string=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 function cryptoKey(secret:string){return createHash('sha256').update(`sixtysix-trial-v1\0${secret}`).digest()}
@@ -231,7 +231,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
           allowed=withPlanModels(billingPlans.pro.models,router.proAliases);clientId=trial.gateway_client_id
         }
         const model=typeof body.model==='string'?body.model:''
-        // Ponto e hífen valem o mesmo no nome (claude-fable-5.1 = claude-fable-5-1).
+        // Ponto e hífen valem o mesmo no nome (claude-fable-5.1 = claude-fable-5-2).
         const wanted=findRoute(router,model)?.alias
         if(!wanted||!canonicalModels(router,allowed).includes(wanted))throw new WebhookError(403,'Este modelo não está incluído no seu plano.')
         if(!Array.isArray(body.messages)||!body.messages.length||body.messages.length>40)throw new WebhookError(400,'Conversa inválida.')

@@ -12,6 +12,7 @@ export const PRODUCT_LABELS: Record<DeliveryProduct, string> = {
 
 /** Nomes dos modelos vendidos, para exibir a credencial pelo modelo em vez do produto. */
 export const MODEL_NAMES: Record<string, string> = {
+  'claude-fable-5-2': 'Fable 5.2',
   'claude-fable-5-1': 'Fable 5.1',
   'argon-4': 'Argon 4',
   'gpt-6-astra': 'Astra 6',

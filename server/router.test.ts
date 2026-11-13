@@ -238,6 +238,16 @@ test('chat em stream: ID neutro igual em todos os eventos, sem provider nem cost
   })
 })
 
+test('nome que saiu do Roteador (claude-fable-5-1) vai para o Fable 5.2', async () => {
+  const provider = providerRow()
+  const rows = [{ alias: 'claude-fable-5.2', label: 'Claude Fable 5.2', upstream_model: 'anthropic/claude-opus-5-5', in_pro: true, provider }]
+  const router = await loadRouter({ SUPABASE_URL: SUPABASE, SUPABASE_SERVICE_ROLE_KEY: SECRET }, (async () => Response.json(rows)) as typeof fetch)
+  assert.equal(findRoute(router, 'claude-fable-5-1')?.alias, 'claude-fable-5.2')
+  assert.equal(findRoute(router, 'claude-fable-5.1')?.alias, 'claude-fable-5.2')
+  assert.deepEqual(canonicalModels(router, ['claude-fable-5-1', 'argon-4']), ['claude-fable-5.2'], 'chave antiga com o 5.1 passa a ter o 5.2')
+  assert.equal(findRoute(router, 'claude-fable-5-9'), undefined)
+})
+
 test('modelo do Roteador fora do Pro não entra no teste grátis', async () => {
   await withAccess({}, async (base) => {
     const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'gpt-6.1-sol', messages: [] })

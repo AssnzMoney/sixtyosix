@@ -877,7 +877,7 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
             </button>
           </form>
           <p className="sx-router-help">
-            Use para um modelo que o provedor não listou ou para dar outro nome ao mesmo modelo (ex.: os nomes dos planos <code>claude-fable-5-1</code>, <code>argon-4</code>, <code>gpt-6-astra</code> e <code>glm-5</code>).
+            Use para um modelo que o provedor não listou ou para dar outro nome ao mesmo modelo (ex.: os nomes dos planos <code>claude-fable-5-2</code>, <code>argon-4</code>, <code>gpt-6-astra</code> e <code>glm-5</code>).
           </p>
           {!drafts ? (
             <p className="sx-admin-empty">Consultando os modelos do provedor…</p>

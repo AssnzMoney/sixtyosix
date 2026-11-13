@@ -223,7 +223,7 @@ export default function Glm4Page() {
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     <div className="nav-mobile-item-head">
-                      <strong>Fable 5.1 para Claude Code</strong>
+                      <strong>Fable 5.2 para Claude Code</strong>
                     </div>
                     <small>Raciocínio profundo e Claude Code ilimitado</small>
                   </Link>
@@ -337,7 +337,7 @@ export default function Glm4Page() {
                       window.scrollTo({ top: 0, behavior: 'smooth' })
                     }}
                   >
-                    <strong>Fable 5.1 para Claude Code</strong>
+                    <strong>Fable 5.2 para Claude Code</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
                   </Link>
                   <Link to="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
@@ -916,7 +916,7 @@ claude --model glm-5`}</pre></div>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>GLM 5</strong>, <strong>Fable 5.1 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>Argon 4</strong></span></li>
+              <li><Check /> <span><strong>GLM 5</strong>, <strong>Fable 5.2 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>Argon 4</strong></span></li>
               <li><Check /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
               <li><Check /> <span><strong>Chave individual</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
@@ -1032,7 +1032,7 @@ claude --model glm-5`}</pre></div>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Fable 5.1 para Claude Code</strong>, <strong>GPT Astra 6</strong>, <strong>GLM 5</strong> e <strong>Argon 4</strong></span></li>
+              <li><Check /> <span><strong>Fable 5.2 para Claude Code</strong>, <strong>GPT Astra 6</strong>, <strong>GLM 5</strong> e <strong>Argon 4</strong></span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Perfis de acesso</strong> (disponibilidade variável)</span></li>
@@ -1158,7 +1158,7 @@ claude --model glm-5`}</pre></div>
             <ul className="footer-link-list">
               <li><Link to="/glm-4" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>GLM 5</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
-              <li><Link to="/claude-code">Fable 5.1 para Claude Code</Link></li>
+              <li><Link to="/claude-code">Fable 5.2 para Claude Code</Link></li>
             </ul>
           </div>
 

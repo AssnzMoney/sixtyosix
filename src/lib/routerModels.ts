@@ -20,7 +20,7 @@ export const ROUTER_MODEL_NAMES: Record<string, string> = {
 }
 
 /** Modelos do Pro gravados no plano (o resto vem do Roteador, pelo servidor). */
-export const PRO_BASE_MODELS = ['claude-fable-5-1', 'argon-4', 'gpt-6-astra', 'glm-5']
+export const PRO_BASE_MODELS = ['claude-fable-5-2', 'argon-4', 'gpt-6-astra', 'glm-5']
 
 /** Apelidos que o SixtySix já vende com outro nome: o modelo do provedor assume esse apelido. */
 const KNOWN_ALIASES: Record<string, string> = { 'gemini-4-argon': 'argon-4' }
