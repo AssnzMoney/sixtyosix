@@ -78,7 +78,8 @@ systemctl enable caddy
 systemctl restart caddy
 
 echo "== E-mails diários (lembretes de vencimento), 9h de Brasília"
-CRON_LINE="0 9 * * * curl -fsS -X POST http://127.0.0.1:8080/api/notifications -H \"Authorization: Bearer \$(grep '^CRON_SECRET=' $APP_DIR/.env | cut -d= -f2-)\" >> /home/$APP_USER/notifications.log 2>&1"
+# Tenta o processo 8080 e, se ele estiver reiniciando, o 8081 (cada aviso sai uma vez só, então repetir é seguro).
+CRON_LINE="0 9 * * * for p in 8080 8081; do curl -fsS -X POST http://127.0.0.1:\$p/api/notifications -H \"Authorization: Bearer \$(grep '^CRON_SECRET=' $APP_DIR/.env | cut -d= -f2-)\" >> /home/$APP_USER/notifications.log 2>&1 && break; done"
 # "|| true": sem agendamento nenhum, o crontab -l e o grep "falham" e, com set -e, a linha nunca era gravada.
 { crontab -u "$APP_USER" -l 2>/dev/null | grep -v '/api/notifications' || true; echo "$CRON_LINE"; } | crontab -u "$APP_USER" -
 crontab -u "$APP_USER" -l | grep -q '/api/notifications' || { echo "O agendamento dos e-mails não foi gravado." >&2; exit 1; }

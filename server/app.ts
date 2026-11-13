@@ -91,7 +91,19 @@ export function serveSite(req: IncomingMessage, res: ServerResponse) {
 
 /* --------------------------------- Servidor -------------------------------- */
 
+/**
+ * Processo terminando (publicação): não recebe pedidos novos. O Caddy pergunta /healthz aos dois processos
+ * (portas 8080 e 8081) e manda o tráfego só para quem responde 200.
+ */
+let draining = false
+
 export function handle(req: IncomingMessage, res: ServerResponse) {
+  // Só o Caddy chega aqui (o /healthz de fora vai para o site): diz se este processo pode receber pedidos.
+  if ((req.url || '').split('?')[0] === '/healthz') {
+    res.statusCode = draining ? 503 : 200
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+    return void res.end(draining ? 'terminando' : 'ok')
+  }
   const target = route(req.url || '/')
   if (!target) return serveSite(req, res)
   req.url = target.url
@@ -115,9 +127,27 @@ export function start() {
   server.headersTimeout = 60_000
   server.keepAliveTimeout = 65_000
   server.listen(port, host, () => console.log(`SixtySix no ar em http://${host}:${port}`))
-  // Na atualização, para de aceitar conexões novas e espera as respostas em andamento (até o PM2 encerrar).
-  const stop = () => server.close(() => process.exit(0))
-  process.on('SIGTERM', stop)
-  process.on('SIGINT', stop)
+  // Na publicação (deploy/deploy.sh reinicia um processo de cada vez): para de aceitar pedidos novos, que o
+  // Caddy passa para o outro processo, e espera as respostas em andamento terminarem, até DRAIN_MS (10 min).
+  // O kill_timeout do PM2 (deploy/ecosystem.config.cjs) é maior que isso, para não cortar uma resposta longa.
+  const drainMs = Number(process.env.DRAIN_MS || 10 * 60_000)
+  const stop = (signal: string) => {
+    if (draining) return
+    draining = true
+    console.log(`${signal}: sem pedidos novos; esperando as respostas em andamento terminarem`)
+    server.close(() => {
+      console.log('Respostas em andamento terminaram; saindo')
+      process.exit(0)
+    })
+    // Conexões paradas (keep-alive) não seguram a saída.
+    server.closeIdleConnections()
+    setInterval(() => server.closeIdleConnections(), 1000).unref()
+    setTimeout(() => {
+      console.log('Tempo de espera esgotado; saindo')
+      process.exit(0)
+    }, drainMs).unref()
+  }
+  process.on('SIGTERM', () => stop('SIGTERM'))
+  process.on('SIGINT', () => stop('SIGINT'))
   return server
 }

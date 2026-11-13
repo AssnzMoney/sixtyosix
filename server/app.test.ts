@@ -36,3 +36,18 @@ test('VPS: páginas do site não caem em nenhuma função', () => {
   }
   assert.ok(RULES.length >= 14)
 })
+
+test('VPS: /healthz diz ao Caddy que o processo pode receber pedidos (e não passa por nenhuma função)', async () => {
+  const { createServer } = await import('node:http')
+  const { handle } = await import('./app.ts')
+  const server = createServer(handle)
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const { port } = server.address() as { port: number }
+    const response = await fetch(`http://127.0.0.1:${port}/healthz`)
+    assert.equal(response.status, 200)
+    assert.equal(await response.text(), 'ok')
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()))
+  }
+})

@@ -1,4 +1,4 @@
-# Caddy na VPS: https automático (Let's Encrypt), site estático e as funções no Node (PM2, porta 8080).
+# Caddy na VPS: https automático (Let's Encrypt), site estático e as funções no Node (PM2, portas 8080 e 8081).
 # Instalado em /etc/caddy/Caddyfile pelo deploy/setup-vps.sh. Depois de mudar: sudo systemctl reload caddy
 
 # O endereço sem "www" leva para o com "www", como era na Vercel.
@@ -10,7 +10,22 @@ www.sixtysix.online {
 	# Funções: login, painel, admin, pagamentos e o gateway (/v1, /glm/v1, /api/codex).
 	@api path /api/* /v1 /v1/* /glm/v1/*
 	handle @api {
-		reverse_proxy 127.0.0.1:8080 {
+		# Dois processos iguais (deploy/ecosystem.config.cjs): tudo vai para o 8080; o 8081 atende quando o 8080
+		# está fora, como na publicação, em que cada um é reiniciado por vez e termina antes as respostas em andamento.
+		reverse_proxy 127.0.0.1:8080 127.0.0.1:8081 {
+			lb_policy first
+			# Processo que recusa a conexão (saindo ou reiniciando): tenta o outro na hora, por até 15 s.
+			lb_try_duration 15s
+			lb_try_interval 250ms
+			fail_duration 10s
+			health_uri /healthz
+			health_interval 2s
+			health_timeout 2s
+			health_status 200
+			# Sem conexões reaproveitadas: um processo saindo nunca recebe um pedido novo numa conexão antiga.
+			transport http {
+				keepalive off
+			}
 			# Repassa cada pedaço da resposta na hora (streaming do Claude Code, Cline, OpenCode).
 			flush_interval -1
 			# IP real do cliente para o bloqueio de IP e o limite de velocidade (server/guard.ts lê x-real-ip).
