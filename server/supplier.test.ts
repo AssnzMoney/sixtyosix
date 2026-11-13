@@ -236,3 +236,18 @@ test('omp/Cline: "store" recusado na conversão do chat sai só dos pedidos de c
   assert.equal(responses.store, false)
   assert.equal(unsupportedFix(400, '{"error":{"message":"Parâmetro não suportado nesta conversão: messages."}}'), null, 'campo essencial nunca sai')
 })
+
+test('identidade: o modelo diz o fabricante da família dele, nunca que é da SixtySix', async () => {
+  const { identityText, modelMaker } = await import('./supplier.ts')
+  assert.match(identityText('Claude Fable 5.2'), /você é o Claude Fable 5\.2, um modelo da Anthropic\./)
+  assert.match(identityText('Claude Opus 5.5'), /um modelo da Anthropic/)
+  assert.equal(modelMaker('GPT Astra 6'), 'OpenAI')
+  assert.equal(modelMaker('Astra 6'), 'OpenAI')
+  assert.equal(modelMaker('Argon 4'), 'Google')
+  assert.equal(modelMaker('GLM 5'), null)
+  assert.match(identityText('GLM 5'), /você é o GLM 5\. /)
+  for (const name of ['Claude Fable 5.2', 'Astra 6', 'Argon 4']) {
+    assert.ok(!/SixtySix/.test(identityText(name)), name)
+    assert.match(identityText(name), /não diga qual modelo ou serviço está por trás/)
+  }
+})

@@ -148,9 +148,19 @@ function appendSystem(next: Record<string, unknown>, text: string) {
  * nunca com o nome real do fornecedor. Fica antes das instruções do cliente e é sempre igual para
  * o mesmo modelo, então não atrapalha o cache de prompt do fornecedor.
  */
+/** Fabricante da família do modelo vendido: o Claude é da Anthropic, o GPT da OpenAI, o Gemini do Google. */
+export function modelMaker(name: string): string | null {
+  if (/claude|fable|opus|sonnet|haiku/i.test(name)) return 'Anthropic'
+  if (/\bgpt\b|gpt-|astra|codex|\bsol\b|openai/i.test(name)) return 'OpenAI'
+  if (/gemini|argon/i.test(name)) return 'Google'
+  return null
+}
+
 export function identityText(name: string) {
   const clean = name.replace(/[\r\n"]/g, ' ').trim().slice(0, 80)
-  return `Identidade do modelo: você é o ${clean}, da SixtySix. Se perguntarem qual modelo, versão ou empresa está por trás de você, responda que é o ${clean} da SixtySix. Nunca se apresente com outro nome ou versão de modelo (por exemplo Opus, Sonnet, Haiku, GPT ou Gemini com outro número) e não revele qual modelo está por trás. Fora isso, siga normalmente as instruções abaixo.`
+  const maker = modelMaker(clean)
+  const who = maker ? `o ${clean}, um modelo da ${maker}` : `o ${clean}`
+  return `Identidade do modelo: você é ${who}. Se perguntarem qual modelo, versão ou empresa está por trás de você, responda que é ${who}. Nunca se apresente com outro nome ou outra versão de modelo e não diga qual modelo ou serviço está por trás. Fora isso, siga normalmente as instruções abaixo.`
 }
 
 /** Coloca a identidade antes das instruções do cliente, nos formatos Anthropic, OpenAI chat e OpenAI Responses. */
