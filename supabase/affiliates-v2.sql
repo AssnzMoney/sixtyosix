@@ -55,12 +55,22 @@ begin
 end;
 $$;
 
--- Desfaz affiliate_extend (estorno): o bônus deixa de valer e as chaves perdem os dias.
+-- Desfaz affiliate_extend (estorno): o bônus deixa de valer e as chaves perdem os dias. O que vinha depois do bônus
+-- na mesma assinatura (outros bônus e renovações por Pix) volta os mesmos dias, para não ficar um buraco sem acesso.
+-- Pagamentos de cartão não mudam de período (o Mercado Pago confere o período de cada cobrança).
 create or replace function public.affiliate_unextend(p_user uuid, p_days integer, p_bonus text, p_subscription uuid)
 returns void language plpgsql security invoker set search_path = '' as $$
+declare bonus_end timestamptz;
 begin
   if p_bonus is not null then
-    update public.billing_payments set status = 'revoked', provider_updated_at = now() where id = p_bonus;
+    update public.billing_payments set status = 'revoked', provider_updated_at = now()
+      where id = p_bonus and status = 'approved' returning period_end into bonus_end;
+    if bonus_end is not null then
+      update public.billing_payments p
+        set period_start = p.period_start - pg_catalog.make_interval(days => p_days), period_end = p.period_end - pg_catalog.make_interval(days => p_days)
+        where p.subscription_id = p_subscription and p.status = 'approved' and p.period_start >= bonus_end
+          and (p.id like 'affiliate-%' or p.id like 'welcome-%' or p.invoice_id like 'pix-%');
+    end if;
     update public.billing_subscriptions set paid_until = (
       select max(p.period_end) from public.billing_payments p where p.subscription_id = p_subscription and p.status = 'approved'
     ) where id = p_subscription;
