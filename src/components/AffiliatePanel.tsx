@@ -30,7 +30,11 @@ export function useAffiliate(token: string | undefined) {
   return data
 }
 
-const seenKey = (code: string) => `six-affiliate-seen-${code}`
+// "v2": o aviso volta a aparecer uma vez para quem já tinha fechado (o afiliado pediu para ver de novo).
+const seenKey = (code: string) => `six-affiliate-seen-v2-${code}`
+/** Abre o aviso de novo (botão "Ver o aviso de novo" na aba Indicações). */
+const REOPEN = 'six-affiliate-welcome-open'
+export const showAffiliateWelcome = () => window.dispatchEvent(new Event(REOPEN))
 
 /**
  * Aviso na primeira entrada do afiliado neste aparelho: conta que ele agora tem um link de indicação.
@@ -43,6 +47,11 @@ export function AffiliateWelcome({ data, blocked, onOpen }: { data: Affiliate | 
     if (!data?.enabled || !data.code || blocked) return
     try { if (!localStorage.getItem(seenKey(data.code))) setOpen(true) } catch { /* sem armazenamento: não mostra */ }
   }, [data, blocked])
+  useEffect(() => {
+    const reopen = () => { setCopied(false); setOpen(true) }
+    window.addEventListener(REOPEN, reopen)
+    return () => window.removeEventListener(REOPEN, reopen)
+  }, [])
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
@@ -132,7 +141,10 @@ export default function AffiliatePanel({ data }: { data: Affiliate | null }) {
         </button>
       </div>
       <p className="six-affiliate-hint">
-        Vale para quem cria a conta pelo seu link e ainda não é cliente. Os dias entram sozinhos no seu plano e na validade da sua chave.
+        Vale para quem cria a conta pelo seu link e ainda não é cliente. Os dias entram sozinhos no seu plano e na validade da sua chave.{' '}
+        <button type="button" className="six-text-button" onClick={showAffiliateWelcome}>
+          Ver o aviso de novo
+        </button>
       </p>
 
       <div className="six-affiliate-stats">
