@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { recordUsage, rememberUnsupported, supplierRequestBody, supplierUrl, unsupportedParam, UsageTap } from '../server/supplier.js'
+import { endpointKind, recordUsage, rememberUnsupported, supplierErrorBody, supplierRequestBody, supplierUrl, unsupportedParam, UsageTap } from '../server/supplier.js'
 import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
@@ -152,25 +152,50 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       const text=await response.text().catch(()=>'')
       const param=unsupportedParam(status,text)
       if(param){rememberUnsupported(route.upstream,param);response=await send(supplierRequestBody(call.payload,call.path,route.upstream,name).body);status=response.status}
-      else response=new Response(text,{status,headers:response.headers})
+      // Reconstruída só com o retry-after: nenhum outro cabeçalho do fornecedor segue adiante.
+      else{const retry=response.headers.get('retry-after');response=new Response(text,{status,headers:retry?{'retry-after':retry}:{}})}
     }
     // Recusa da key mestra (saldo, bloqueio) ou falha do fornecedor: o cliente não vê detalhes do fornecedor.
     if(status===401||status===402||status===403||status>=500||(status>=300&&status<400)){
       console.error('Provedor recusou a chamada',provider.name,status,(await response.text().catch(()=>'')).slice(0,500))
       throw new AccessError(503,'Este modelo está temporariamente indisponível. Tente novamente em instantes.')
     }
-    res.statusCode=status
-    for(const key of ['content-type','retry-after']){const value=response.headers.get(key);if(value)res.setHeader(key,value)}
+    const kind=endpointKind(call.path)
     if(req.headers.origin)res.setHeader('access-control-allow-origin','*')
-    tap=new UsageTap({stream:(response.headers.get('content-type')||'').includes('text/event-stream'),alias:route.alias,supplierId:route.upstream,dropInjectedUsage:injectedUsage})
+    // Qualquer outro erro do fornecedor (400, 404, 413, 422, 429...): mantém o status, mas o corpo é nosso e genérico.
+    // Nenhum cabeçalho dele passa; no 429 vai só o retry-after.
+    if(status>=400){
+      console.error('Provedor recusou a chamada',provider.name,status,(await response.text().catch(()=>'')).slice(0,500))
+      res.statusCode=status
+      res.setHeader('content-type','application/json; charset=utf-8')
+      const retry=response.headers.get('retry-after')?.trim()
+      if(status===429&&retry&&/^\d{1,5}$/.test(retry))res.setHeader('retry-after',retry)
+      res.end(JSON.stringify(supplierErrorBody(kind,status)))
+      return
+    }
+    res.statusCode=status
+    // Só o content-type passa, e no formato nosso (o do fornecedor pode ter detalhes dele).
+    const type=response.headers.get('content-type')||''
+    const stream=type.includes('text/event-stream')
+    res.setHeader('content-type',stream?'text/event-stream; charset=utf-8':type.includes('json')?'application/json; charset=utf-8':type||'application/octet-stream')
+    tap=new UsageTap({stream,alias:route.alias,supplierId:route.upstream,dropInjectedUsage:injectedUsage,kind})
     const write=async(text:string)=>{if(text&&!res.write(text))await new Promise(resolve=>{res.once('drain',resolve);res.once('close',resolve)})}
     if(response.body){const reader=response.body.getReader();for(;;){const {done,value}=await reader.read();if(done)break;await write(tap.push(value))}}
-    await write(tap.end())
+    const rest=tap.end()
+    // "200 OK" só com um erro dentro (ex.: o fornecedor desistiu por demora): vira 504 nosso, com mensagem clara.
+    // Sem stream nada foi escrito ainda, então dá para trocar o status.
+    if(tap.failure&&!res.headersSent){
+      console.error('Provedor devolveu erro com status 200',provider.name,tap.failure)
+      status=504
+      res.statusCode=504
+      res.setHeader('content-type','application/json; charset=utf-8')
+      await write(JSON.stringify(supplierErrorBody(kind,504)))
+    }else await write(rest)
+    res.end()
   }finally{
     // Contar tokens (/v1/messages/count_tokens) não é uso do modelo: não entra no consumo.
     if(!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:status,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
   }
-  res.end()
 }
 
 export default async function handler(req:IncomingMessage & {body?:unknown},res:ServerResponse){

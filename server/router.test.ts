@@ -158,13 +158,83 @@ test('modelo que não aceita nível de esforço: o gateway tira o ajuste, tenta 
   })
 })
 
-test('outro erro 400 do fornecedor chega ao cliente sem nova tentativa', async () => {
-  const supplier = () => Response.json({ type: 'error', error: { type: 'invalid_request_error', message: 'messages: campo obrigatório' } }, { status: 400 })
+test('outro erro 400 do fornecedor: sem nova tentativa e com mensagem nossa, não a dele', async () => {
+  const supplier = () => Response.json({ type: 'error', error: { type: 'invalid_request_error', message: 'messages: campo obrigatório (DelverTokens)' } }, { status: 400, headers: { 'x-delver-request': 'abc' } })
   await withAccess({ supplier }, async (base, _usage, calls) => {
     const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'argon-4', messages: [] })
     assert.equal(response.status, 400)
-    assert.match(await response.text(), /campo obrigatório/)
+    assert.deepEqual(await response.json(), { type: 'error', error: { type: 'invalid_request_error', message: 'Pedido inválido. Confira os parâmetros enviados.' } })
+    assert.equal(response.headers.get('x-delver-request'), null)
     assert.equal(calls.length, 1)
+  })
+})
+
+test('erros 404, 422 e 429 do fornecedor não mostram o nome dele, no formato de cada endpoint', async () => {
+  const errors = console.error
+  console.error = () => {}
+  try {
+    for (const [status, path, model] of [[404, '/v1/messages', 'claude-opus-5-5'], [422, '/v1/chat/completions', 'argon-4'], [429, '/v1/responses', 'argon-4'], [429, '/v1/messages', 'claude-opus-5-5']] as const) {
+      const supplier = () => new Response(JSON.stringify({ error: { message: `DelverTokens: upstream google/gemini-4-argon via OpenRouter falhou`, provider: 'Google', code: status } }), {
+        status, headers: { 'content-type': 'application/json', 'retry-after': '7', 'x-ratelimit-remaining': '0', server: 'delver-gw', 'set-cookie': 'f=1' },
+      })
+      await withAccess({ supplier }, async (base) => {
+        const response = await post(base, path, 'sk-sx-cliente', { model, messages: [{ role: 'user', content: 'oi' }], input: 'oi' })
+        const text = await response.text()
+        assert.equal(response.status, status, `${status} ${path}`)
+        for (const leak of ['delver', 'openrouter', 'google', 'gemini']) assert.ok(!text.toLowerCase().includes(leak), `${leak} vazou em ${status} ${path}: ${text}`)
+        const body = JSON.parse(text)
+        if (path === '/v1/messages') assert.equal(body.type, 'error')
+        else assert.deepEqual(Object.keys(body.error).sort(), ['code', 'message', 'type'])
+        assert.equal(response.headers.get('retry-after'), status === 429 ? '7' : null)
+        assert.notEqual(response.headers.get('server'), 'delver-gw')
+        assert.equal(response.headers.get('x-ratelimit-remaining'), null)
+        assert.equal(response.headers.get('set-cookie'), null)
+      })
+    }
+  } finally {
+    console.error = errors
+  }
+})
+
+test('"200 OK" só com erro dentro (fornecedor desistiu por demora) vira 504 nosso e conta como falha', async () => {
+  const errors = console.error
+  console.error = () => {}
+  try {
+    const supplier = () => Response.json({ error: { type: 'upstream_idle_timeout', code: 'upstream_idle_timeout', message: 'O provedor ficou sem enviar dados além do prazo permitido.' } })
+    await withAccess({ supplier }, async (base, usage) => {
+      const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'argon-4', max_tokens: 48000, reasoning_effort: 'high', messages: [{ role: 'user', content: 'oi' }] })
+      assert.equal(response.status, 504)
+      const text = await response.text()
+      assert.ok(!text.includes('upstream') && !text.includes('provedor'), text)
+      assert.match(JSON.parse(text).error.message, /demorou demais/)
+      assert.equal(usage[0].status_code, 504)
+    })
+  } finally {
+    console.error = errors
+  }
+})
+
+test('chat em stream: ID neutro igual em todos os eventos, sem provider nem cost, e tokens contados', async () => {
+  const supplier = () => new Response(new ReadableStream({
+    start(controller) {
+      controller.enqueue(encode(': OPENROUTER PROCESSING\n\n'))
+      controller.enqueue(encode('id: 99\ndata: {"id":"gen-xyz","provider":"Google","object":"chat.completion.chunk","model":"google/gemini-4-argon","system_fingerprint":"fp_1","choices":[{"index":0,"delta":{"content":"oi"},"native_finish_reason":null}]}\n\n'))
+      controller.enqueue(encode('data: {"id":"gen-xyz","provider":"Google","object":"chat.completion.chunk","model":"google/gemini-4-argon","choices":[],"usage":{"prompt_tokens":9,"completion_tokens":2,"total_tokens":11,"cost":0.0001}}\n\ndata: [DONE]\n\n'))
+      controller.close()
+    },
+  }), { headers: { 'content-type': 'text/event-stream', 'x-generation-id': 'gen-xyz' } })
+  await withAccess({ supplier }, async (base, usage) => {
+    const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'argon-4', stream: true, stream_options: { include_usage: true }, messages: [{ role: 'user', content: 'oi' }] })
+    const text = await response.text()
+    for (const leak of ['gen-xyz', 'provider', 'Google', 'gemini', 'OPENROUTER', 'system_fingerprint', 'cost', 'native_finish_reason', 'id: 99']) assert.ok(!text.includes(leak), `${leak}: ${text}`)
+    const ids = [...text.matchAll(/"id":"([^"]+)"/g)].map((m) => m[1])
+    assert.equal(ids.length, 2)
+    assert.match(ids[0], /^chatcmpl-[A-Za-z0-9]{24}$/)
+    assert.equal(ids[0], ids[1], 'o mesmo ID em todo o stream')
+    assert.ok(text.includes(': keep-alive'), 'o comentário vira um keep-alive neutro')
+    assert.equal(response.headers.get('x-generation-id'), null)
+    assert.equal(response.headers.get('content-type'), 'text/event-stream; charset=utf-8')
+    assert.deepEqual([usage[0].input_tokens, usage[0].output_tokens], [9, 2])
   })
 })
 

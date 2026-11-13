@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { UsageTap, recordUsage, supplierRequestBody, supplierUrl } from './supplier.ts'
+import { UsageTap, endpointKind, recordUsage, supplierErrorBody, supplierRequestBody, supplierUrl } from './supplier.ts'
 
 const encode = (text: string) => new TextEncoder().encode(text)
 
@@ -42,6 +42,88 @@ test('conta tokens no formato Anthropic, Responses e resposta comum', () => {
   const body = plain.end()
   assert.ok(body.includes('"model":"argon-4"'))
   assert.deepEqual(plain.usage, { input: 3, output: 2 })
+})
+
+const events = (text: string) => text.split('\n\n').filter(Boolean).map((block) => JSON.parse(block.split('\n').find((l) => l.startsWith('data: '))!.slice(6)))
+
+test('Anthropic em stream: ID msg_ igual no stream, campos extras fora, tool_use e texto intactos, tokens certos', () => {
+  const tap = new UsageTap({ stream: true, alias: 'claude-fable-5.2', supplierId: 'anthropic/claude-opus-5-5', dropInjectedUsage: false, kind: 'anthropic' })
+  let out = tap.push(encode('event: message_start\ndata: {"type":"message_start","provider":"delver","message":{"id":"gen-xyz","type":"message","role":"assistant","model":"claude-opus-5-5-20260101","content":[],"diagnostics":null,"usage":{"input_tokens":10,"cache_read_input_tokens":90,"output_tokens":1,"service_tier":"standard","inference_geo":"global","cost":0.01}}}\n\nevent: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"toolu_abc","name":"ler","input":{}}}\n\n'))
+  out += tap.push(encode('event: content_block_delta\ndata: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"o id gen-xyz e o \\"model\\":\\"x\\""}}\n\nevent: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":42,"service_tier":"standard"}}\n\n'))
+  out += tap.end()
+  const [start, block, delta, end] = events(out)
+  assert.match(start.message.id, /^msg_[A-Za-z0-9]{24}$/)
+  assert.equal(start.message.id, tap.id)
+  assert.equal(start.message.model, 'claude-fable-5.2')
+  assert.equal(start.provider, undefined)
+  assert.equal(start.message.diagnostics, undefined)
+  assert.deepEqual(start.message.usage, { input_tokens: 10, cache_read_input_tokens: 90, output_tokens: 1 })
+  assert.equal(block.content_block.id, 'toolu_abc', 'ID de tool_use não muda')
+  assert.equal(delta.delta.text, 'o id gen-xyz e o "model":"x"', 'texto da mensagem não muda')
+  assert.deepEqual(end.usage, { output_tokens: 42 })
+  assert.ok(out.includes('event: message_start\n'))
+  assert.deepEqual(tap.usage, { input: 100, output: 42 })
+})
+
+test('Anthropic sem stream: ID msg_, sem campos extras e tokens certos', () => {
+  const tap = new UsageTap({ stream: false, alias: 'argon-4', supplierId: 'x', dropInjectedUsage: false, kind: 'anthropic' })
+  tap.push(encode('{"id":"gen-xyz","type":"message","role":"assistant","model":"real","provider":"OpenRouter","content":[{"type":"tool_use","id":"toolu_1","name":"f","input":{}}],"stop_reason":"tool_use","stop_sequence":null,"usage":{"input_tokens":5,"output_tokens":3,"cost":1}}'))
+  const body = JSON.parse(tap.end())
+  assert.match(body.id, /^msg_/)
+  assert.equal(body.provider, undefined)
+  assert.equal(body.model, 'argon-4')
+  assert.equal(body.content[0].id, 'toolu_1')
+  assert.deepEqual(body.usage, { input_tokens: 5, output_tokens: 3 })
+  assert.deepEqual(tap.usage, { input: 5, output: 3 })
+})
+
+test('chat sem stream: ID chatcmpl-, sem provider, system_fingerprint, service_tier e cost; tool_call intacto', () => {
+  const tap = new UsageTap({ stream: false, alias: 'argon-4', supplierId: 'google/gemini-4-argon', dropInjectedUsage: false, kind: 'chat' })
+  tap.push(encode('{"id":"gen-xyz","provider":"Google","object":"chat.completion","created":1,"model":"google/gemini-4-argon","system_fingerprint":"fp","service_tier":"default","x_groq":{"id":"q"},"choices":[{"index":0,"finish_reason":"tool_calls","native_finish_reason":"STOP","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_123","type":"function","function":{"name":"ler","arguments":"{}"}}]}}],"usage":{"prompt_tokens":36,"completion_tokens":5,"total_tokens":41,"cost":0.1,"is_byok":false}}'))
+  const body = JSON.parse(tap.end())
+  assert.match(body.id, /^chatcmpl-[A-Za-z0-9]{24}$/)
+  for (const field of ['provider', 'system_fingerprint', 'service_tier', 'x_groq']) assert.equal(body[field], undefined, field)
+  assert.equal(body.choices[0].native_finish_reason, undefined)
+  assert.equal(body.choices[0].message.tool_calls[0].id, 'call_123')
+  assert.deepEqual(body.usage, { prompt_tokens: 36, completion_tokens: 5, total_tokens: 41 })
+  assert.deepEqual(tap.usage, { input: 36, output: 5 })
+})
+
+test('Responses em stream: ID resp_ igual em todos os eventos e o previous_response_id volta ao do fornecedor', () => {
+  const tap = new UsageTap({ stream: true, alias: 'gpt-6-astra', supplierId: 'openai/gpt-6.1-sol', dropInjectedUsage: false, kind: 'responses' })
+  let out = tap.push(encode('event: response.created\ndata: {"type":"response.created","response":{"id":"gen-xyz","object":"response","model":"openai/gpt-6.1-sol","provider":"OpenAI","output":[]}}\n\n'))
+  out += tap.push(encode('event: response.output_item.added\ndata: {"type":"response.output_item.added","output_index":0,"item":{"id":"fc_9","type":"function_call","call_id":"call_9"}}\n\n'))
+  out += tap.push(encode('event: response.completed\ndata: {"type":"response.completed","response":{"id":"gen-xyz","object":"response","model":"openai/gpt-6.1-sol","service_tier":"auto","usage":{"input_tokens":7,"output_tokens":5,"total_tokens":12,"cost":2}}}\n\n'))
+  out += tap.end()
+  const [created, item, completed] = events(out)
+  assert.match(created.response.id, /^resp_[A-Za-z0-9]{24}$/)
+  assert.equal(created.response.id, completed.response.id, 'o mesmo ID em todo o stream')
+  assert.equal(created.response.provider, undefined)
+  assert.equal(completed.response.service_tier, undefined)
+  assert.equal(item.item.call_id, 'call_9', 'IDs de ferramenta não mudam')
+  assert.deepEqual(completed.response.usage, { input_tokens: 7, output_tokens: 5, total_tokens: 12 })
+  assert.deepEqual(tap.usage, { input: 7, output: 5 })
+  // O cliente manda o nosso ID de volta: o fornecedor recebe o dele.
+  const next = JSON.parse(supplierRequestBody({ model: 'gpt-6-astra', previous_response_id: tap.id, input: 'e agora?' }, '/v1/responses', 'openai/gpt-6.1-sol').body)
+  assert.equal(next.previous_response_id, 'gen-xyz')
+})
+
+test('erro no meio do stream não mostra a mensagem do fornecedor', () => {
+  const tap = new UsageTap({ stream: true, alias: 'a', supplierId: 'b', dropInjectedUsage: false, kind: 'anthropic' })
+  const out = tap.push(encode('event: error\ndata: {"type":"error","error":{"type":"overloaded_error","message":"DelverTokens upstream sobrecarregado"}}\n\n'))
+  assert.ok(!out.includes('Delver'))
+  assert.equal(events(out)[0].error.type, 'overloaded_error')
+})
+
+test('formato e mensagem dos erros nossos por endpoint e status', () => {
+  assert.equal(endpointKind('/v1/messages'), 'anthropic')
+  assert.equal(endpointKind('/v1/chat/completions'), 'chat')
+  assert.equal(endpointKind('/v1/responses'), 'responses')
+  assert.equal(endpointKind('/v1/embeddings'), 'other')
+  assert.deepEqual(supplierErrorBody('anthropic', 429), { type: 'error', error: { type: 'rate_limit_error', message: 'Muitas chamadas agora. Aguarde um instante.' } })
+  assert.deepEqual(supplierErrorBody('chat', 404), { error: { message: 'Modelo ou recurso não encontrado.', type: 'not_found_error', code: null } })
+  assert.deepEqual(supplierErrorBody('responses', 413), { error: { message: 'Pedido grande demais.', type: 'invalid_request_error', code: null } })
+  assert.equal(supplierErrorBody('anthropic', 422).error.message, 'Não foi possível processar o pedido.')
 })
 
 test('identidade: o modelo recebe o nome vendido antes das instruções do cliente, nos três formatos', () => {
