@@ -37,11 +37,19 @@ export function supplierUrl(base: string, path: string, search = ''): string {
  * Chaves lembradas: um caminho do corpo ("output_config.effort"), "beta:<nome>", "tool:<tipo>",
  * "tools.*.<campo>" (campo de cada ferramenta) e "thinking.disabled" (só o thinking desligado).
  */
-const STRIPPABLE = ['output_config.effort', 'output_config.format', 'output_config', 'output_format', 'reasoning_effort', 'reasoning.effort', 'context_management', 'speed', 'inference_geo', 'service_tier', 'thinking.disabled']
+const STRIPPABLE = ['output_config.effort', 'output_config.format', 'output_config', 'output_format', 'reasoning_effort', 'reasoning.effort', 'context_management', 'speed', 'inference_geo', 'service_tier', 'safeguards', 'thinking.disabled']
 const TOOL_FIELDS = ['defer_loading', 'eager_input_streaming', 'strict', 'input_examples', 'allowed_callers']
+/*
+ * Campos opcionais do formato chat que o fornecedor não aceita quando converte o chat para o formato nativo dele
+ * ("Parâmetro não suportado nesta conversão: store. Use /v1/responses nativo."). O omp, o Cline e o OpenCode mandam
+ * alguns deles. Lembrados como "chat:<campo>": saem só dos pedidos de chat; o Codex (/v1/responses) segue mandando.
+ */
+const CHAT_CONVERSION_FIELDS = ['store', 'parallel_tool_calls', 'metadata', 'user', 'prediction', 'logit_bias', 'logprobs', 'top_logprobs', 'seed', 'prompt_cache_key', 'safety_identifier', 'service_tier']
 const unsupported = new Map<string, Set<string>>()
 
-const allowedFix = (fix: string) => STRIPPABLE.includes(fix) || /^beta:[\w.-]+$/.test(fix) || /^tool:[\w.-]+$/.test(fix) || TOOL_FIELDS.some((f) => fix === `tools.*.${f}`)
+const allowedFix = (fix: string) =>
+  STRIPPABLE.includes(fix) || /^beta:[\w.-]+$/.test(fix) || /^tool:[\w.-]+$/.test(fix) || TOOL_FIELDS.some((f) => fix === `tools.*.${f}`) ||
+  CHAT_CONVERSION_FIELDS.some((f) => fix === `chat:${f}`)
 
 /**
  * Qual recurso o fornecedor recusou neste 400 (ou null, se o erro for outro). `sent` é o corpo que foi mandado:
@@ -64,8 +72,12 @@ export function unsupportedFix(status: number, text: string, sent?: Record<strin
     const entry = Array.isArray(sent?.tools) ? (sent.tools as Record<string, unknown>[])[Number(tool[1])] : undefined
     if (entry && typeof entry.type === 'string' && entry.type !== 'custom' && /not supported|unsupported|unknown|invalid|tag|does not match|extra inputs|not permitted/i.test(message)) return `tool:${entry.type}`
   }
+  // "Parâmetro não suportado nesta conversão: store." (pedido de chat que o fornecedor converte para o formato dele).
+  const conversion = /n[ãa]o suportado nesta convers[ãa]o:\s*['"`]?([a-z_]+)/i.exec(message)
+  if (conversion && CHAT_CONVERSION_FIELDS.includes(conversion[1].toLowerCase())) return `chat:${conversion[1].toLowerCase()}`
   // "output_config: Extra inputs are not permitted" (às vezes como "messages.1.output_config" ou "output_config.format").
-  const extra = /(?:^|[\s.'"`])(output_config|output_format|context_management|speed|inference_geo|service_tier)(?:\.(effort|format))?['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|not supported|unknown field)/i.exec(message)
+  // "safeguards: Extra inputs are not permitted": campo que o Claude Code 2.1.323 passou a mandar.
+  const extra = /(?:^|[\s.'"`])(output_config|output_format|context_management|speed|inference_geo|service_tier|safeguards)(?:\.(effort|format))?['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|not supported|unknown field)/i.exec(message)
   if (extra) return extra[2] ? `${extra[1]}.${extra[2]}` : extra[1]
   return null
 }
@@ -100,9 +112,11 @@ const withoutKey = (value: unknown, key: string) => {
   delete copy[key]
   return copy
 }
-function applyFix(next: Record<string, unknown>, fix: string) {
+function applyFix(next: Record<string, unknown>, fix: string, path: string) {
   if (fix.startsWith('beta:')) return // vai no cabeçalho (supplierBetas)
-  if (fix === 'thinking.disabled') {
+  if (fix.startsWith('chat:')) {
+    if (endpointKind(path) === 'chat') delete next[fix.slice(5)]
+  } else if (fix === 'thinking.disabled') {
     if ((next.thinking as { type?: unknown } | undefined)?.type === 'disabled') delete next.thinking
   } else if (fix.startsWith('tool:')) {
     if (!Array.isArray(next.tools)) return
@@ -158,7 +172,7 @@ function withIdentity(next: Record<string, unknown>, path: string, name: string)
 export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string, name?: string) {
   const next: Record<string, unknown> = { ...payload, model: supplierId }
   const schema = jsonSchemaOf(payload)
-  for (const fix of unsupported.get(supplierId) || []) applyFix(next, fix)
+  for (const fix of unsupported.get(supplierId) || []) applyFix(next, fix, path)
   // Saída em JSON recusada (o ultracode usa): vira instrução, para a resposta ainda vir no formato pedido.
   if (schema !== undefined && jsonSchemaOf(next) === undefined && endpointKind(path) === 'anthropic') {
     appendSystem(next, `Responda somente com um objeto JSON válido que siga exatamente este JSON Schema, sem texto antes ou depois e sem bloco de código:\n${JSON.stringify(schema).slice(0, 20000)}`)

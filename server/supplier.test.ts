@@ -209,3 +209,28 @@ test('consumo: outro erro do banco não fica tentando de novo', async () => {
   await recordUsage({ SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k' }, request, { client_id: 'x', requested_alias: 'a', status_code: 200, input_tokens: 0, output_tokens: 0, latency_ms: 1 })
   assert.equal(calls, 1)
 })
+
+test('Claude Code 2.1.323: campo safeguards recusado sai do pedido (no topo e nas mensagens) nas próximas chamadas', async () => {
+  const { unsupportedFix, rememberUnsupported } = await import('./supplier.ts')
+  const fix = unsupportedFix(400, '{"type":"error","error":{"type":"invalid_request_error","message":"safeguards: Extra inputs are not permitted"}}')
+  assert.equal(fix, 'safeguards')
+  assert.equal(rememberUnsupported('teste/safeguards', fix!), true)
+  const sent = JSON.parse(supplierRequestBody({ model: 'claude-fable-5-2', safeguards: { x: 1 }, messages: [{ role: 'user', content: 'oi', safeguards: {} }] }, '/v1/messages', 'teste/safeguards').body)
+  assert.equal('safeguards' in sent, false)
+  assert.equal('safeguards' in sent.messages[0], false)
+  assert.equal(sent.messages[0].content, 'oi', 'a conversa não muda')
+})
+
+test('omp/Cline: "store" recusado na conversão do chat sai só dos pedidos de chat; o Codex continua mandando', async () => {
+  const { unsupportedFix, rememberUnsupported } = await import('./supplier.ts')
+  const text = '{"error":{"type":"invalid_request_error","code":"invalid_request_error","message":"Parâmetro não suportado nesta conversão: store. Use /v1/responses nativo."}}'
+  const fix = unsupportedFix(400, text)
+  assert.equal(fix, 'chat:store')
+  assert.equal(rememberUnsupported('teste/store', fix!), true)
+  assert.equal(rememberUnsupported('teste/store', fix!), false, 'a mesma recusa duas vezes encerra as tentativas')
+  const chat = JSON.parse(supplierRequestBody({ model: 'gpt-6-astra', store: false, messages: [{ role: 'user', content: 'oi' }] }, '/v1/chat/completions', 'teste/store').body)
+  assert.equal('store' in chat, false)
+  const responses = JSON.parse(supplierRequestBody({ model: 'gpt-6-astra', store: false, input: 'oi' }, '/v1/responses', 'teste/store').body)
+  assert.equal(responses.store, false)
+  assert.equal(unsupportedFix(400, '{"error":{"message":"Parâmetro não suportado nesta conversão: messages."}}'), null, 'campo essencial nunca sai')
+})
