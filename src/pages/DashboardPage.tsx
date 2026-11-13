@@ -639,6 +639,25 @@ export default function DashboardPage() {
     null,
     2,
   )
+  // pi (Argon 4): provedor compatível com OpenAI no models.json do pi, já com a chave do cliente.
+  // O compat desliga o que proxies costumam recusar (store e papel developer): o pi não reconhece a nossa URL.
+  const piConfig = JSON.stringify(
+    {
+      $schema: "https://pi.dev/schemas/models.schema.json",
+      providers: {
+        sixtysix: {
+          name: "SixtySix",
+          baseUrl: "https://www.sixtysix.online/v1",
+          api: "openai-completions",
+          apiKey: actualKey,
+          compat: { supportsStore: false, supportsDeveloperRole: false, maxTokensField: "max_tokens" },
+          models: [{ id: "argon-4", name: "Argon 4" }],
+        },
+      },
+    },
+    null,
+    2,
+  )
   const osLabel = os === "powershell" ? "PowerShell" : os === "cmd" ? "CMD" : "Terminal"
   const sectionTitle = nav.find((v) => v.id === tab)?.label || "Central de ajuda"
   const heading = headings[tab]
@@ -936,7 +955,7 @@ export default function DashboardPage() {
   )
 
   // Bloco que explica de onde vem a chave e mostra a configuração entregue para a ferramenta escolhida.
-  const guideCredential = tool === "codex" ? gptCredential : tool === "cline" || tool === "opencode" ? null : claudeCredential
+  const guideCredential = tool === "codex" ? gptCredential : tool === "cline" || tool === "opencode" || tool === "pi" ? null : claudeCredential
 
 
   return (
@@ -1599,6 +1618,7 @@ export default function DashboardPage() {
                   ["codex", "Codex", "Terminal e desktop", "openai"],
                   ["cline", "Cline", "VS Code · Argon 4", "vscode"],
                   ["opencode", "OpenCode", "Terminal · Argon 4", "gemini"],
+                  ["pi", "pi", "Terminal · Argon 4", "pi"],
                 ].map(([id, title, desc, icon]) => (
                   <button
                     key={id}
@@ -1628,12 +1648,14 @@ export default function DashboardPage() {
                               ? "Fable 5.2 no Claude Desktop"
                               : tool === "cline"
                                 ? "Argon 4 no Cline"
-                                : "Argon 4 no OpenCode"}
+                                : tool === "pi"
+                                  ? "Argon 4 no pi"
+                                  : "Argon 4 no OpenCode"}
                       </h2>
                     </div>
-                    <span className="six-pill">{tool === "codex" ? "Responses" : tool === "cline" || tool === "opencode" ? "OpenAI" : "Anthropic"}</span>
+                    <span className="six-pill">{tool === "codex" ? "Responses" : tool === "cline" || tool === "opencode" || tool === "pi" ? "OpenAI" : "Anthropic"}</span>
                   </div>
-                  {(tool === "claude" || tool === "codex" || tool === "opencode") && (
+                  {(tool === "claude" || tool === "codex" || tool === "opencode" || tool === "pi") && (
                     <div className="six-segmented is-compact" role="tablist" aria-label="Sistema ou terminal">
                       {[
                         ["powershell", "Windows · PowerShell"],
@@ -1840,6 +1862,38 @@ sudo apt update && sudo apt install claude-desktop`}
                         <p>
                           Na pasta do seu projeto, rode <code>opencode</code>. O Argon 4 já abre como modelo padrão; para trocar,
                           use o comando <code>/models</code> e escolha SixtySix · Argon 4.
+                        </p>
+                      </GuideStep>
+                    </>
+                  )}
+                  {tool === "pi" && (
+                    <>
+                      <GuideStep number="01" title="Instale o pi">
+                        <p>
+                          {os === "bash"
+                            ? "No macOS ou no Linux, rode no terminal:"
+                            : "No Windows, rode no PowerShell (ou, com o Node.js 22.19 ou mais novo, use o npm install -g --ignore-scripts @earendil-works/pi-coding-agent):"}
+                        </p>
+                        <CodeBlock
+                          code={os === "bash" ? "curl -fsSL https://pi.dev/install.sh | sh" : 'powershell -c "irm https://pi.dev/install.ps1 | iex"'}
+                          copy={copy}
+                          label={osLabel}
+                        />
+                      </GuideStep>
+                      <GuideStep number="02" title="Cadastre a SixtySix como provedor">
+                        <p>
+                          Crie (ou abra) o arquivo{" "}
+                          <code>{os === "bash" ? "~/.pi/agent/models.json" : "%USERPROFILE%\\.pi\\agent\\models.json"}</code> e cole a
+                          configuração abaixo. Se o arquivo já tiver outros provedores, junte só o bloco "sixtysix".
+                        </p>
+                        <CodeBlock code={piConfig} copy={copy} label="models.json" />
+                      </GuideStep>
+                      <GuideStep number="03" title="Abra o pi no Argon 4">
+                        <p>Na pasta do seu projeto, rode:</p>
+                        <CodeBlock code="pi --model sixtysix/argon-4" copy={copy} label={osLabel} />
+                        <p>
+                          Para deixar o Argon 4 como padrão, digite <code>/model</code> dentro do pi, escolha SixtySix · Argon 4 e
+                          aperte Ctrl+S. Se mudar o arquivo com o pi aberto, o <code>/model</code> recarrega a configuração.
                         </p>
                       </GuideStep>
                     </>
