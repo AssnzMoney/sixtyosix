@@ -101,7 +101,8 @@ export function createAccessService(env:Env=process.env,request:typeof fetch=fet
  * não entram: se saírem do Roteador, continuam dando 404. Quem não tem nenhum modelo Claude também recebe 404.
  */
 export function claudeInternalRoute(router:RouterConfig,allowed:readonly string[],model:string):RouterRoute|undefined{
-  const family=/^claude-(opus|sonnet|haiku)\b/i.exec(model)?.[1]?.toLowerCase()
+  // Também o formato antigo do Claude Code: claude-3-5-haiku-…, claude-3-7-sonnet-…
+  const family=/^claude-(?:\d+(?:-\d+)?-)?(opus|sonnet|haiku)\b/i.exec(model)?.[1]?.toLowerCase()
   if(!family)return undefined
   const claude=allowed.filter(alias=>/^claude-/i.test(alias)).map(alias=>router.routes.get(alias)).filter((r):r is RouterRoute=>Boolean(r))
   return claude.find(r=>r.alias.toLowerCase().includes(family))||claude[0]

@@ -722,3 +722,14 @@ test('conversa com prints (até 32 MB, como na Anthropic) passa; acima disso o g
     assert.equal(calls.length, 1, 'não chega ao fornecedor')
   })
 })
+
+test('nome antigo do Claude Code (claude-3-5-haiku-…) vai para o Haiku do Roteador, como o atual', async () => {
+  const { claudeInternalRoute } = await import('../api/access.ts')
+  const route = (alias: string) => ({ alias, label: alias, upstream: 'x/' + alias, inPro: true, provider: { id: 'p', name: 'P', baseUrl: 'https://x', key: 'k' } })
+  const router = { routes: new Map([['claude-fable-5.2', route('claude-fable-5.2')], ['claude-haiku-4-5', route('claude-haiku-4-5')]]) } as any
+  const allowed = ['claude-fable-5.2', 'claude-haiku-4-5']
+  assert.equal(claudeInternalRoute(router, allowed, 'claude-3-5-haiku-20241022')?.alias, 'claude-haiku-4-5')
+  assert.equal(claudeInternalRoute(router, allowed, 'claude-haiku-4-5-20251001')?.alias, 'claude-haiku-4-5')
+  assert.equal(claudeInternalRoute(router, allowed, 'claude-3-7-sonnet-20250219')?.alias, 'claude-fable-5.2', 'sem Sonnet: o primeiro Claude da chave')
+  assert.equal(claudeInternalRoute(router, allowed, 'claude-fable-9'), undefined, 'nome vendido que não existe continua 404')
+})
