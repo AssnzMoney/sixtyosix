@@ -81,12 +81,10 @@ export function unsupportedFix(status: number, text: string, sent?: Record<strin
   if (extra) return extra[2] ? `${extra[1]}.${extra[2]}` : extra[1]
   return null
 }
-/** Lembra o recurso recusado. Devolve false se não pode ser tirado ou já estava lembrado (aí não adianta tentar de novo). */
+/** Lembra o recurso recusado para as próximas chamadas do modelo. Devolve false se ele não pode ser tirado. */
 export function rememberUnsupported(supplierId: string, fix: string): boolean {
   if (!allowedFix(fix)) return false
-  const known = unsupported.get(supplierId) || new Set<string>()
-  if (known.has(fix)) return false
-  unsupported.set(supplierId, new Set([...known, fix]))
+  unsupported.set(supplierId, new Set([...(unsupported.get(supplierId) || []), fix]))
   return true
 }
 /** Tira do anthropic-beta os betas que o modelo recusou. */

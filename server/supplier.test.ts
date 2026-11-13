@@ -227,7 +227,9 @@ test('omp/Cline: "store" recusado na conversão do chat sai só dos pedidos de c
   const fix = unsupportedFix(400, text)
   assert.equal(fix, 'chat:store')
   assert.equal(rememberUnsupported('teste/store', fix!), true)
-  assert.equal(rememberUnsupported('teste/store', fix!), false, 'a mesma recusa duas vezes encerra as tentativas')
+  // Lembrar de novo não atrapalha; quem encerra as tentativas é cada chamada, que não tira o mesmo recurso duas vezes.
+  assert.equal(rememberUnsupported('teste/store', fix!), true)
+  assert.equal(rememberUnsupported('teste/store', 'campo:qualquer'), false, 'recurso fora da lista não é tirado')
   const chat = JSON.parse(supplierRequestBody({ model: 'gpt-6-astra', store: false, messages: [{ role: 'user', content: 'oi' }] }, '/v1/chat/completions', 'teste/store').body)
   assert.equal('store' in chat, false)
   const responses = JSON.parse(supplierRequestBody({ model: 'gpt-6-astra', store: false, input: 'oi' }, '/v1/responses', 'teste/store').body)

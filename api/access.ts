@@ -153,12 +153,16 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     status=response.status
     // Recurso que o modelo não aceita (nível de esforço, saída em JSON, beta novo do Claude Code...): tira, tenta de novo
     // e lembra para as próximas. Cada tentativa tira um recurso diferente; o mesmo recusado duas vezes encerra.
+    // Cada chamada guarda o que ela mesma já tentou tirar. A memória do modelo é compartilhada: outra chamada ao mesmo
+    // tempo pode ter aprendido o recurso depois que este corpo foi montado, e aí ainda vale tentar sem ele.
+    const tried=new Set<string>()
     for(let attempt=0;status===400;attempt++){
       const text=await response.text().catch(()=>'')
       let sentJson:Record<string,unknown>|undefined
       try{sentJson=JSON.parse(sent)}catch{/* corpo sempre é JSON nosso */}
       const fix=attempt<6?unsupportedFix(status,text,sentJson):null
-      if(fix&&rememberUnsupported(route.upstream,fix)){
+      if(fix&&!tried.has(fix)&&rememberUnsupported(route.upstream,fix)){
+        tried.add(fix)
         console.error('Provedor recusou um recurso; tentando sem ele',provider.name,route.upstream,fix)
         sent=supplierRequestBody(call.payload,call.path,route.upstream,name).body;response=await send(sent);status=response.status;continue
       }

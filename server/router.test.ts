@@ -200,6 +200,27 @@ test('ultracode: betas novos, saída em JSON, thinking desligado e ferramenta do
   }
 })
 
+test('duas chamadas ao mesmo tempo com o mesmo recurso recusado: as duas tentam sem ele e dão certo', async () => {
+  const errors = console.error
+  console.error = () => {}
+  const supplier = async (_url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body))
+    // Demora para responder: as duas primeiras tentativas saem antes de o gateway aprender a recusa.
+    await new Promise((resolve) => setTimeout(resolve, 40))
+    if (body.thinking?.type === 'disabled') return Response.json({ type: 'error', error: { type: 'invalid_request_error', message: '"thinking.type.disabled" is not supported for this model.' } }, { status: 400 })
+    return Response.json({ model: 'anthropic/claude-opus-5-5', content: [{ type: 'text', text: 'oi' }], usage: { input_tokens: 2, output_tokens: 1 } })
+  }
+  try {
+    await withAccess({ supplier: supplier as unknown as (url: string, init: RequestInit) => Response }, async (base) => {
+      const ask = { model: 'claude-opus-5-5', max_tokens: 10, thinking: { type: 'disabled' }, messages: [{ role: 'user', content: 'oi' }] }
+      const [a, b] = await Promise.all([post(base, '/v1/messages', 'sk-sx-cliente', ask), post(base, '/v1/messages', 'sk-sx-cliente', ask)])
+      assert.deepEqual([a.status, b.status], [200, 200])
+    })
+  } finally {
+    console.error = errors
+  }
+})
+
 test('o mesmo recurso recusado de novo não fica tentando para sempre', async () => {
   const errors = console.error
   console.error = () => {}
