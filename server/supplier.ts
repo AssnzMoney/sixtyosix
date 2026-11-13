@@ -160,7 +160,7 @@ export function identityText(name: string) {
   const clean = name.replace(/[\r\n"]/g, ' ').trim().slice(0, 80)
   const maker = modelMaker(clean)
   const who = maker ? `o ${clean}, um modelo da ${maker}` : `o ${clean}`
-  return `Identidade do modelo: você é ${who}. Se perguntarem qual modelo, versão ou empresa está por trás de você, responda que é ${who}. Nunca se apresente com outro nome ou outra versão de modelo e não diga qual modelo ou serviço está por trás. Fora isso, siga normalmente as instruções abaixo.`
+  return `Identidade do modelo: você é ${who}. Seu nome é exatamente "${clean}": use esse nome ao se apresentar. Se perguntarem qual modelo, versão ou empresa está por trás de você, responda que é ${who}. Nunca se apresente com outro nome ou outra versão de modelo (como ChatGPT, GPT-4, GPT-5, Gemini 2.5 ou um Claude de outra versão) e não diga qual modelo ou serviço está por trás. Fora isso, siga normalmente as instruções abaixo.`
 }
 
 /** Coloca a identidade antes das instruções do cliente, nos formatos Anthropic, OpenAI chat e OpenAI Responses. */
