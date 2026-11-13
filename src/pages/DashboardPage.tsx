@@ -89,6 +89,13 @@ const MODEL_LABELS: Record<string, string> = {
 /** Nome do modelo para o cliente. Ponto e hífen valem o mesmo: claude-fable-5.2 do Roteador = Fable 5.2. */
 const modelLabel = (alias: string) => MODEL_LABELS[alias] || MODEL_LABELS[alias.split(".").join("-")] || alias
 const KNOWN_MODELS = Object.values(MODEL_LABELS)
+/** Modelos que funcionam no Claude Code (terminal e VS Code) e no app Claude: todos pelo formato da Anthropic. */
+const CLAUDE_TOOL_MODELS: [string, string][] = [
+  ["claude-fable-5-2", "Fable 5.2"],
+  ["claude-opus-5-5", "Opus 5.5"],
+  ["gpt-6-astra", "Astra 6"],
+  ["argon-4", "Argon 4"],
+]
 const ALL_MODELS = "Todos os modelos"
 const supportLink = (message: string) => supportWhatsappLink(message)
 
@@ -360,6 +367,7 @@ export default function DashboardPage() {
   const [os, setOs] = useState("powershell")
   // Claude Desktop: a instalação e o lugar do menu mudam entre Windows, macOS e Linux.
   const [desktopOs, setDesktopOs] = useState<"windows" | "mac" | "linux">("windows")
+  const [pickedModel, setPickedModel] = useState("")
   const [clientKey, setClientKey] = useState("")
   const [reveal, setReveal] = useState(false)
   const [accountData, setAccountData] = useState<{
@@ -620,7 +628,17 @@ export default function DashboardPage() {
         : `export ANTHROPIC_BASE_URL='${baseUrl}'\nexport ANTHROPIC_API_KEY=${shellKey}\nexport ANTHROPIC_MODEL='${model}'\nclaude --model ${model}`
   const claudeBase = claudeCredential?.base_url || "https://www.sixtysix.online"
   const claudeModel = claudeCredential?.model_id || "claude-fable-5-2"
-  const claudeCode = anthropicCommands(claudeBase, claudeModel)
+  // Modelo escolhido no guia (Claude Code, VS Code e app Claude): os quatro funcionam pelo formato da Anthropic.
+  const guideModel = pickedModel || claudeModel
+  const guideModelName = CLAUDE_TOOL_MODELS.find(([id]) => id === guideModel)?.[1] || modelLabel(guideModel)
+  const claudeCode = anthropicCommands(claudeBase, guideModel)
+  // Claude Code no VS Code: a extensão lê ~/.claude/settings.json (o mesmo arquivo do claude no terminal).
+  const vscodeSettings = JSON.stringify(
+    { env: { ANTHROPIC_BASE_URL: claudeBase, ANTHROPIC_AUTH_TOKEN: actualKey, ANTHROPIC_MODEL: guideModel } },
+    null,
+    2,
+  )
+  const modelSwitch = CLAUDE_TOOL_MODELS.map(([id, name]) => `/model ${id}`.padEnd(26) + `# ${name}`).join("\n")
   const codexConfig = `model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://www.sixtysix.online/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://www.sixtysix.online/api/codex/models"`
   // OpenCode (Argon 4): provedor compatível com OpenAI no opencode.json, já com a chave do cliente.
   const opencodeConfig = JSON.stringify(
@@ -1324,7 +1342,8 @@ export default function DashboardPage() {
                   </div>
                   <div className="six-feature-tools">
                     {[
-                      ["claude", "Claude Code", "Fable 5.2 no seu terminal", "claude"],
+                      ["claude", "Claude Code", "Todos os modelos no seu terminal", "claude"],
+                      ["vscode", "Claude Code no VS Code", "Todos os modelos na extensão", "vscode"],
                       ["codex", "Codex", "Astra 6 no seu workspace", "openai"],
                       ["cline", "Cline e OpenCode", "Argon 4 no VS Code e no terminal", "gemini"],
                     ].map(([id, title, desc, icon]) => (
@@ -1613,8 +1632,9 @@ export default function DashboardPage() {
               )}
               <div className="six-guide-choices">
                 {[
-                  ["claude", "Claude Code", "Terminal", "claude"],
-                  ["desktop", "Claude Desktop", "Aplicativo", "claude"],
+                  ["claude", "Claude Code", "Terminal · todos os modelos", "claude"],
+                  ["vscode", "Claude Code no VS Code", "Extensão · todos os modelos", "vscode"],
+                  ["desktop", "Claude Desktop", "Aplicativo · todos os modelos", "claude"],
                   ["codex", "Codex", "Terminal e desktop", "openai"],
                   ["cline", "Cline", "VS Code · Argon 4", "vscode"],
                   ["opencode", "OpenCode", "Terminal · Argon 4", "gemini"],
@@ -1641,11 +1661,13 @@ export default function DashboardPage() {
                       <span className="six-step-badge">Passo a passo</span>
                       <h2>
                         {tool === "claude"
-                          ? "Fable 5.2 no seu terminal"
+                          ? `${guideModelName} no seu terminal`
+                          : tool === "vscode"
+                            ? `${guideModelName} no VS Code`
                           : tool === "codex"
                             ? "Astra 6 no Codex"
                             : tool === "desktop"
-                              ? "Fable 5.2 no Claude Desktop"
+                              ? `${guideModelName} no Claude Desktop`
                               : tool === "cline"
                                 ? "Argon 4 no Cline"
                                 : tool === "pi"
@@ -1675,7 +1697,23 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   )}
-                  {tool === "desktop" && (
+                  {(tool === "claude" || tool === "vscode" || tool === "desktop") && (
+                    <div className="six-segmented is-compact" role="tablist" aria-label="Modelo">
+                      {CLAUDE_TOOL_MODELS.map(([id, label]) => (
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={guideModel === id}
+                          className={guideModel === id ? "selected" : ""}
+                          key={id}
+                          onClick={() => setPickedModel(id)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {(tool === "desktop" || tool === "vscode") && (
                     <div className="six-segmented is-compact" role="tablist" aria-label="Sistema">
                       {(
                         [
@@ -1714,6 +1752,56 @@ export default function DashboardPage() {
                           Ao abrir o Claude Code, envie uma mensagem curta. Caso apareça uma tela de login da Anthropic, confira
                           as variáveis na mesma janela e reinicie o comando.
                         </p>
+                      </GuideStep>
+                      <GuideStep number="04" title="Troque de modelo quando quiser">
+                        <p>Dentro do Claude Code, digite um destes comandos. Os modelos disponíveis dependem do seu plano.</p>
+                        <CodeBlock code={modelSwitch} copy={copy} label="Claude Code" />
+                      </GuideStep>
+                    </>
+                  )}
+                  {tool === "vscode" && (
+                    <>
+                      <GuideStep number="01" title="Instale a extensão Claude Code">
+                        <p>
+                          No VS Code (versão 1.94 ou mais nova), abra as Extensões ({desktopOs === "mac" ? "Cmd+Shift+X" : "Ctrl+Shift+X"}),
+                          busque <strong>Claude Code</strong> da <strong>Anthropic</strong> e clique em <strong>Install</strong>.
+                        </p>
+                      </GuideStep>
+                      <GuideStep number="02" title="Desligue o login da Anthropic">
+                        <p>
+                          Abra as configurações ({desktopOs === "mac" ? "Cmd+," : "Ctrl+,"}), busque <strong>Claude Code login</strong> e marque{" "}
+                          <strong>Disable Login Prompt</strong>.
+                        </p>
+                      </GuideStep>
+                      <GuideStep number="03" title="Crie o arquivo com a sua chave">
+                        {desktopOs === "windows" ? (
+                          <>
+                            <p>Abra o <strong>PowerShell</strong> e rode os dois comandos (se o Bloco de Notas perguntar, clique em Sim):</p>
+                            <CodeBlock code={`mkdir "$env:USERPROFILE\\.claude" -Force\nnotepad "$env:USERPROFILE\\.claude\\settings.json"`} copy={copy} label="PowerShell" />
+                          </>
+                        ) : (
+                          <>
+                            <p>Abra o <strong>Terminal</strong> e rode:</p>
+                            <CodeBlock code="mkdir -p ~/.claude && nano ~/.claude/settings.json" copy={copy} label="Terminal" />
+                          </>
+                        )}
+                        <p>
+                          Cole o conteúdo abaixo e salve
+                          {desktopOs === "windows" ? " com Ctrl+S" : " (no nano: Ctrl+O, Enter e Ctrl+X)"}. Se o arquivo já tinha outras
+                          configurações, só acrescente o bloco <code>"env"</code>.
+                        </p>
+                        <CodeBlock code={vscodeSettings} copy={copy} label="settings.json" />
+                      </GuideStep>
+                      <GuideStep number="04" title="Abra e teste">
+                        <p>
+                          Feche o VS Code inteiro e abra de novo. Clique no ícone do Claude Code (ou{" "}
+                          {desktopOs === "mac" ? "Cmd+Esc" : "Ctrl+Esc"}) e mande um "oi". O mesmo arquivo vale para o <code>claude</code> no
+                          terminal do VS Code. Se ainda pedir login, confira o passo 2 e reabra o VS Code.
+                        </p>
+                      </GuideStep>
+                      <GuideStep number="05" title="Troque de modelo quando quiser">
+                        <p>No campo de mensagem, digite um destes comandos. Os modelos disponíveis dependem do seu plano.</p>
+                        <CodeBlock code={modelSwitch} copy={copy} label="Claude Code" />
                       </GuideStep>
                     </>
                   )}
@@ -1800,7 +1888,11 @@ sudo apt update && sudo apt install claude-desktop`}
                       </GuideStep>
                       <GuideStep number="04" title="Escolha os modelos">
                         <p>Na parte <strong>Models</strong>, adicione um por um. O primeiro da lista é o padrão.</p>
-                        <CodeBlock code={`${claudeModel}\nclaude-fable-5-2`} copy={copy} label="Models" />
+                        <CodeBlock
+                          code={[guideModel, ...CLAUDE_TOOL_MODELS.map(([id]) => id).filter((id) => id !== guideModel)].join("\n")}
+                          copy={copy}
+                          label="Models"
+                        />
                       </GuideStep>
                       <GuideStep number="05" title="Salve e teste">
                         <p>
