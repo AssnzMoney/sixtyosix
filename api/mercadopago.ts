@@ -121,14 +121,18 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     return 'recorded'
   }
   async function processPix(payment:ObjectValue,item:Subscription){
-    if(String(payment.collector_id)!==await merchant()||payment.external_reference!==item.id||cents(payment.transaction_amount)!==item.amount_cents||payment.currency_id!=='BRL'||payment.live_mode!==true)throw new WebhookError(403,'Pagamento não corresponde ao pedido.')
+    // Pagamento já registrado (estorno, contestação ou aviso repetido) confere com o valor pago de verdade:
+    // o admin pode ter trocado o plano depois, e o preço da assinatura passou a ser o do plano novo.
+    const prior=await db<{amount_cents:number}[]>('billing_payments',{id:`eq.${identifier(payment.id)}`,subscription_id:`eq.${item.id}`,select:'amount_cents',limit:'1'})
+    const expected=prior[0]?.amount_cents??item.amount_cents
+    if(String(payment.collector_id)!==await merchant()||payment.external_reference!==item.id||cents(payment.transaction_amount)!==expected||payment.currency_id!=='BRL'||payment.live_mode!==true)throw new WebhookError(403,'Pagamento não corresponde ao pedido.')
     if(!item.provider_id||!secret)throw new WebhookError(503,'Pedido Pix indisponível.')
     const status=Number(payment.transaction_amount_refunded||0)>0?'refunded':String(payment.status)
     const approved=typeof payment.date_approved==='string'?payment.date_approved:null
     const start=approved||String(payment.date_created),modified=String(payment.date_last_updated||payment.date_created)
     if(!Number.isFinite(Date.parse(start))||!Number.isFinite(Date.parse(modified)))throw new WebhookError(503,'Data do Pix indisponível.')
     const publicToken=`sk-sp-${randomBytes(32).toString('base64url')}`,upstream=`sk-flg-${randomBytes(32).toString('base64url')}`
-    await db('rpc/billing_apply_payment',{},'POST',{p_id:item.id,p_payment_id:identifier(payment.id),p_invoice_id:`pix-${identifier(payment.id)}`,p_status:status,p_amount:item.amount_cents,p_currency:'BRL',p_live:true,p_start:start,p_end:new Date(Date.parse(start)+30*86400000).toISOString(),p_approved:approved,p_modified:modified,p_hash:createHash('sha256').update(publicToken).digest('hex'),p_prefix:publicToken.slice(0,14),p_encrypted_token:encrypt(publicToken,secret,`${item.user_id}:paid:${item.id}:public`),p_upstream_hash:createHash('sha256').update(upstream).digest('hex'),p_encrypted_upstream:encrypt(upstream,secret,`${item.user_id}:paid:${item.id}:upstream`)})
+    await db('rpc/billing_apply_payment',{},'POST',{p_id:item.id,p_payment_id:identifier(payment.id),p_invoice_id:`pix-${identifier(payment.id)}`,p_status:status,p_amount:expected,p_currency:'BRL',p_live:true,p_start:start,p_end:new Date(Date.parse(start)+30*86400000).toISOString(),p_approved:approved,p_modified:modified,p_hash:createHash('sha256').update(publicToken).digest('hex'),p_prefix:publicToken.slice(0,14),p_encrypted_token:encrypt(publicToken,secret,`${item.user_id}:paid:${item.id}:public`),p_upstream_hash:createHash('sha256').update(upstream).digest('hex'),p_encrypted_upstream:encrypt(upstream,secret,`${item.user_id}:paid:${item.id}:upstream`)})
     return 'processed'
   }
   async function status(userId:string){

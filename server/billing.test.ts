@@ -94,6 +94,30 @@ test('one-time checkout opens with Pix selected and does not start recurring bil
  assert.ok(!calls.some(c=>c.url.pathname==='/preapproval'))
  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/billing_apply_payment')))
 })
+test('plano trocado pelo admin: aviso do pagamento antigo confere com o valor pago; pagamento novo, com o preço do plano novo',async()=>{
+ const changed={...item,plan_code:'pro',amount_cents:11999,billing_mode:'pix'}
+ const make=(recorded:boolean)=>{
+  const calls:{url:URL;body:any}[]=[]
+  const request=async(input:string|URL|Request,init?:RequestInit)=>{
+   const url=new URL(String(input)),body=init?.body?JSON.parse(String(init.body)):undefined;calls.push({url,body})
+   if(url.pathname==='/users/me')return Response.json({id:99})
+   if(url.pathname.endsWith('/billing_subscriptions'))return Response.json([changed])
+   if(url.pathname.endsWith('/billing_payments'))return Response.json(recorded&&url.searchParams.get('id')==='eq.456'?[{amount_cents:9499}]:[])
+   if(url.pathname.includes('/rpc/'))return Response.json(true)
+   throw new Error(`Unexpected path ${url.pathname}`)
+  }
+  return {calls,service:createBillingService(env,request as typeof fetch)}
+ }
+ const refund={id:456,collector_id:99,external_reference:order,transaction_amount:94.99,transaction_amount_refunded:94.99,currency_id:'BRL',live_mode:true,status:'refunded',date_approved:'2026-11-09T12:00:00Z',date_last_updated:'2026-11-20T12:00:00Z'}
+ const old=make(true)
+ assert.equal(await old.service.process('payment',refund),'processed')
+ const saved=old.calls.find(c=>c.url.pathname.endsWith('/billing_apply_payment'))!.body
+ assert.equal(saved.p_amount,9499,'o estorno do pagamento antigo é registrado pelo valor que foi pago');assert.equal(saved.p_status,'refunded')
+ const fresh=make(false)
+ await assert.rejects(fresh.service.process('payment',{...refund,id:789,status:'approved',transaction_amount_refunded:0}),{status:403},'pagamento novo com o preço antigo não libera o Pro')
+ assert.equal(await fresh.service.process('payment',{...refund,id:789,status:'approved',transaction_amount:119.99,transaction_amount_refunded:0}),'processed')
+ assert.equal(fresh.calls.find(c=>c.url.pathname.endsWith('/billing_apply_payment'))!.body.p_amount,11999)
+})
 test('verified Pix notification grants only its own exact-value production order',async()=>{
  const {service,calls}=fixture()
  const payment={id:456,collector_id:99,external_reference:order,transaction_amount:94.99,currency_id:'BRL',live_mode:true,payment_method_id:'pix',status:'approved',date_approved:'2026-11-09T12:00:00Z',date_last_updated:'2026-11-09T12:01:00Z'}

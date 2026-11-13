@@ -1011,6 +1011,64 @@
   color: var(--muted);
 }
 
+/* Troca de plano: o formulário e o resultado ficam embaixo da assinatura, na largura toda. */
+.sx-drawer-list li.sx-plan-row {
+  flex-wrap: wrap;
+}
+
+.sx-plan-change {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.sx-plan-change label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.sx-plan-change select {
+  height: 36px;
+  min-width: 150px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font: 600 14px/1 'Fustat', sans-serif;
+}
+
+.sx-plan-change .sx-btn {
+  height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.sx-plan-result {
+  flex: 1 0 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--mint, #e4f9ee);
+  color: #15803d;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.sx-plan-result.is-error {
+  background: #fdecea;
+  color: var(--danger);
+}
+
 .sx-state.is-replaced {
   background: var(--surface-2);
   color: var(--muted);

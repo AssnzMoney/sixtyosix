@@ -4,7 +4,9 @@ import { formatWhatsapp, normalizeWhatsapp } from '../src/lib/whatsapp.js'
 import { credentialTitle, isUuid, validateDeliveryInput } from '../src/lib/deliveries.js'
 import { adminCodeEmail, emailConfig, sendEmail } from '../server/email.js'
 import { createNotifier, userFromAuth, type NotifyResult } from '../server/notifications.js'
-import { createRouterAdmin, RouterError } from '../server/router.js'
+import { canonicalModels, createRouterAdmin, loadRouter, RouterError } from '../server/router.js'
+import { withPlanModels } from '../server/model-aliases.js'
+import { billingPlans } from './mercadopago.js'
 class AccountError extends Error { status:number; code?:string; constructor(status:number,message:string,code?:string){super(message);this.status=status;this.code=code} }
 
 /*
@@ -230,6 +232,45 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
     if(found.ok)notice=await createNotifier(config,mail,request).delivery(userFromAuth(await found.json()),{id:input.id,title:credentialTitle(input),key_hint:input.key_hint})
    }catch{notice='failed'}
    return {id,email:notice}
+  }
+  // Cliente comprou o plano errado: troca o plano de uma assinatura paga por Pix, sem mexer no período pago.
+  // O painel dele, a chave do plano (sk-sp-), o chat do site e a renovação passam a seguir o plano novo.
+  // Chaves do Roteador ligadas à conta com uma lista de modelos ganham os modelos do plano novo;
+  // as que têm todos os modelos ficam como estão (o resultado diz qual foi o caso de cada uma).
+  if(action==='subscription-plan'){
+   if(!isUuid(body.id))throw new AccountError(400,'Assinatura inválida.')
+   const code=typeof body.plan==='string'&&Object.prototype.hasOwnProperty.call(billingPlans,body.plan)?body.plan as keyof typeof billingPlans:null
+   if(!code)throw new AccountError(400,'Escolha um plano válido.')
+   const target=billingPlans[code]
+   const rest=async<T>(path:string,params:Record<string,string>,patch?:Row):Promise<T>=>{
+    const response=await request(`${config.url}/rest/v1/${path}?${new URLSearchParams(params)}`,patch?{method:'PATCH',headers:{...headers,Prefer:'return=representation'},body:JSON.stringify(patch),signal:AbortSignal.timeout(15000)}:{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(15000)})
+    if(!response.ok)throw new AccountError(503,patch?'Não foi possível salvar. Atualize e tente de novo.':'Não foi possível ler a assinatura. Atualize e tente de novo.')
+    return await response.json() as T
+   }
+   const item=(await rest<Row[]>('billing_subscription_state',{id:`eq.${body.id}`,select:'id,user_id,plan_code,billing_mode,entitled,paid_until',limit:'1'}))[0]
+   if(!item)throw new AccountError(404,'Assinatura não encontrada.')
+   if(item.billing_mode!=='pix')throw new AccountError(409,'Esta assinatura é no cartão: o Mercado Pago continuaria cobrando o valor do plano antigo. Cancele e peça para o cliente assinar o plano certo.')
+   if(!item.entitled||!item.paid_until||Date.parse(item.paid_until)<=Date.now())throw new AccountError(409,'Só dá para trocar o plano de uma assinatura paga e ativa.')
+   if(item.plan_code===code)throw new AccountError(409,`Esta assinatura já é do plano ${target.name}.`)
+   const changed=await rest<Row[]>('billing_subscriptions',{id:`eq.${item.id}`},{plan_code:code,api_enabled:target.api,models:[...target.models],amount_cents:target.amount})
+   if(!changed[0])throw new AccountError(404,'Assinatura não encontrada.')
+   console.log('subscription-plan:',email,'trocou a assinatura',item.id,'de',item.plan_code,'para',code)
+   const keys:{name:string;models:string[]|null;updated:boolean}[]=[]
+   try{
+    const router=await loadRouter(env,request)
+    const models=canonicalModels(router,withPlanModels(target.models,router.proAliases))
+    const clients=await rest<Row[]>('gateway_clients',{user_id:`eq.${item.user_id}`,select:'id'})
+    const linked=clients.length?await rest<Row[]>('router_keys',{gateway_client_id:`in.(${clients.map(c=>c.id).join(',')})`,revoked_at:'is.null',select:'id,name,models'}):[]
+    for(const key of linked){
+     const explicit=Array.isArray(key.models)&&key.models.length>0
+     if(explicit&&models.length)await rest('router_keys',{id:`eq.${key.id}`},{models})
+     keys.push({name:String(key.name||'Chave'),models:explicit&&models.length?models:explicit?key.models:null,updated:explicit&&models.length>0})
+    }
+   }catch(error){
+    console.error('subscription-plan: plano trocado, mas as chaves do Roteador não foram conferidas',item.id,error)
+    return {ok:true,plan:target.name,api:target.api,keys,keysChecked:false}
+   }
+   return {ok:true,plan:target.name,api:target.api,keys,keysChecked:true}
   }
   if(action==='revoke-delivery'){
    if(!isUuid(body.id))throw new AccountError(400,'Credencial inválida.')

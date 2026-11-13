@@ -160,6 +160,9 @@ export default function AdminPage() {
   const [delivered, setDelivered] = useState<KeyDelivered | null>(null)
   const [routerModels, setRouterModels] = useState<{ alias: string; label: string }[] | null>(null)
   const [profileId, setProfileId] = useState<string | null>(null)
+  // Troca de plano (cliente comprou o plano errado): assinatura aberta, plano escolhido e o resultado.
+  const [planChange, setPlanChange] = useState<{ id: string; plan: string; saving: boolean } | null>(null)
+  const [planResult, setPlanResult] = useState<{ id: string; text: string; error?: boolean } | null>(null)
   // Verificação em duas etapas: 'on' exige o código do e-mail; 'off' = envio de e-mail não configurado.
   const [twoFactor, setTwoFactor] = useState<'on' | 'off' | ''>('')
   const [codeStep, setCodeStep] = useState<{ challenge: string; sentTo: string; code: string; sending: boolean; error: string } | null>(null)
@@ -525,6 +528,41 @@ export default function AdminPage() {
       setRevision((x) => x + 1)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível revogar.')
+    }
+  }
+
+  /* --------------------------- Trocar plano --------------------------- */
+  // Muda o plano de uma assinatura paga por Pix sem mexer no período pago. O painel do cliente,
+  // o chat do site e a renovação seguem o plano novo; chaves do Roteador com lista de modelos também.
+  async function changePlan(s: Row) {
+    if (!planChange || planChange.id !== s.id) return
+    const from = planNames[s.plan_code] || s.plan_code, to = planNames[planChange.plan] || planChange.plan
+    if (!window.confirm(`Trocar o plano de ${customer(s.user_id).name} de ${from} para ${to}?\n\nO período pago continua o mesmo (até ${fullDate(s.paid_until)}). A próxima renovação passa a cobrar o ${to}.`)) return
+    setPlanChange({ ...planChange, saving: true })
+    try {
+      const result = await adminAction<{ plan: string; api: boolean; keys: { name: string; models: string[] | null; updated: boolean }[]; keysChecked: boolean }>({
+        action: 'subscription-plan',
+        id: s.id,
+        plan: planChange.plan,
+      })
+      const keys = result.keys.map((k) =>
+        k.updated
+          ? `a chave do Roteador "${k.name}" passou a ter os modelos do ${result.plan}`
+          : k.models
+            ? `a chave do Roteador "${k.name}" não mudou`
+            : `a chave do Roteador "${k.name}" tem todos os modelos e ficou como estava`,
+      )
+      const notes = [
+        `Plano trocado para ${result.plan}. O painel do cliente já mostra o plano novo.`,
+        keys.length ? `${keys.join('; ')}.` : result.keysChecked ? 'Nenhuma chave do Roteador ligada à conta.' : 'Não deu para conferir as chaves do Roteador: confira na aba Roteador.',
+        !result.api && result.keys.length ? `O ${result.plan} não tem API: se precisar, bloqueie a chave na aba Roteador.` : '',
+      ]
+      setPlanResult({ id: s.id, text: notes.filter(Boolean).join(' ') })
+      setPlanChange(null)
+      setRevision((x) => x + 1)
+    } catch (e) {
+      setPlanResult({ id: s.id, text: e instanceof Error ? e.message : 'Não foi possível trocar o plano.', error: true })
+      setPlanChange({ ...planChange, saving: false })
     }
   }
 
@@ -1188,25 +1226,66 @@ export default function AdminPage() {
               <h3>Assinaturas</h3>
               {profile.subscriptions.length ? (
                 <ul className="sx-drawer-list">
-                  {profile.subscriptions.map((s) => (
-                    <li key={s.id}>
-                      <div>
-                        <strong>
-                          {planNames[s.plan_code] || s.plan_code} · {money(Number(s.amount_cents || 0))}
-                        </strong>
-                        <span>
-                          {s.billing_mode === 'pix' ? 'Pix (30 dias)' : 'Cartão (mensal)'} · pedido {shortOrder(String(s.id))}
-                        </span>
-                      </div>
-                      <span className={`sx-state ${subscriptionActive(s, now) ? 'is-confirmed' : s.paid_until ? 'is-expired' : 'is-pending'}`}>
-                        {subscriptionActive(s, now)
-                          ? `Ativo até ${fullDate(s.paid_until)}`
-                          : s.paid_until
-                            ? `Venceu em ${fullDate(s.paid_until)}`
-                            : 'Aguardando pagamento'}
-                      </span>
-                    </li>
-                  ))}
+                  {profile.subscriptions.map((s) => {
+                    const changeable = s.billing_mode === 'pix' && subscriptionActive(s, now)
+                    const open = planChange?.id === s.id
+                    return (
+                      <li key={s.id} className="sx-plan-row">
+                        <div>
+                          <strong>
+                            {planNames[s.plan_code] || s.plan_code} · {money(Number(s.amount_cents || 0))}
+                          </strong>
+                          <span>
+                            {s.billing_mode === 'pix' ? 'Pix (30 dias)' : 'Cartão (mensal)'} · pedido {shortOrder(String(s.id))}
+                          </span>
+                        </div>
+                        <div className="sx-drawer-item-actions">
+                          <span className={`sx-state ${subscriptionActive(s, now) ? 'is-confirmed' : s.paid_until ? 'is-expired' : 'is-pending'}`}>
+                            {subscriptionActive(s, now)
+                              ? `Ativo até ${fullDate(s.paid_until)}`
+                              : s.paid_until
+                                ? `Venceu em ${fullDate(s.paid_until)}`
+                                : 'Aguardando pagamento'}
+                          </span>
+                          {changeable && !open && (
+                            <button
+                              type="button"
+                              className="sx-btn"
+                              onClick={() => {
+                                setPlanResult(null)
+                                setPlanChange({ id: s.id, plan: s.plan_code === 'pro' ? 'devApi' : 'pro', saving: false })
+                              }}
+                            >
+                              Trocar plano
+                            </button>
+                          )}
+                        </div>
+                        {open && planChange && (
+                          <div className="sx-plan-change">
+                            <label>
+                              Novo plano
+                              <select value={planChange.plan} disabled={planChange.saving} onChange={(e) => setPlanChange({ ...planChange, plan: e.target.value })}>
+                                {Object.entries(planNames)
+                                  .filter(([code]) => code !== s.plan_code)
+                                  .map(([code, name]) => (
+                                    <option key={code} value={code}>
+                                      {name}
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
+                            <button type="button" className="sx-btn is-primary" disabled={planChange.saving} onClick={() => void changePlan(s)}>
+                              {planChange.saving ? 'Trocando…' : 'Trocar'}
+                            </button>
+                            <button type="button" className="sx-btn" disabled={planChange.saving} onClick={() => setPlanChange(null)}>
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+                        {planResult && planResult.id === s.id && <p className={`sx-plan-result${planResult.error ? ' is-error' : ''}`}>{planResult.text}</p>}
+                      </li>
+                    )
+                  })}
                 </ul>
               ) : (
                 <p className="sx-drawer-empty">Nenhuma assinatura.</p>
