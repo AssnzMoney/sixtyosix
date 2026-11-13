@@ -3,11 +3,14 @@ import { Link,useNavigate,useParams } from 'react-router-dom'
 import { ArrowRight,ShieldCheck } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { billingRequest,planLabels,planAmounts,type PlanCode } from '../lib/billing'
+import { applyReferralCode,storedReferral } from '../lib/referral'
 import './trial.css'
 export default function CheckoutPage(){
   const {plan}=useParams(),navigate=useNavigate(),{session,user,loading}=useAuth()
   const valid=Boolean(plan&&Object.prototype.hasOwnProperty.call(planLabels,plan)),code=plan as PlanCode
   const [payer,setPayer]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[method,setMethod]=useState<'pix'|'card'>('pix')
+  // Código de indicação: vem preenchido do link de convite (/convite/CODIGO) ou a pessoa digita.
+  const [referral,setReferral]=useState(()=>storedReferral())
   useEffect(()=>{
     if(loading||!valid)return
     sessionStorage.setItem('sixtysix_pending_purchase',code)
@@ -18,7 +21,13 @@ export default function CheckoutPage(){
   },[loading,session?.user.id,user?.hasCompletedOnboarding,valid,code,navigate])
   async function submit(e:React.FormEvent){
     e.preventDefault();setBusy(true);setError('')
-    try{const result=await billingRequest<{id:string;url:string}>('checkout',{plan:code,payerEmail:payer,method});sessionStorage.removeItem('sixtysix_pending_purchase');window.location.assign(result.url)}
+    try{
+      if(referral.trim()&&session){
+        const used=await applyReferralCode(session.access_token,referral)
+        if(used==='unknown'){setError('Código de indicação não encontrado. Confira o código ou deixe o campo em branco.');setBusy(false);return}
+        if(used==='self'){setError('Esse é o seu próprio código de indicação: deixe o campo em branco.');setBusy(false);return}
+      }
+      const result=await billingRequest<{id:string;url:string}>('checkout',{plan:code,payerEmail:payer,method});sessionStorage.removeItem('sixtysix_pending_purchase');window.location.assign(result.url)}
     catch(err){setError(err instanceof Error?err.message:'Não foi possível abrir o pagamento.');setBusy(false)}
   }
   return <main className="six-trial-page"><section className="six-trial-card">
@@ -31,6 +40,8 @@ export default function CheckoutPage(){
       {loading||!session||!user?.hasCompletedOnboarding?<p role="status">Conferindo sua conta…</p>:<form onSubmit={submit}>
         <label className="six-trial-key"><span>Escolha o tipo de cobrança</span><select aria-label="Forma de pagamento" value={method} onChange={e=>setMethod(e.target.value as 'pix'|'card')} style={{width:'100%',padding:14,borderRadius:12,background:'#14271e',color:'#e7f1de',border:'1px solid #4c6351'}}><option value="pix">Pix · pagamento por 30 dias</option><option value="card">Cartão · assinatura mensal automática</option></select></label>
         <p>{method==='pix'?'O checkout seguro do Mercado Pago abrirá com Pix selecionado. Cada pagamento aprovado libera 30 dias; para renovar, faça um novo pagamento.':'A assinatura é renovada mensalmente no Mercado Pago. Você pode cancelar as próximas cobranças e manter o período já pago.'}</p>
+        <label className="six-trial-key"><span>Código de indicação (opcional)</span><div><input aria-label="Código de indicação" placeholder="Ex.: ABRANTES" value={referral.toUpperCase()} maxLength={30} onChange={e=>setReferral(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,''))}/></div></label>
+        {referral&&<p style={{fontSize:13,margin:'-8px 0 14px'}}>Indicado por <strong>{referral.toUpperCase()}</strong>: na primeira assinatura você ganha dias de bônus.</p>}
         <small>O acesso fica vinculado à sua conta SixtySix e é liberado após a confirmação do pagamento.</small>
         {error&&<p role="alert" className="six-trial-error">{error}</p>}
         <p style={{fontSize:13,marginTop:18}}>Antes de contratar, consulte os <a href="/termos.html" target="_blank" rel="noopener noreferrer">Termos de uso</a>, a <a href="/privacidade.html" target="_blank" rel="noopener noreferrer">Política de privacidade</a> e as regras de <a href="/reembolso.html" target="_blank" rel="noopener noreferrer">cancelamento e reembolso</a>.</p>

@@ -30,6 +30,28 @@ export function captureReferral(search = window.location.search) {
   try { localStorage.setItem(KEY, JSON.stringify({ code, at: Date.now() })) } catch { /* navegador sem armazenamento */ }
 }
 
+/** Código guardado do link de convite (para preencher o campo no checkout). */
+export const storedReferral = () => read()?.code || ''
+
+/**
+ * Código digitado no checkout: liga a conta ao afiliado antes do pagamento.
+ * Devolve o resultado do servidor: ok, already, customer (já era cliente), self ou unknown.
+ */
+export async function applyReferralCode(token: string, code: string): Promise<string> {
+  const value = code.trim().toLowerCase()
+  if (!CODE.test(value)) return 'unknown'
+  const response = await fetch('/api/account/referral', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: value }),
+  })
+  if (response.status === 400) return 'unknown'
+  if (!response.ok) throw new Error('Não foi possível conferir o código de indicação. Tente de novo.')
+  const { result } = (await response.json()) as { result: string }
+  try { localStorage.removeItem(KEY) } catch { /* ignora */ }
+  return result
+}
+
 let claiming = false
 /** Liga a conta logada ao afiliado do link guardado. Só tenta de novo se a falha for de rede ou do servidor. */
 export async function claimReferral(token: string) {

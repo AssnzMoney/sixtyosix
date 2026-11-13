@@ -57,6 +57,13 @@ export function createAccountService(config: Config, request: typeof fetch = fet
   }
   return {
     async execute(method: string, path: string, authorization?: string, body: Record<string, unknown> = {}, query = new URLSearchParams(), meta: { ip?: string; userAgent?: string } = {}) {
+      // Página do convite (/convite/CODIGO), sem login: só diz se o convite vale e quantos dias o indicado ganha.
+      if (method === 'GET' && path === 'invite') {
+        const code = (query.get('code') || '').trim().toLowerCase()
+        if (!/^[a-z0-9][a-z0-9-]{2,29}$/.test(code)) return { valid: false }
+        const rows = await db<{ enabled: boolean; referred_days?: number }[]>('affiliates', { code: `eq.${code}`, select: '*', limit: '1' }).catch(() => [])
+        return rows[0]?.enabled ? { valid: true, referredDays: rows[0].referred_days ?? 0 } : { valid: false }
+      }
       const userId = await identity(authorization)
       if (method === 'GET' && path === 'summary') {
         const from = query.get('from') || new Date(Date.now() - 29 * 86400000).toISOString().slice(0,10)
@@ -101,19 +108,23 @@ export function createAccountService(config: Config, request: typeof fetch = fet
       // Chaves antigas do gateway (sk-flg-) foram desativadas: a chave agora sai do Roteador e é entregue pelo WhatsApp.
       // Afiliados (supabase/affiliates.sql). Quem não é afiliado, ou sem a migração, recebe só { enabled: false }.
       if (method === 'GET' && path === 'affiliate') {
-        const rows = await db<{ code: string; days_per_payment: number; enabled: boolean }[]>('affiliates', { user_id: `eq.${userId}`, select: 'code,days_per_payment,enabled', limit: '1' }).catch(() => [])
+        // select '*': funciona com ou sem supabase/affiliates-v2.sql (referred_days e source vêm de lá).
+        const rows = await db<{ code: string; days_per_payment: number; enabled: boolean; referred_days?: number }[]>('affiliates', { user_id: `eq.${userId}`, select: '*', limit: '1' }).catch(() => [])
         const me = rows[0]
         if (!me?.enabled) return { enabled: false }
         const [referrals, rewards] = await Promise.all([
           db<{ referred_user_id: string; created_at: string }[]>('affiliate_referrals', { affiliate_user_id: `eq.${userId}`, select: 'referred_user_id,created_at', order: 'created_at.desc', limit: '1000' }).catch(() => []),
-          db<{ referred_user_id: string; days: number; created_at: string; revoked_at: string | null }[]>('affiliate_rewards', { affiliate_user_id: `eq.${userId}`, select: 'referred_user_id,days,created_at,revoked_at', order: 'created_at.desc', limit: '200' }).catch(() => []),
+          db<{ referred_user_id: string | null; days: number; created_at: string; revoked_at: string | null; source?: string }[]>('affiliate_rewards', { affiliate_user_id: `eq.${userId}`, select: '*', order: 'created_at.desc', limit: '200' }).catch(() => []),
         ])
         const valid = rewards.filter(r => !r.revoked_at)
         return {
           enabled: true, code: me.code, link: `https://www.sixtysix.online/convite/${me.code}`, days: me.days_per_payment,
-          referred: referrals.length, paying: new Set(valid.map(r => r.referred_user_id)).size,
+          referredDays: me.referred_days ?? 0,
+          referred: referrals.length,
+          // Venda pelo WhatsApp sem conta do cliente conta como uma pessoa a mais.
+          paying: new Set(valid.filter(r => r.referred_user_id).map(r => r.referred_user_id)).size + valid.filter(r => !r.referred_user_id).length,
           totalDays: valid.reduce((sum, r) => sum + r.days, 0),
-          rewards: rewards.slice(0, 30).map(r => ({ at: r.created_at, days: r.days, revoked: Boolean(r.revoked_at) })),
+          rewards: rewards.slice(0, 30).map(r => ({ at: r.created_at, days: r.days, revoked: Boolean(r.revoked_at), whatsapp: r.source === 'manual' })),
         }
       }
       // Quem chegou pelo link de um afiliado: liga a conta a ele (só para quem ainda não é cliente).

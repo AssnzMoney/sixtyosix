@@ -40,6 +40,10 @@ www.sixtysix.online {
 		encode zstd gzip
 		@assets path /assets/*
 		header @assets Cache-Control "public, max-age=31536000, immutable"
+		# Páginas (index.html): o navegador sempre confere se há versão nova. Sem isso, depois de uma publicação, quem
+		# tinha a página guardada continuava com o site antigo (ex.: /convite/ caía na página inicial).
+		@pages not path /assets/*
+		header @pages Cache-Control "no-cache"
 		header -Server
 		try_files {path} /index.html
 		file_server

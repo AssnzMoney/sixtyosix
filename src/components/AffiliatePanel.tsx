@@ -9,7 +9,8 @@ export type Affiliate = {
   referred?: number
   paying?: number
   totalDays?: number
-  rewards?: { at: string; days: number; revoked: boolean }[]
+  referredDays?: number
+  rewards?: { at: string; days: number; revoked: boolean; whatsapp?: boolean }[]
 }
 
 const date = (value: string) => new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -78,8 +79,9 @@ export function AffiliateWelcome({ data, blocked, onOpen }: { data: Affiliate | 
         </span>
         <h2 id="six-affiliate-welcome-title">Agora você é afiliado da SixtySix</h2>
         <p>
-          Você ganhou um link de indicação. Cada pagamento de quem criar a conta por ele, inclusive as renovações, dá
-          <strong> +{days} dias</strong> de acesso para você, direto no seu plano e na validade da sua chave.
+          Você ganhou um link e um código de indicação (<strong>{data.code.toUpperCase()}</strong>). Quem assinar com eles ganha
+          {data.referredDays ? <strong> +{data.referredDays} dias</strong> : ' dias'} de bônus, e você ganha <strong>+{days} dias</strong> a cada
+          pagamento dessa pessoa, inclusive as renovações, direto no seu plano e na validade da sua chave.
         </p>
         <div className="six-affiliate-link">
           <a href={data.link} target="_blank" rel="noopener noreferrer" title="Abrir a página do seu convite">
@@ -89,7 +91,10 @@ export function AffiliateWelcome({ data, blocked, onOpen }: { data: Affiliate | 
             {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copiado' : 'Copiar link'}
           </button>
         </div>
-        <p className="six-affiliate-hint">Vale para quem ainda não é cliente. Você acompanha tudo na aba Indicações.</p>
+        <p className="six-affiliate-hint">
+          O link abre o nosso WhatsApp com a mensagem pronta e o seu código. Vale para quem ainda não é cliente. Você acompanha tudo na aba
+          Indicações.
+        </p>
         <div className="six-affiliate-welcome-actions">
           <button type="button" className="six-secondary" onClick={close}>
             Entendi
@@ -131,7 +136,9 @@ export default function AffiliatePanel({ data }: { data: Affiliate | null }) {
             <Gift size={18} aria-hidden="true" /> Indique e ganhe dias
           </h2>
           <p>
-            Cada pagamento de quem você indicar, inclusive as renovações, dá <strong>+{days} dias</strong> de acesso para você.
+            Quem assinar pelo seu link ou com o código <strong>{data.code?.toUpperCase()}</strong> ganha
+            {data.referredDays ? <strong> +{data.referredDays} dias</strong> : ' dias'} de bônus, e você ganha <strong>+{days} dias</strong> a cada
+            pagamento dessa pessoa, inclusive as renovações.
           </p>
         </div>
       </div>
@@ -145,7 +152,8 @@ export default function AffiliatePanel({ data }: { data: Affiliate | null }) {
         </button>
       </div>
       <p className="six-affiliate-hint">
-        Vale para quem cria a conta pelo seu link e ainda não é cliente. Os dias entram sozinhos no seu plano e na validade da sua chave.{' '}
+        O link abre o nosso WhatsApp com a mensagem pronta e o seu código; quem preferir assina pelo site e digita o código no pagamento. Vale para
+        quem ainda não é cliente. Os dias entram sozinhos no seu plano e na validade da sua chave.{' '}
         <button type="button" className="six-text-button" onClick={showAffiliateWelcome}>
           Ver o aviso de novo
         </button>
@@ -171,7 +179,7 @@ export default function AffiliatePanel({ data }: { data: Affiliate | null }) {
           {data.rewards.map((r, i) => (
             <li key={`${r.at}-${i}`} className={r.revoked ? 'is-revoked' : ''}>
               <span>{date(r.at)}</span>
-              <span>{r.revoked ? `${plural(r.days, 'dia', 'dias')} retirados (pagamento estornado)` : `+${plural(r.days, 'dia', 'dias')}`}</span>
+              <span>{r.revoked ? `${plural(r.days, 'dia', 'dias')} retirados (pagamento estornado)` : `+${plural(r.days, 'dia', 'dias')}${r.whatsapp ? ' · venda pelo WhatsApp' : ''}`}</span>
             </li>
           ))}
         </ul>

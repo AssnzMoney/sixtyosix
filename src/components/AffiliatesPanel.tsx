@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Copy, ExternalLink, Gift, UserPlus } from 'lucide-react'
+import { Check, Copy, ExternalLink, Gift, MessageCircle, UserPlus } from 'lucide-react'
 import { adminHeaders } from '../lib/adminSession'
 
 type Affiliate = {
@@ -8,6 +8,7 @@ type Affiliate = {
   name: string
   code: string
   days: number
+  referredDays: number | null
   enabled: boolean
   link: string
   referred: number
@@ -24,7 +25,9 @@ export default function AffiliatesPanel({ token }: { token: string }) {
   const [list, setList] = useState<Affiliate[] | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [form, setForm] = useState({ email: '', code: '', days: '7' })
+  const [form, setForm] = useState({ email: '', code: '', days: '7', referredDays: '3' })
+  // Venda feita pelo WhatsApp: afiliado escolhido, e-mail do cliente (opcional) e uma anotação.
+  const [sale, setSale] = useState<{ user_id: string; email: string; note: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState('')
 
@@ -55,7 +58,7 @@ export default function AffiliatesPanel({ token }: { token: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  async function save(input: { email: string; code?: string; days: number | string; enabled: boolean }, message: string) {
+  async function save(input: { email: string; code?: string; days: number | string; referred_days?: number | string; enabled: boolean }, message: string) {
     setSaving(true)
     setError('')
     setNotice('')
@@ -105,8 +108,8 @@ export default function AffiliatesPanel({ token }: { token: string }) {
           className="sx-form-grid"
           onSubmit={(e) => {
             e.preventDefault()
-            void save({ email: form.email, code: form.code || undefined, days: form.days, enabled: true }, 'Afiliado ativado.').then((ok) => {
-              if (ok) setForm({ email: '', code: '', days: form.days })
+            void save({ email: form.email, code: form.code || undefined, days: form.days, referred_days: form.referredDays, enabled: true }, 'Afiliado ativado.').then((ok) => {
+              if (ok) setForm({ email: '', code: '', days: form.days, referredDays: form.referredDays })
             })
           }}
         >
@@ -123,7 +126,12 @@ export default function AffiliatesPanel({ token }: { token: string }) {
           <label>
             Dias por pagamento indicado
             <input type="number" min={1} max={60} inputMode="numeric" required value={form.days} onChange={(e) => setForm({ ...form, days: e.target.value })} />
-            <small>Vale para cada pagamento, inclusive renovações.</small>
+            <small>Para o afiliado, a cada pagamento do indicado, inclusive renovações.</small>
+          </label>
+          <label>
+            Dias de bônus para quem é indicado
+            <input type="number" min={0} max={60} inputMode="numeric" required value={form.referredDays} onChange={(e) => setForm({ ...form, referredDays: e.target.value })} />
+            <small>Uma vez, na primeira assinatura de quem veio pelo link ou pelo código.</small>
           </label>
           <div className="sx-actions">
             <button type="submit" className="sx-btn is-primary" disabled={saving}>
@@ -179,15 +187,21 @@ export default function AffiliatesPanel({ token }: { token: string }) {
                     <td>
                       +{a.totalDays}
                       <small style={{ display: 'block' }}>{a.days} por pagamento</small>
+                      {a.referredDays != null && <small style={{ display: 'block' }}>indicado ganha {a.referredDays}</small>}
                     </td>
                     <td>
+                      {a.enabled && (
+                        <button type="button" className="sx-btn is-primary" disabled={saving} onClick={() => setSale({ user_id: a.user_id, email: '', note: '' })}>
+                          <MessageCircle size={14} /> Venda pelo WhatsApp
+                        </button>
+                      )}{' '}
                       <button
                         type="button"
                         className={`sx-btn${a.enabled ? ' is-danger' : ''}`}
                         disabled={saving}
                         onClick={() => {
                           if (a.enabled && !window.confirm(`Desativar ${a.email}? O link para de valer para novas contas e os próximos pagamentos dos indicados não dão mais dias.`)) return
-                          void save({ email: a.email, code: a.code, days: a.days, enabled: !a.enabled }, a.enabled ? 'Afiliado desativado.' : 'Afiliado ativado de novo.')
+                          void save({ email: a.email, code: a.code, days: a.days, ...(a.referredDays != null ? { referred_days: a.referredDays } : {}), enabled: !a.enabled }, a.enabled ? 'Afiliado desativado.' : 'Afiliado ativado de novo.')
                         }}
                       >
                         {a.enabled ? 'Desativar' : 'Ativar'}
@@ -200,6 +214,65 @@ export default function AffiliatesPanel({ token }: { token: string }) {
           </div>
         )}
       </section>
+
+      {sale && (() => {
+        const a = list?.find((x) => x.user_id === sale.user_id)
+        if (!a) return null
+        return (
+          <section className="sx-admin-panel">
+            <div className="sx-router-head">
+              <h3>
+                <MessageCircle size={17} /> Venda pelo WhatsApp com o código {a.code.toUpperCase()}
+              </h3>
+            </div>
+            <p className="sx-router-sub">
+              Use quando o cliente mandou o código {a.code.toUpperCase()} e comprou pelo WhatsApp. {a.name || a.email} ganha {a.days} dias na hora. Com o
+              e-mail da conta do cliente, ele também ganha {a.referredDays ?? 0} dias de bônus (uma vez) e as próximas renovações dele pelo site
+              contam para o afiliado. Sem conta, lembre de pôr os dias de bônus na validade da chave dele.
+            </p>
+            <form
+              className="sx-form-grid"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                setSaving(true)
+                setError('')
+                setNotice('')
+                try {
+                  const result = await call<{ affiliateDays: number; referredDays: number; customer: string | null }>({ action: 'affiliate-manual', user_id: a.user_id, email: sale.email || undefined, note: sale.note || undefined })
+                  setNotice(
+                    `Venda registrada: ${a.name || a.email} ganhou +${result.affiliateDays} dias.` +
+                      (result.customer ? (result.referredDays ? ` ${result.customer} ganhou +${result.referredDays} dias de bônus.` : ` ${result.customer} já tinha recebido o bônus de indicação antes.`) : ''),
+                  )
+                  setSale(null)
+                  await load()
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Não foi possível registrar.')
+                } finally {
+                  setSaving(false)
+                }
+              }}
+            >
+              <label>
+                E-mail da conta do cliente (opcional)
+                <input type="email" placeholder="cliente@email.com" value={sale.email} onChange={(e) => setSale({ ...sale, email: e.target.value })} />
+                <small>Se o cliente já tem conta em sixtysix.online.</small>
+              </label>
+              <label>
+                Anotação (opcional)
+                <input type="text" maxLength={200} placeholder="ex.: Pix de 13/11, plano Pro" value={sale.note} onChange={(e) => setSale({ ...sale, note: e.target.value })} />
+              </label>
+              <div className="sx-actions">
+                <button type="submit" className="sx-btn is-primary" disabled={saving}>
+                  {saving ? 'Registrando…' : 'Registrar venda'}
+                </button>
+                <button type="button" className="sx-btn" disabled={saving} onClick={() => setSale(null)}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </section>
+        )
+      })()}
     </>
   )
 }

@@ -261,9 +261,15 @@ export default function SubscriptionPage() {
             <h2>Seus pagamentos</h2>
             {data.payments.map((p) => (
               <article key={p.id}>
-                <strong>{(p.amount_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                <strong>
+                  {/^(affiliate|welcome)-/.test(String(p.id))
+                    ? 'Bônus de indicação'
+                    : (p.amount_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </strong>
                 <span>
-                  {p.status === 'approved'
+                  {p.status === 'revoked'
+                    ? 'Retirado'
+                    : p.status === 'approved'
                     ? 'Aprovado'
                     : p.status === 'refunded'
                       ? 'Estornado'
