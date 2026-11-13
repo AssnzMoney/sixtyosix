@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierErrorBody, supplierRequestBody, supplierUrl, unsupportedParam, UsageTap } from '../server/supplier.js'
+import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, unsupportedFix, UsageTap } from '../server/supplier.js'
 import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
@@ -139,21 +139,32 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
   const name=route.label||route.alias
   const {body,injectedUsage}=supplierRequestBody(call.payload,call.path,route.upstream,name)
   const headers:Record<string,string>={'content-type':'application/json','x-api-key':provider.key,Authorization:`Bearer ${provider.key}`}
-  for(const key of ['accept','anthropic-version','anthropic-beta','openai-beta']){const value=single(req.headers[key]);if(value)headers[key]=value}
+  for(const key of ['accept','anthropic-version','openai-beta']){const value=single(req.headers[key]);if(value)headers[key]=value}
   const controller=new AbortController(),started=Date.now()
   req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
   let status=502,tap:UsageTap|null=null
-  const send=(payloadBody:string)=>fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers,body:payloadBody,redirect:'manual',signal:controller.signal})
+  const send=(payloadBody:string)=>{
+    // Betas que o modelo já recusou não vão no cabeçalho.
+    const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
+    return fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:beta?{...headers,'anthropic-beta':beta}:headers,body:payloadBody,redirect:'manual',signal:controller.signal})
+  }
   try{
-    let response=await send(body)
+    let sent=body,response=await send(sent)
     status=response.status
-    // Ajuste que o modelo não aceita (ex.: nível de esforço no Haiku): tira, tenta de novo e lembra para as próximas.
-    if(status===400){
+    // Recurso que o modelo não aceita (nível de esforço, saída em JSON, beta novo do Claude Code...): tira, tenta de novo
+    // e lembra para as próximas. Cada tentativa tira um recurso diferente; o mesmo recusado duas vezes encerra.
+    for(let attempt=0;status===400;attempt++){
       const text=await response.text().catch(()=>'')
-      const param=unsupportedParam(status,text)
-      if(param){rememberUnsupported(route.upstream,param);response=await send(supplierRequestBody(call.payload,call.path,route.upstream,name).body);status=response.status}
+      let sentJson:Record<string,unknown>|undefined
+      try{sentJson=JSON.parse(sent)}catch{/* corpo sempre é JSON nosso */}
+      const fix=attempt<6?unsupportedFix(status,text,sentJson):null
+      if(fix&&rememberUnsupported(route.upstream,fix)){
+        console.error('Provedor recusou um recurso; tentando sem ele',provider.name,route.upstream,fix)
+        sent=supplierRequestBody(call.payload,call.path,route.upstream,name).body;response=await send(sent);status=response.status;continue
+      }
       // Reconstruída só com o retry-after: nenhum outro cabeçalho do fornecedor segue adiante.
-      else{const retry=response.headers.get('retry-after');response=new Response(text,{status,headers:retry?{'retry-after':retry}:{}})}
+      const retry=response.headers.get('retry-after');response=new Response(text,{status,headers:retry?{'retry-after':retry}:{}})
+      break
     }
     // Recusa da key mestra (saldo, bloqueio) ou falha do fornecedor: o cliente não vê detalhes do fornecedor.
     if(status===401||status===402||status===403||status>=500||(status>=300&&status<400)){

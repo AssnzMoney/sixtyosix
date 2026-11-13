@@ -158,6 +158,64 @@ test('modelo que não aceita nível de esforço: o gateway tira o ajuste, tenta 
   })
 })
 
+test('ultracode: betas novos, saída em JSON, thinking desligado e ferramenta do servidor recusados saem um a um', async () => {
+  const errors = console.error
+  console.error = () => {}
+  const refuse = (message: string) => Response.json({ type: 'error', error: { type: 'invalid_request_error', message } }, { status: 400 })
+  const supplier = (_url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body))
+    const beta = String((init.headers as Record<string, string>)['anthropic-beta'] || '')
+    if (beta.includes('advisor-tool-2026-03-01')) return refuse('feature is not supported on /v1/messages: anthropic-beta "advisor-tool-2026-03-01"')
+    if (body.output_config) return refuse('messages.1.output_config: Extra inputs are not permitted')
+    if (body.thinking?.type === 'disabled') return refuse('"thinking.type.disabled" is not supported for this model. Use "thinking.type.adaptive" and "output_config.effort" to control thinking behavior.')
+    if (body.tools?.some((t: { type?: string }) => t.type === 'advisor_20260301')) return refuse("tools.1: Input tag 'advisor_20260301' found using 'type' does not match any of the expected tags")
+    return Response.json({ model: 'google/gemini-4-argon', content: [{ type: 'text', text: '{"ok":true}' }], usage: { input_tokens: 2, output_tokens: 1 } })
+  }
+  try {
+    await withAccess({ supplier }, async (base, _usage, calls) => {
+      const ask = {
+        model: 'argon-4', max_tokens: 10, thinking: { type: 'disabled' },
+        output_config: { effort: 'medium', format: { type: 'json_schema', schema: { type: 'object', properties: { ok: { type: 'boolean' } } } } },
+        tools: [{ name: 'Read', input_schema: { type: 'object' } }, { type: 'advisor_20260301', name: 'advisor' }],
+        messages: [{ role: 'user', content: 'oi' }],
+      }
+      const headers = { 'anthropic-beta': 'claude-code-20250219,advisor-tool-2026-03-01' }
+      const first = await post(base, '/v1/messages', 'sk-sx-cliente', ask, headers)
+      assert.equal(first.status, 200)
+      assert.equal(calls.length, 5, 'quatro recusas, uma por recurso, e deu certo')
+      const last = calls.at(-1)!
+      const body = JSON.parse(String(last.init.body))
+      assert.equal((last.init.headers as Record<string, string>)['anthropic-beta'], 'claude-code-20250219', 'os outros betas continuam')
+      assert.equal(body.output_config, undefined)
+      assert.equal(body.thinking, undefined)
+      assert.deepEqual(body.tools.map((t: { name: string }) => t.name), ['Read'])
+      assert.match(JSON.stringify(body.system), /JSON Schema/, 'o JSON pedido vira instrução')
+      // Da próxima vez já vai sem esses recursos, numa chamada só; thinking ligado continua indo.
+      assert.equal((await post(base, '/v1/messages', 'sk-sx-cliente', { ...ask, thinking: { type: 'adaptive' } }, headers)).status, 200)
+      assert.equal(calls.length, 6)
+      assert.deepEqual(JSON.parse(String(calls[5].init.body)).thinking, { type: 'adaptive' })
+    })
+  } finally {
+    console.error = errors
+  }
+})
+
+test('o mesmo recurso recusado de novo não fica tentando para sempre', async () => {
+  const errors = console.error
+  console.error = () => {}
+  try {
+    const supplier = () => Response.json({ type: 'error', error: { type: 'invalid_request_error', message: 'feature is not supported on /v1/messages: anthropic-beta "loop-test-2026-01-01"' } }, { status: 400 })
+    await withAccess({ supplier }, async (base, _usage, calls) => {
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] }, { 'anthropic-beta': 'loop-test-2026-01-01' })
+      assert.equal(response.status, 400)
+      assert.equal(calls.length, 2, 'tentou uma vez sem o beta e parou')
+      assert.equal((calls[1].init.headers as Record<string, string>)['anthropic-beta'], undefined)
+    })
+  } finally {
+    console.error = errors
+  }
+})
+
 test('outro erro 400 do fornecedor: sem nova tentativa e com mensagem nossa, não a dele', async () => {
   const supplier = () => Response.json({ type: 'error', error: { type: 'invalid_request_error', message: 'messages: campo obrigatório (DelverTokens)' } }, { status: 400, headers: { 'x-delver-request': 'abc' } })
   await withAccess({ supplier }, async (base, _usage, calls) => {

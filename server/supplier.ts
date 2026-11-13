@@ -28,27 +28,61 @@ export function supplierUrl(base: string, path: string, search = ''): string {
  * último evento (include_usage); esse evento extra é retirado antes de chegar ao cliente.
  */
 /*
- * Ajustes que um modelo do fornecedor recusa. Ex.: o Claude Code manda "nível de esforço" (output_config.effort)
- * achando que o modelo é grande, e o Haiku responde 400 "não suporta níveis de esforço". O gateway tira o ajuste,
- * tenta de novo e lembra para as próximas chamadas daquele modelo. Só ajustes desta lista podem ser tirados.
+ * Recursos que um modelo do fornecedor recusa. O Claude Code manda recursos novos achando que fala com a Anthropic:
+ * nível de esforço (output_config.effort), saída em JSON do ultracode (output_config.format), betas novos no
+ * cabeçalho anthropic-beta (advisor-tool, inline-tools...), ferramentas do servidor, thinking "disabled". O fornecedor
+ * responde 400 e o gateway tira só o recurso recusado, tenta de novo e lembra para as próximas chamadas daquele modelo.
+ * Só o que está nas listas abaixo pode ser tirado; qualquer outro 400 vai para o cliente.
+ *
+ * Chaves lembradas: um caminho do corpo ("output_config.effort"), "beta:<nome>", "tool:<tipo>",
+ * "tools.*.<campo>" (campo de cada ferramenta) e "thinking.disabled" (só o thinking desligado).
  */
-const STRIPPABLE = ['output_config.effort', 'reasoning_effort', 'reasoning.effort']
+const STRIPPABLE = ['output_config.effort', 'output_config.format', 'output_config', 'output_format', 'reasoning_effort', 'reasoning.effort', 'context_management', 'speed', 'inference_geo', 'service_tier', 'thinking.disabled']
+const TOOL_FIELDS = ['defer_loading', 'eager_input_streaming', 'strict', 'input_examples', 'allowed_callers']
 const unsupported = new Map<string, Set<string>>()
 
-/** Qual ajuste o fornecedor recusou neste 400 (ou null, se o erro for outro). */
-export function unsupportedParam(status: number, text: string): string | null {
+const allowedFix = (fix: string) => STRIPPABLE.includes(fix) || /^beta:[\w.-]+$/.test(fix) || /^tool:[\w.-]+$/.test(fix) || TOOL_FIELDS.some((f) => fix === `tools.*.${f}`)
+
+/**
+ * Qual recurso o fornecedor recusou neste 400 (ou null, se o erro for outro). `sent` é o corpo que foi mandado:
+ * serve para achar o tipo da ferramenta quando o erro só diz "tools.3".
+ */
+export function unsupportedFix(status: number, text: string, sent?: Record<string, unknown>): string | null {
   if (status !== 400) return null
-  try {
-    const error = (JSON.parse(text) as { error?: { param?: unknown; code?: unknown; type?: unknown } }).error
-    const param = String(error?.param ?? '')
-    if (STRIPPABLE.includes(param)) return param
-    if (/reasoning_effort|unsupported_effort/i.test(`${error?.code ?? ''} ${error?.type ?? ''}`)) return 'output_config.effort'
-  } catch { /* resposta que não é JSON */ }
+  let error: { param?: unknown; code?: unknown; type?: unknown; message?: unknown } | undefined
+  try { error = (JSON.parse(text) as { error?: typeof error }).error } catch { /* resposta que não é JSON */ }
+  const param = String(error?.param ?? '')
+  if (STRIPPABLE.includes(param)) return param
+  if (/reasoning_effort|unsupported_effort/i.test(`${error?.code ?? ''} ${error?.type ?? ''}`)) return 'output_config.effort'
+  const message = String(error?.message ?? text)
+  const beta = /anthropic-beta\W*([a-z][\w.-]*-\d{4}-\d{2}-\d{2})/i.exec(message)
+  if (beta && /not supported|unsupported|unknown|invalid|not (?:allowed|available|enabled)/i.test(message)) return `beta:${beta[1]}`
+  if (/thinking\.type\.disabled"? is not supported/i.test(message)) return 'thinking.disabled'
+  const tool = /\btools\.(\d+)(?:\.(\w+))?/.exec(message)
+  if (tool) {
+    if (tool[2] && TOOL_FIELDS.includes(tool[2]) && /extra inputs|not permitted|not supported|unknown field|unexpected/i.test(message)) return `tools.*.${tool[2]}`
+    const entry = Array.isArray(sent?.tools) ? (sent.tools as Record<string, unknown>[])[Number(tool[1])] : undefined
+    if (entry && typeof entry.type === 'string' && entry.type !== 'custom' && /not supported|unsupported|unknown|invalid|tag|does not match|extra inputs|not permitted/i.test(message)) return `tool:${entry.type}`
+  }
+  // "output_config: Extra inputs are not permitted" (às vezes como "messages.1.output_config" ou "output_config.format").
+  const extra = /(?:^|[\s.'"`])(output_config|output_format|context_management|speed|inference_geo|service_tier)(?:\.(effort|format))?['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|not supported|unknown field)/i.exec(message)
+  if (extra) return extra[2] ? `${extra[1]}.${extra[2]}` : extra[1]
   return null
 }
-export function rememberUnsupported(supplierId: string, param: string) {
-  if (!STRIPPABLE.includes(param)) return
-  unsupported.set(supplierId, new Set([...(unsupported.get(supplierId) || []), param]))
+/** Lembra o recurso recusado. Devolve false se não pode ser tirado ou já estava lembrado (aí não adianta tentar de novo). */
+export function rememberUnsupported(supplierId: string, fix: string): boolean {
+  if (!allowedFix(fix)) return false
+  const known = unsupported.get(supplierId) || new Set<string>()
+  if (known.has(fix)) return false
+  unsupported.set(supplierId, new Set([...known, fix]))
+  return true
+}
+/** Tira do anthropic-beta os betas que o modelo recusou. */
+export function supplierBetas(header: string | undefined, supplierId: string): string | undefined {
+  const refused = unsupported.get(supplierId)
+  if (!header || !refused) return header
+  const kept = header.split(',').map((b) => b.trim()).filter((b) => b && !refused.has(`beta:${b}`))
+  return kept.length ? kept.join(',') : undefined
 }
 function removePath(target: Record<string, unknown>, path: string) {
   const [head, ...rest] = path.split('.')
@@ -59,6 +93,42 @@ function removePath(target: Record<string, unknown>, path: string) {
   removePath(copy, rest.join('.'))
   if (Object.keys(copy).length) target[head] = copy
   else delete target[head]
+}
+const withoutKey = (value: unknown, key: string) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !(key in value)) return value
+  const copy = { ...(value as Record<string, unknown>) }
+  delete copy[key]
+  return copy
+}
+function applyFix(next: Record<string, unknown>, fix: string) {
+  if (fix.startsWith('beta:')) return // vai no cabeçalho (supplierBetas)
+  if (fix === 'thinking.disabled') {
+    if ((next.thinking as { type?: unknown } | undefined)?.type === 'disabled') delete next.thinking
+  } else if (fix.startsWith('tool:')) {
+    if (!Array.isArray(next.tools)) return
+    const type = fix.slice(5)
+    next.tools = (next.tools as Record<string, unknown>[]).filter((t) => t?.type !== type)
+    if (!(next.tools as unknown[]).length) { delete next.tools; delete next.tool_choice }
+  } else if (fix.startsWith('tools.*.')) {
+    if (Array.isArray(next.tools)) next.tools = (next.tools as unknown[]).map((t) => withoutKey(t, fix.slice(8)))
+  } else {
+    removePath(next, fix)
+    // O campo inteiro às vezes vem recusado dentro das mensagens ("messages.1.output_config").
+    if (!fix.includes('.') && Array.isArray(next.messages)) next.messages = (next.messages as unknown[]).map((m) => withoutKey(m, fix))
+  }
+}
+
+/** Esquema do JSON pedido (output_config.format ou output_format), para quando o fornecedor não aceita saída estruturada. */
+function jsonSchemaOf(payload: Record<string, unknown>): unknown {
+  const format = (payload.output_config as { format?: unknown } | undefined)?.format ?? payload.output_format
+  if (!format || typeof format !== 'object') return undefined
+  const f = format as { type?: unknown; schema?: unknown }
+  return f.type === 'json_schema' ? (f.schema ?? {}) : undefined
+}
+function appendSystem(next: Record<string, unknown>, text: string) {
+  const system = next.system
+  if (Array.isArray(system)) next.system = [...system, { type: 'text', text }]
+  else next.system = typeof system === 'string' && system.trim() ? `${system}\n\n${text}` : text
 }
 
 /**
@@ -87,7 +157,12 @@ function withIdentity(next: Record<string, unknown>, path: string, name: string)
 
 export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string, name?: string) {
   const next: Record<string, unknown> = { ...payload, model: supplierId }
-  for (const param of unsupported.get(supplierId) || []) removePath(next, param)
+  const schema = jsonSchemaOf(payload)
+  for (const fix of unsupported.get(supplierId) || []) applyFix(next, fix)
+  // Saída em JSON recusada (o ultracode usa): vira instrução, para a resposta ainda vir no formato pedido.
+  if (schema !== undefined && jsonSchemaOf(next) === undefined && endpointKind(path) === 'anthropic') {
+    appendSystem(next, `Responda somente com um objeto JSON válido que siga exatamente este JSON Schema, sem texto antes ou depois e sem bloco de código:\n${JSON.stringify(schema).slice(0, 20000)}`)
+  }
   if (name) withIdentity(next, path, name)
   // Responses: o cliente pode mandar de volta o nosso ID; o fornecedor só conhece o dele.
   if (typeof next.previous_response_id === 'string' && responseIds.has(next.previous_response_id)) next.previous_response_id = responseIds.get(next.previous_response_id)
