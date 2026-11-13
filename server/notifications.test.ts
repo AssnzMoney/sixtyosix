@@ -39,7 +39,9 @@ test('boas-vindas: 3 passos, ferramentas e botão para os planos, em HTML e em t
 test('modelo do e-mail de acesso do Supabase leva o link dele e combina com o arquivo do repositório', () => {
   const access = supabaseAccessTemplate()
   assert.ok(access.html.includes('href="{{ .ConfirmationURL }}"'))
-  assert.equal(readFileSync('supabase/email-acesso.html', 'utf8').trim(), access.html.trim(), 'rode scripts/email-previews.ts')
+  assert.equal(readFileSync('supabase/email-acesso.html', 'utf8').replace(/
+/g, '
+').trim(), access.html.trim(), 'rode scripts/email-previews.ts')
 })
 
 test('lembrete de vencimento fala do prazo e leva para renovar', () => {
