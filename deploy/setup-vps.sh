@@ -65,15 +65,23 @@ sudo -u "$APP_USER" pm2 set pm2-logrotate:retain 30 >/dev/null
 
 echo "== Caddy (https automático)"
 mkdir -p /var/log/caddy
-chown caddy:caddy /var/log/caddy
 cp "$APP_DIR/deploy/Caddyfile" /etc/caddy/Caddyfile
-caddy validate --config /etc/caddy/Caddyfile
-systemctl enable --now caddy
-systemctl reload caddy
+# Valida como o usuário do Caddy: rodando como root, o arquivo de log nasce do root e o Caddy não consegue abrir.
+chown -R caddy:caddy /var/log/caddy
+sudo -u caddy caddy validate --config /etc/caddy/Caddyfile
+# Algumas VPS vêm com um painel (nginx/Apache) ocupando as portas 80 e 443: o Caddy não sobe.
+if ss -ltnp | grep -E ':(80|443) ' | grep -vq caddy; then
+  echo "As portas 80/443 já estão em uso:" >&2; ss -ltnp | grep -E ':(80|443) ' >&2
+  echo "Libere as portas e rode o script de novo." >&2; exit 1
+fi
+systemctl enable caddy
+systemctl restart caddy
 
 echo "== E-mails diários (lembretes de vencimento), 9h de Brasília"
 CRON_LINE="0 9 * * * curl -fsS -X POST http://127.0.0.1:8080/api/notifications -H \"Authorization: Bearer \$(grep '^CRON_SECRET=' $APP_DIR/.env | cut -d= -f2-)\" >> /home/$APP_USER/notifications.log 2>&1"
-( crontab -u "$APP_USER" -l 2>/dev/null | grep -v '/api/notifications' ; echo "$CRON_LINE" ) | crontab -u "$APP_USER" -
+# "|| true": sem agendamento nenhum, o crontab -l e o grep "falham" e, com set -e, a linha nunca era gravada.
+{ crontab -u "$APP_USER" -l 2>/dev/null | grep -v '/api/notifications' || true; echo "$CRON_LINE"; } | crontab -u "$APP_USER" -
+crontab -u "$APP_USER" -l | grep -q '/api/notifications' || { echo "O agendamento dos e-mails não foi gravado." >&2; exit 1; }
 
 echo "== Firewall"
 ufw allow OpenSSH
@@ -81,6 +89,14 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 ufw --force enable
 systemctl enable --now fail2ban
+
+echo "== SSH só por chave (antes, coloque a sua chave em /root/.ssh/authorized_keys)"
+if [ -s /root/.ssh/authorized_keys ]; then
+  printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' > /etc/ssh/sshd_config.d/00-sixtysix.conf
+  sshd -t && systemctl reload ssh
+else
+  echo "Nenhuma chave em /root/.ssh/authorized_keys: o login por senha continua ligado." >&2
+fi
 
 cat <<EOF
 
