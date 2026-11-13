@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { endpointKind, recordUsage, rememberUnsupported, supplierErrorBody, supplierRequestBody, supplierUrl, unsupportedParam, UsageTap } from '../server/supplier.js'
+import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierErrorBody, supplierRequestBody, supplierUrl, unsupportedParam, UsageTap } from '../server/supplier.js'
 import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
@@ -165,12 +165,15 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Qualquer outro erro do fornecedor (400, 404, 413, 422, 429...): mantém o status, mas o corpo é nosso e genérico.
     // Nenhum cabeçalho dele passa; no 429 vai só o retry-after.
     if(status>=400){
-      console.error('Provedor recusou a chamada',provider.name,status,(await response.text().catch(()=>'')).slice(0,500))
-      res.statusCode=status
+      const text=await response.text().catch(()=>'')
+      console.error('Provedor recusou a chamada',provider.name,status,text.slice(0,500))
+      // Conversa grande demais: vai como 400 com o texto que o Claude Code/Codex reconhecem, para eles resumirem a conversa.
+      const overflow=contextOverflow(status,text)
+      res.statusCode=overflow?400:status
       res.setHeader('content-type','application/json; charset=utf-8')
       const retry=response.headers.get('retry-after')?.trim()
       if(status===429&&retry&&/^\d{1,5}$/.test(retry))res.setHeader('retry-after',retry)
-      res.end(JSON.stringify(supplierErrorBody(kind,status)))
+      res.end(JSON.stringify(overflow?contextOverflowBody(kind,overflow):supplierErrorBody(kind,status)))
       return
     }
     res.statusCode=status

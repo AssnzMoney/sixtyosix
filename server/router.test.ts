@@ -169,6 +169,30 @@ test('outro erro 400 do fornecedor: sem nova tentativa e com mensagem nossa, nã
   })
 })
 
+test('conversa grande demais: vai com o texto que o Claude Code e o Codex reconhecem, sem o texto do fornecedor', async () => {
+  const errors = console.error
+  console.error = () => {}
+  try {
+    const supplier = () => Response.json({ type: 'error', error: { type: 'invalid_request_error', message: 'DelverTokens: prompt is too long: 1,204,331 tokens > 1,000,000 maximum' } }, { status: 400 })
+    await withAccess({ supplier }, async (base) => {
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'argon-4', messages: [] })
+      assert.equal(response.status, 400)
+      assert.deepEqual(await response.json(), { type: 'error', error: { type: 'invalid_request_error', message: 'prompt is too long: 1204331 tokens > 1000000 maximum' } })
+    })
+    const openai = () => Response.json({ error: { message: "DelverTokens: This model's maximum context length is 400000 tokens. However, your messages resulted in 512000 tokens.", code: 'context_length_exceeded' } }, { status: 400 })
+    await withAccess({ supplier: openai }, async (base) => {
+      const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'argon-4', messages: [] })
+      assert.equal(response.status, 400)
+      const body = await response.json()
+      assert.equal(body.error.code, 'context_length_exceeded')
+      assert.match(body.error.message, /maximum context length is 400000 tokens.*512000 tokens/)
+      assert.doesNotMatch(JSON.stringify(body), /Delver/)
+    })
+  } finally {
+    console.error = errors
+  }
+})
+
 test('erros 404, 422 e 429 do fornecedor não mostram o nome dele, no formato de cada endpoint', async () => {
   const errors = console.error
   console.error = () => {}

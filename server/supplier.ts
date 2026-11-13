@@ -156,6 +156,34 @@ const ERROR_TEXT: Record<number, string> = {
   429: 'Muitas chamadas agora. Aguarde um instante.',
   504: 'O modelo demorou demais para responder. Use streaming ou um nível de raciocínio menor e tente de novo.',
 }
+/*
+ * Conversa maior que a memória do modelo. Escondida como "Pedido inválido", o Claude Code não percebia e não
+ * resumia a conversa (/compact): toda mensagem seguinte dava o mesmo 400, para sempre. Esse erro precisa ir com o
+ * texto que as ferramentas reconhecem ("prompt is too long" no Claude Code; context_length_exceeded no Codex e
+ * nos SDKs da OpenAI). Só os números passam; nada do texto do fornecedor.
+ */
+export type ContextOverflow = { tokens?: number; maximum?: number }
+export function contextOverflow(status: number, text: string): ContextOverflow | null {
+  if (status !== 400 && status !== 413) return null
+  if (!/prompt is too long|context[_ ]length[_ ]exceeded|maximum context length|context window|too many (input )?tokens|exceeds? the (model'?s? )?(maximum )?context/i.test(text)) return null
+  const numbers = /(\d[\d,]*)\s*tokens?\s*>\s*(\d[\d,]*)/i.exec(text) || /maximum context length is (\d[\d,]*)[^\d]+(\d[\d,]*)/i.exec(text)
+  if (!numbers) return {}
+  const [a, b] = [numbers[1], numbers[2]].map((n) => Number(n.replace(/,/g, '')))
+  // "X tokens > Y maximum" vem pedido > máximo; "maximum context length is Y ... X tokens" vem ao contrário.
+  return /maximum context length is/i.test(numbers[0]) ? { tokens: b, maximum: a } : { tokens: a, maximum: b }
+}
+export function contextOverflowBody(kind: Endpoint, overflow: ContextOverflow) {
+  const { tokens, maximum } = overflow
+  if (kind === 'anthropic') {
+    const message = tokens && maximum ? `prompt is too long: ${tokens} tokens > ${maximum} maximum` : 'prompt is too long'
+    return { type: 'error', error: { type: 'invalid_request_error', message } }
+  }
+  const message = tokens && maximum
+    ? `This model's maximum context length is ${maximum} tokens. However, your messages resulted in ${tokens} tokens.`
+    : "This model's maximum context length was exceeded."
+  return { error: { message, type: 'invalid_request_error', code: 'context_length_exceeded' } }
+}
+
 export function supplierErrorBody(kind: Endpoint, status: number) {
   const message = ERROR_TEXT[status] || 'Não foi possível concluir o pedido.'
   if (kind === 'anthropic') {
