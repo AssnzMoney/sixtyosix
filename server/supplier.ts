@@ -37,7 +37,7 @@ export function supplierUrl(base: string, path: string, search = ''): string {
  * Chaves lembradas: um caminho do corpo ("output_config.effort"), "beta:<nome>", "tool:<tipo>",
  * "tools.*.<campo>" (campo de cada ferramenta) e "thinking.disabled" (só o thinking desligado).
  */
-const STRIPPABLE = ['output_config.effort', 'output_config.format', 'output_config', 'output_format', 'reasoning_effort', 'reasoning.effort', 'context_management', 'speed', 'inference_geo', 'service_tier', 'safeguards', 'thinking.disabled']
+const STRIPPABLE = ['output_config.effort', 'output_config.format', 'output_config', 'output_format', 'reasoning_effort', 'reasoning.effort', 'context_management', 'speed', 'inference_geo', 'service_tier', 'safeguards', 'thinking.disabled', 'thinking.between_tools']
 const TOOL_FIELDS = ['defer_loading', 'eager_input_streaming', 'strict', 'input_examples', 'allowed_callers']
 /*
  * Campos opcionais do formato chat que o fornecedor não aceita quando converte o chat para o formato nativo dele
@@ -66,6 +66,8 @@ export function unsupportedFix(status: number, text: string, sent?: Record<strin
   const beta = /anthropic-beta\W*([a-z][\w.-]*-\d{4}-\d{2}-\d{2})/i.exec(message)
   if (beta && /not supported|unsupported|unknown|invalid|not (?:allowed|available|enabled)/i.test(message)) return `beta:${beta[1]}`
   if (/thinking\.type\.disabled"? is not supported/i.test(message)) return 'thinking.disabled'
+  // Modo de pensamento novo do Claude Code 2.1.323 ("between_tools") que o modelo não tem: vai sem o ajuste de pensamento.
+  if (/thinking\.type\.between_tools"? is not supported/i.test(message)) return 'thinking.between_tools'
   const tool = /\btools\.(\d+)(?:\.(\w+))?/.exec(message)
   if (tool) {
     if (tool[2] && TOOL_FIELDS.includes(tool[2]) && /extra inputs|not permitted|not supported|unknown field|unexpected/i.test(message)) return `tools.*.${tool[2]}`
@@ -116,6 +118,8 @@ function applyFix(next: Record<string, unknown>, fix: string, path: string) {
     if (endpointKind(path) === 'chat') delete next[fix.slice(5)]
   } else if (fix === 'thinking.disabled') {
     if ((next.thinking as { type?: unknown } | undefined)?.type === 'disabled') delete next.thinking
+  } else if (fix === 'thinking.between_tools') {
+    if ((next.thinking as { type?: unknown } | undefined)?.type === 'between_tools') delete next.thinking
   } else if (fix.startsWith('tool:')) {
     if (!Array.isArray(next.tools)) return
     const type = fix.slice(5)
@@ -177,9 +181,41 @@ function withIdentity(next: Record<string, unknown>, path: string, name: string)
   }
 }
 
+/** Mensagem "system" sem conteúdo no meio da conversa (o Claude Code 2.1.323 manda): o fornecedor recusa e ela não leva nada. */
+const emptySystem = (m: unknown) => {
+  if (!m || typeof m !== 'object' || (m as { role?: unknown }).role !== 'system') return false
+  const content = (m as { content?: unknown }).content
+  return content == null || (typeof content === 'string' && !content.trim()) || (Array.isArray(content) && content.length === 0)
+}
+
+/** O fornecedor recusou a assinatura de um bloco de pensamento do histórico (ex.: o cliente trocou de modelo na conversa). */
+export const thinkingSignatureError = (text: string) => /invalid\W*signature\W*in\W*thinking\W*block/i.test(text)
+
+/**
+ * Tira os blocos de pensamento antigos do histórico, para a conversa seguir quando um deles tem assinatura inválida.
+ * Primeiro (`all` falso) mantém os da última resposta do assistente, que o modelo pode exigir quando ainda está usando
+ * ferramentas; se ainda falhar (`all`), tira todos e manda sem o ajuste de pensamento.
+ */
+export function withoutThinkingHistory(body: string, all: boolean): string {
+  let next: Record<string, unknown>
+  try { next = JSON.parse(body) } catch { return body }
+  if (!Array.isArray(next.messages)) return body
+  const messages = next.messages as Record<string, unknown>[]
+  let last = -1
+  messages.forEach((m, i) => { if (m?.role === 'assistant') last = i })
+  next.messages = messages.map((m, i) => {
+    if (m?.role !== 'assistant' || !Array.isArray(m.content) || (!all && i === last)) return m
+    const content = (m.content as Record<string, unknown>[]).filter((b) => b?.type !== 'thinking' && b?.type !== 'redacted_thinking')
+    return { ...m, content: content.length ? content : [{ type: 'text', text: '…' }] }
+  })
+  if (all) delete next.thinking
+  return JSON.stringify(next)
+}
+
 export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string, name?: string) {
   const next: Record<string, unknown> = { ...payload, model: supplierId }
   const schema = jsonSchemaOf(payload)
+  if (endpointKind(path) === 'anthropic' && Array.isArray(next.messages)) next.messages = (next.messages as unknown[]).filter((m) => !emptySystem(m))
   for (const fix of unsupported.get(supplierId) || []) applyFix(next, fix, path)
   // Saída em JSON recusada (o ultracode usa): vira instrução, para a resposta ainda vir no formato pedido.
   if (schema !== undefined && jsonSchemaOf(next) === undefined && endpointKind(path) === 'anthropic') {

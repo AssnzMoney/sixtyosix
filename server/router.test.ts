@@ -669,3 +669,43 @@ test('admin: ligar chave à conta do cliente grava user_id no cliente do gateway
   assert.deepEqual(calls.filter((c) => c.method === 'PATCH')[1].body, { user_id: null })
   await assert.rejects(admin.linkKey({ id: 'x', user_id: user }), /inválida/)
 })
+
+test('Claude Code 2.1.323 no VS Code: system vazio sai, between_tools sai e assinatura de pensamento inválida não trava a conversa', async () => {
+  const errors = console.error
+  console.error = () => {}
+  const refuse = (message: string) => Response.json({ type: 'error', error: { type: 'invalid_request_error', message } }, { status: 400 })
+  const supplier = (_url: string, init: RequestInit) => {
+    const body = JSON.parse(String(init.body))
+    if (body.messages.some((m: { role: string; content: unknown }) => m.role === 'system' && Array.isArray(m.content) && !m.content.length)) return refuse('messages.1: system content must contain at least one block')
+    if (body.thinking?.type === 'between_tools') return refuse('"thinking.type.between_tools" is not supported for this model.')
+    const bad = body.messages.findIndex((m: { content: unknown }) => Array.isArray(m.content) && m.content.some((b: { type?: string; signature?: string }) => b.type === 'thinking' && b.signature === 'de-outro-modelo'))
+    if (bad >= 0) return refuse(`messages.${bad}.content.0: Invalid \`signature\` in \`thinking\` block`)
+    return Response.json({ model: 'anthropic/claude-opus-5-5', content: [{ type: 'text', text: 'oi' }], usage: { input_tokens: 2, output_tokens: 1 } })
+  }
+  try {
+    await withAccess({ supplier }, async (base, _usage, calls) => {
+      const ask = {
+        model: 'claude-opus-5-5', max_tokens: 10, thinking: { type: 'between_tools' },
+        messages: [
+          { role: 'user', content: 'oi' },
+          { role: 'system', content: [] },
+          { role: 'assistant', content: [{ type: 'thinking', thinking: 'x', signature: 'de-outro-modelo' }, { type: 'text', text: 'olá' }] },
+          { role: 'user', content: 'e agora?' },
+          { role: 'assistant', content: [{ type: 'thinking', thinking: 'y', signature: 'valida' }, { type: 'tool_use', id: 'toolu_1', name: 'Read', input: {} }] },
+          { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: 'ok' }] },
+        ],
+      }
+      const first = await post(base, '/v1/messages', 'sk-sx-cliente', ask)
+      assert.equal(first.status, 200, 'o cliente recebe a resposta')
+      const sentFirst = JSON.parse(String(calls[0].init.body))
+      assert.ok(!sentFirst.messages.some((m: { role: string }) => m.role === 'system'), 'a mensagem system vazia nunca vai para o fornecedor')
+      const last = JSON.parse(String(calls.at(-1)!.init.body))
+      assert.equal(last.thinking, undefined, 'between_tools saiu')
+      assert.equal(last.messages[1].content.some((b: { type: string }) => b.type === 'thinking'), false, 'o pensamento antigo saiu')
+      assert.equal(last.messages[3].content[0].type, 'thinking', 'o pensamento da última resposta (usando ferramenta) ficou')
+      assert.equal(last.messages[3].content[1].id, 'toolu_1', 'a ferramenta não muda')
+    })
+  } finally {
+    console.error = errors
+  }
+})

@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, unsupportedFix, UsageTap } from '../server/supplier.js'
+import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, unsupportedFix, UsageTap, withoutThinkingHistory } from '../server/supplier.js'
 import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
@@ -156,15 +156,24 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Cada chamada guarda o que ela mesma já tentou tirar. A memória do modelo é compartilhada: outra chamada ao mesmo
     // tempo pode ter aprendido o recurso depois que este corpo foi montado, e aí ainda vale tentar sem ele.
     const tried=new Set<string>()
+    // Pensamento do histórico com assinatura inválida (cliente trocou de modelo na conversa): 1 = sem os pensamentos
+    // antigos, 2 = sem nenhum pensamento. Só para esta chamada; vale também quando o corpo é remontado abaixo.
+    let thinking=0
+    const rebuild=()=>{const body=supplierRequestBody(call.payload,call.path,route.upstream,name).body;return thinking?withoutThinkingHistory(body,thinking===2):body}
     for(let attempt=0;status===400;attempt++){
       const text=await response.text().catch(()=>'')
+      if(attempt<6&&thinking<2&&thinkingSignatureError(text)){
+        thinking++
+        console.error('Provedor recusou a assinatura de um pensamento do histórico; tentando sem',thinking===1?'os pensamentos antigos':'nenhum pensamento',provider.name,route.upstream)
+        sent=rebuild();response=await send(sent);status=response.status;continue
+      }
       let sentJson:Record<string,unknown>|undefined
       try{sentJson=JSON.parse(sent)}catch{/* corpo sempre é JSON nosso */}
       const fix=attempt<6?unsupportedFix(status,text,sentJson):null
       if(fix&&!tried.has(fix)&&rememberUnsupported(route.upstream,fix)){
         tried.add(fix)
         console.error('Provedor recusou um recurso; tentando sem ele',provider.name,route.upstream,fix)
-        sent=supplierRequestBody(call.payload,call.path,route.upstream,name).body;response=await send(sent);status=response.status;continue
+        sent=rebuild();response=await send(sent);status=response.status;continue
       }
       // Reconstruída só com o retry-after: nenhum outro cabeçalho do fornecedor segue adiante.
       const retry=response.headers.get('retry-after');response=new Response(text,{status,headers:retry?{'retry-after':retry}:{}})

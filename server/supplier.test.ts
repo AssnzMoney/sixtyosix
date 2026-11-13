@@ -251,3 +251,23 @@ test('identidade: o modelo diz o fabricante da família dele, nunca que é da Si
     assert.match(identityText(name), /não diga qual modelo ou serviço está por trás/)
   }
 })
+
+test('pensamentos do histórico: 1ª etapa mantém os da última resposta; 2ª tira todos e o ajuste de pensamento', async () => {
+  const { withoutThinkingHistory, thinkingSignatureError } = await import('./supplier.ts')
+  assert.ok(thinkingSignatureError('{"error":{"message":"messages.73.content.0: Invalid `signature` in `thinking` block"}}'))
+  assert.ok(!thinkingSignatureError('{"error":{"message":"max_tokens: muito alto"}}'))
+  const body = JSON.stringify({ thinking: { type: 'enabled', budget_tokens: 1024 }, messages: [
+    { role: 'user', content: 'oi' },
+    { role: 'assistant', content: [{ type: 'redacted_thinking', data: 'x' }] },
+    { role: 'user', content: 'e?' },
+    { role: 'assistant', content: [{ type: 'thinking', thinking: 'y', signature: 's' }, { type: 'text', text: 'ok' }] },
+  ] })
+  const one = JSON.parse(withoutThinkingHistory(body, false))
+  assert.deepEqual(one.messages[1].content, [{ type: 'text', text: '…' }], 'mensagem que só tinha pensamento não fica vazia')
+  assert.equal(one.messages[3].content[0].type, 'thinking')
+  assert.ok(one.thinking)
+  const two = JSON.parse(withoutThinkingHistory(body, true))
+  assert.deepEqual(two.messages[3].content, [{ type: 'text', text: 'ok' }])
+  assert.equal(two.thinking, undefined)
+  assert.equal(withoutThinkingHistory('não é json', true), 'não é json')
+})
