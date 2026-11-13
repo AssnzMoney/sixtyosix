@@ -3079,3 +3079,30 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Aviso de afiliado na primeira entrada (usa o visual do pop-up de confirmação) */
+.six-affiliate-welcome .six-step-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.six-affiliate-welcome > p {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.six-affiliate-welcome-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 560px) {
+  .six-affiliate-welcome-actions > * {
+    flex: 1 1 100%;
+  }
+}

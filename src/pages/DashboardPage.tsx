@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import {
+  Gift,
   Activity,
   PanelLeftClose,
   PanelLeftOpen,
@@ -37,7 +38,7 @@ import {
 } from "lucide-react"
 import { motion, useInView } from "framer-motion"
 import { useAuth } from "../lib/AuthContext"
-import AffiliatePanel from "../components/AffiliatePanel"
+import AffiliatePanel, { AffiliateWelcome, useAffiliate } from "../components/AffiliatePanel"
 import {
   accountRequest,
   accountSummary,
@@ -55,7 +56,7 @@ import { PRO_BASE_MODELS, ROUTER_MODEL_NAMES } from "../lib/routerModels"
 import "./dashboard.css"
 import "./billing.css"
 
-type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help" | "chat"
+type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help" | "chat" | "referrals"
 type RequestRow = {
   id: string
   date: string
@@ -178,6 +179,12 @@ const headings: Record<Tab, { eyebrow: string; title: string; accent: string; de
     title: "Respostas para",
     accent: "continuar criando.",
     description: "O essencial sobre a sua conexão.",
+  },
+  referrals: {
+    eyebrow: "indique e ganhe",
+    title: "Minhas",
+    accent: "indicações.",
+    description: "Seu link de indicação, quem entrou por ele e os dias que você já ganhou.",
   },
 }
 
@@ -332,6 +339,9 @@ export default function DashboardPage() {
     localStorage.setItem("six-dashboard-theme-v2", theme)
   }, [theme])
   const [tab, setTab] = useState<Tab>("overview")
+  // Afiliado (só as contas ativadas no admin): aba Indicações, cartão na visão geral e aviso na 1ª entrada.
+  const affiliate = useAffiliate(session?.access_token)
+  const navItems: { id: Tab; label: string; icon: typeof Gift }[] = affiliate?.enabled ? [...nav, { id: "referrals", label: "Indicações", icon: Gift }] : [...nav]
   // Sem sessão, a rota só abre no localhost (`?demo=1`) para revisar o layout. Nenhum dado é simulado.
   const preview = !session
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("six-sidebar-collapsed") === "true")
@@ -945,6 +955,8 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {session && <AffiliateWelcome data={affiliate} blocked={consumptionLocked} onOpen={() => switchTab("referrals")} />}
+
       <aside className={`six-sidebar ${drawer ? "open" : ""}`} aria-label="Menu do painel">
         <div className="six-sidebar-top">
           <Link to="/" className="six-brand" aria-label="SixtySix, página inicial">
@@ -963,7 +975,7 @@ export default function DashboardPage() {
 
         <div className="six-nav-label">Plataforma</div>
         <nav aria-label="Navegação do painel">
-          {nav.map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -1146,7 +1158,7 @@ export default function DashboardPage() {
             </section>
           )}
 
-          {tab === "overview" && session?.access_token && <AffiliatePanel token={session.access_token} />}
+          {(tab === "overview" || tab === "referrals") && <AffiliatePanel data={affiliate} />}
 
           {tab === "overview" && paidWithoutCredential && (
             <div className="six-paid-banner" role="status">

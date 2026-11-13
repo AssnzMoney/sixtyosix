@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, Copy, Gift } from 'lucide-react'
 
-type Affiliate = {
+export type Affiliate = {
   enabled: boolean
   code?: string
   link?: string
@@ -15,15 +15,11 @@ type Affiliate = {
 const date = (value: string) => new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
-/**
- * "Indique e ganhe dias": só aparece para as contas que o admin ativou como afiliado.
- * Busca os próprios dados (/api/account/affiliate): uma falha aqui nunca afeta o resto do painel.
- */
-export default function AffiliatePanel({ token }: { token: string }) {
+/** Dados de afiliado da conta (/api/account/affiliate). Falha ou conta comum: { enabled: false }. */
+export function useAffiliate(token: string | undefined) {
   const [data, setData] = useState<Affiliate | null>(null)
-  const [copied, setCopied] = useState(false)
-
   useEffect(() => {
+    if (!token) return
     const controller = new AbortController()
     fetch('/api/account/affiliate', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal })
       .then((r) => (r.ok ? r.json() : { enabled: false }))
@@ -31,6 +27,77 @@ export default function AffiliatePanel({ token }: { token: string }) {
       .catch(() => undefined)
     return () => controller.abort()
   }, [token])
+  return data
+}
+
+const seenKey = (code: string) => `six-affiliate-seen-${code}`
+
+/**
+ * Aviso na primeira entrada do afiliado neste aparelho: conta que ele agora tem um link de indicação.
+ * Usa o mesmo visual do pop-up de confirmação da chave e nunca aparece junto com ele (`blocked`).
+ */
+export function AffiliateWelcome({ data, blocked, onOpen }: { data: Affiliate | null; blocked: boolean; onOpen: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!data?.enabled || !data.code || blocked) return
+    try { if (!localStorage.getItem(seenKey(data.code))) setOpen(true) } catch { /* sem armazenamento: não mostra */ }
+  }, [data, blocked])
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+  if (!open || blocked || !data?.link || !data.code) return null
+  function close() {
+    try { localStorage.setItem(seenKey(data!.code!), String(Date.now())) } catch { /* ignora */ }
+    setOpen(false)
+  }
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(data!.link!)
+      setCopied(true)
+    } catch { /* o link continua visível */ }
+  }
+  const days = data.days || 7
+  return (
+    <div className="six-confirm-gate" role="dialog" aria-modal="true" aria-labelledby="six-affiliate-welcome-title" onClick={(e) => { if (e.target === e.currentTarget) close() }}>
+      <div className="six-confirm-gate-card six-affiliate-welcome">
+        <span className="six-step-badge">
+          <Gift size={13} aria-hidden="true" /> Novidade na sua conta
+        </span>
+        <h2 id="six-affiliate-welcome-title">Agora você é afiliado da SixtySix</h2>
+        <p>
+          Você ganhou um link de indicação. Cada pagamento de quem criar a conta por ele, inclusive as renovações, dá
+          <strong> +{days} dias</strong> de acesso para você, direto no seu plano e na validade da sua chave.
+        </p>
+        <div className="six-affiliate-link">
+          <code>{data.link}</code>
+          <button type="button" className="six-primary" onClick={() => void copy()}>
+            {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copiado' : 'Copiar link'}
+          </button>
+        </div>
+        <p className="six-affiliate-hint">Vale para quem ainda não é cliente. Você acompanha tudo na aba Indicações.</p>
+        <div className="six-affiliate-welcome-actions">
+          <button type="button" className="six-secondary" onClick={close}>
+            Entendi
+          </button>
+          <button type="button" className="six-primary" onClick={() => { close(); onOpen() }}>
+            Ver minhas indicações
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * "Indique e ganhe dias": só aparece para as contas que o admin ativou como afiliado.
+ * Recebe os dados de useAffiliate: uma falha aqui nunca afeta o resto do painel.
+ */
+export default function AffiliatePanel({ data }: { data: Affiliate | null }) {
+  const [copied, setCopied] = useState(false)
 
   if (!data?.enabled || !data.link) return null
   const days = data.days || 7
