@@ -42,6 +42,29 @@ export function clientIp(headers: IncomingHttpHeaders, fallback = '') {
 }
 
 export type Device = { id: string | null; label: string | null }
+let shapeLogged = false
+/**
+ * Id da instalação no metadata.user_id do Claude Code. Formatos conhecidos:
+ * - antigo: "user_<hash>_account_<conta>_session_<sessão>";
+ * - novo: JSON com "device_id" (e account_uuid/session_id).
+ * Formato desconhecido vai para o log uma vez, só com a forma (nunca o valor).
+ */
+function installId(value: string): string | undefined {
+  const old = /^user_([0-9a-f]{16,128})(?:_|$)/i.exec(value)?.[1]
+  if (old) return old
+  if (value.trim().startsWith('{')) {
+    try {
+      const parsed = JSON.parse(value) as Record<string, unknown>
+      const id = parsed.device_id ?? parsed.deviceId ?? parsed.user_id
+      if (typeof id === 'string' && /^[0-9a-z_-]{16,128}$/i.test(id)) return id
+    } catch { /* forma desconhecida, cai no log abaixo */ }
+  }
+  if (!shapeLogged) {
+    shapeLogged = true
+    console.log('dispositivo: formato de metadata.user_id não reconhecido:', value.replace(/[0-9a-z-]{12,}/gi, '<id>').slice(0, 200))
+  }
+  return undefined
+}
 /**
  * Dispositivo de quem chamou. Nenhuma ferramenta manda dados do hardware; o que dá para usar:
  * - Claude Code: cada instalação manda um id próprio em metadata.user_id ("user_<hash>_account_..._session_...").
@@ -60,7 +83,7 @@ export function deviceOf(headers: IncomingHttpHeaders, payload?: Record<string, 
   const os = head('x-stainless-os') || (/windows|mac ?os|darwin|linux/i.exec(inside)?.[0] ?? '')
   const label = [tool, [os, head('x-stainless-arch')].filter(Boolean).join(' ')].filter(Boolean).join(' · ').slice(0, 120) || null
   const meta = payload && typeof payload.metadata === 'object' && payload.metadata ? (payload.metadata as Record<string, unknown>).user_id : null
-  const install = typeof meta === 'string' ? /^user_([0-9a-f]{16,128})(?:_|$)/i.exec(meta)?.[1] : undefined
+  const install = typeof meta === 'string' ? installId(meta) : undefined
   if (install) return { id: 'cc:' + createHash('sha256').update(install.toLowerCase()).digest('hex').slice(0, 32), label }
   if (!label) return { id: null, label: null }
   return { id: 'ua:' + createHash('sha256').update([tool, head('x-stainless-os') || inside, head('x-stainless-arch')].join('|').toLowerCase()).digest('hex').slice(0, 32), label }

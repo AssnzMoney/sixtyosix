@@ -146,6 +146,9 @@ test('dispositivo: instalação do Claude Code é sinal forte; o resto só ident
   assert.equal(cc.label, 'Claude Code · Windows x64')
   const same = deviceOf({ 'user-agent': 'claude-cli/2.1.400 (external, cli)' }, { metadata: { user_id: 'user_' + 'ab'.repeat(32) + '_account__session_999' } })
   assert.equal(same.id, cc.id) // outra sessão e outra versão, mesma instalação
+  const json = deviceOf({ 'user-agent': 'claude-cli/2.1.330 (external, cli)' }, { metadata: { user_id: JSON.stringify({ device_id: 'cd'.repeat(32), account_uuid: '', session_id: 'abc-123' }) } })
+  assert.match(json.id!, /^cc:/) // formato novo do Claude Code (JSON com device_id)
+  assert.notEqual(json.id, cc.id)
   const codex = deviceOf({ 'user-agent': 'codex_cli_rs/0.40.0 (Windows 10.0.19045; x86_64) WindowsTerminal' })
   assert.match(codex.id!, /^ua:/)
   assert.equal(codex.label, 'Codex · Windows')
