@@ -133,6 +133,11 @@ async function rawBody(req:IncomingMessage & {body?:unknown}){
   return Buffer.concat(chunks)
 }
 const single=(value:string|string[]|undefined)=>typeof value==='string'?value:undefined
+/** Chamada feita na própria máquina, sem passar pelo Caddy (que põe o X-Real-IP em toda chamada de fora). */
+export function localRequest(req:Pick<IncomingMessage,'headers'|'socket'>){
+  const address=req.socket?.remoteAddress||''
+  return !req.headers['x-real-ip']&&!req.headers['x-forwarded-for']&&['127.0.0.1','::1','::ffff:127.0.0.1'].includes(address)
+}
 const modelEntry=(id:string,label?:string)=>({id,object:'model',type:'model',display_name:label||id,owned_by:'sixtysix',created:1767225600,created_at:'2026-01-01T00:00:00Z'})
 
 type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string}
@@ -279,6 +284,9 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       res.end(JSON.stringify(await service.start(req.headers.authorization,url.searchParams.get('replace')==='1')));return
     }
     // Diagnóstico público do Roteador (sem keys): /api/router-status
+    // Só dentro da própria VPS (deploy/check-env.sh): mostra o nome do provedor e os limites. De fora (pelo Caddy, que
+    // sempre manda o X-Real-IP), responde como se o endereço não existisse.
+    if(action==='router-status'&&!localRequest(req))throw new AccessError(404,'Operação não encontrada.')
     if(action==='router-status'){
       const status=await routerStatus(process.env)
       res.setHeader('Content-Type','application/json; charset=utf-8');res.statusCode=200;res.end(JSON.stringify(status));return

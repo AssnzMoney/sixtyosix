@@ -819,7 +819,7 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
           <form className="sx-form-grid" onSubmit={(e) => { e.preventDefault(); saveProvider() }}>
             <label>
               Nome
-              <input value={providerForm.name} maxLength={60} placeholder="Ex.: Delver" onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })} />
+              <input value={providerForm.name} maxLength={60} placeholder="Ex.: Provedor principal" onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })} />
             </label>
             <label>
               URL base

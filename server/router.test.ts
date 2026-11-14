@@ -2,7 +2,8 @@ import { test, beforeEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
-import accessHandler, { seal } from '../api/access.ts'
+import accessHandler, { localRequest, seal } from '../api/access.ts'
+import { UsageTap } from './supplier.ts'
 import { canonicalModels, clearRouterCache, createRouterAdmin, findRoute, loadRouter, normalizeAlias, routerStatus, sealSecret, unsealSecret } from './router.ts'
 import { suggestAlias, suggestLabel } from '../src/lib/routerModels.ts'
 
@@ -782,4 +783,35 @@ test('stream OpenAI lento: o gateway manda sinal de vida até o modelo responder
     console.error = errors
     if (saved === undefined) delete process.env.SIXTYSIX_KEEPALIVE_MS; else process.env.SIXTYSIX_KEEPALIVE_MS = saved
   }
+})
+
+test('nada do fornecedor sai do gateway: diagnóstico só local e texto solto descartado', async () => {
+  // O diagnóstico do Roteador (nome do provedor, limites) só responde dentro da VPS.
+  const sock = (remoteAddress: string) => ({ remoteAddress }) as never
+  assert.equal(localRequest({ headers: {}, socket: sock('127.0.0.1') }), true)
+  assert.equal(localRequest({ headers: {}, socket: sock('::1') }), true)
+  assert.equal(localRequest({ headers: { 'x-real-ip': '177.1.2.3' }, socket: sock('127.0.0.1') }), false, 'veio pelo Caddy')
+  assert.equal(localRequest({ headers: { 'x-forwarded-for': '177.1.2.3' }, socket: sock('127.0.0.1') }), false)
+  assert.equal(localRequest({ headers: {}, socket: sock('177.1.2.3') }), false)
+  const server = createServer(accessHandler)
+  try {
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const base = 'http://127.0.0.1:' + (server.address() as { port: number }).port
+    const outside = await client(base + '/api/access?action=router-status', { headers: { 'x-real-ip': '177.1.2.3' } })
+    assert.equal(outside.status, 404)
+    assert.doesNotMatch(await outside.text(), /provider|name/)
+  } finally {
+    await new Promise<void>((resolve) => { server.closeAllConnections(); server.close(() => resolve()) })
+  }
+  // Evento de stream que não é JSON (aviso do fornecedor) não passa; os de verdade continuam.
+  const stream = new UsageTap({ stream: true, alias: 'argon-4', supplierId: 'google/gemini-4-argon', dropInjectedUsage: false, kind: 'chat' })
+  const out = stream.push(encode('data: DelverTokens upstream overloaded\n\ndata: {"id":"x","model":"google/gemini-4-argon","choices":[{"index":0,"delta":{"content":"oi"}}]}\n\ndata: [DONE]\n\n')) + stream.end()
+  assert.doesNotMatch(out, /Delver|gemini-4-argon/)
+  assert.match(out, /"content":"oi"/)
+  assert.match(out, /data: \[DONE\]/)
+  // Resposta sem stream que não é JSON (página de erro do fornecedor): vira falha (504 nosso), nada é repassado.
+  const page = new UsageTap({ stream: false, alias: 'argon-4', supplierId: 'google/gemini-4-argon', dropInjectedUsage: false, kind: 'chat' })
+  page.push(encode('<html>DelverTokens gateway error</html>'))
+  assert.equal(page.end(), '')
+  assert.ok(page.failure)
 })

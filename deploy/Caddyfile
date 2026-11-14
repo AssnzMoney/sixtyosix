@@ -31,6 +31,9 @@ www.sixtysix.online {
 			# IP real do cliente para o bloqueio de IP e o limite de velocidade (server/guard.ts lê x-real-ip).
 			# Substitui o que vier do cliente, então ninguém consegue se passar por outro IP.
 			header_up X-Real-IP {client_ip}
+			# Nada na resposta conta o que roda por trás (o Caddy põe "Via: 1.1 Caddy").
+			header_down -Via
+			header_down -Server
 		}
 	}
 

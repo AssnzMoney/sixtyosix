@@ -393,7 +393,11 @@ export class UsageTap {
     this.buffer = ''
     if (this.opts.stream) return rest.trim() ? this.event(rest.replace(/\n+$/, '')) : ''
     let obj: unknown
-    try { obj = JSON.parse(rest) } catch { return this.hide(rest) /* resposta que não é JSON: conta só a chamada */ }
+    try { obj = JSON.parse(rest) } catch {
+      // Texto solto (página de erro, aviso do fornecedor) num endpoint que só fala JSON: não vai ao cliente, vira o 504 nosso.
+      if (this.opts.kind !== 'other') { this.failure = `resposta sem JSON: ${rest.slice(0, 300)}`; return '' }
+      return this.hide(rest) /* outro endpoint (ex.: áudio): só troca o modelo */
+    }
     collectUsage(obj, this.usage)
     if (isObj(obj) && isObj(obj.error) && !('choices' in obj) && !('content' in obj) && !('output' in obj)) {
       this.failure = JSON.stringify(obj.error).slice(0, 500)
@@ -413,7 +417,11 @@ export class UsageTap {
     if (!data) return head.length ? `${head.join('\n')}\n\n` : ''
     if (data === '[DONE]') return `${[...head, 'data: [DONE]'].join('\n')}\n\n`
     let obj: unknown
-    try { obj = JSON.parse(data) } catch { return this.hide(text) + '\n\n' /* evento que não é JSON: só troca o modelo */ }
+    try { obj = JSON.parse(data) } catch {
+      // Nos formatos Anthropic e OpenAI todo evento é JSON: texto solto do fornecedor não vai ao cliente.
+      if (this.opts.kind !== 'other') return head.length ? `${head.join('\n')}\n\n` : ''
+      return this.hide(text) + '\n\n'
+    }
     collectUsage(obj, this.usage)
     if (isObj(obj)) {
       if (this.opts.dropInjectedUsage && Array.isArray(obj.choices) && !obj.choices.length && obj.usage) return ''
