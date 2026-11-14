@@ -1,0 +1,14 @@
+{
+  "voz": "pt-BR-AntonioNeural",
+  "velocidade": "+4%",
+  "falas": [
+    { "id": "f1", "em": 0.25, "tempo": 1.08, "texto": "Você paga caro pela sua IA." },
+    { "id": "f2", "em": 2.75, "tempo": 1.0, "texto": "Mas ela para... quando você mais precisa." },
+    { "id": "f3", "em": 10.3, "tempo": 1.0, "texto": "Conheça a Sixty Six." },
+    { "id": "f4", "em": 12.6, "tempo": 1.05, "texto": "Consumo, chaves e conexão, em um só lugar." },
+    { "id": "f5", "em": 15.55, "tempo": 1.1, "texto": "Os modelos que lideram o mercado, nas ferramentas que você já usa." },
+    { "id": "f6", "em": 19.0, "tempo": 1.0, "texto": "Integre com IA em minutos." },
+    { "id": "f7", "em": 22.5, "tempo": 1.05, "texto": "Uso ilimitado, chave só sua e preço fixo no Pix." },
+    { "id": "f8", "em": 25.75, "tempo": 1.0, "texto": "Continue criando, com a Sixty Six." }
+  ]
+}
