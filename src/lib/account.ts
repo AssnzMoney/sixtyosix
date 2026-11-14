@@ -53,3 +53,18 @@ export function accountCredentials(signal?: AbortSignal) {
 export function confirmCredential(id: string) {
   return accountRequest<{ confirmed_at: string }>('confirm-delivery', { id })
 }
+
+/** Chave entregue pelo site (server/auto-key.ts). O segredo só vem quando o cliente pede para ver. */
+export type SiteKeyStatus =
+  | { ready: true; prefix: string; expires: string; blocked: boolean; models: string[] | null; revealed: string | null }
+  | { ready: false; reason: 'sem_plano' | 'vencida' | 'preparando' }
+export type SiteKeySecret = { key: string; expires: string; models: string[] | null }
+export function siteKeyStatus(signal?: AbortSignal) {
+  return accountRequest<SiteKeyStatus>('site-key', undefined, signal)
+}
+export function revealSiteKey() {
+  return accountRequest<SiteKeySecret>('site-key-reveal', {})
+}
+export function rotateSiteKey() {
+  return accountRequest<SiteKeySecret>('site-key-rotate', {})
+}

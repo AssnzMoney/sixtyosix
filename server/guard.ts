@@ -4,6 +4,7 @@
  * Acima do limite o cliente recebe 429 com Retry-After e a ferramenta tenta de novo sozinha.
  * Se a migração não estiver aplicada ou o banco falhar, a chamada segue (nunca derruba o serviço).
  */
+import { createHash } from 'node:crypto'
 import type { IncomingHttpHeaders } from 'node:http'
 
 type Env = Record<string, string | undefined>
@@ -17,6 +18,8 @@ const MESSAGES: Record<string, { status: number; message: string }> = {
   busy: { status: 429, message: 'Você já tem várias respostas em andamento nesta chave. Aguarde uma terminar.' },
   ip_blocked: { status: 403, message: 'Acesso bloqueado a partir deste endereço. Fale com a SixtySix pelo WhatsApp: (81) 99237-6036.' },
   ip_pending: { status: 403, message: 'Este endereço (IP) ainda não foi liberado para a sua chave. Peça a liberação pelo WhatsApp: (81) 99237-6036.' },
+  ip_in_use: { status: 403, message: 'Sua chave está sendo usada em outro endereço agora. Se você trocou de rede, ela passa para cá sozinha depois de alguns minutos sem uso no endereço antigo.' },
+  ip_swap_limit: { status: 403, message: 'Esta chave trocou de endereço muitas vezes nas últimas 24 horas. Fale com a SixtySix pelo WhatsApp: (81) 99237-6036.' },
 }
 
 function database(env: Env) {
@@ -38,17 +41,49 @@ export function clientIp(headers: IncomingHttpHeaders, fallback = '') {
   return (first || fallback).slice(0, 64)
 }
 
+export type Device = { id: string | null; label: string | null }
+/**
+ * Dispositivo de quem chamou. Nenhuma ferramenta manda dados do hardware; o que dá para usar:
+ * - Claude Code: cada instalação manda um id próprio em metadata.user_id ("user_<hash>_account_..._session_...").
+ *   É o sinal forte ("cc:"): o mesmo id em outro IP é a mesma máquina mudando de rede.
+ * - Outras ferramentas: o nome no user-agent e o sistema/processador (x-stainless-os/arch, ou o que o
+ *   Codex põe no user-agent). Sinal fraco ("ua:"): aparece no admin, mas nunca libera troca de IP sozinho.
+ */
+export function deviceOf(headers: IncomingHttpHeaders, payload?: Record<string, unknown> | null): Device {
+  const head = (name: string) => {
+    const value = headers[name]
+    return (Array.isArray(value) ? value[0] : value || '').trim().slice(0, 200)
+  }
+  const ua = head('user-agent')
+  const tool = /claude-cli|claude-code/i.test(ua) ? 'Claude Code' : /codex/i.test(ua) ? 'Codex' : /opencode/i.test(ua) ? 'OpenCode' : /cline/i.test(ua) ? 'Cline' : (ua.split(/[\/ ]/)[0] || '').slice(0, 30)
+  const inside = /\(([^)]*)\)/.exec(ua)?.[1] || ''
+  const os = head('x-stainless-os') || (/windows|mac ?os|darwin|linux/i.exec(inside)?.[0] ?? '')
+  const label = [tool, [os, head('x-stainless-arch')].filter(Boolean).join(' ')].filter(Boolean).join(' · ').slice(0, 120) || null
+  const meta = payload && typeof payload.metadata === 'object' && payload.metadata ? (payload.metadata as Record<string, unknown>).user_id : null
+  const install = typeof meta === 'string' ? /^user_([0-9a-f]{16,128})(?:_|$)/i.exec(meta)?.[1] : undefined
+  if (install) return { id: 'cc:' + createHash('sha256').update(install.toLowerCase()).digest('hex').slice(0, 32), label }
+  if (!label) return { id: null, label: null }
+  return { id: 'ua:' + createHash('sha256').update([tool, head('x-stainless-os') || inside, head('x-stainless-arch')].join('|').toLowerCase()).digest('hex').slice(0, 32), label }
+}
+
 let warned = false
-export async function gateRequest(env: Env, request: typeof fetch, input: { clientId: string; ip: string; requestId: string }): Promise<GateResult> {
+let legacyGate = false
+export async function gateRequest(env: Env, request: typeof fetch, input: { clientId: string; ip: string; requestId: string; device?: Device }): Promise<GateResult> {
   const db = database(env)
   if (!db || !input.clientId) return { ok: true, leased: false }
   try {
+    const device = legacyGate ? {} : { p_device: input.device?.id ?? null, p_device_label: input.device?.label ?? null }
     const response = await request(`${db.url}/rest/v1/rpc/gateway_gate`, {
       method: 'POST',
       headers: headersFor(db.secret),
-      body: JSON.stringify({ p_client: input.clientId, p_ip: input.ip || null, p_request: input.requestId }),
+      body: JSON.stringify({ p_client: input.clientId, p_ip: input.ip || null, p_request: input.requestId, ...device }),
       signal: AbortSignal.timeout(5000),
     })
+    // Sem supabase/auto-delivery.sql a função ainda não aceita o dispositivo: volta para a chamada antiga.
+    if (response.status === 404 && !legacyGate) {
+      legacyGate = true
+      return gateRequest(env, request, input)
+    }
     if (!response.ok) {
       if (!warned) { warned = true; console.error('Proteção do gateway indisponível (aplique supabase/gateway-guard.sql?)', response.status) }
       return { ok: true, leased: false }

@@ -325,7 +325,7 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       const clientId = text(body.client_id, 40)
       if (!CLIENT_ID.test(clientId)) throw new RouterError(400, 'Chave inválida.')
       const load = (withIps: boolean) => Promise.all([
-        rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: 'ip,first_seen,last_seen,requests,blocked_at' + (withIps ? ',accepted' : ''), order: 'last_seen.desc', limit: '200' }), {}, GUARD_MISSING),
+        rest<Row[]>('gateway_client_ips?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: '*', order: 'last_seen.desc', limit: '200' }), {}, GUARD_MISSING),
         rest<Row[]>('gateway_controls?' + new URLSearchParams({ client_id: 'eq.' + clientId, select: 'rpm,concurrency' + (withIps ? ',max_ips' : ''), limit: '1' }), {}, GUARD_MISSING),
       ])
       let ipLimit = true

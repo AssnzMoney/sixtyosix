@@ -16,7 +16,7 @@ type RouterKey = { id: string; gateway_client_id: string; name: string; contact:
 type Limits = { rpm: number | null; concurrency: number | null; max_ips?: number | null; trial_rpm?: number | null; trial_concurrency?: number | null }
 type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[]; ipLimit?: boolean; trialLimit?: boolean }
 type Overview = { providers: Provider[]; models: Model[]; keys: RouterKey[]; guard: Guard | null }
-type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: number; blocked_at: string | null; accepted?: boolean }
+type SeenIp = { ip: string; first_seen: string; last_seen: string; requests: number; blocked_at: string | null; accepted?: boolean; device_label?: string | null }
 type EditForm = { name: string; contact: string; email: string; expires: string; all: boolean; models: string[] }
 type Draft = { key: string; upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
@@ -1096,8 +1096,9 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
                         {x.blocked_at ? (
                           <small className="sx-router-sub is-warning">Bloqueado nesta chave</small>
                         ) : x.accepted === false ? (
-                          <small className="sx-router-sub is-warning">Aguardando você aceitar</small>
+                          <small className="sx-router-sub is-warning">Recusado: a chave estava em uso em outro IP</small>
                         ) : null}
+                        {x.device_label && <small className="sx-router-sub">{String(x.device_label)}</small>}
                       </td>
                       <td>{dateTime(x.first_seen)}</td>
                       <td>{dateTime(x.last_seen)}</td>

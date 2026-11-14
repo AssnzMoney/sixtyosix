@@ -44,6 +44,10 @@ import {
   accountSummary,
   accountCredentials,
   confirmCredential,
+  siteKeyStatus,
+  revealSiteKey,
+  rotateSiteKey,
+  type SiteKeyStatus,
   type AccountTrial,
   type AccountSubscription,
   type AccountCredential,
@@ -493,6 +497,58 @@ export default function DashboardPage() {
     return () => controller.abort()
   }, [session?.user.id, refresh])
 
+  // Chave entregue pelo site: aparece aqui assim que o pagamento é aprovado (plano com API).
+  const [siteKey, setSiteKey] = useState<SiteKeyStatus | null>(null)
+  const [siteSecret, setSiteSecret] = useState("")
+  const [siteBusy, setSiteBusy] = useState<"" | "reveal" | "rotate">("")
+  useEffect(() => setSiteSecret(""), [session?.user.id])
+  useEffect(() => {
+    if (!session?.user.id) {
+      setSiteKey(null)
+      return
+    }
+    const controller = new AbortController()
+    siteKeyStatus(controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setSiteKey(result)
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSiteKey(null)
+      })
+    return () => controller.abort()
+  }, [session?.user.id, refresh])
+  async function showSiteKey() {
+    setSiteBusy("reveal")
+    setAccountError("")
+    try {
+      const result = await revealSiteKey()
+      setSiteSecret(result.key)
+      setClientKey(result.key) // os comandos do "Como conectar" já saem com a chave
+      setSiteKey((current) => (current?.ready && !current.revealed ? { ...current, revealed: new Date().toISOString() } : current))
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "Não foi possível mostrar sua chave.")
+    } finally {
+      setSiteBusy("")
+    }
+  }
+  async function newSiteKey() {
+    if (!window.confirm("Gerar uma chave nova? A chave atual para de funcionar na hora, e você vai precisar trocar nas suas ferramentas.")) return
+    setSiteBusy("rotate")
+    setAccountError("")
+    try {
+      const result = await rotateSiteKey()
+      setSiteSecret(result.key)
+      setClientKey(result.key)
+      setToast("Chave nova gerada. Atualize nas suas ferramentas.")
+      setRefresh((v) => v + 1)
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "Não foi possível gerar uma chave nova.")
+    } finally {
+      setSiteBusy("")
+    }
+  }
+  const siteKeyReady = siteKey?.ready === true
+
   async function confirmReceipt(id: string) {
     setConfirmingId(id)
     setAccountError("")
@@ -890,7 +946,9 @@ export default function DashboardPage() {
   const credentialsKnown = preview || credentials.status === "ready" || credentials.status === "unavailable"
   const needsSetup =
     activeCredentials.length === 0 && !keys.some((k) => k.active) && (preview || (keyState === "loaded" && credentialsKnown))
-  const paidWithoutCredential = Boolean(subscription?.active) && credentials.status === "ready" && activeCredentials.length === 0
+  // Plano só do site (Dev) não tem chave; com API, a chave sai do site e o aviso do WhatsApp só aparece se ela falhar.
+  const paidWithoutCredential = Boolean(subscription?.active && subscription.api) && credentials.status === "ready" && activeCredentials.length === 0 && siteKey !== null && !siteKeyReady
+  const keyWaiting = Boolean(subscription?.active) && siteKey?.ready === true && !siteKey.revealed && !siteKey.blocked
   const paidMessage = purchaseMessage({ name: user?.name, plan: subscription?.name, order: subscription?.id, email: user?.email })
 
   const credentialCard = (c: AccountCredential) => (
@@ -1212,12 +1270,26 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {tab === "overview" && needsSetup && !paidWithoutCredential && (
+          {tab === "overview" && keyWaiting && (
+            <div className="six-paid-banner" role="status">
+              <span className="six-paid-banner-text">
+                <CircleCheck size={20} aria-hidden="true" />
+                <span>
+                  <strong>Pagamento confirmado.</strong> Sua chave SixtySix já está pronta.
+                </span>
+              </span>
+              <button type="button" className="six-primary" onClick={() => switchTab("keys")}>
+                <KeyRound size={16} /> Ver minha chave
+              </button>
+            </div>
+          )}
+
+          {tab === "overview" && needsSetup && !paidWithoutCredential && !keyWaiting && (
             <section className="six-panel six-onboarding" aria-labelledby="six-onboarding-title">
               <div className="six-panel-head">
                 <div>
                   <h2 id="six-onboarding-title">Primeiros passos</h2>
-                  <p>Tudo acontece pelo WhatsApp: você contrata e recebe sua chave e a URL de configuração.</p>
+                  <p>Você contrata aqui, por Pix ou cartão, e pega sua chave aqui mesmo, na hora.</p>
                 </div>
               </div>
               <ol className="six-onboarding-steps">
@@ -1231,13 +1303,16 @@ export default function DashboardPage() {
                 </li>
                 <li>
                   <span className="six-onboarding-number">02</span>
-                  <h3>Receba a chave e a URL</h3>
-                  <p>Enviamos tudo pelo WhatsApp: sua chave, a URL de configuração e o modelo.</p>
+                  <h3>Pegue sua chave</h3>
+                  <p>Assim que o pagamento é aprovado, sua chave aparece em Chaves de API.</p>
                 </li>
                 <li>
                   <span className="six-onboarding-number">03</span>
-                  <h3>Confirme o recebimento aqui</h3>
-                  <p>Quando a credencial chegar, ela aparece neste painel para você confirmar.</p>
+                  <h3>Copie a chave e a URL</h3>
+                  <p>Clique em Mostrar chave e copie. A URL é sempre https://www.sixtysix.online.</p>
+                  <button type="button" className="six-secondary" onClick={() => switchTab("keys")}>
+                    Chaves de API <ArrowRight size={15} />
+                  </button>
                 </li>
                 <li>
                   <span className="six-onboarding-number">04</span>
@@ -1417,6 +1492,78 @@ export default function DashboardPage() {
 
           {tab === "keys" && (
             <>
+              {session && subscription?.api && (
+                <section className="six-panel six-site-key" aria-labelledby="six-site-key-title">
+                  <div className="six-panel-head">
+                    <div>
+                      <h2 id="six-site-key-title">Sua chave SixtySix</h2>
+                      <p>Use esta chave e a URL abaixo no Claude Code, no Codex, no Cline ou em qualquer app compatível.</p>
+                    </div>
+                  </div>
+                  {siteKey === null ? (
+                    empty("Carregando sua chave", "Consultando os dados da sua conta.")
+                  ) : !siteKey.ready ? (
+                    <p className="six-inline-notice is-info">
+                      <Info size={15} aria-hidden="true" />{" "}
+                      {siteKey.reason === "preparando"
+                        ? "Sua chave está sendo preparada. Atualize a página em alguns segundos."
+                        : siteKey.reason === "vencida"
+                          ? "Seu plano venceu. Renove em Plano e assinatura para a chave voltar a funcionar."
+                          : "Sua chave aparece aqui assim que o pagamento é aprovado."}
+                    </p>
+                  ) : (
+                    <ul className="six-key-list">
+                      <li className="six-key-row">
+                        <div className="six-key-main">
+                          <strong>Chave</strong>
+                          <code>{siteSecret || `${siteKey.prefix}••••••••••••••••`}</code>
+                        </div>
+                        <div className="six-key-meta">
+                          <span>Válida até</span>
+                          <strong>{new Date(siteKey.expires).toLocaleDateString("pt-BR")}</strong>
+                        </div>
+                        <span className={`six-status ${siteKey.blocked ? "is-muted" : ""}`}>{siteKey.blocked ? "Bloqueada" : "Ativa"}</span>
+                        <div className="six-key-row-actions">
+                          {siteSecret ? (
+                            <button type="button" className="six-primary" onClick={() => copy(siteSecret)}>
+                              <Copy size={15} /> Copiar
+                            </button>
+                          ) : (
+                            <button type="button" className="six-primary" disabled={siteBusy !== "" || siteKey.blocked} onClick={showSiteKey}>
+                              <Eye size={15} /> {siteBusy === "reveal" ? "Abrindo…" : "Mostrar chave"}
+                            </button>
+                          )}
+                          <button type="button" className="six-secondary" disabled={siteBusy !== "" || siteKey.blocked} onClick={newSiteKey}>
+                            <RefreshCw size={15} /> {siteBusy === "rotate" ? "Gerando…" : "Gerar nova"}
+                          </button>
+                        </div>
+                      </li>
+                      <li className="six-key-row">
+                        <div className="six-key-main">
+                          <strong>URL (Claude Code)</strong>
+                          <code>https://www.sixtysix.online</code>
+                        </div>
+                        <div className="six-key-meta">
+                          <span>Codex, Cline e apps OpenAI</span>
+                          <strong>https://www.sixtysix.online/v1</strong>
+                        </div>
+                        <span />
+                        <div className="six-key-row-actions">
+                          <button type="button" className="six-secondary" onClick={() => switchTab("guides")}>
+                            Como conectar <ArrowRight size={15} />
+                          </button>
+                        </div>
+                      </li>
+                    </ul>
+                  )}
+                  <p className="six-inline-notice is-info">
+                    <ShieldCheck size={15} aria-hidden="true" /> A chave é só sua e funciona em um lugar por vez. Mudou de rede ou de
+                    computador? Ela passa para o novo endereço sozinha. Se ela vazar, clique em Gerar nova: a antiga para na hora.
+                  </p>
+                </section>
+              )}
+              {/* Credenciais entregues pelo WhatsApp (antes da entrega pelo site). Quem só tem a chave do site não vê esta parte. */}
+              {!(siteKeyReady && credentials.items.length === 0) && (
               <section className="six-panel" aria-labelledby="six-creds-title">
                 <div className="six-panel-head">
                   <div>
@@ -1486,6 +1633,7 @@ export default function DashboardPage() {
                   <Info size={14} aria-hidden="true" /> O consumo da sua chave aparece em Meu consumo.
                 </p>
               </section>
+              )}
 
               {accountError && session && (
                 <p className="six-inline-notice is-error" role="alert">
@@ -1626,8 +1774,10 @@ export default function DashboardPage() {
                 </section>
               ) : (
                 <p className="six-inline-notice is-info">
-                  <MessageSquare size={15} aria-hidden="true" /> A URL e a sua chave chegam pelo WhatsApp depois da
-                  contratação. Cole a chave em “Deixe os comandos prontos” para preencher os comandos.
+                  <KeyRound size={15} aria-hidden="true" />{" "}
+                  {siteSecret
+                    ? "Sua chave já está nos comandos abaixo. É só copiar e colar."
+                    : "Sua chave fica em Chaves de API depois da contratação. Clique em Mostrar chave lá e os comandos daqui já saem prontos."}
                 </p>
               )}
               <div className="six-guide-choices">
@@ -2113,7 +2263,7 @@ sudo apt update && sudo apt install claude-desktop`}
               <section aria-labelledby="six-plans-title">
                 <div className="six-section-head">
                   <h2 id="six-plans-title">Planos</h2>
-                  <p>Contrate aqui mesmo, por Pix ou cartão. Depois do pagamento, sua chave chega pelo WhatsApp.</p>
+                  <p>Contrate aqui mesmo, por Pix ou cartão. Depois do pagamento, sua chave aparece na hora em Chaves de API.</p>
                 </div>
                 <div className="six-plans-grid">
                   {PLANS.map((plan) => {
@@ -2207,7 +2357,7 @@ sudo apt update && sudo apt install claude-desktop`}
                 {[
                   [
                     "Onde consigo minha chave?",
-                    "Você recebe sua chave individual e a URL de configuração pelo WhatsApp, logo depois de contratar. A chave fica ligada à sua conta e o consumo aparece aqui. O plano Dev pago usa somente o site; Dev + API e Pro permitem conexão externa.",
+                    "Na aba Chaves de API, assim que o pagamento é aprovado. A chave é individual, fica ligada à sua conta e o consumo aparece aqui. O plano Dev usa somente o site; Dev + API e Pro têm chave para conectar suas ferramentas.",
                   ],
                   [
                     "Deu erro 401. O que confiro?",

@@ -4,6 +4,7 @@ import { withPlanModels } from '../server/model-aliases.js'
 import { collectUsage, recordUsage, supplierUrl } from '../server/supplier.js'
 import { canonicalModels, findRoute, loadRouter } from '../server/router.js'
 import { gateRequest, releaseRequest } from '../server/guard.js'
+import { createAutoKeys } from '../server/auto-key.js'
 
 type ObjectValue = Record<string, unknown>
 type Env = Record<string, string | undefined>
@@ -48,6 +49,13 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     const response=await request(`https://api.mercadopago.com/${path}`,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(idempotency?{'X-Idempotency-Key':idempotency}:{})},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(20000)})
     if(!response.ok)throw new WebhookError(response.status===400?400:503,response.status===400?'O Mercado Pago não aceitou os dados. Confira o e-mail usado para pagar e tente novamente.':'Não foi possível consultar o Mercado Pago. Tente novamente.')
     return object(await response.json())
+  }
+  // Chave do site (server/auto-key.ts): cria, adota ou renova a chave sk-rt- da assinatura com API.
+  // Falha aqui vai só para o log: o pagamento fica registrado e o painel cria a chave quando o cliente abrir.
+  async function syncSiteKey(subscriptionId:string,status:string){
+    if(env.SIXTYSIX_AUTO_KEYS==='0')return
+    try{await createAutoKeys(env,request).sync(subscriptionId,{shrink:['refunded','charged_back','cancelled'].includes(status)})}
+    catch(error){console.error('chave do site: não foi possível atualizar a chave da assinatura',subscriptionId,error instanceof Error?error.message:error)}
   }
   let merchantPromise:Promise<string>|undefined
   const merchant=()=>merchantPromise||=(mp('users/me').then(item=>identifier(item.id)))
@@ -109,6 +117,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
       p_upstream_hash:createHash('sha256').update(upstream).digest('hex'),p_encrypted_upstream:encrypt(upstream,secret,`${item.user_id}:paid:${item.id}:upstream`),
     })
     await rewardAffiliate(String(payment.id))
+    await syncSiteKey(item.id,status)
     return 'processed'
   }
   async function processEvent(topic:string,resource:ObjectValue){
@@ -141,6 +150,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     const publicToken=`sk-sp-${randomBytes(32).toString('base64url')}`,upstream=`sk-flg-${randomBytes(32).toString('base64url')}`
     await db('rpc/billing_apply_payment',{},'POST',{p_id:item.id,p_payment_id:identifier(payment.id),p_invoice_id:`pix-${identifier(payment.id)}`,p_status:status,p_amount:expected,p_currency:'BRL',p_live:true,p_start:start,p_end:new Date(Date.parse(start)+30*86400000).toISOString(),p_approved:approved,p_modified:modified,p_hash:createHash('sha256').update(publicToken).digest('hex'),p_prefix:publicToken.slice(0,14),p_encrypted_token:encrypt(publicToken,secret,`${item.user_id}:paid:${item.id}:public`),p_upstream_hash:createHash('sha256').update(upstream).digest('hex'),p_encrypted_upstream:encrypt(upstream,secret,`${item.user_id}:paid:${item.id}:upstream`)})
     await rewardAffiliate(identifier(payment.id))
+    await syncSiteKey(item.id,status)
     return 'processed'
   }
   async function status(userId:string){

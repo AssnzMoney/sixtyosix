@@ -4,6 +4,7 @@ import { canonicalModels, loadRouter } from '../server/router.js'
 import { CONFIRMATION_TEXT_VERSION, deliveryConfirmationText, deliveryState, type DeliveryRow } from '../src/lib/deliveries.js'
 import { emailConfig, type EmailConfig } from '../server/email.js'
 import { createNotifier, userFromAuth } from '../server/notifications.js'
+import { AutoKeyError, createAutoKeys } from '../server/auto-key.js'
 
 type Config = { url: string; secret: string; publicKey: string;billingConnected?:boolean }
 type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean;expires?:string|null }
@@ -93,7 +94,9 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         }
         const paid=await db<PaidAccess[]>('billing_key_access',{user_id:`eq.${userId}`,select:'subscription_id,gateway_client_id,token_prefix,paid_until,revoked_at,api_enabled,created_at,entitled'})
         const subscriptions=await db<Subscription[]>('billing_subscription_state',{user_id:`eq.${userId}`,select:'id,plan_code,amount_cents,api_enabled,models,paid_until,provider_status,created_at,entitled,billing_mode',order:'created_at.desc',limit:'50'})
-        for(const access of paid)mine.push({id:access.gateway_client_id,name:'Assinatura · '+(access.api_enabled?'API':'Site'),enabled:access.entitled&&!access.revoked_at&&Boolean(access.paid_until&&Date.parse(access.paid_until)>Date.now()),created_at:access.created_at,key_prefix:access.token_prefix,managed:true,visible:access.api_enabled})
+        // A chave antiga da assinatura (sk-sp-) não é mais mostrada quando a conta já tem a chave do Roteador.
+        const hasRouterKey=mine.length>0
+        for(const access of paid)mine.push({id:access.gateway_client_id,name:'Assinatura · '+(access.api_enabled?'API':'Site'),enabled:access.entitled&&!access.revoked_at&&Boolean(access.paid_until&&Date.parse(access.paid_until)>Date.now()),created_at:access.created_at,key_prefix:access.token_prefix,managed:true,visible:access.api_enabled&&!hasRouterKey})
         const router=await loadRouter({SUPABASE_URL:config.url,SUPABASE_SERVICE_ROLE_KEY:config.secret},request)
         const selected=subscriptions.find(item=>item.entitled&&item.paid_until&&Date.parse(item.paid_until)>Date.now())||subscriptions[0]
         const subscription=selected?{id:selected.id,plan:selected.plan_code,name:selected.plan_code==='pro'?'Pro':selected.plan_code==='devApi'?'Dev + API':'Dev',amount:selected.amount_cents/100,api:selected.api_enabled,models:canonicalModels(router,withPlanModels(selected.models,router.proAliases)),active:selected.entitled&&Boolean(selected.paid_until&&Date.parse(selected.paid_until)>Date.now()),expires:selected.paid_until,status:selected.provider_status,mode:selected.billing_mode}:null
@@ -133,6 +136,18 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         if (!/^[a-z0-9][a-z0-9-]{2,29}$/.test(code)) throw new AccountError(400, 'Código de indicação inválido.')
         const result = await db<string>('rpc/affiliate_claim', {}, 'POST', { p_user_id: userId, p_code: code })
         return { result }
+      }
+      // Chave entregue pelo site (server/auto-key.ts): estado, ver a chave (registra a entrega) e trocar.
+      if (path === 'site-key' || path === 'site-key-reveal' || path === 'site-key-rotate') {
+        const keys = createAutoKeys({ SUPABASE_URL: config.url, SUPABASE_SERVICE_ROLE_KEY: config.secret }, request)
+        try {
+          if (method === 'GET' && path === 'site-key') return await keys.status(userId)
+          if (method === 'POST' && path === 'site-key-reveal') return await keys.reveal(userId, meta)
+          if (method === 'POST' && path === 'site-key-rotate') return await keys.rotate(userId, meta)
+        } catch (error) {
+          if (error instanceof AutoKeyError) throw new AccountError(error.status, error.message)
+          throw error
+        }
       }
       if (method === 'POST' && (path === 'claim' || path === 'keys')) {
         throw new AccountError(410, 'As chaves antigas foram desativadas. Peça sua chave pelo WhatsApp: (81) 99237-6036.')

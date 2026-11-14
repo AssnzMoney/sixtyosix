@@ -7,6 +7,7 @@ import { createNotifier, userFromAuth, type NotifyResult } from '../server/notif
 import { canonicalModels, createRouterAdmin, loadRouter, RouterError } from '../server/router.js'
 import { withPlanModels } from '../server/model-aliases.js'
 import { billingPlans } from './mercadopago.js'
+import { createAutoKeys } from '../server/auto-key.js'
 class AccountError extends Error { status:number; code?:string; constructor(status:number,message:string,code?:string){super(message);this.status=status;this.code=code} }
 
 /*
@@ -349,7 +350,9 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
     console.error('subscription-plan: plano trocado, mas as chaves do Roteador não foram conferidas',item.id,error)
     return {ok:true,plan:target.name,api:target.api,keys,keysChecked:false}
    }
-   return {ok:true,plan:target.name,api:target.api,keys,keysChecked:true}
+   // Plano com API sem chave ainda: a chave do site é criada agora (e a validade fica em dia).
+   const siteKey=await createAutoKeys(env,request).sync(item.id).catch((error)=>{console.error('subscription-plan: chave do site não atualizada',item.id,error);return 'erro'})
+   return {ok:true,plan:target.name,api:target.api,keys,keysChecked:true,siteKey}
   }
   if(action==='revoke-delivery'){
    if(!isUuid(body.id))throw new AccountError(400,'Credencial inválida.')

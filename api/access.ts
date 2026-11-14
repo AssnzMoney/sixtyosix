@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID }
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, unsupportedFix, UsageTap, withoutThinkingHistory } from '../server/supplier.js'
-import { clientIp, gateRequest, releaseRequest } from '../server/guard.js'
+import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
@@ -339,7 +339,7 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       if(!allowed.includes(route.alias)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
       // Proteção contra sobrecarga e IP bloqueado: acima do limite, 429 com Retry-After (a ferramenta tenta de novo).
       const requestId=randomUUID()
-      const gate=await gateRequest(process.env,fetch,{clientId,ip:clientIp(req.headers,req.socket?.remoteAddress||''),requestId})
+      const gate=await gateRequest(process.env,fetch,{clientId,ip:clientIp(req.headers,req.socket?.remoteAddress||''),requestId,device:deviceOf(req.headers,payload)})
       if(!gate.ok){if(gate.retryAfter)res.setHeader('retry-after',String(gate.retryAfter));throw new AccessError(gate.status,gate.message)}
       try{await proxySupplier(req,res,{route,path,params,payload,clientId})}
       finally{if(gate.leased)await releaseRequest(process.env,fetch,requestId)}
