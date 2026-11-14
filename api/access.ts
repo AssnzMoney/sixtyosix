@@ -147,6 +147,34 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
   const controller=new AbortController(),started=Date.now()
   req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
   let status=502,tap:UsageTap|null=null
+  const kind=endpointKind(call.path)
+  /*
+   * Sinal de vida nos streams do formato OpenAI (/v1/chat/completions e /v1/responses). O modelo pode pensar mais de
+   * 30 s antes do primeiro pedaço da resposta, e ferramentas como OmniRoute e Hermes desistem com 30 s sem nenhum byte
+   * (499 no log). Sem resposta do fornecedor em alguns segundos, o stream já abre com 200 e recebe um comentário SSE
+   * (": ping") a cada intervalo; os clientes ignoram comentários. Para no primeiro pedaço de verdade. Erro do fornecedor
+   * depois disso vai dentro do stream, no formato do endpoint. O /v1/messages (Claude Code) fica como era: ele espera
+   * bastante e usa o status do erro (ex.: conversa grande demais, para resumir).
+   */
+  const keepAlive=call.payload.stream===true&&kind!=='anthropic'
+  const keepAliveMs=Number(process.env.SIXTYSIX_KEEPALIVE_MS)||5000
+  let firstPing:ReturnType<typeof setTimeout>|undefined,pinger:ReturnType<typeof setInterval>|undefined
+  const stopPing=()=>{clearTimeout(firstPing);clearInterval(pinger);firstPing=pinger=undefined}
+  const ping=()=>{
+    if(res.writableEnded||res.destroyed)return stopPing()
+    if(!res.headersSent){res.statusCode=200;res.setHeader('content-type','text/event-stream; charset=utf-8');if(req.headers.origin)res.setHeader('access-control-allow-origin','*')}
+    res.write(': ping\n\n')
+  }
+  if(keepAlive)firstPing=setTimeout(()=>{ping();pinger=setInterval(ping,keepAliveMs)},keepAliveMs)
+  /** Erro depois que o stream já abriu: vai como evento, no formato do endpoint, e fecha. */
+  const streamError=(payload:{error:Record<string,unknown>})=>{
+    stopPing()
+    if(res.writableEnded||res.destroyed)return
+    if(kind==='responses')res.write(`event: error\ndata: ${JSON.stringify({type:'error',code:payload.error.code??payload.error.type??null,message:payload.error.message,param:null})}\n\n`)
+    else res.write(`data: ${JSON.stringify(payload)}\n\n`)
+    res.end()
+  }
+  const unavailable='Este modelo está temporariamente indisponível. Tente novamente em instantes.'
   const send=(payloadBody:string)=>{
     // Betas que o modelo já recusou não vão no cabeçalho.
     const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
@@ -186,10 +214,10 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Recusa da key mestra (saldo, bloqueio) ou falha do fornecedor: o cliente não vê detalhes do fornecedor.
     if(status===401||status===402||status===403||status>=500||(status>=300&&status<400)){
       console.error('Provedor recusou a chamada',provider.name,status,(await response.text().catch(()=>'')).slice(0,500))
-      throw new AccessError(503,'Este modelo está temporariamente indisponível. Tente novamente em instantes.')
+      if(res.headersSent)return streamError({error:{message:unavailable,type:'api_error',code:null}})
+      throw new AccessError(503,unavailable)
     }
-    const kind=endpointKind(call.path)
-    if(req.headers.origin)res.setHeader('access-control-allow-origin','*')
+    if(req.headers.origin&&!res.headersSent)res.setHeader('access-control-allow-origin','*')
     // Qualquer outro erro do fornecedor (400, 404, 413, 422, 429...): mantém o status, mas o corpo é nosso e genérico.
     // Nenhum cabeçalho dele passa; no 429 vai só o retry-after.
     if(status>=400){
@@ -197,6 +225,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       console.error('Provedor recusou a chamada',provider.name,status,text.slice(0,500))
       // Conversa grande demais: vai como 400 com o texto que o Claude Code/Codex reconhecem, para eles resumirem a conversa.
       const overflow=contextOverflow(status,text)
+      if(res.headersSent)return streamError((overflow?contextOverflowBody(kind,overflow):supplierErrorBody(kind,status)) as {error:Record<string,unknown>})
+      stopPing()
       res.statusCode=overflow?400:status
       res.setHeader('content-type','application/json; charset=utf-8')
       const retry=response.headers.get('retry-after')?.trim()
@@ -204,13 +234,13 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       res.end(JSON.stringify(overflow?contextOverflowBody(kind,overflow):supplierErrorBody(kind,status)))
       return
     }
-    res.statusCode=status
+    if(!res.headersSent)res.statusCode=status
     // Só o content-type passa, e no formato nosso (o do fornecedor pode ter detalhes dele).
     const type=response.headers.get('content-type')||''
     const stream=type.includes('text/event-stream')
-    res.setHeader('content-type',stream?'text/event-stream; charset=utf-8':type.includes('json')?'application/json; charset=utf-8':type||'application/octet-stream')
+    if(!res.headersSent)res.setHeader('content-type',stream?'text/event-stream; charset=utf-8':type.includes('json')?'application/json; charset=utf-8':type||'application/octet-stream')
     tap=new UsageTap({stream,alias:route.alias,supplierId:route.upstream,dropInjectedUsage:injectedUsage,kind})
-    const write=async(text:string)=>{if(text&&!res.write(text))await new Promise(resolve=>{res.once('drain',resolve);res.once('close',resolve)})}
+    const write=async(text:string)=>{if(!text)return;stopPing();if(!res.write(text))await new Promise(resolve=>{res.once('drain',resolve);res.once('close',resolve)})}
     if(response.body){const reader=response.body.getReader();for(;;){const {done,value}=await reader.read();if(done)break;await write(tap.push(value))}}
     const rest=tap.end()
     // "200 OK" só com um erro dentro (ex.: o fornecedor desistiu por demora): vira 504 nosso, com mensagem clara.
@@ -222,8 +252,14 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       res.setHeader('content-type','application/json; charset=utf-8')
       await write(JSON.stringify(supplierErrorBody(kind,504)))
     }else await write(rest)
+    stopPing()
     res.end()
+  }catch(error){
+    // Falha de rede depois que o stream abriu: fecha com um erro legível em vez de cortar a conexão.
+    if(res.headersSent&&keepAlive&&!res.destroyed&&!res.writableEnded){console.error('Falha no repasse com o stream aberto',provider.name,error);return streamError({error:{message:unavailable,type:'api_error',code:null}})}
+    throw error
   }finally{
+    stopPing()
     // Contar tokens (/v1/messages/count_tokens) não é uso do modelo: não entra no consumo.
     if(!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:status,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
   }

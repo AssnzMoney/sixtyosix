@@ -59,7 +59,7 @@ type Manual = { models: string[] | null; expires_at: string; revoked_at: string 
 /** Sobe o /api/access de verdade com Supabase e provedor simulados. */
 type Gate = { ok: boolean; reason?: string; retry_after?: number; leased?: boolean }
 const guardCalls: { name: string; body: any }[] = []
-async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response; manual?: Manual; gate?: Gate }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
+async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response | Promise<Response>; manual?: Manual; gate?: Gate }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
   const nativeFetch = globalThis.fetch
   const keys = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
   const saved = Object.fromEntries(keys.map(key => [key, process.env[key]]))
@@ -732,4 +732,54 @@ test('nome antigo do Claude Code (claude-3-5-haiku-…) vai para o Haiku do Rote
   assert.equal(claudeInternalRoute(router, allowed, 'claude-haiku-4-5-20251001')?.alias, 'claude-haiku-4-5')
   assert.equal(claudeInternalRoute(router, allowed, 'claude-3-7-sonnet-20250219')?.alias, 'claude-fable-5.2', 'sem Sonnet: o primeiro Claude da chave')
   assert.equal(claudeInternalRoute(router, allowed, 'claude-fable-9'), undefined, 'nome vendido que não existe continua 404')
+})
+
+test('stream OpenAI lento: o gateway manda sinal de vida até o modelo responder; o /v1/messages não muda', async () => {
+  const saved = process.env.SIXTYSIX_KEEPALIVE_MS
+  process.env.SIXTYSIX_KEEPALIVE_MS = '40'
+  const errors = console.error
+  console.error = () => {}
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+  const chat = 'data: {"id":"c1","object":"chat.completion.chunk","model":"google/gemini-4-argon","choices":[{"index":0,"delta":{"content":"oi"}}]}\n\ndata: [DONE]\n\n'
+  const slowChat = async () => { await wait(200); return new Response(chat, { headers: { 'Content-Type': 'text/event-stream' } }) }
+  try {
+    await withAccess({ supplier: slowChat }, async (base) => {
+      const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'argon-4', stream: true, messages: [{ role: 'user', content: 'oi' }] })
+      assert.equal(response.status, 200)
+      assert.match(response.headers.get('content-type') || '', /text\/event-stream/)
+      const text = await response.text()
+      assert.ok(text.startsWith(': ping\n\n'), 'abre com o sinal de vida')
+      assert.match(text, /"content":"oi"/)
+      assert.doesNotMatch(text.slice(text.indexOf('data:')), /: ping/, 'sem sinal depois do primeiro pedaço')
+      assert.doesNotMatch(text, /gemini-4-argon/, 'o nome real do modelo continua escondido')
+    })
+    // Erro do fornecedor depois que o stream abriu: vai dentro do stream, com a nossa mensagem.
+    const slowError = async () => { await wait(200); return Response.json({ error: { message: 'DelverTokens: limite do upstream' } }, { status: 429 }) }
+    await withAccess({ supplier: slowError }, async (base) => {
+      const chatError = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'argon-4', stream: true, messages: [] })
+      const text = await chatError.text()
+      assert.equal(chatError.status, 200)
+      assert.match(text, /data: \{"error":\{"message":"Muitas chamadas agora\. Aguarde um instante\."/)
+      assert.doesNotMatch(text, /Delver/)
+      const responsesError = await post(base, '/v1/responses', 'sk-sx-cliente', { model: 'argon-4', stream: true, input: 'oi' })
+      assert.match(await responsesError.text(), /event: error\ndata: \{"type":"error"/)
+    })
+    // Erro rápido (antes do primeiro sinal): status de verdade, como antes.
+    const fastError = () => Response.json({ error: { message: 'x' } }, { status: 429 })
+    await withAccess({ supplier: fastError }, async (base) => {
+      const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'argon-4', stream: true, messages: [] })
+      assert.equal(response.status, 429)
+      assert.doesNotMatch(await response.text(), /ping/)
+    })
+    // Claude Code (/v1/messages): sem sinal de vida, mesmo lento.
+    const slowSse = async () => { await wait(200); return sse() }
+    await withAccess({ supplier: slowSse }, async (base) => {
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', stream: true, max_tokens: 10, messages: [{ role: 'user', content: 'oi' }] })
+      assert.equal(response.status, 200)
+      assert.doesNotMatch(await response.text(), /ping/)
+    })
+  } finally {
+    console.error = errors
+    if (saved === undefined) delete process.env.SIXTYSIX_KEEPALIVE_MS; else process.env.SIXTYSIX_KEEPALIVE_MS = saved
+  }
 })
