@@ -3170,3 +3170,15 @@
 .six-dashboard[data-theme='dark'] .six-select select {
   color-scheme: dark;
 }
+
+/* Chave vinculada mostrada por inteiro (linha inteira embaixo dos dados) */
+.six-key-row .six-key-secret {
+  grid-column: 1 / -1;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--input-bg);
+  font: 13px/1.4 'DM Mono', monospace;
+  overflow-wrap: anywhere;
+  user-select: all;
+}

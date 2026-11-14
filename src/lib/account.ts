@@ -78,3 +78,8 @@ export function siteKeyIps(signal?: AbortSignal) {
 export function removeSiteKeyIp(ip: string) {
   return accountRequest<{ ok: true }>('site-key-ip-remove', { ip })
 }
+
+/** Mostra uma chave do Roteador ligada à conta (ex.: teste grátis vinculado pelo admin). */
+export function revealLinkedKey(id: string) {
+  return accountRequest<{ key: string; expires: string }>('key-reveal', { id })
+}

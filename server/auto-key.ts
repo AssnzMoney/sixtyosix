@@ -227,5 +227,22 @@ export function createAutoKeys(env: Env, request: typeof fetch = fetch) {
     return { ok: true }
   }
 
-  return { sync, status, reveal, rotate, ips, removeIp }
+  /**
+   * Mostra uma chave do Roteador ligada à conta (ex.: teste grátis que o admin vinculou ao e-mail).
+   * Só o dono vê, e só enquanto ela vale: bloqueada ou vencida não aparece.
+   */
+  async function revealLinked(userId: string, clientId: unknown) {
+    const id = typeof clientId === 'string' ? clientId : ''
+    if (!UUID.test(id)) throw new AutoKeyError(400, 'Chave inválida.')
+    const [owner] = await rest(`gateway_clients?${q({ id: `eq.${id}`, user_id: `eq.${userId}`, select: 'id', limit: '1' })}`)
+    if (!owner) throw new AutoKeyError(404, 'Chave não encontrada na sua conta.')
+    const [key] = await rest(`router_keys?${q({ gateway_client_id: `eq.${id}`, select: 'id,expires_at,revoked_at', limit: '1' })}`)
+    if (!key) throw new AutoKeyError(404, 'Chave não encontrada na sua conta.')
+    if (key.revoked_at) throw new AutoKeyError(403, 'Esta chave foi bloqueada. Fale com a SixtySix pelo WhatsApp: (81) 99237-6036.')
+    if (!(Date.parse(key.expires_at) > Date.now())) throw new AutoKeyError(403, 'Esta chave venceu.')
+    const { key: secret } = (await router().revealKey({ id: key.id })) as { key: string }
+    return { key: secret, expires: key.expires_at }
+  }
+
+  return { sync, status, reveal, rotate, ips, removeIp, revealLinked }
 }

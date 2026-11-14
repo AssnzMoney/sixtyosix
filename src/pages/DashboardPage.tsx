@@ -49,6 +49,7 @@ import {
   rotateSiteKey,
   siteKeyIps,
   removeSiteKeyIp,
+  revealLinkedKey,
   type SiteKeyIps,
   type SiteKeyStatus,
   type AccountTrial,
@@ -81,6 +82,7 @@ type KeyRow = {
   created: string
   managed?: boolean
   expires?: string | null
+  revealable?: boolean
 }
 type GatewayStatus = "checking" | "ready" | "down" | "unknown"
 
@@ -551,6 +553,23 @@ export default function DashboardPage() {
     }
   }
   const siteKeyReady = siteKey?.ready === true
+  // Chaves do Roteador ligadas à conta (ex.: teste grátis vinculado no admin): o cliente vê e copia aqui.
+  const [linkedSecrets, setLinkedSecrets] = useState<Record<string, string>>({})
+  const [revealingId, setRevealingId] = useState("")
+  useEffect(() => setLinkedSecrets({}), [session?.user.id])
+  async function showLinkedKey(id: string) {
+    setRevealingId(id)
+    setAccountError("")
+    try {
+      const result = await revealLinkedKey(id)
+      setLinkedSecrets((current) => ({ ...current, [id]: result.key }))
+      setClientKey(result.key) // os comandos do "Como conectar" já saem com a chave
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "Não foi possível mostrar a chave.")
+    } finally {
+      setRevealingId("")
+    }
+  }
   // Endereços da chave: o IP de agora, o que está em uso e o botão para tirar um endereço.
   const [keyIps, setKeyIps] = useState<SiteKeyIps | null>(null)
   const [removingIp, setRemovingIp] = useState("")
@@ -1796,6 +1815,20 @@ export default function DashboardPage() {
                           {k.active ? <Check size={11} /> : <X size={11} />}
                           {k.active ? "Ativa" : "Inativa"}
                         </span>
+                        {k.revealable && k.active && (
+                          <div className="six-key-row-actions">
+                            {linkedSecrets[k.id] ? (
+                              <button type="button" className="six-primary" onClick={() => copy(linkedSecrets[k.id])}>
+                                <Copy size={15} /> Copiar
+                              </button>
+                            ) : (
+                              <button type="button" className="six-secondary" disabled={revealingId !== ""} onClick={() => showLinkedKey(k.id)}>
+                                <Eye size={15} /> {revealingId === k.id ? "Abrindo…" : "Mostrar"}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {linkedSecrets[k.id] && <code className="six-key-secret">{linkedSecrets[k.id]}</code>}
                       </li>
                     ))}
                   </ul>

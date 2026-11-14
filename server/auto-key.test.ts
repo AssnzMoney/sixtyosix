@@ -38,7 +38,7 @@ function fakeDb(seed: { subs?: Row[]; keys?: Row[]; clients?: Row[]; links?: Row
     const name = url.pathname.replace('/rest/v1/', '')
     const body = init.body ? JSON.parse(String(init.body)) : null
     if (name === 'rpc/router_create_key') {
-      const client = `c${++n}`, id = `k${n}`
+      const client = `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`, id = `k${n}`
       tables.gateway_clients.push({ id: client, user_id: null })
       const row = { id, gateway_client_id: client, token_hash: body.p_hash, token_prefix: body.p_prefix, encrypted_token: body.p_encrypted_token, models: body.p_models, expires_at: new Date(Date.now() + body.p_days * DAY).toISOString(), created_at: new Date().toISOString(), revoked_at: null }
       tables.router_keys.push(row)
@@ -189,4 +189,21 @@ test('painel mostra os endereços da chave e o IP de agora; remover libera a vag
   await keys.removeIp(USER, '177.2.2.2')
   db.tables.gateway_client_ips.push({ client_id: client, ip: '8.8.8.8', last_seen: now, first_seen: now, requests: 1, accepted: true, blocked_at: null })
   await assert.rejects(keys.removeIp(USER, '8.8.8.8'), { status: 429 }) // limite de trocas do dia
+})
+
+test('chave vinculada pelo admin (teste grátis): só o dono vê, e só enquanto vale', async () => {
+  const db = fakeDb({ subs: [] })
+  const admin = (await import('./router.ts')).createRouterAdmin({ url: env.SUPABASE_URL, secret: env.SUPABASE_SERVICE_ROLE_KEY }, db.fetch, 'admin')
+  const created = (await admin.createKey({ name: 'Teste', hours: 3, slow: false })) as { key: string; row: Row }
+  const client = db.tables.gateway_clients.find((c) => c.id === created.row.gateway_client_id)!
+  client.user_id = USER
+  const keys = createAutoKeys(env, db.fetch)
+  const shown = await keys.revealLinked(USER, client.id)
+  assert.equal(shown.key, created.key)
+  await assert.rejects(keys.revealLinked('33333333-3333-4333-8333-333333333333', client.id), { status: 404 }) // conta de outra pessoa
+  db.tables.router_keys[0].expires_at = new Date(Date.now() - 1000).toISOString()
+  await assert.rejects(keys.revealLinked(USER, client.id), { status: 403 })
+  db.tables.router_keys[0].expires_at = new Date(Date.now() + DAY).toISOString()
+  db.tables.router_keys[0].revoked_at = new Date().toISOString()
+  await assert.rejects(keys.revealLinked(USER, client.id), { status: 403 })
 })

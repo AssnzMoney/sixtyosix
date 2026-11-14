@@ -7,7 +7,7 @@ import { createNotifier, userFromAuth } from '../server/notifications.js'
 import { AutoKeyError, createAutoKeys } from '../server/auto-key.js'
 
 type Config = { url: string; secret: string; publicKey: string;billingConnected?:boolean }
-type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean;expires?:string|null }
+type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean;expires?:string|null;router?:boolean }
 type Subscription = {id:string;plan_code:string;amount_cents:number;api_enabled:boolean;models:string[];paid_until:string|null;provider_status:string;created_at:string;entitled:boolean;billing_mode:string}
 type PaidAccess = {subscription_id:string;gateway_client_id:string;token_prefix:string;paid_until:string|null;revoked_at:string|null;api_enabled:boolean;created_at:string;entitled:boolean;billing_mode:string}
 type Trial = { gateway_client_id:string; token_prefix:string; created_at:string; expires_at:string; revoked_at:string|null }
@@ -89,7 +89,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
           for (const k of routerKeys) {
             const client = linked.find(c => c.id === k.gateway_client_id)
             if (!client) continue
-            mine.push({ ...client, name: 'Chave SixtySix', enabled: !k.revoked_at && Date.parse(k.expires_at) > Date.now(), managed: true, expires: k.expires_at })
+            mine.push({ ...client, name: 'Chave SixtySix', enabled: !k.revoked_at && Date.parse(k.expires_at) > Date.now(), managed: true, expires: k.expires_at, router: true })
           }
         }
         const paid=await db<PaidAccess[]>('billing_key_access',{user_id:`eq.${userId}`,select:'subscription_id,gateway_client_id,token_prefix,paid_until,revoked_at,api_enabled,created_at,entitled'})
@@ -105,7 +105,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
           client_id: `in.(${mine.map(c => c.id).join(',')})`, and: `(created_at.gte.${start},created_at.lt.${end},created_at.lte.${new Date(asOf).toISOString()})`,
           order: 'created_at.desc,id.desc', limit: '1000', offset: String(offset),
         }) : []
-        return { keys: mine.filter(c=>c.visible!==false).map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:Boolean(c.managed),expires:c.expires||null })), usage, hasMore: usage.length === 1000, subscription, billingConnected:Boolean(config.billingConnected),
+        return { keys: mine.filter(c=>c.visible!==false).map(c => ({ id: c.id, name: c.name, prefix: c.key_prefix || 'Chave anterior', active: c.enabled, created: c.created_at,managed:Boolean(c.managed),expires:c.expires||null,revealable:Boolean(c.router) })), usage, hasMore: usage.length === 1000, subscription, billingConnected:Boolean(config.billingConnected),
           trial:null }
       }
       // Chaves antigas do gateway (sk-flg-) foram desativadas: a chave agora sai do Roteador e é entregue pelo WhatsApp.
@@ -138,9 +138,10 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         return { result }
       }
       // Chave entregue pelo site (server/auto-key.ts): estado, ver a chave (registra a entrega) e trocar.
-      if (path === 'site-key' || path === 'site-key-reveal' || path === 'site-key-rotate' || path === 'site-key-ips' || path === 'site-key-ip-remove') {
+      if (path === 'site-key' || path === 'site-key-reveal' || path === 'site-key-rotate' || path === 'site-key-ips' || path === 'site-key-ip-remove' || path === 'key-reveal') {
         const keys = createAutoKeys({ SUPABASE_URL: config.url, SUPABASE_SERVICE_ROLE_KEY: config.secret }, request)
         try {
+          if (method === 'POST' && path === 'key-reveal') return await keys.revealLinked(userId, body.id)
           if (method === 'GET' && path === 'site-key') return await keys.status(userId)
           if (method === 'GET' && path === 'site-key-ips') return await keys.ips(userId, meta)
           if (method === 'POST' && path === 'site-key-ip-remove') return await keys.removeIp(userId, body.ip)
