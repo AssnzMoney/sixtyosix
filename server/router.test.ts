@@ -79,7 +79,8 @@ async function withAccess(options: { supplier?: (url: string, init: RequestInit)
       return Response.json([{ user_id: uid, gateway_client_id: trialClient, expires_at: new Date(Date.now() + day).toISOString(), revoked_at: null, encrypted_upstream: seal('sk-flg-bridge', SECRET, `${uid}:upstream`) }])
     }
     if (url.startsWith(`${SUPABASE}/rest/v1/router_keys`)) {
-      assert.ok(url.includes(sha('sk-rt-manual')))
+      // Outra chave sk-rt- (ex.: uma antiga esquecida no Windows) não existe no banco.
+      if (!url.includes(sha('sk-rt-manual'))) return Response.json([])
       return Response.json(options.manual ? [{ gateway_client_id: manualClient, ...options.manual }] : [])
     }
     calls.push({ url, init })
@@ -415,6 +416,17 @@ test('chave manual sk-rt- usa só os modelos dela', async () => {
     const list = await (await client(base + '/v1/models', { headers: { Authorization: 'Bearer sk-rt-manual' } })).json() as { data: { id: string }[] }
     assert.deepEqual(list.data.map(item => item.id), ['gpt-6.1-sol'])
     assert.ok(calls.every(call => call.url.startsWith('https://fornecedor.example/')))
+  })
+})
+
+test('duas chaves no mesmo pedido (antiga em x-api-key, nova em Authorization): vale a que funcionar', async () => {
+  const manual = { models: null, expires_at: new Date(Date.now() + 30 * day).toISOString(), revoked_at: null }
+  await withAccess({ manual }, async (base) => {
+    const both = await client(base + '/v1/models', { headers: { 'x-api-key': 'sk-rt-antiga-esquecida', authorization: 'Bearer sk-rt-manual' } })
+    assert.equal(both.status, 200)
+    const onlyOld = await client(base + '/v1/models', { headers: { 'x-api-key': 'sk-rt-antiga-esquecida' } })
+    assert.equal(onlyOld.status, 401)
+    assert.match((await onlyOld.json()).error.message, /inválida/)
   })
 })
 

@@ -308,11 +308,13 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     }
     // Endereços antigos (/glm/v1 e /api/codex) continuam aceitos e viram /v1 no provedor.
     const path=supplierPath(proxyPath(url.searchParams.get('path')||''))
-    const credential=single(req.headers['x-api-key'])||single(req.headers['anthropic-api-key'])||req.headers.authorization||''
-    const token=credential.replace(/^Bearer\s+/i,'').trim()
-    if(token.length>256)throw new AccessError(401,'Chave inválida.')
+    // A chave pode vir em x-api-key, anthropic-api-key ou Authorization: Bearer. O Claude Code manda as duas
+    // quando o cliente tem ANTHROPIC_API_KEY e ANTHROPIC_AUTH_TOKEN ao mesmo tempo (ex.: uma antiga no Windows
+    // e a nova no settings.json). Antes valia só a primeira e a nova era ignorada (401); agora vale a que funcionar.
+    const raw=[single(req.headers['x-api-key']),single(req.headers['anthropic-api-key']),single(req.headers.authorization)].map(value=>String(value||'').replace(/^Bearer\s+/i,'').trim()).filter(Boolean)
+    const tokens=[...new Set(raw)].filter(value=>value.length<=256&&/^sk-(sx|sp|rt)-/.test(value))
     // Só as chaves do SixtySix: Roteador (sk-rt-), plano do site (sk-sp-) e teste (sk-sx-). As antigas (sk-flg-) foram desativadas.
-    if(!/^sk-(sx|sp|rt)-/.test(token))throw new AccessError(401,token?'Esta chave foi desativada. Peça uma nova pelo WhatsApp: (81) 99237-6036.':'Informe sua chave de acesso.')
+    if(!tokens.length)throw new AccessError(401,raw[0]?(raw[0].length>256?'Chave inválida.':'Esta chave foi desativada. Peça uma nova pelo WhatsApp: (81) 99237-6036.'):'Informe sua chave de acesso.')
     const body=req.method==='POST'?await rawBody(req):undefined
     const params=new URLSearchParams(url.searchParams);params.delete('action');params.delete('path')
     let payload:Record<string,unknown>|null=null
@@ -324,13 +326,20 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     if(req.method==='POST'&&!model)throw new AccessError(400,'Selecione um modelo para continuar.')
     const router=await loadRouter(process.env)
     let allowed:string[]=[],clientId=''
-    if(token.startsWith('sk-sx-')){const trial=await service.authorize(token,router);allowed=trial.models;clientId=trial.clientId}
     // O modelo pedido é conferido mais abaixo, depois de resolver o nome no Roteador (inclui o caso dos modelos internos do Claude Code).
-    if(token.startsWith('sk-sp-')){const paid=await service.authorizePaid(token,undefined,router.proAliases);allowed=paid.models;clientId=paid.clientId}
-    if(token.startsWith(ROUTER_KEY_PREFIX)){
-      try{const key=await authorizeRouterKey(process.env,fetch,token,router);allowed=key.allowed;clientId=key.clientId}
+    const authorize=async(token:string)=>{
+      if(token.startsWith('sk-sx-')){const trial=await service.authorize(token,router);return {allowed:trial.models,clientId:trial.clientId}}
+      if(token.startsWith('sk-sp-')){const paid=await service.authorizePaid(token,undefined,router.proAliases);return {allowed:paid.models,clientId:paid.clientId}}
+      try{const key=await authorizeRouterKey(process.env,fetch,token,router);return {allowed:key.allowed,clientId:key.clientId}}
       catch(error){if(error instanceof RouterError)throw new AccessError(error.status,error.message);throw error}
     }
+    // Tenta cada chave recebida; fica a primeira que vale. Sem nenhuma válida, mostra o erro da primeira.
+    let firstError:unknown=null
+    for(const candidate of tokens){
+      try{const found=await authorize(candidate);allowed=found.allowed;clientId=found.clientId;firstError=null;break}
+      catch(error){if(!(error instanceof AccessError)||error.status>=500)throw error;firstError??=error}
+    }
+    if(firstError)throw firstError
     // Só existe o que está ativo no Roteador.
     allowed=canonicalModels(router,allowed)
     if((req.method==='GET'||req.method==='HEAD')&&/^\/v1\/models\/?$/.test(path)){
