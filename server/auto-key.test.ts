@@ -10,18 +10,23 @@ const DAY = 86400000
 
 type Row = Record<string, any>
 /** Supabase de mentira: só o que o módulo usa (filtros eq/in/is.null, PATCH, POST com on_conflict). */
-function fakeDb(seed: { subs?: Row[]; keys?: Row[]; clients?: Row[]; links?: Row[] } = {}) {
+function fakeDb(seed: { subs?: Row[]; keys?: Row[]; clients?: Row[]; links?: Row[]; ips?: Row[]; swaps?: Row[] } = {}) {
   const tables: Record<string, Row[]> = {
     billing_subscription_state: seed.subs || [],
     router_keys: seed.keys || [],
     gateway_clients: seed.clients || [],
     billing_router_keys: seed.links || [],
+    gateway_client_ips: seed.ips || [],
+    gateway_settings: [{ max_ips: 1, ip_swaps_per_day: 2 }],
+    gateway_controls: [],
+    gateway_ip_swaps: seed.swaps || [],
   }
   let n = 0
   const match = (row: Row, params: URLSearchParams) => {
     for (const [k, v] of params) {
       if (['select', 'order', 'limit', 'on_conflict'].includes(k)) continue
       if (v.startsWith('eq.') && String(row[k]) !== v.slice(3)) return false
+      if (v.startsWith('gte.') && !(String(row[k]) >= v.slice(4))) return false
       if (v === 'is.null' && row[k] != null) return false
       if (v.startsWith('in.(') && !v.slice(4, -1).split(',').includes(String(row[k]))) return false
     }
@@ -55,6 +60,10 @@ function fakeDb(seed: { subs?: Row[]; keys?: Row[]; clients?: Row[]; links?: Row
       const rows = table.filter((r) => match(r, url.searchParams))
       rows.forEach((r) => Object.assign(r, body))
       return Response.json(rows)
+    }
+    if (init.method === 'DELETE') {
+      tables[name] = table.filter((r) => !match(r, url.searchParams))
+      return Response.json([])
     }
     if (init.method === 'POST') {
       const key = url.searchParams.get('on_conflict')
@@ -153,4 +162,31 @@ test('dispositivo: instalação do Claude Code é sinal forte; o resto só ident
   assert.match(codex.id!, /^ua:/)
   assert.equal(codex.label, 'Codex · Windows')
   assert.deepEqual(deviceOf({}), { id: null, label: null })
+})
+
+test('painel mostra os endereços da chave e o IP de agora; remover libera a vaga e conta no limite', async () => {
+  const db = fakeDb({ subs: [sub()] })
+  const keys = createAutoKeys(env, db.fetch)
+  await keys.sync(SUB)
+  const client = db.tables.router_keys[0].gateway_client_id
+  const now = new Date().toISOString(), old = new Date(Date.now() - 3 * 3600000).toISOString()
+  db.tables.gateway_client_ips.push(
+    { client_id: client, ip: '200.1.1.1', last_seen: now, first_seen: old, requests: 9, accepted: true, blocked_at: null, device_label: 'Claude Code · Windows x64' },
+    { client_id: client, ip: '177.2.2.2', last_seen: old, first_seen: old, requests: 3, accepted: false, blocked_at: null, device_label: null },
+    { client_id: client, ip: '10.9.9.9', last_seen: old, first_seen: old, requests: 1, accepted: true, blocked_at: now, device_label: null },
+  )
+  const list = await keys.ips(USER, { ip: '200.1.1.1' })
+  assert.equal(list.current, '200.1.1.1')
+  assert.equal(list.inUse, '200.1.1.1')
+  assert.equal(list.maxIps, 1)
+  assert.deepEqual(list.items.map((i) => i.state), ['em_uso', 'recusado', 'bloqueado'])
+  assert.equal(list.items[0].here, true)
+  await assert.rejects(keys.removeIp(USER, '10.9.9.9'), { status: 403 }) // bloqueado pelo admin não sai
+  await assert.rejects(keys.removeIp(USER, '1.1.1.1; drop'), { status: 400 })
+  await keys.removeIp(USER, '200.1.1.1')
+  assert.ok(!db.tables.gateway_client_ips.some((r) => r.ip === '200.1.1.1'))
+  assert.equal(db.tables.gateway_ip_swaps.length, 1)
+  await keys.removeIp(USER, '177.2.2.2')
+  db.tables.gateway_client_ips.push({ client_id: client, ip: '8.8.8.8', last_seen: now, first_seen: now, requests: 1, accepted: true, blocked_at: null })
+  await assert.rejects(keys.removeIp(USER, '8.8.8.8'), { status: 429 }) // limite de trocas do dia
 })

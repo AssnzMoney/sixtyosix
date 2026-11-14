@@ -168,5 +168,64 @@ export function createAutoKeys(env: Env, request: typeof fetch = fetch) {
     return { key: created.key, expires: info.expires, models: info.models }
   }
 
-  return { sync, status, reveal, rotate }
+  /** Cadastro interno (gateway_clients) da chave ativa: é nele que ficam os IPs vistos. */
+  async function activeClient(userId: string) {
+    const info = await status(userId)
+    if (!info.ready) return null
+    const [key] = await rest(`router_keys?${q({ id: `eq.${info.keyId}`, select: 'gateway_client_id', limit: '1' })}`)
+    return key ? String(key.gateway_client_id) : null
+  }
+
+  /**
+   * Endereços (IPs) que usaram a chave, para o painel do cliente. `current` é o IP de quem está
+   * olhando o painel agora; `inUse` é o IP que usou a chave por último.
+   */
+  async function ips(userId: string, meta: { ip?: string } = {}) {
+    const client = await activeClient(userId)
+    const current = (meta.ip || '').slice(0, 64) || null
+    if (!client) return { current, inUse: null, maxIps: null, items: [] as Row[] }
+    const [rows, settings, controls] = await Promise.all([
+      rest(`gateway_client_ips?${q({ client_id: `eq.${client}`, select: '*', order: 'last_seen.desc', limit: '20' })}`),
+      rest(`gateway_settings?${q({ select: '*', limit: '1' })}`).catch(() => [] as Row[]),
+      rest(`gateway_controls?${q({ client_id: `eq.${client}`, select: '*', limit: '1' })}`).catch(() => [] as Row[]),
+    ])
+    const recent = (row: Row) => Date.now() - Date.parse(row.last_seen) < 10 * 60000
+    const items = rows
+      .filter((row) => Date.now() - Date.parse(row.last_seen) < 30 * DAY)
+      .map((row) => ({
+        ip: String(row.ip),
+        device: row.device_label || null,
+        firstSeen: row.first_seen,
+        lastSeen: row.last_seen,
+        requests: Number(row.requests) || 0,
+        state: row.blocked_at ? 'bloqueado' : row.accepted === false ? 'recusado' : recent(row) ? 'em_uso' : 'liberado',
+        here: Boolean(current && String(row.ip) === current),
+      }))
+    const inUse = items.find((item) => item.state === 'em_uso' || item.state === 'liberado')?.ip || null
+    return { current, inUse, maxIps: controls[0]?.max_ips ?? settings[0]?.max_ips ?? null, items }
+  }
+
+  /**
+   * O cliente tira um endereço da chave (ex.: o computador antigo). A vaga abre na hora: o próximo
+   * endereço entra sem esperar. Conta como troca no limite diário; endereço bloqueado pelo admin não sai.
+   */
+  async function removeIp(userId: string, ip: unknown) {
+    const value = typeof ip === 'string' ? ip.trim() : ''
+    if (!value || value.length > 64 || !/^[0-9a-f.:]+$/i.test(value)) throw new AutoKeyError(400, 'Endereço inválido.')
+    const client = await activeClient(userId)
+    if (!client) throw new AutoKeyError(409, 'Você ainda não tem uma chave ativa.')
+    const [row] = await rest(`gateway_client_ips?${q({ client_id: `eq.${client}`, ip: `eq.${value}`, select: '*', limit: '1' })}`)
+    if (!row) throw new AutoKeyError(404, 'Este endereço não está mais na sua chave.')
+    if (row.blocked_at) throw new AutoKeyError(403, 'Este endereço foi bloqueado pela SixtySix. Fale com a gente pelo WhatsApp: (81) 99237-6036.')
+    const [settings] = await rest(`gateway_settings?${q({ select: '*', limit: '1' })}`).catch(() => [] as Row[])
+    const perDay = Number(settings?.ip_swaps_per_day) || 12
+    const since = new Date(Date.now() - DAY).toISOString()
+    const swaps = await rest(`gateway_ip_swaps?${q({ client_id: `eq.${client}`, at: `gte.${since}`, select: 'id' })}`).catch(() => [] as Row[])
+    if (swaps.length >= perDay) throw new AutoKeyError(429, 'Sua chave já trocou de endereço muitas vezes nas últimas 24 horas. Tente mais tarde ou fale com a gente pelo WhatsApp.')
+    await rest(`gateway_client_ips?${q({ client_id: `eq.${client}`, ip: `eq.${value}` })}`, { method: 'DELETE' })
+    await rest('gateway_ip_swaps', { method: 'POST', body: JSON.stringify({ client_id: client, from_ip: value, to_ip: value, same_device: false, device_label: 'removido pelo cliente no painel' }) }).catch(() => undefined)
+    return { ok: true }
+  }
+
+  return { sync, status, reveal, rotate, ips, removeIp }
 }

@@ -47,6 +47,9 @@ import {
   siteKeyStatus,
   revealSiteKey,
   rotateSiteKey,
+  siteKeyIps,
+  removeSiteKeyIp,
+  type SiteKeyIps,
   type SiteKeyStatus,
   type AccountTrial,
   type AccountSubscription,
@@ -548,6 +551,47 @@ export default function DashboardPage() {
     }
   }
   const siteKeyReady = siteKey?.ready === true
+  // Endereços da chave: o IP de agora, o que está em uso e o botão para tirar um endereço.
+  const [keyIps, setKeyIps] = useState<SiteKeyIps | null>(null)
+  const [removingIp, setRemovingIp] = useState("")
+  useEffect(() => {
+    if (!session?.user.id || !siteKeyReady || tab !== "keys") return
+    const controller = new AbortController()
+    const load = () =>
+      siteKeyIps(controller.signal)
+        .then((result) => {
+          if (!controller.signal.aborted) setKeyIps(result)
+        })
+        .catch(() => undefined)
+    void load()
+    const timer = setInterval(load, 30000) // a troca automática aparece sem recarregar
+    return () => {
+      controller.abort()
+      clearInterval(timer)
+    }
+  }, [session?.user.id, siteKeyReady, tab, refresh])
+  async function removeIp(ip: string) {
+    if (!window.confirm(`Tirar o endereço ${ip} da sua chave? Quem estiver usando a chave nele para na hora, e o próximo endereço entra sem esperar.`)) return
+    setRemovingIp(ip)
+    setAccountError("")
+    try {
+      await removeSiteKeyIp(ip)
+      setKeyIps((current) => (current ? { ...current, items: current.items.filter((item) => item.ip !== ip), inUse: current.inUse === ip ? null : current.inUse } : current))
+      setToast("Endereço removido da sua chave.")
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : "Não foi possível remover o endereço.")
+    } finally {
+      setRemovingIp("")
+    }
+  }
+  const ipStateLabel: Record<string, string> = { em_uso: "Em uso agora", liberado: "Liberado", recusado: "Recusado (estava em uso em outro lugar)", bloqueado: "Bloqueado pela SixtySix" }
+  const timeAgo = (iso: string) => {
+    const minutes = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000))
+    if (minutes < 1) return "agora"
+    if (minutes < 60) return `há ${minutes} min`
+    const hours = Math.round(minutes / 60)
+    return hours < 24 ? `há ${hours} h` : `há ${Math.round(hours / 24)} dia(s)`
+  }
 
   async function confirmReceipt(id: string) {
     setConfirmingId(id)
@@ -1560,6 +1604,64 @@ export default function DashboardPage() {
                     <ShieldCheck size={15} aria-hidden="true" /> A chave é só sua e funciona em um lugar por vez. Mudou de rede ou de
                     computador? Ela passa para o novo endereço sozinha. Se ela vazar, clique em Gerar nova: a antiga para na hora.
                   </p>
+                </section>
+              )}
+              {session && siteKeyReady && (
+                <section className="six-panel six-key-ips" aria-labelledby="six-key-ips-title">
+                  <div className="six-panel-head">
+                    <div>
+                      <h2 id="six-key-ips-title">Endereços da chave</h2>
+                      <p>
+                        A troca é automática quando você muda de rede ou de computador. Se quiser liberar na hora, tire o endereço
+                        antigo aqui.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="six-ip-now">
+                    <div>
+                      <span>Seu IP agora</span>
+                      <strong>{keyIps?.current || "…"}</strong>
+                    </div>
+                    <div>
+                      <span>Em uso pela chave</span>
+                      <strong>{keyIps ? keyIps.inUse || "Nenhum ainda" : "…"}</strong>
+                    </div>
+                    <div>
+                      <span>Lugares ao mesmo tempo</span>
+                      <strong>{keyIps ? (keyIps.maxIps ? `${keyIps.maxIps}` : "Sem limite") : "…"}</strong>
+                    </div>
+                  </div>
+                  {keyIps && keyIps.items.length > 0 ? (
+                    <ul className="six-key-list">
+                      {keyIps.items.map((item) => (
+                        <li key={item.ip} className="six-key-row">
+                          <div className="six-key-main">
+                            <strong>
+                              {item.ip}
+                              {item.here ? " (você está aqui)" : ""}
+                            </strong>
+                            <code>{item.device || "Ferramenta não identificada"}</code>
+                          </div>
+                          <div className="six-key-meta">
+                            <span>Último uso</span>
+                            <strong>{timeAgo(item.lastSeen)}</strong>
+                          </div>
+                          <span className={`six-status ${item.state === "recusado" || item.state === "bloqueado" ? "is-muted" : ""}`}>{ipStateLabel[item.state]}</span>
+                          <div className="six-key-row-actions">
+                            {item.state !== "bloqueado" && (
+                              <button type="button" className="six-secondary" disabled={removingIp !== ""} onClick={() => removeIp(item.ip)}>
+                                <X size={15} /> {removingIp === item.ip ? "Removendo…" : "Remover"}
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="six-inline-notice is-info">
+                      <Info size={15} aria-hidden="true" /> {keyIps ? "Sua chave ainda não foi usada. O endereço aparece aqui na primeira chamada." : "Carregando os endereços…"}
+                    </p>
+                  )}
                 </section>
               )}
               {/* Credenciais entregues pelo WhatsApp (antes da entrega pelo site). Quem só tem a chave do site não vê esta parte. */}

@@ -138,10 +138,12 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         return { result }
       }
       // Chave entregue pelo site (server/auto-key.ts): estado, ver a chave (registra a entrega) e trocar.
-      if (path === 'site-key' || path === 'site-key-reveal' || path === 'site-key-rotate') {
+      if (path === 'site-key' || path === 'site-key-reveal' || path === 'site-key-rotate' || path === 'site-key-ips' || path === 'site-key-ip-remove') {
         const keys = createAutoKeys({ SUPABASE_URL: config.url, SUPABASE_SERVICE_ROLE_KEY: config.secret }, request)
         try {
           if (method === 'GET' && path === 'site-key') return await keys.status(userId)
+          if (method === 'GET' && path === 'site-key-ips') return await keys.ips(userId, meta)
+          if (method === 'POST' && path === 'site-key-ip-remove') return await keys.removeIp(userId, body.ip)
           if (method === 'POST' && path === 'site-key-reveal') return await keys.reveal(userId, meta)
           if (method === 'POST' && path === 'site-key-rotate') return await keys.rotate(userId, meta)
         } catch (error) {

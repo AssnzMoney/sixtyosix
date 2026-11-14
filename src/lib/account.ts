@@ -68,3 +68,13 @@ export function revealSiteKey() {
 export function rotateSiteKey() {
   return accountRequest<SiteKeySecret>('site-key-rotate', {})
 }
+
+/** Endereços (IPs) que usaram a chave. `current`: IP de quem está no painel agora. */
+export type SiteKeyIp = { ip: string; device: string | null; firstSeen: string; lastSeen: string; requests: number; state: 'em_uso' | 'liberado' | 'recusado' | 'bloqueado'; here: boolean }
+export type SiteKeyIps = { current: string | null; inUse: string | null; maxIps: number | null; items: SiteKeyIp[] }
+export function siteKeyIps(signal?: AbortSignal) {
+  return accountRequest<SiteKeyIps>('site-key-ips', undefined, signal)
+}
+export function removeSiteKeyIp(ip: string) {
+  return accountRequest<{ ok: true }>('site-key-ip-remove', { ip })
+}
