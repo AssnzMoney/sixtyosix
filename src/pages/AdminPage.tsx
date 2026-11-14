@@ -12,6 +12,7 @@ import {
   KeyRound,
   MessageCircle,
   RefreshCw,
+  TrendingUp,
   Search,
   UserRound,
   Wallet,
@@ -34,6 +35,8 @@ import {
   type DeliveryRow,
 } from '../lib/deliveries'
 import './admin.css'
+import { isLocalhost } from '../lib/isLocalhost'
+import { adminDemoData } from '../lib/adminDemo'
 
 type Row = Record<string, any>
 const brShort = (day: string) => day.split('-').reverse().slice(0, 2).join('/')
@@ -58,6 +61,7 @@ const resourceLabels: Record<string, string> = {
   usage: 'Consumo',
   payments: 'Pagamentos',
   deliveries: 'Credenciais',
+  sitekeys: 'Chaves entregues pelo site',
 }
 const columns: Record<string, string[]> = {
   customers: ['name', 'whatsapp', 'email', 'plan_code', 'client_state', 'paid_until', 'service_status'],
@@ -143,6 +147,7 @@ type Customer = { id: string; name: string; email: string; whatsapp: string }
 
 export default function AdminPage() {
   const { session, loading } = useAuth()
+  const demo = isLocalhost() && new URLSearchParams(window.location.search).has('demo')
   const [data, setData] = useState<Record<string, Row[]>>({})
   const [tab, setTab] = useState('service')
   const [search, setSearch] = useState('')
@@ -170,6 +175,13 @@ export default function AdminPage() {
   const [codeStep, setCodeStep] = useState<{ challenge: string; sentTo: string; code: string; sending: boolean; error: string } | null>(null)
 
   useEffect(() => {
+    // Prévia com dados de exemplo, só no computador local (/adminxv1?demo=1).
+    if (demo) {
+      setData(adminDemoData())
+      setAdminEmail('prévia local · dados de exemplo')
+      setUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }))
+      return
+    }
     if (!session) return
     const controller = new AbortController()
     let alive = true
@@ -375,13 +387,24 @@ export default function AdminPage() {
   const userSubscriptions = (userId: string) =>
     [...(subscriptionsByUser.get(userId) || [])].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
 
+  /** Chave entregue pelo site (supabase/auto-delivery.sql), por cliente: a da assinatura mais recente. */
+  const autoKeyByUser = useMemo(() => {
+    const map = new Map<string, Row>()
+    for (const k of data.sitekeys || []) {
+      const s = subscriptionsById.get(k.subscription_id)
+      if (s && !map.has(s.user_id)) map.set(s.user_id, { ...k, subscription: s })
+    }
+    return map
+  }, [data.sitekeys, subscriptionsById])
+
   /* ------------------------------ Filas ------------------------------ */
   const queues = useMemo(() => {
     const soon = now + 3 * 86400000
     const users = data.users || []
+    // A chave sai sozinha no pagamento. Aqui só fica quem pagou plano com API e ficou sem chave (falha rara).
     const paidWaiting = users
       .map((u) => ({ user: u, subscription: activeSubscription(u.id) }))
-      .filter((x) => x.subscription && (!deliveriesReady || activeDeliveries(x.user.id).length === 0))
+      .filter((x) => x.subscription && x.subscription.api_enabled && !autoKeyByUser.has(x.user.id) && (!deliveriesReady || activeDeliveries(x.user.id).length === 0))
       .sort((a, b) => String(paidAt(a.subscription!)).localeCompare(String(paidAt(b.subscription!))))
     const awaitingConfirmation = deliveries.filter((d) => d.state === 'pending')
     const rotation = deliveries
@@ -393,13 +416,21 @@ export default function AdminPage() {
       .filter((s) => !s.entitled && Date.parse(s.created_at) >= weekAgo && !activeSubscription(s.user_id))
       .filter((s, i, list) => list.findIndex((x) => x.user_id === s.user_id) === i)
     const noWhatsapp = users.filter((u) => !u.whatsapp)
-    return { paidWaiting, awaitingConfirmation, rotation, endedWithKey, pendingPayment, noWhatsapp }
-  }, [data, deliveries, deliveriesByUser, subscriptionsByUser, deliveriesReady, paymentsBySubscription])
+    // Chave pronta no painel e o cliente ainda não abriu: vale um lembrete.
+    const keyNotSeen = [...autoKeyByUser.entries()]
+      .filter(([userId, k]) => !k.revealed_at && activeSubscription(userId))
+      .map(([userId, k]) => ({ userId, key: k }))
+      .sort((a, b) => String(a.key.created_at).localeCompare(String(b.key.created_at)))
+    return { paidWaiting, awaitingConfirmation, rotation, endedWithKey, pendingPayment, noWhatsapp, keyNotSeen }
+  }, [data, deliveries, deliveriesByUser, subscriptionsByUser, deliveriesReady, paymentsBySubscription, autoKeyByUser])
 
   const serviceStatus = (userId: string) => {
+    const active = activeSubscription(userId)
+    const auto = autoKeyByUser.get(userId)
+    if (active && auto) return auto.revealed_at ? 'Chave entregue pelo site' : 'Chave pronta no site (não viu)'
     if (activeDeliveries(userId).some((d) => d.state === 'pending')) return 'Aguardando confirmação'
     if (activeDeliveries(userId).length) return 'Credencial confirmada'
-    if (activeSubscription(userId)) return deliveriesReady ? 'Pagou, aguardando entrega' : 'Plano ativo'
+    if (active) return !active.api_enabled ? 'Plano só no site (sem chave)' : deliveriesReady ? 'Pagou, sem chave' : 'Plano ativo'
     return 'Sem plano ativo'
   }
 
@@ -692,15 +723,19 @@ export default function AdminPage() {
       }
     : null
 
-  const metrics: Array<[string, ReactNode, string]> = [
-    [deliveriesReady ? 'Pagou, aguarda entrega' : 'Pagantes ativos', queues.paidWaiting.length, queues.paidWaiting.length ? 'alert' : ''],
-    ['Aguardando confirmação', deliveriesReady ? queues.awaitingConfirmation.length : '—', ''],
-    ['Rotação em até 3 dias', deliveriesReady ? queues.rotation.length : '—', queues.rotation.length ? 'warn' : ''],
-    ['Clientes (já pagaram)', number(people.customers.length), ''],
-    ['Pendentes', number(people.pending.length), people.pending.length ? 'warn' : ''],
-    ['Sem WhatsApp', number(queues.noWhatsapp.length), ''],
-    ['Planos ativos', number(activePlans), ''],
-    ['Receita aprovada no período', money(revenue), ''],
+  // Números do negócio (faixa escura do topo) e do atendimento (o que pede ação agora).
+  const kpis: Array<[string, ReactNode, ReactNode, string]> = [
+    ['Receita aprovada', money(revenue), <TrendingUp size={18} key="r" />, `${brShort(from)} a ${brShort(to)}`],
+    ['Planos ativos', number(activePlans), <Wallet size={18} key="p" />, 'pagos e em dia'],
+    ['Clientes', number(people.customers.length), <UserRound size={18} key="c" />, 'já pagaram alguma vez'],
+    ['Pendentes', number(people.pending.length), <Clock size={18} key="d" />, 'abriram o pagamento e não pagaram'],
+  ]
+  const metrics: Array<[string, ReactNode, string, ReactNode]> = [
+    ['Pagou e ficou sem chave', queues.paidWaiting.length, queues.paidWaiting.length ? 'alert' : 'ok', <KeyRound size={16} key="k" />],
+    ['Chave pronta, não viu', queues.keyNotSeen.length, queues.keyNotSeen.length ? 'info' : 'ok', <BellRing size={16} key="b" />],
+    ['Aguardando confirmação', deliveriesReady ? queues.awaitingConfirmation.length : '—', queues.awaitingConfirmation.length ? 'info' : 'ok', <Check size={16} key="a" />],
+    ['Rotação em até 3 dias', deliveriesReady ? queues.rotation.length : '—', queues.rotation.length ? 'warn' : 'ok', <RefreshCw size={16} key="o" />],
+    ['Sem WhatsApp', number(queues.noWhatsapp.length), queues.noWhatsapp.length ? 'muted' : 'ok', <MessageCircle size={16} key="w" />],
   ]
 
   return (
@@ -727,16 +762,16 @@ export default function AdminPage() {
       <section className="sx-admin-heading">
         <span className="sx-eyebrow">controle da operação</span>
         <h1>
-          Atendimento <em>pelo WhatsApp.</em>
+          Atendimento <em>automático.</em>
         </h1>
-        <p>Quem pagou, quem já recebeu a credencial, quem confirmou e o que precisa de rotação.</p>
+        <p>A chave sai pelo site no pagamento e renova sozinha. Aqui fica só o que precisa da sua atenção.</p>
       </section>
 
       {loading ? (
         <p className="sx-admin-message" role="status">
           Conferindo sua conta…
         </p>
-      ) : !session ? (
+      ) : !session && !demo ? (
         <div className="sx-admin-message">
           <h2>Entre com sua conta administrativa</h2>
           <Link className="sx-btn is-primary" to="/login" onClick={() => rememberReturn('/adminxv1')}>
@@ -820,9 +855,21 @@ export default function AdminPage() {
             </p>
           )}
 
+          <div className="sx-admin-kpis">
+            {kpis.map(([label, value, icon, hint]) => (
+              <article key={label}>
+                <span className="sx-kpi-icon">{icon}</span>
+                <span className="sx-kpi-label">{label}</span>
+                <strong>{busy && !data.users ? '…' : value}</strong>
+                <small>{hint}</small>
+              </article>
+            ))}
+          </div>
+
           <div className="sx-admin-metrics">
-            {metrics.map(([label, value, tone]) => (
-              <article key={label} className={tone ? `is-${tone}` : ''}>
+            {metrics.map(([label, value, tone, icon]) => (
+              <article key={label} className={`is-${tone}`}>
+                <span className="sx-metric-icon">{icon}</span>
                 <span>{label}</span>
                 <strong>{busy && !data.users ? '…' : value}</strong>
               </article>
@@ -854,9 +901,34 @@ export default function AdminPage() {
           ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(
-                'Pagou e aguarda entrega',
+                'Chave pronta, cliente ainda não viu',
+                'A chave já está no painel do cliente, mas ele ainda não clicou em Mostrar chave. Vale um lembrete.',
+                <BellRing size={18} />,
+                queues.keyNotSeen.length,
+                'info',
+                queues.keyNotSeen.map(({ userId, key }) => {
+                  const c = customer(userId)
+                  return (
+                    <li key={userId}>
+                      {who(c)}
+                      <div className="sx-context">
+                        <strong>
+                          {planNames[key.subscription.plan_code] || key.subscription.plan_code} · {key.adopted ? 'chave antiga, renova sozinha' : 'chave criada pelo site'}
+                        </strong>
+                        <span className={now - Date.parse(key.created_at) > 86400000 ? 'is-late' : 'is-fresh'}>Pronta {relative(key.created_at, now)}</span>
+                        <span>Acesso até {fullDate(key.subscription.paid_until)}</span>
+                      </div>
+                      <div className="sx-actions">
+                        {whatsappButton(c, `Olá${c.name && c.name !== 'Sem nome' ? `, ${c.name}` : ''}! Sua chave SixtySix já está pronta no seu painel: https://www.sixtysix.online/dashboard (aba Chaves de API, botão Mostrar chave).`, 'Lembrar')}
+                      </div>
+                    </li>
+                  )
+                }),
+              )}
+              {queue(
+                'Pagou e ficou sem chave',
                 deliveriesReady
-                  ? 'Plano ativo e nenhuma credencial ativa. Chame no WhatsApp e registre a entrega.'
+                  ? 'A chave sai sozinha no pagamento. Quem aparece aqui pagou um plano com API e ficou sem chave (por exemplo, falha no aviso do pagamento). Normalmente resolve quando o cliente abre o painel; se não, entregue manualmente.'
                   : 'Plano ativo. Para registrar entregas, aplique a migração supabase/whatsapp-delivery.sql.',
                 <Wallet size={18} />,
                 queues.paidWaiting.length,
@@ -878,7 +950,7 @@ export default function AdminPage() {
                       <div className="sx-actions">
                         {whatsappButton(c, customerGreeting({ name: c.name, plan: planNames[subscription!.plan_code] }))}
                         <button type="button" className="sx-btn is-primary" disabled={!deliveriesReady} onClick={() => openDelivery(user.id)}>
-                          <KeyRound size={15} /> Entregar chave
+                          <KeyRound size={15} /> Chave manual
                         </button>
                       </div>
                     </li>
@@ -1135,7 +1207,7 @@ export default function AdminPage() {
                               {whatsappButton(customer(row.id), customerGreeting({ name: row.name, plan: planOf(row.id) }))}
                               {deliveriesReady && (
                                 <button type="button" className="sx-btn" onClick={() => openDelivery(row.id)}>
-                                  <KeyRound size={15} /> Entregar chave
+                                  <KeyRound size={15} /> Chave manual
                                 </button>
                               )}
                             </div>
@@ -1217,11 +1289,33 @@ export default function AdminPage() {
               <span>{profile.user?.last_sign_in_at ? `Último acesso ${relative(profile.user.last_sign_in_at, now)}` : 'Nunca acessou'}</span>
             </div>
 
+            {(() => {
+              const auto = autoKeyByUser.get(profileId)
+              if (!auto) return null
+              return (
+                <section className="sx-drawer-section">
+                  <h3>Chave entregue pelo site</h3>
+                  <ul className="sx-detail-list">
+                    <li>
+                      {auto.adopted ? 'Chave que já existia (entregue pelo WhatsApp), agora renova sozinha' : 'Criada pelo site'} {relative(auto.created_at, now)}
+                    </li>
+                    <li>
+                      {auto.revealed_at
+                        ? `Cliente viu a chave ${relative(auto.revealed_at, now)} (${fullDate(auto.revealed_at)}${auto.revealed_ip ? `, IP ${auto.revealed_ip}` : ''})`
+                        : 'Cliente ainda não abriu a chave no painel'}
+                    </li>
+                    {auto.rotated_at && <li>Cliente gerou uma chave nova {relative(auto.rotated_at, now)}</li>}
+                    <li>IPs e computadores: aba Roteador → Detalhes da chave</li>
+                  </ul>
+                </section>
+              )
+            })()}
+
             <div className="sx-actions sx-drawer-actions">
               {whatsappButton(profile.customer, customerGreeting({ name: profile.customer.name, plan: planOf(profileId) }), 'Chamar no WhatsApp')}
               {deliveriesReady && (
                 <button type="button" className="sx-btn is-primary" onClick={() => openDelivery(profileId)}>
-                  <KeyRound size={15} /> Entregar chave
+                  <KeyRound size={15} /> Chave manual
                 </button>
               )}
             </div>
@@ -1297,7 +1391,7 @@ export default function AdminPage() {
             </section>
 
             <section className="sx-drawer-section">
-              <h3>Credenciais entregues</h3>
+              <h3>Credenciais entregues pelo WhatsApp</h3>
               {!deliveriesReady ? (
                 <p className="sx-drawer-empty">Aplique a migração supabase/whatsapp-delivery.sql para ver as entregas.</p>
               ) : profile.credentials.length ? (

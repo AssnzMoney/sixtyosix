@@ -622,7 +622,7 @@ export default function DashboardPage() {
   const gptCredential = credentialFor("gpt")
 
   const modelOptions = useMemo(
-    () => [ALL_MODELS, ...new Set([...KNOWN_MODELS, ...rows.map((r) => r.model)])],
+    () => [ALL_MODELS, ...new Set(rows.map((r) => r.model))], // só modelos com consumo no período (nada de modelo que saiu, como o Fable 5.1)
     [rows],
   )
   const filtered = useMemo(() => {

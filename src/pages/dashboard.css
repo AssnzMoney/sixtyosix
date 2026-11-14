@@ -1998,8 +1998,9 @@
 }
 
 .six-plan-api-toggle button[aria-pressed='true'] {
-  background: var(--ink);
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 6px 16px -8px var(--accent-glow);
 }
 
 .six-plan-card.is-current {
@@ -3144,4 +3145,28 @@
   margin-top: 4px;
   font: 600 15px/1.3 'DM Mono', monospace;
   overflow-wrap: anywhere;
+}
+
+/* Opções do seletor de modelo com as cores do painel (o menu nativo abria branco no tema escuro). */
+.six-dashboard[data-theme] .six-site-chat .six-chat-tools select option {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+.six-dashboard[data-theme] .six-site-chat .six-chat-tools select {
+  color-scheme: light dark;
+  cursor: pointer;
+}
+.six-dashboard[data-theme='dark'] .six-site-chat .six-chat-tools select {
+  color-scheme: dark;
+}
+
+/* Filtro de modelos do consumo: menu com as cores do painel (abria branco no tema escuro). */
+.six-dashboard[data-theme] .six-select select option {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+.six-dashboard[data-theme='dark'] .six-select select {
+  color-scheme: dark;
 }

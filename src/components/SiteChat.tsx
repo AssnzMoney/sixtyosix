@@ -1,9 +1,28 @@
 import {useState} from 'react'
 import {billingRequest} from '../lib/billing'
 import {ROUTER_MODEL_NAMES} from '../lib/routerModels'
-export default function SiteChat({models}:{models:string[]}){
+/** Nome bonito do modelo: o conhecido (ponto ou hífen tanto faz) ou 'claude-opus-5-5' → 'Opus 5.5'. */
+const KNOWN:Record<string,string>={'claude-fable-5-2':'Fable 5.2','claude-fable-5-1':'Fable 5.1','argon-4':'Argon 4','gpt-6-astra':'Astra 6','glm-5':'GLM 5',...ROUTER_MODEL_NAMES}
+export function modelLabel(alias:string){
+  const key=alias.toLowerCase().replace(/\./g,'-')
+  if(KNOWN[alias])return KNOWN[alias]
+  if(KNOWN[key])return KNOWN[key]
+  // claude-opus-5-5 → Opus 5.5 · gpt-7-nova → Gpt 7 Nova (números seguidos viram versão: 5-5 → 5.5)
+  const words=key.replace(/^claude-/,'').split('-').filter(Boolean)
+  const out:string[]=[]
+  for(const w of words){
+   const last=out[out.length-1]
+   if(/^\d+$/.test(w)&&last&&/^\d+(\.\d+)*$/.test(last))out[out.length-1]=`${last}.${w}`
+   else out.push(/^\d/.test(w)?w:w.charAt(0).toUpperCase()+w.slice(1))
+  }
+  return out.join(' ')||alias
+}
+/** Modelos de imagem não respondem texto: ficam fora do chat. */
+const isChatModel=(alias:string)=>!/image/i.test(alias)
+export default function SiteChat({models:all}:{models:string[]}){
+  const models=all.filter(isChatModel)
   const [selected,setSelected]=useState(models[0]||'gpt-6-astra'),[text,setText]=useState(''),[messages,setMessages]=useState<{role:'user'|'assistant';content:string}[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState('')
-  const labels:Record<string,string>={'claude-fable-5-2':'Fable 5.2','claude-fable-5-1':'Fable 5.1','argon-4':'Argon 4','gpt-6-astra':'Astra 6','glm-5':'GLM 5',...ROUTER_MODEL_NAMES}
+  const labels:Record<string,string>=Object.fromEntries(models.map(m=>[m,modelLabel(m)]))
   async function send(e:React.FormEvent){e.preventDefault();if(!text.trim()||busy)return;setBusy(true);setError('');const next=[...messages.slice(-19),{role:'user' as const,content:text.trim()}];try{const result=await billingRequest<{reply:string}>('chat',{model:models.includes(selected)?selected:models[0],messages:next});setMessages([...next,{role:'assistant',content:result.reply}]);setText('')}catch(err){setError(err instanceof Error?err.message:'Não foi possível responder.')}finally{setBusy(false)}}
   return <section className="six-panel six-site-chat"><div className="six-panel-head"><div><h2>Conversar no site</h2><p>Crie, programe e tire suas dúvidas.</p></div></div>
     {!models.length?<><p>Contrate um plano ou peça seu teste grátis pelo WhatsApp para começar sua conversa.</p><a href={`https://wa.me/5581992376036?text=${encodeURIComponent("Olá! Quero usar o chat da SixtySix.")}`} target="_blank" rel="noopener noreferrer" className="six-primary">Falar no WhatsApp</a></>:<>
