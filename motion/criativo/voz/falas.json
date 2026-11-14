@@ -1,0 +1,16 @@
+{
+  "modelo": "eleven_multilingual_v2",
+  "ajustes": { "stability": 0.38, "similarity_boost": 0.8, "style": 0.35, "use_speaker_boost": true, "speed": 1.08 },
+  "falas": [
+    { "id": "gancho", "texto": "Tá pagando caro pra usar IA?", "tela": "Tá pagando *caro* pra usar IA?", "folga": 0.9 },
+    { "id": "dor", "texto": "Dólar, IOF, cartão internacional...", "tela": "Dólar IOF Cartão internacional", "folga": 0.35 },
+    { "id": "virada", "texto": "E se fosse em reais?", "tela": "E se fosse em *reais?*", "folga": 0.35 },
+    { "id": "produto", "texto": "Com a Sixty Six, você usa Claude Code, Codex e API de IA...", "tela": "Com a *SixtySix* você usa", "folga": 0.25 },
+    { "id": "pix", "texto": "pagando no Pix, a partir de setenta e nove e noventa e nove.", "tela": "pagando no *Pix*", "folga": 0.5 },
+    { "id": "sem", "texto": "Sem cartão gringo. Sem IOF. Sem susto.", "tela": "Sem cartão gringo|Sem IOF|Sem susto", "folga": 0.4 },
+    { "id": "melhor", "texto": "E o melhor:", "tela": "E o *melhor*", "folga": 0.2 },
+    { "id": "teste", "texto": "você testa sete dias, de graça.", "tela": "7 dias *grátis*", "folga": 1.6 },
+    { "id": "pilares", "texto": "Preço justo, qualidade e suporte no WhatsApp.", "tela": "Preço justo|Qualidade|Suporte no WhatsApp", "folga": 0.5 },
+    { "id": "cta", "texto": "Toca em saiba mais. Tô te esperando lá!", "tela": "Tô te esperando lá", "folga": 2.6 }
+  ]
+}

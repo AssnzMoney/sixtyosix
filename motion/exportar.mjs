@@ -1,6 +1,7 @@
 // Exporta o filme quadro a quadro (sem pular nenhum) e monta o MP4 com o ffmpeg.
 //   node motion/exportar.mjs 9x16 saida.mp4            → vídeo
 //   node motion/exportar.mjs 9x16 pasta --quadros 1,5,9 → só imagens desses segundos (para revisar)
+//   FILME=criativo node motion/exportar.mjs 9x16 criativo.mp4 → outro filme (motion/criativo/)
 // Precisa do servidor do site rodando (npm run dev, porta 8443), do Chrome e do ffmpeg.
 import { spawn } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -11,7 +12,7 @@ const [, , formato = '9x16', saida = `sixtysix-${formato}.mp4`, ...resto] = proc
 const quadrosArg = resto.includes('--quadros') ? resto[resto.indexOf('--quadros') + 1] : null
 const FPS = Number(process.env.FPS || 30)
 const [W, H] = formato === '16x9' ? [1920, 1080] : [1080, 1920]
-const URL_FILME = `${process.env.URL_BASE || 'http://localhost:8443'}/motion/?render=1&formato=${formato}`
+const URL_FILME = `${process.env.URL_BASE || 'http://localhost:8443'}/motion/${process.env.FILME ? process.env.FILME + '/' : ''}?render=1&formato=${formato}`
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 
 const perfil = join(tmpdir(), `sixtysix-motion-${process.pid}`)
@@ -53,6 +54,9 @@ for (let i = 0; i < 120; i++) {
   try { if (await avaliar('!!(window.__film && window.__film.pronto)')) break } catch {}
 }
 const duracao = await avaliar('window.__film.duracao')
+// Filmes que expõem os tempos (falas e efeitos) deixam um .json ao lado da saída, para a mixagem.
+const meta = await avaliar('window.__film.meta || null')
+if (meta) writeFileSync(`${saida.replace(/\.mp4$/, '')}.json`, JSON.stringify(meta, null, 1))
 if (!duracao) throw new Error('O filme não carregou')
 // Uma passada rápida aquece imagens e fontes no compositor.
 for (let t = 0; t < duracao; t += 1) await avaliar(`window.__film.ir(${t})`)

@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Fustat:wght@500;600;700;800&family=Instrument+Serif:ital@0;1&family=Manrope:wght@500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+
+html, body { margin: 0; background: #1b1d1f; }
+html.render, html.render body { background: #fff; overflow: hidden; }
+
+/* ---------- Palco 1080×1920 ---------- */
+.stage {
+  --ink: #0e2a2b;
+  --muted: #6b7b7b;
+  --green: #4cc72a;
+  --green-d: #2c9a1a;
+  --red: #e5484d;
+  position: relative; width: 1080px; height: 1920px; overflow: hidden;
+  background: #f6f7f5; color: var(--ink);
+  font-family: 'Fustat', 'Manrope', sans-serif;
+  -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision;
+}
+.stage *, .stage *::before, .stage *::after { box-sizing: border-box; }
+.stage h1 { margin: 0; }
+.bg { position: absolute; inset: 0; background: radial-gradient(90% 60% at 50% 42%, #ffffff 0%, #f4f6f3 60%, #e9ece8 100%); }
+.blob { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.35; }
+.blob.b1 { width: 700px; height: 700px; left: -260px; top: 180px; background: #c9f2b4; }
+.blob.b2 { width: 760px; height: 760px; right: -300px; bottom: 260px; background: #d8f6c8; }
+.dark { position: absolute; inset: 0; background: radial-gradient(80% 60% at 50% 45%, #13302f 0%, #071414 70%); opacity: 0; }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.camera { position: absolute; inset: 0; transform-origin: 50% 46%; }
+.cena { position: absolute; inset: 0; perspective: 1800px; visibility: hidden; }
+.miuda {
+  position: absolute; left: 0; right: 0; bottom: 330px; text-align: center;
+  font: 500 24px 'Manrope', sans-serif; color: #8a9696; letter-spacing: 0.01em; opacity: 0;
+}
+
+/* ---------- Tipografia ---------- */
+.titulo {
+  position: absolute; left: 70px; right: 70px; top: 360px; text-align: center;
+  font-weight: 800; font-size: 96px; line-height: 1.04; letter-spacing: -0.035em;
+}
+.titulo.claro { color: #f2fbef; top: 800px; font-size: 118px; }
+.titulo.baixo { top: 1420px; font-size: 92px; }
+.words .wi { display: inline-block; will-change: transform, opacity, filter; }
+.acc {
+  font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400;
+  color: var(--green-d); letter-spacing: -0.01em; font-size: 1.14em; padding-right: 0.06em;
+}
+.claro .acc { color: #8ef05e; text-shadow: 0 0 60px rgba(142, 240, 94, 0.45); }
+
+/* ---------- Cartões 3D ---------- */
+.card3d {
+  background: #fff; border-radius: 44px;
+  box-shadow: 0 2px 0 rgba(255,255,255,.9) inset, 0 50px 90px -30px rgba(14, 42, 43, 0.35), 0 18px 36px -18px rgba(14, 42, 43, 0.25), 0 0 0 1px rgba(14, 42, 43, 0.05);
+  transform-style: preserve-3d;
+}
+
+/* 1. Fatura */
+.fatura { position: absolute; left: 150px; width: 780px; top: 760px; padding: 54px 58px; font-family: 'Manrope', sans-serif; }
+.fat-top { display: flex; align-items: center; gap: 18px; font: 700 34px 'Manrope'; color: var(--muted); margin-bottom: 40px; }
+.fat-chip { width: 64px; height: 46px; border-radius: 10px; background: linear-gradient(135deg, #e9d48b, #c6a74a); }
+.fat-linha { display: flex; justify-content: space-between; font-size: 36px; font-weight: 600; color: var(--muted); padding: 14px 0; }
+.fat-linha b { color: var(--ink); font-weight: 800; }
+.fat-linha b.sobe { color: var(--red); }
+.fat-sep { height: 2px; background: repeating-linear-gradient(90deg, #d5dbd9 0 14px, transparent 14px 26px); margin: 24px 0; }
+.fat-total { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; font-size: 44px; }
+.fat-valor { font-family: 'Fustat'; font-size: 112px; letter-spacing: -0.04em; color: var(--red); }
+
+/* 2. Pilha de custos */
+.pilha { position: absolute; left: 0; right: 0; top: 560px; display: flex; flex-direction: column; align-items: center; gap: 44px; }
+.chip {
+  font: 800 84px 'Fustat'; letter-spacing: -0.03em; padding: 34px 64px; border-radius: 999px; background: #fff;
+  box-shadow: 0 40px 70px -28px rgba(14,42,43,.35), 0 0 0 1px rgba(14,42,43,.06);
+}
+.chip.ch3 { color: #fff; background: linear-gradient(180deg, #f05a5e, #d93a40); box-shadow: 0 40px 70px -24px rgba(217,58,64,.55); }
+
+/* 3. Virada */
+.brilho { position: absolute; left: 50%; top: 880px; width: 1400px; height: 1400px; margin: -700px 0 0 -700px; border-radius: 50%; background: radial-gradient(circle, rgba(142,240,94,.22), transparent 60%); }
+
+/* 4. Celulares */
+.trilho { position: absolute; left: 0; right: 0; top: 700px; height: 900px; transform-style: preserve-3d; }
+.fone { position: absolute; top: 0; left: 50%; width: 400px; margin-left: -200px; transform-style: preserve-3d; }
+.fone-tela {
+  height: 760px; border-radius: 64px; background: #0d1716; padding: 74px 34px 34px; border: 12px solid #1f2a29;
+  box-shadow: 0 0 0 3px #3a4746, 0 70px 110px -40px rgba(14,42,43,.6);
+  position: relative; font-family: 'DM Mono', monospace; color: #dfe9e6;
+}
+.fone-tela::before { content: ''; position: absolute; top: 22px; left: 50%; width: 110px; height: 30px; margin-left: -55px; border-radius: 20px; background: #000; }
+.fone-head { display: flex; align-items: center; gap: 16px; font: 800 36px 'Fustat'; color: #fff; margin-bottom: 40px; }
+.fone-head img { width: 52px; height: 52px; }
+.fone-head img.inv { filter: invert(1); }
+.fone-head .key { width: 52px; height: 52px; border-radius: 14px; background: var(--green); color: #0b2a10; display: grid; place-items: center; font-size: 30px; }
+.term { font-size: 27px; line-height: 1.9; background: rgba(255,255,255,.05); border-radius: 22px; padding: 26px; }
+.term i { color: var(--green); font-style: normal; }
+.term .ok { color: #8ef05e; }
+.term .dim { color: #8aa09c; }
+.fone-nome { text-align: center; font: 800 46px 'Fustat'; margin-top: 34px; letter-spacing: -0.02em; }
+
+/* 5. Pix */
+.pedestal { position: absolute; left: 50%; top: 1090px; width: 540px; margin-left: -270px; mix-blend-mode: multiply; }
+.recibo { position: absolute; left: 190px; width: 700px; top: 600px; padding: 60px 56px 46px; text-align: center; font-family: 'Manrope'; }
+.rec-ok { width: 136px; height: 136px; margin: -128px auto 22px; border-radius: 50%; background: linear-gradient(180deg, #5fd83a, #2fae1d); color: #fff; display: grid; place-items: center; box-shadow: 0 24px 44px -14px rgba(47,174,29,.6); }
+.rec-tit { font: 700 40px 'Fustat'; color: var(--muted); }
+.rec-valor { font: 800 128px 'Fustat'; letter-spacing: -0.045em; margin: 6px 0 26px; }
+.rec-linha { display: flex; justify-content: space-between; font-size: 32px; color: var(--muted); font-weight: 600; padding: 10px 6px; border-top: 1px solid #eef1ef; }
+.rec-linha b { color: var(--ink); }
+
+/* 6. Interruptores */
+.c-sem { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding-left: 130px; gap: 70px; }
+.linha-sem { display: flex; align-items: center; gap: 44px; }
+.toggle { width: 190px; height: 108px; border-radius: 999px; background: #dfe4e1; position: relative; flex: none; box-shadow: inset 0 4px 10px rgba(0,0,0,.08); }
+.toggle .knob { position: absolute; top: 9px; left: 9px; width: 90px; height: 90px; border-radius: 50%; background: #fff; box-shadow: 0 8px 18px rgba(0,0,0,.18); }
+.sem-txt { font: 800 92px 'Fustat'; letter-spacing: -0.035em; }
+
+/* 7. Eco */
+.eco { position: absolute; left: 0; right: 0; top: 700px; text-align: center; }
+.eco-l { font: 800 150px 'Fustat'; letter-spacing: -0.045em; line-height: 0.95; }
+.eco-l.e3 { color: transparent; -webkit-text-stroke: 3px #c9d3cf; }
+.eco-l.e2 { color: #b9c6c1; }
+.eco-l .acc { font-size: 1.12em; }
+
+/* 8. Conversa */
+.chat { position: absolute; left: 90px; right: 90px; top: 300px; font-family: 'Manrope'; display: flex; flex-direction: column; gap: 22px; }
+.chat-head { text-align: center; display: flex; flex-direction: column; font-size: 30px; color: var(--muted); margin-bottom: 26px; }
+.chat-head b { color: var(--ink); font-size: 36px; }
+.bolha { max-width: 690px; padding: 26px 38px; border-radius: 44px; font-size: 44px; font-weight: 600; line-height: 1.2; }
+.bolha.esq { align-self: flex-start; background: #e7ebe9; border-bottom-left-radius: 12px; }
+.bolha.dir { align-self: flex-end; background: linear-gradient(180deg, #57d136, #36b321); color: #fff; border-bottom-right-radius: 12px; box-shadow: 0 18px 34px -16px rgba(54,179,33,.6); }
+.reacao { position: absolute; right: -10px; bottom: -70px; font-size: 96px; }
+.calendario { position: absolute; left: 50%; top: 950px; width: 340px; margin-left: -170px; }
+
+/* 9. Pilares */
+.pilar { position: absolute; left: 0; right: 0; top: 640px; display: flex; flex-direction: column; align-items: center; gap: 30px; }
+.pilar img { width: 460px; }
+.pilar > span:last-child { font: 800 104px 'Fustat'; letter-spacing: -0.04em; text-align: center; padding: 0 60px; line-height: 1.02; }
+.pilar .ico { width: 360px; height: 360px; border-radius: 96px; display: grid; place-items: center; margin: 40px 0 50px; }
+.ico.verde { background: linear-gradient(160deg, #78e04f, #2fae1d); color: #fff; box-shadow: 0 50px 80px -30px rgba(47,174,29,.65), inset 0 6px 0 rgba(255,255,255,.35); }
+.ico.zap { background: linear-gradient(160deg, #3ddc84, #14a85a); color: #fff; box-shadow: 0 50px 80px -30px rgba(20,168,90,.6), inset 0 6px 0 rgba(255,255,255,.35); }
+
+/* 10. Chamada */
+.botao {
+  position: absolute; left: 0; right: 0; margin: 0 auto; width: fit-content; top: 860px; padding: 44px 110px; border-radius: 999px;
+  font: 800 80px 'Fustat'; letter-spacing: -0.03em; color: #fff; white-space: nowrap;
+  background: linear-gradient(180deg, #5fd83a, #2fae1d); box-shadow: 0 0 0 10px #fff, 0 0 0 16px rgba(76,199,42,.35), 0 40px 70px -24px rgba(47,174,29,.7);
+}
+.toque { position: absolute; left: 610px; top: 980px; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(14,42,43,.28); border: 6px solid rgba(255,255,255,.8); }
+.titulo.espera { top: 860px; font-size: 92px; }
+.logo { position: absolute; left: 50%; top: 640px; width: 600px; margin-left: -300px; }
+.busca {
+  position: absolute; left: 140px; right: 140px; top: 1080px; height: 130px; border-radius: 999px; background: #fff; display: flex; align-items: center; gap: 24px; padding: 0 50px;
+  box-shadow: 0 30px 60px -26px rgba(14,42,43,.4), 0 0 0 1px rgba(14,42,43,.08); color: var(--muted); font: 700 56px 'Fustat'; letter-spacing: -0.02em;
+}
+.busca .url { color: var(--ink); }
+.busca .lt { display: none; }
+.cursor { width: 5px; height: 64px; background: var(--green-d); border-radius: 3px; }
+
+/* ---------- Tela de revisão (fora da exportação) ---------- */
+.app { display: flex; flex-direction: column; height: 100vh; color: #e8ecea; font: 500 14px 'Manrope', sans-serif; }
+.viewport { flex: 1; display: grid; place-items: center; overflow: hidden; }
+.holder { position: relative; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.bar { display: flex; gap: 10px; align-items: center; padding: 12px 16px; background: #111314; flex-wrap: wrap; }
+.bar button { background: #26292b; color: inherit; border: 0; border-radius: 8px; padding: 7px 12px; font: inherit; cursor: pointer; }
+.bar button.on { background: #4cc72a; color: #08200a; font-weight: 700; }
+.bar .scrub { flex: 1; min-width: 200px; }
+.bar .time { font-variant-numeric: tabular-nums; }
