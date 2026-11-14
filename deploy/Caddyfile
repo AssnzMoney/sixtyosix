@@ -10,6 +10,9 @@ www.sixtysix.online {
 	# Funções: login, painel, admin, pagamentos e o gateway (/v1, /glm/v1, /api/codex).
 	@api path /api/* /v1 /v1/* /glm/v1/*
 	handle @api {
+		# Nada na resposta conta o que roda por trás. O "-" apaga no fim, depois que o proxy pôs o "Via: 1.1 Caddy".
+		header -Via
+		header -Server
 		# Dois processos iguais (deploy/ecosystem.config.cjs): tudo vai para o 8080; o 8081 atende quando o 8080
 		# está fora, como na publicação, em que cada um é reiniciado por vez e termina antes as respostas em andamento.
 		reverse_proxy 127.0.0.1:8080 127.0.0.1:8081 {
@@ -31,9 +34,6 @@ www.sixtysix.online {
 			# IP real do cliente para o bloqueio de IP e o limite de velocidade (server/guard.ts lê x-real-ip).
 			# Substitui o que vier do cliente, então ninguém consegue se passar por outro IP.
 			header_up X-Real-IP {client_ip}
-			# Nada na resposta conta o que roda por trás (o Caddy põe "Via: 1.1 Caddy").
-			header_down -Via
-			header_down -Server
 		}
 	}
 
