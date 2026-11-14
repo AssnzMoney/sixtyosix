@@ -68,7 +68,7 @@ export function deviceOf(headers: IncomingHttpHeaders, payload?: Record<string, 
 
 let warned = false
 let legacyGate = false
-export async function gateRequest(env: Env, request: typeof fetch, input: { clientId: string; ip: string; requestId: string; device?: Device }): Promise<GateResult> {
+export async function gateRequest(env: Env, request: typeof fetch, input: { clientId: string; ip: string; requestId: string; device?: Device }, retried = false): Promise<GateResult> {
   const db = database(env)
   if (!db || !input.clientId) return { ok: true, leased: false }
   try {
@@ -79,10 +79,11 @@ export async function gateRequest(env: Env, request: typeof fetch, input: { clie
       body: JSON.stringify({ p_client: input.clientId, p_ip: input.ip || null, p_request: input.requestId, ...device }),
       signal: AbortSignal.timeout(5000),
     })
-    // Sem supabase/auto-delivery.sql a função ainda não aceita o dispositivo: volta para a chamada antiga.
-    if (response.status === 404 && !legacyGate) {
-      legacyGate = true
-      return gateRequest(env, request, input)
+    // Função não encontrada com estes argumentos: alterna entre a versão com dispositivo (auto-delivery.sql)
+    // e a antiga, e tenta de novo uma vez. Assim o servidor acompanha a migração sem precisar reiniciar.
+    if (response.status === 404 && !retried) {
+      legacyGate = !legacyGate
+      return gateRequest(env, request, input, true)
     }
     if (!response.ok) {
       if (!warned) { warned = true; console.error('Proteção do gateway indisponível (aplique supabase/gateway-guard.sql?)', response.status) }
