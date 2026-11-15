@@ -167,6 +167,15 @@ export function identityText(name: string) {
   return `Identidade do modelo: você é ${who}. Seu nome é exatamente "${clean}": use esse nome ao se apresentar. Se perguntarem qual modelo, versão ou empresa está por trás de você, responda que é ${who}. Nunca se apresente com outro nome ou outra versão de modelo (como ChatGPT, GPT-4, GPT-5, Gemini 2.5 ou um Claude de outra versão) e não diga qual modelo ou serviço está por trás. Fora isso, siga normalmente as instruções abaixo.`
 }
 
+/**
+ * Modelos reais da Anthropic (Claude) e do Google (Gemini) vão sem instrução de identidade:
+ * quando perguntados, respondem com sinceridade o que são. Decide pelo modelo do fornecedor, não pelo nome vendido.
+ */
+export function speaksForItself(supplierId: string) {
+  const maker = modelMaker(supplierId)
+  return maker === 'Anthropic' || maker === 'Google'
+}
+
 /** Coloca a identidade antes das instruções do cliente, nos formatos Anthropic, OpenAI chat e OpenAI Responses. */
 function withIdentity(next: Record<string, unknown>, path: string, name: string) {
   const identity = identityText(name)
@@ -221,7 +230,7 @@ export function supplierRequestBody(payload: Record<string, unknown>, path: stri
   if (schema !== undefined && jsonSchemaOf(next) === undefined && endpointKind(path) === 'anthropic') {
     appendSystem(next, `Responda somente com um objeto JSON válido que siga exatamente este JSON Schema, sem texto antes ou depois e sem bloco de código:\n${JSON.stringify(schema).slice(0, 20000)}`)
   }
-  if (name) withIdentity(next, path, name)
+  if (name && !speaksForItself(supplierId)) withIdentity(next, path, name)
   // Responses: o cliente pode mandar de volta o nosso ID; o fornecedor só conhece o dele.
   if (typeof next.previous_response_id === 'string' && responseIds.has(next.previous_response_id)) next.previous_response_id = responseIds.get(next.previous_response_id)
   const options = next.stream_options && typeof next.stream_options === 'object' ? next.stream_options as Record<string, unknown> : {}

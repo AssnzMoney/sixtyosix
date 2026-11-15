@@ -144,8 +144,17 @@ test('formato e mensagem dos erros nossos por endpoint e status', () => {
   assert.equal(supplierErrorBody('anthropic', 422).error.message, 'Não foi possível processar o pedido.')
 })
 
+test('identidade: Claude e Gemini reais vão sem instrução de identidade e respondem com sinceridade', () => {
+  const clientSystem = [{ type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }]
+  for (const upstream of ['anthropic/claude-opus-5-5', 'claude-haiku-4-5', 'google/gemini-4-argon', 'gemini-3.8-flash']) {
+    const sent = JSON.parse(supplierRequestBody({ model: 'x', system: clientSystem }, '/v1/messages', upstream, 'Claude Fable 5.2').body)
+    assert.deepEqual(sent.system, clientSystem, upstream)
+    assert.equal(JSON.parse(supplierRequestBody({ model: 'x' }, '/v1/messages', upstream, 'Argon 4').body).system, undefined, upstream)
+  }
+})
+
 test('identidade: o modelo recebe o nome vendido antes das instruções do cliente, nos três formatos', () => {
-  const anthropicArray = JSON.parse(supplierRequestBody({ model: 'x', system: [{ type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }] }, '/v1/messages', 'anthropic/claude-opus-5-5', 'Claude Fable 5.2').body)
+  const anthropicArray = JSON.parse(supplierRequestBody({ model: 'x', system: [{ type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }] }, '/v1/messages', 'outro/modelo', 'Claude Fable 5.2').body)
   assert.match(anthropicArray.system[0].text, /você é o Claude Fable 5\.2/)
   assert.deepEqual(anthropicArray.system[1], { type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }, 'as instruções do cliente ficam intactas')
   const anthropicString = JSON.parse(supplierRequestBody({ model: 'x', system: 'Seja breve.' }, '/v1/messages', 'y', 'Argon 4').body)
