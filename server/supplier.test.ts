@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { UsageTap, endpointKind, recordUsage, supplierErrorBody, supplierRequestBody, supplierUrl } from './supplier.ts'
+import { DISCRETION_TEXT, UsageTap, endpointKind, recordUsage, supplierErrorBody, supplierRequestBody, supplierUrl } from './supplier.ts'
 
 const encode = (text: string) => new TextEncoder().encode(text)
 
@@ -144,13 +144,17 @@ test('formato e mensagem dos erros nossos por endpoint e status', () => {
   assert.equal(supplierErrorBody('anthropic', 422).error.message, 'Não foi possível processar o pedido.')
 })
 
-test('identidade: Claude e Gemini reais vão sem instrução de identidade e respondem com sinceridade', () => {
+test('identidade: Claude e Gemini reais não recebem nome vendido, só a instrução de não falar do fornecedor', () => {
   const clientSystem = [{ type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }]
   for (const upstream of ['anthropic/claude-opus-5-5', 'claude-haiku-4-5', 'google/gemini-4-argon', 'gemini-3.8-flash']) {
     const sent = JSON.parse(supplierRequestBody({ model: 'x', system: clientSystem }, '/v1/messages', upstream, 'Claude Fable 5.2').body)
-    assert.deepEqual(sent.system, clientSystem, upstream)
-    assert.equal(JSON.parse(supplierRequestBody({ model: 'x' }, '/v1/messages', upstream, 'Argon 4').body).system, undefined, upstream)
+    assert.deepEqual(sent.system, [{ type: 'text', text: DISCRETION_TEXT }, ...clientSystem], upstream)
+    const bare = JSON.parse(supplierRequestBody({ model: 'x' }, '/v1/messages', upstream, 'Argon 4').body).system
+    assert.equal(bare, DISCRETION_TEXT, upstream)
+    assert.ok(!/Argon 4|Fable|você é/i.test(bare), 'não diz ao modelo quem ele é')
   }
+  const chat = JSON.parse(supplierRequestBody({ model: 'x', messages: [{ role: 'user', content: 'oi' }] }, '/v1/chat/completions', 'gemini-4-argon', 'Argon 4').body)
+  assert.deepEqual(chat.messages[0], { role: 'system', content: DISCRETION_TEXT })
 })
 
 test('identidade: o modelo recebe o nome vendido antes das instruções do cliente, nos três formatos', () => {
