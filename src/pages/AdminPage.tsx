@@ -113,6 +113,9 @@ function format(key: string, value: any) {
   if (key === 'product') return PRODUCT_LABELS[value as DeliveryProduct] || String(value)
   if (key === 'state') return STATE_LABELS[value as keyof typeof STATE_LABELS] || String(value)
   if (key === 'key_hint') return `…${value}`
+  // Bônus de indicação (supabase/affiliates-v2.sql): não é pagamento, são dias dados de graça.
+  if (key === 'id' && typeof value === 'string' && value.startsWith('welcome-')) return `Bônus de quem veio por indicação (pagamento ${value.slice(8)})`
+  if (key === 'id' && typeof value === 'string' && value.startsWith('affiliate-')) return 'Dias ganhos como afiliado'
   if (key === 'model_id') return MODEL_NAMES[value] ? `${MODEL_NAMES[value]} (${value})` : String(value)
   if (key === 'status' && paymentLabels[value]) return paymentLabels[value]
   if (key.endsWith('_at') || ['paid_until', 'period_end'].includes(key)) return new Date(value).toLocaleString('pt-BR')
