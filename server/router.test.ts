@@ -353,6 +353,17 @@ test('nome que saiu do Roteador (claude-fable-5-1) vai para o Fable 5.2', async 
   assert.equal(findRoute(router, 'claude-fable-5-9'), undefined)
 })
 
+test('o Fable saiu do Roteador: claude-fable-5-2 e o antigo 5-1 vão para o Claude Opus 5.5', async () => {
+  const provider = providerRow()
+  const rows = [
+    { alias: 'claude-opus-5.5', label: 'Claude Opus 5.5', upstream_model: 'anthropic/claude-opus-5-5', in_pro: true, provider },
+    { alias: 'argon-4', label: 'Argon 4', upstream_model: 'google/gemini-4', in_pro: true, provider },
+  ]
+  const router = await loadRouter({ SUPABASE_URL: SUPABASE, SUPABASE_SERVICE_ROLE_KEY: SECRET }, (async () => Response.json(rows)) as typeof fetch)
+  for (const name of ['claude-fable-5-2', 'claude-fable-5.2', 'claude-fable-5-1', 'claude-fable-5']) assert.equal(findRoute(router, name)?.alias, 'claude-opus-5.5', name)
+  assert.deepEqual(canonicalModels(router, ['claude-fable-5-2', 'argon-4']), ['claude-opus-5.5', 'argon-4'], 'plano Pro antigo passa a ter o Opus 5.5')
+})
+
 test('modelo do Roteador fora do Pro não entra no teste grátis', async () => {
   await withAccess({}, async (base) => {
     const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'gpt-6.1-sol', messages: [] })
@@ -371,7 +382,7 @@ test('recusa da key mestra vira erro genérico para o cliente e fica registrada'
 
 test('modelo fora do Roteador é recusado e a lista mostra só o Roteador', async () => {
   await withAccess({}, async (base, usage, calls) => {
-    const fable = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-fable-5-1' })
+    const fable = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'llama-9-turbo' })
     assert.equal(fable.status, 404)
     assert.match(await fable.text(), /não está disponível/)
     assert.equal(calls.length, 0, 'não chama nenhum gateway externo')
@@ -412,7 +423,7 @@ test('chave manual sk-rt- usa só os modelos dela', async () => {
     assert.equal((await ok.json() as { model: string }).model, 'gpt-6.1-sol')
     assert.deepEqual({ ...usage[0], latency_ms: 0 }, { client_id: manualClient, requested_alias: 'gpt-6.1-sol', status_code: 200, input_tokens: 5, output_tokens: 2, latency_ms: 0 })
     assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-opus-5-5' })).status, 403)
-    assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-fable-5-1' })).status, 404)
+    assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-fable-5-1' })).status, 403) // o Fable antigo vira Opus 5.5, que esta chave não tem
     const list = await (await client(base + '/v1/models', { headers: { Authorization: 'Bearer sk-rt-manual' } })).json() as { data: { id: string }[] }
     assert.deepEqual(list.data.map(item => item.id), ['gpt-6.1-sol'])
     assert.ok(calls.every(call => call.url.startsWith('https://fornecedor.example/')))
