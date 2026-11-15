@@ -141,14 +141,27 @@ export function localRequest(req:Pick<IncomingMessage,'headers'|'socket'>){
 const modelEntry=(id:string,label?:string)=>({id,object:'model',type:'model',display_name:label||id,owned_by:'sixtysix',created:1767225600,created_at:'2026-01-01T00:00:00Z'})
 
 type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string}
+/** Revezamento das keys do provedor entre as chamadas. */
+let keyTurn=0
+/** Resumo, uma vez por minuto no log, do limite do fornecedor: quantas chamadas a espera salvou e quantas não deu. */
+const limits={recovered:0,failed:0,other:0,since:Date.now()}
+function limitStats(kind:'recovered'|'failed'|'other'){
+  limits[kind]++
+  if(Date.now()-limits.since<60000)return
+  console.log(`Limite do fornecedor (último minuto): ${limits.recovered} salvas pela espera, ${limits.failed} repassadas ao cliente, ${limits.other} com outro erro`)
+  limits.recovered=limits.failed=limits.other=0;limits.since=Date.now()
+}
 /** Chama o provedor do Roteador com a key mestra, repassa a resposta e grava o consumo do cliente. */
 async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:SupplierCall){
   const {route}=call,{provider}=route
   // O modelo se apresenta com o nome vendido (Nome do Roteador; sem nome, o apelido), nunca o real.
   const name=route.label||route.alias
   const {body,injectedUsage}=supplierRequestBody(call.payload,call.path,route.upstream,name)
-  const headers:Record<string,string>={'content-type':'application/json','x-api-key':provider.key,Authorization:`Bearer ${provider.key}`}
+  const headers:Record<string,string>={'content-type':'application/json'}
   for(const key of ['accept','anthropic-version','openai-beta']){const value=single(req.headers[key]);if(value)headers[key]=value}
+  // Provedor com várias keys (uma por linha no admin): cada chamada começa numa key diferente.
+  const keys=provider.keys?.length?provider.keys:[provider.key]
+  const firstKey=keyTurn++%keys.length
   const controller=new AbortController(),started=Date.now()
   req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
   let status=502,tap:UsageTap|null=null
@@ -180,10 +193,30 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     res.end()
   }
   const unavailable='Este modelo está temporariamente indisponível. Tente novamente em instantes.'
-  const send=(payloadBody:string)=>{
+  /*
+   * Limite de chamadas do fornecedor (429): antes ia direto para o cliente ("servidor sobrecarregado"), e o Claude Code
+   * repetia na hora, piorando o pico. Agora o gateway tenta a próxima key na hora (se houver mais de uma) e, depois de
+   * passar por todas, espera um pouco (o retry-after do fornecedor, ou 1,5 s dobrando até 10 s) e tenta de novo, por
+   * até SIXTYSIX_429_WAIT_MS (30 s). Só então o 429 segue para o cliente.
+   */
+  const waitLimit=process.env.SIXTYSIX_429_WAIT_MS!==undefined?Number(process.env.SIXTYSIX_429_WAIT_MS):30000
+  const send=async(payloadBody:string)=>{
     // Betas que o modelo já recusou não vão no cabeçalho.
     const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
-    return fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:beta?{...headers,'anthropic-beta':beta}:headers,body:payloadBody,redirect:'manual',signal:controller.signal})
+    const deadline=Date.now()+waitLimit
+    let pause=1500,waited=false
+    for(let attempt=0;;attempt++){
+      const key=keys[(firstKey+attempt)%keys.length]
+      const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:payloadBody,redirect:'manual',signal:controller.signal})
+      if(response.status!==429){if(waited||attempt)limitStats(response.ok?'recovered':'other');return response}
+      // Ainda há outra key nesta volta: tenta nela na hora.
+      const lap=(attempt+1)%keys.length===0
+      const hinted=Number(response.headers.get('retry-after'))
+      const wait=lap?Math.min(10000,Number.isFinite(hinted)&&hinted>0?hinted*1000:pause)*(0.75+Math.random()*0.5):0
+      if(Date.now()+wait>deadline){limitStats('failed');return response}
+      await response.body?.cancel().catch(()=>undefined)
+      if(wait){waited=true;await new Promise(resolve=>setTimeout(resolve,wait));pause=Math.min(pause*2,10000)}
+    }
   }
   try{
     let sent=body,response=await send(sent)

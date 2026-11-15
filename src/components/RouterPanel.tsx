@@ -826,16 +826,20 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
               <input value={providerForm.base_url} placeholder="https://api.exemplo.com/v1" spellCheck={false} onChange={(e) => setProviderForm({ ...providerForm, base_url: e.target.value })} />
             </label>
             <label className="is-wide">
-              API key
-              <input
-                type="password"
+              API keys
+              <textarea
+                rows={3}
                 autoComplete="off"
                 spellCheck={false}
+                style={{ fontFamily: 'DM Mono, monospace', WebkitTextSecurity: 'disc' } as React.CSSProperties}
                 value={providerForm.key}
-                placeholder={providerForm.id ? 'Deixe em branco para manter a atual' : 'Cole a key que você recebeu'}
+                placeholder={providerForm.id ? 'Deixe em branco para manter as atuais' : 'Cole a key que você recebeu (uma por linha)'}
                 onChange={(e) => setProviderForm({ ...providerForm, key: e.target.value })}
               />
-              <small>Fica guardada criptografada no Supabase. Nem você nem os clientes conseguem vê-la de novo pelo painel.</small>
+              <small>
+                Mais de uma key (uma por linha) aumenta o limite de chamadas: o gateway reveza entre elas e, se uma estiver no limite, usa a próxima.
+                Ficam guardadas criptografadas no Supabase. Ao salvar, as keys novas substituem todas as anteriores.
+              </small>
             </label>
             {modalError && (
               <p role="alert" className="sx-admin-message is-error is-wide">

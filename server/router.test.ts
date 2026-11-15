@@ -60,7 +60,7 @@ type Manual = { models: string[] | null; expires_at: string; revoked_at: string 
 /** Sobe o /api/access de verdade com Supabase e provedor simulados. */
 type Gate = { ok: boolean; reason?: string; retry_after?: number; leased?: boolean }
 const guardCalls: { name: string; body: any }[] = []
-async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response | Promise<Response>; manual?: Manual; gate?: Gate }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
+async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response | Promise<Response>; manual?: Manual; gate?: Gate; providerKey?: string }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
   const nativeFetch = globalThis.fetch
   const keys = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
   const saved = Object.fromEntries(keys.map(key => [key, process.env[key]]))
@@ -69,7 +69,7 @@ async function withAccess(options: { supplier?: (url: string, init: RequestInit)
   globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = String(input)
     if (url.startsWith(`${SUPABASE}/rest/v1/gateway_usage`)) { usage.push(JSON.parse(String(init.body))); return new Response(null, { status: 201 }) }
-    if (url.startsWith(`${SUPABASE}/rest/v1/router_models`)) return Response.json(models())
+    if (url.startsWith(`${SUPABASE}/rest/v1/router_models`)) return Response.json(models(options.providerKey ? providerRow({ encrypted_key: sealSecret(options.providerKey, SECRET, `router:provider:${PROVIDER.id}`) }) : providerRow()))
     // Proteção contra sobrecarga (server/guard.ts): passa por padrão e ocupa uma vaga.
     if (url.startsWith(`${SUPABASE}/rest/v1/rpc/gateway_`)) {
       guardCalls.push({ name: url.split('/rpc/')[1], body: JSON.parse(String(init.body)) })
@@ -202,6 +202,33 @@ test('ultracode: betas novos, saída em JSON, thinking desligado e ferramenta do
   }
 })
 
+test('limite do fornecedor (429): tenta a outra key na hora e o cliente nem vê o erro', async () => {
+  const used: string[] = []
+  const supplier = (_url: string, init: RequestInit) => {
+    const key = (init.headers as Record<string, string>)['x-api-key']
+    used.push(key)
+    return key === 'key_a' ? new Response('{"error":{"message":"limite"}}', { status: 429 }) : Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } })
+  }
+  await withAccess({ supplier, providerKey: 'key_a\nkey_b' }, async (base) => {
+    const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
+    assert.equal(response.status, 200)
+    assert.ok(used.includes('key_b'), 'usou a segunda key')
+    assert.ok(used.every((key) => key === 'key_a' || key === 'key_b'), 'nunca manda as duas keys juntas')
+  })
+})
+
+test('limite do fornecedor (429) com uma key só: espera o retry-after e tenta de novo', async () => {
+  let calls = 0
+  const supplier = () => (++calls === 1 ? new Response('{}', { status: 429, headers: { 'retry-after': '1' } }) : Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } }))
+  await withAccess({ supplier }, async (base) => {
+    const started = Date.now()
+    const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
+    assert.equal(response.status, 200)
+    assert.equal(calls, 2)
+    assert.ok(Date.now() - started >= 700, 'esperou antes de tentar de novo')
+  })
+})
+
 test('duas chamadas ao mesmo tempo com o mesmo recurso recusado: as duas tentam sem ele e dão certo', async () => {
   const errors = console.error
   console.error = () => {}
@@ -277,6 +304,7 @@ test('conversa grande demais: vai com o texto que o Claude Code e o Codex reconh
 test('erros 404, 422 e 429 do fornecedor não mostram o nome dele, no formato de cada endpoint', async () => {
   const errors = console.error
   console.error = () => {}
+  process.env.SIXTYSIX_429_WAIT_MS = '0' // sem espera: o 429 vai direto, como antes
   try {
     for (const [status, path, model] of [[404, '/v1/messages', 'claude-opus-5-5'], [422, '/v1/chat/completions', 'argon-4'], [429, '/v1/responses', 'argon-4'], [429, '/v1/messages', 'claude-opus-5-5']] as const) {
       const supplier = () => new Response(JSON.stringify({ error: { message: `DelverTokens: upstream google/gemini-4-argon via OpenRouter falhou`, provider: 'Google', code: status } }), {
@@ -298,6 +326,7 @@ test('erros 404, 422 e 429 do fornecedor não mostram o nome dele, no formato de
     }
   } finally {
     console.error = errors
+    delete process.env.SIXTYSIX_429_WAIT_MS
   }
 })
 
@@ -761,6 +790,7 @@ test('nome antigo do Claude Code (claude-3-5-haiku-…) vai para o Haiku do Rote
 test('stream OpenAI lento: o gateway manda sinal de vida até o modelo responder; o /v1/messages não muda', async () => {
   const saved = process.env.SIXTYSIX_KEEPALIVE_MS
   process.env.SIXTYSIX_KEEPALIVE_MS = '40'
+  process.env.SIXTYSIX_429_WAIT_MS = '0' // aqui o 429 só simula um erro do stream: sem espera
   const errors = console.error
   console.error = () => {}
   const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -805,6 +835,7 @@ test('stream OpenAI lento: o gateway manda sinal de vida até o modelo responder
   } finally {
     console.error = errors
     if (saved === undefined) delete process.env.SIXTYSIX_KEEPALIVE_MS; else process.env.SIXTYSIX_KEEPALIVE_MS = saved
+    delete process.env.SIXTYSIX_429_WAIT_MS
   }
 })
 

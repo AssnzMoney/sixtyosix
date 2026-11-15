@@ -17,7 +17,10 @@ export class RouterError extends Error {
   constructor(status: number, message: string) { super(message); this.status = status }
 }
 
-export type RouterProvider = { id: string; name: string; url: string; key: string }
+/** `keys`: todas as keys do provedor (uma por linha no admin); `key` é a primeira. */
+export type RouterProvider = { id: string; name: string; url: string; key: string; keys?: string[] }
+/** Várias keys no mesmo campo: separadas por linha, espaço, vírgula ou ponto e vírgula. */
+export const splitKeys = (value: string) => value.split(/[\s,;]+/).map((key) => key.trim()).filter(Boolean)
 export type RouterRoute = { alias: string; label: string; upstream: string; inPro: boolean; provider: RouterProvider }
 export type RouterConfig = { routes: Map<string, RouterRoute>; proAliases: string[]; lookup?: Map<string, RouterRoute> }
 export const EMPTY_ROUTER: RouterConfig = { routes: new Map(), proAliases: [] }
@@ -109,9 +112,9 @@ export async function loadRouter(env: Env, request: typeof fetch = fetch): Promi
           try { keys.set(provider.id, unsealSecret(provider.encrypted_key, db.secret, providerAad(provider.id))) }
           catch { console.error('Roteador: não foi possível abrir a key do provedor', provider.name); keys.set(provider.id, null) }
         }
-        const key = keys.get(provider.id)
-        if (!key) continue
-        routes.set(row.alias, { alias: row.alias, label: row.label, upstream: row.upstream_model, inPro: Boolean(row.in_pro), provider: { id: provider.id, name: provider.name, url: String(provider.base_url).replace(/\/+$/, ''), key } })
+        const list = splitKeys(keys.get(provider.id) || '')
+        if (!list.length) continue
+        routes.set(row.alias, { alias: row.alias, label: row.label, upstream: row.upstream_model, inPro: Boolean(row.in_pro), provider: { id: provider.id, name: provider.name, url: String(provider.base_url).replace(/\/+$/, ''), key: list[0], keys: list } })
       }
       const lookup = new Map<string, RouterRoute>()
       for (const route of routes.values()) if (!lookup.has(normalizeAlias(route.alias))) lookup.set(normalizeAlias(route.alias), route)
@@ -220,6 +223,8 @@ const URL_RE = /^https:\/\/[^\s]+$/
 const ALIAS_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/
 const text = (value: unknown, max: number) => (typeof value === 'string' ? value.trim().slice(0, max) : '')
 const keyHint = (key: string) => '…' + key.slice(-4)
+/** Final da primeira key e quantas mais existem (ex.: …a91f +2). */
+const keysHint = (value: string) => { const list = splitKeys(value); return keyHint(list[0] || '') + (list.length > 1 ? ` +${list.length - 1}` : '') }
 const CLIENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const GUARD_MISSING = 'Aplique a migração supabase/gateway-guard.sql no Supabase para usar a proteção e o controle de IP.'
 const IPS_MISSING = 'Aplique a migração supabase/gateway-guard-ips.sql no Supabase para usar o máximo de IPs por chave.'
@@ -241,7 +246,8 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
   async function providerKey(id: string) {
     const rows = await rest<Row[]>(`router_providers?${new URLSearchParams({ id: `eq.${id}`, select: 'id,base_url,encrypted_key', limit: '1' })}`)
     if (!rows[0]) throw new RouterError(404, 'Provedor não encontrado.')
-    return { url: String(rows[0].base_url), key: unsealSecret(rows[0].encrypted_key, db.secret, providerAad(id)) }
+    // Com várias keys, a primeira serve para listar os modelos.
+    return { url: String(rows[0].base_url), key: splitKeys(unsealSecret(rows[0].encrypted_key, db.secret, providerAad(id)))[0] || '' }
   }
   const done = <T>(value: T) => { clearRouterCache(); return value }
 
@@ -397,17 +403,17 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
     },
 
     async saveProvider(body: Row) {
-      const id = text(body.id, 40), name = text(body.name, 60), url = text(body.base_url, 300).replace(/\/+$/, ''), key = text(body.key, 500)
+      const id = text(body.id, 40), name = text(body.name, 60), url = text(body.base_url, 300).replace(/\/+$/, ''), key = splitKeys(text(body.key, 1400)).join('\n')
       if (!name) throw new RouterError(400, 'Dê um nome ao provedor.')
       if (!URL_RE.test(url)) throw new RouterError(400, 'A URL precisa começar com https://')
       if (!id && !key) throw new RouterError(400, 'Cole a API key do provedor.')
       if (id) {
-        const patch: Row = { name, base_url: url, updated_at: new Date().toISOString(), ...(key ? { encrypted_key: sealSecret(key, db.secret, providerAad(id)), key_hint: keyHint(key) } : {}) }
+        const patch: Row = { name, base_url: url, updated_at: new Date().toISOString(), ...(key ? { encrypted_key: sealSecret(key, db.secret, providerAad(id)), key_hint: keysHint(key) } : {}) }
         await rest(`router_providers?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) })
         return done({ id })
       }
       const created = randomUUID()
-      await rest('router_providers', { method: 'POST', body: JSON.stringify({ id: created, name, base_url: url, encrypted_key: sealSecret(key, db.secret, providerAad(created)), key_hint: keyHint(key) }) })
+      await rest('router_providers', { method: 'POST', body: JSON.stringify({ id: created, name, base_url: url, encrypted_key: sealSecret(key, db.secret, providerAad(created)), key_hint: keysHint(key) }) })
       return done({ id: created })
     },
 
