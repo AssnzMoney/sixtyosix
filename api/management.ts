@@ -8,7 +8,6 @@ import { canonicalModels, createRouterAdmin, loadRouter, RouterError } from '../
 import { withPlanModels } from '../server/model-aliases.js'
 import { billingPlans } from './mercadopago.js'
 import { createAutoKeys } from '../server/auto-key.js'
-import { createDiscordRank, DiscordRankError } from '../server/discord-rank.js'
 class AccountError extends Error { status:number; code?:string; constructor(status:number,message:string,code?:string){super(message);this.status=status;this.code=code} }
 
 /*
@@ -172,15 +171,6 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    }
    if(!actions[action])throw new AccountError(400,'Ação inválida.')
    try{return await actions[action](body)}catch(error){if(error instanceof RouterError)throw new AccountError(error.status,error.message);throw error}
-  }
-  // Ranking no Discord (server/discord-rank.ts): prévia só para o admin, ou publicação no canal.
-  if(action==='discord-rank-preview'||action==='discord-rank-publish'){
-   const discord=createDiscordRank(env,request)
-   try{
-    if(action==='discord-rank-preview')return {ranking:await discord.ranking(body.days),configured:discord.configured()}
-    const result=await discord.publish(body.days)
-    return {...result,configured:true}
-   }catch(error){if(error instanceof DiscordRankError)throw new AccountError(error.status,error.message);throw error}
   }
   if(action==='revoke-old-trials'){
    const query=new URLSearchParams({resource:'trials',history:'1'}),read=createAdminService(env,request);let count=0

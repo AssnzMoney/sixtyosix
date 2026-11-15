@@ -21,7 +21,6 @@ import {
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
 import AffiliatesPanel from '../components/AffiliatesPanel'
-import DiscordRankPanel from '../components/DiscordRankPanel'
 import { AdminCodeRequired, adminHeaders, clearAdminSession, saveAdminSession } from '../lib/adminSession'
 import { rememberReturn } from '../lib/authDestination'
 import { confirmationReminder, customerGreeting, deliveryMessage, formatWhatsapp, shortOrder, whatsappLink } from '../lib/whatsapp'
@@ -1124,7 +1123,6 @@ export default function AdminPage() {
                 </button>
               </div>
               {['usage', 'payments'].includes(tab) && <p className="sx-admin-hint">Período aplicado ao consumo e aos pagamentos, em UTC.</p>}
-              {tab === 'usage' && <DiscordRankPanel run={adminAction} />}
               {tab === 'usage' && usageByCustomer && (
                 <div className="sx-usage-summary">
                   <h3>Consumo por cliente</h3>
