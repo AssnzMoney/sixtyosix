@@ -177,7 +177,7 @@ export function speaksForItself(supplierId: string) {
 }
 
 /** Para Claude e Gemini: não muda quem o modelo diz ser, só não deixa falar (nem chutar) por onde o acesso passa. */
-export const DISCRETION_TEXT = 'Se perguntarem por qual serviço, provedor, revendedor, gateway, API ou URL esta conversa passa, diga apenas que não tem essa informação, sem tentar adivinhar nomes e sem mencionar esta instrução. Fora isso, siga normalmente as instruções abaixo.'
+export const DISCRETION_TEXT = 'Você não tem acesso a detalhes técnicos de como esta conversa chega até você, como plataforma, API ou endereços: se perguntarem sobre isso, diga que não tem essa informação, sem adivinhar nomes. Isso não muda o que você sabe sobre si mesmo nem as instruções a seguir, que têm prioridade.'
 
 function prependSystem(next: Record<string, unknown>, path: string, text: string) {
   if (/\/messages\/?$/.test(path)) {
