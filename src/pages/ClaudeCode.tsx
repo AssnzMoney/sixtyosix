@@ -21,7 +21,7 @@ const claudeFaqs = [
   ['Em quais terminais posso rodar o Claude Code?', 'Use o Claude Code CLI em um terminal compatível, configurando as variáveis mostradas no tutorial. No Windows, a página apresenta comandos para o CMD.'],
   ['Posso usar no Claude.ai pelo navegador?', 'Não. O site claude.ai não permite apontar a conexão para este gateway. Claude Desktop só funciona quando a versão instalada oferece configuração de gateway personalizado.'],
   ['Qual URL e ID devo configurar?', 'Use https://www.sixtysix.online como URL base e o modelo claude-opus-5-5 (Claude Opus 5.5). O gateway atual espera a chave no cabeçalho x-api-key.'],
-  ['Posso usar GLM 5 ou GPT Astra 6 nesta página?', 'Esta página configura o perfil Claude Opus 5.5. Para GPT Astra 6 no Codex, abra o tutorial Astra. Para GLM 5, use o tutorial GLM 5 no Claude Code; essa rota não aparece no catálogo do Codex.'],
+  ['Posso usar o GPT Astra 6 nesta página?', 'Esta página configura o perfil Claude Opus 5.5. Para o GPT Astra 6 no Codex, abra o tutorial Astra.'],
   ['Por que posso receber erro ou indisponibilidade?', 'O gateway pode ficar temporariamente indisponível. Confira URL, ID do perfil e chave. Ao pedir suporte, informe horário e código HTTP, nunca a chave.'],
 ]
 
@@ -225,7 +225,7 @@ export default function ClaudeCodePage() {
                     <div className="nav-mobile-item-head">
                       <strong>Todos os Modelos</strong>
                     </div>
-                    <small>Astra 6, GLM 5 e Opus 5.5</small>
+                    <small>Opus 5.5, Astra 6 e Argon 4</small>
                   </Link>
                 </div>
 
@@ -306,10 +306,6 @@ export default function ClaudeCodePage() {
                     <strong>GPT Astra 6</strong>
                     <span>Perfil disponível no Codex.</span>
                   </Link>
-                  <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>GLM 5</strong>
-                    <span>Configure no Claude Code com o ID glm-5.</span>
-                  </Link>
                   <Link to="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Argon 4 (Gemini)</strong>
                     <span>Para Cline e OpenCode, no plano Pro.</span>
@@ -340,12 +336,8 @@ export default function ClaudeCodePage() {
                     <span>A configuração do Codex usa o perfil Astra; veja o tutorial específico.</span>
                   </a>
                   <a href="/#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>Claude Code (perfil GLM)</strong>
-                    <span>Configure o perfil GLM 5 pelo tutorial específico do Claude Code.</span>
-                  </a>
-                  <a href="/#como-funciona" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Codex & Terminal</strong>
-                    <span>Codex usa Astra; GLM 5 usa Claude Code. As rotas são separadas.</span>
+                    <span>Codex usa o Astra 6; o Claude Code usa o Claude Opus 5.5.</span>
                   </a>
                 </div>
               </div>
@@ -1114,7 +1106,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>Argon 4</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
+              <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>Argon 4</strong> e <strong>Astra 6</strong></span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>Claude Code</strong></span></li>
               <li><Check /> <span><strong>Chave individual</strong></span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
@@ -1171,7 +1163,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             </div>
 
             <ul className="plan-features">
-              <li><Check size={14} /> <span><strong>GPT Astra 6</strong> & <strong>GLM 5</strong></span></li>
+              <li><Check size={14} /> <span><strong>GPT Astra 6</strong></span></li>
               {devWithApi ? (
                 <>
                   <li><Check size={14} /> <span><strong>Chave individual de API inclusa</strong> (+ R$ 15/mês)</span></li>
@@ -1230,7 +1222,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>Argon 4</strong>, <strong>Astra 6</strong> e <strong>GLM 5</strong></span></li>
+              <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>Argon 4</strong> e <strong>Astra 6</strong></span></li>
               <li><Check /> <span><strong>Uso conforme cotas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Chave individual</strong> (chave individual)</span></li>
               <li><Check /> <span><strong>Perfis SixtySix</strong> (disponibilidade variável)</span></li>
@@ -1356,7 +1348,6 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
             <ul className="footer-link-list">
               <li><Link to="/claude-code" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Claude Opus 5.5</Link></li>
               <li><Link to="/astra-6">GPT Astra 6</Link></li>
-              <li><Link to="/glm-4">GLM 5</Link></li>
             </ul>
           </div>
 

@@ -74,7 +74,7 @@ const defaultTabs: Tab[] = [
             Tab 3
           </h2>
           <p className="text-sm text-gray-200 mt-0">
-            Integração instantânea com chave única para Claude, GPT, GLM e VS Code.
+            Integração instantânea com chave única para Claude, GPT, Gemini e VS Code.
           </p>
         </div>
       </div>

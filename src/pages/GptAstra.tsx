@@ -17,7 +17,6 @@ const Arrow = () => (
 const astraFaqs = [
   ['O que significa GPT Astra 6?', 'É o perfil GPT Astra 6 que você seleciona no Codex. O identificador usado na configuração é gpt-6-astra.'],
   ['O GPT Astra 6 funciona no Codex?', 'Sim. No Codex, use o provedor personalizado Responses da SixtySix, a chave individual e o ID gpt-6-astra. Siga o arquivo config.toml mostrado nesta página.'],
-  ['Posso usar GLM no Codex?', 'Não pela configuração atual do gateway. O catálogo do Codex aceita somente gpt-6-astra. O perfil GLM 5 é separado e deve ser usado no Claude Code.'],
   ['Qual é a URL e como informo a chave?', 'A URL base é https://www.sixtysix.online/v1. Salve sua chave individual na variável SIXTYSIX_GATEWAY_API_KEY do Windows e referencie essa variável no config.toml; não cole a chave diretamente nesse arquivo.'],
   ['O Codex pode usar ferramentas?', 'A rota dá suporte a respostas em streaming e chamadas de ferramentas padrão. Recursos exclusivos da OpenAI, incluindo web search, imagem e áudio, não fazem parte desse perfil.'],
   ['Há limite de uso garantido?', 'Não há garantia de disponibilidade ou uso ilimitado. As cotas e o desempenho dependem do pool compartilhado e podem variar.'],
@@ -300,10 +299,6 @@ export default function GptAstraPage() {
                   >
                     <strong>Claude Opus 5.5 para Claude Code</strong>
                     <span>Raciocínio profundo e código de alta complexidade.</span>
-                  </Link>
-                  <Link to="/glm-4" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
-                    <strong>GLM-4 Plus</strong>
-                    <span>Excelente em refatoração, documentação e testes.</span>
                   </Link>
                   <Link to="/#planos" className="mega-menu-item" onClick={() => setMegaMenuOpen(false)}>
                     <strong>Argon 4 (Gemini)</strong>
@@ -639,11 +634,6 @@ requires_openai_auth = false
 env_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }
 model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             </div>
-            <div className="claude-step-card">
-              <div className="claude-step-top"><span className="claude-step-badge">Atenção</span><h4>GLM é outra configuração</h4></div>
-              <p>GLM 5 não aparece no catálogo do Codex. Para usar esse perfil, configure-o no Claude Code com <code>https://www.sixtysix.online/glm</code> e o ID <code>glm-5</code>.</p>
-              
-            </div>
           </div>
         </div>
       </section>
@@ -887,7 +877,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>GPT Astra 6</strong>, <strong>Claude Opus 5.5 para Claude Code</strong>, <strong>GLM-4</strong> e <strong>Argon 4</strong></span></li>
+              <li><Check /> <span><strong>GPT Astra 6</strong>, <strong>Claude Opus 5.5 para Claude Code</strong> e <strong>Argon 4</strong></span></li>
               <li><Check /> <span><strong>Cursor</strong>, <strong>VS Code</strong> & <strong>Terminal</strong></span></li>
               <li><Check /> <span><strong>Chave individual</strong> (Zero Rateio)</span></li>
               <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
@@ -944,7 +934,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             </div>
 
             <ul className="plan-features">
-              <li><Check size={14} /> <span><strong>GPT Astra 6</strong> & <strong>GLM-4 Plus</strong></span></li>
+              <li><Check size={14} /> <span><strong>GPT Astra 6</strong></span></li>
               {devWithApi ? (
                 <>
                   <li><Check size={14} /> <span><strong>Chave de API individual</strong> (+ R$ 15/mês)</span></li>
@@ -1003,7 +993,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
-              <li><Check /> <span><strong>Claude Opus 5.5 para Claude Code</strong>, <strong>GPT Astra 6</strong>, <strong>GLM-4 Plus</strong> e <strong>Argon 4</strong></span></li>
+              <li><Check /> <span><strong>Claude Opus 5.5 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>Argon 4</strong></span></li>
               <li><Check /> <span><strong>Uso conforme cotas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Perfis de acesso</strong> (disponibilidade variável)</span></li>
@@ -1129,7 +1119,6 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             <ul className="footer-link-list">
               <li><Link to="/astra-6" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>GPT Astra 6</Link></li>
               <li><Link to="/claude-code">Claude Opus 5.5 para Claude Code</Link></li>
-              <li><Link to="/glm-4">GLM-4 Plus</Link></li>
             </ul>
           </div>
 

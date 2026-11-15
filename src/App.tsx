@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './lib/AuthContext'
 import HomePage from './pages/HomePage'
 import ClaudeCodePage from './pages/ClaudeCode'
 import GptAstraPage from './pages/GptAstra'
-import Glm4Page from './pages/Glm4'
 import LoginPage from './pages/LoginPage'
 import AuthCallback from './pages/AuthCallback'
 import DashboardPage from './pages/DashboardPage'
@@ -74,8 +73,9 @@ export default function App() {
           <Route path="/claude-code" element={<ClaudeCodePage />} />
           <Route path="/astra-6" element={<GptAstraPage />} />
           <Route path="/gpt-astra" element={<GptAstraPage />} />
-          <Route path="/glm-4" element={<Glm4Page />} />
-          <Route path="/glm" element={<Glm4Page />} />
+          {/* O GLM saiu do Roteador: os links antigos levam ao tutorial do Claude Code. */}
+          <Route path="/glm-4" element={<Navigate to="/claude-code" replace />} />
+          <Route path="/glm" element={<Navigate to="/claude-code" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/entrar" element={<LoginPage />} />
           <Route path="/criar-conta" element={<Navigate to="/login?mode=cadastro" replace />} />
