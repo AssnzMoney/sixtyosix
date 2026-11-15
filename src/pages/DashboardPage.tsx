@@ -100,7 +100,6 @@ const modelLabel = (alias: string) => MODEL_LABELS[alias] || MODEL_LABELS[alias.
 const KNOWN_MODELS = Object.values(MODEL_LABELS)
 /** Modelos que funcionam no Claude Code (terminal e VS Code) e no app Claude: todos pelo formato da Anthropic. */
 const CLAUDE_TOOL_MODELS: [string, string][] = [
-  ["claude-fable-5-2", "Fable 5.2"],
   ["claude-opus-5-5", "Opus 5.5"],
   ["gpt-6-astra", "Astra 6"],
   ["argon-4", "Argon 4"],
@@ -218,7 +217,7 @@ const fullDate = (date: string) => new Date(date).toLocaleDateString("pt-BR", { 
 const fullDateTime = (date: string) =>
   new Date(date).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
 const modelIcon = (model: string) =>
-  model.startsWith("Fable") ? "claude" : model === "Astra 6" ? "openai" : model.startsWith("Argon") ? "gemini" : ""
+  /^(Fable|Opus|Claude|Sonnet|Haiku)/.test(model) ? "claude" : model === "Astra 6" ? "openai" : model.startsWith("Argon") ? "gemini" : ""
 
 function niceCeil(value: number) {
   if (value <= 0) return 1
@@ -746,7 +745,7 @@ export default function DashboardPage() {
         ? `set ANTHROPIC_BASE_URL=${baseUrl}\nset "ANTHROPIC_API_KEY=${actualKey.replace(/[\r\n"]/g, "")}"\nset ANTHROPIC_MODEL=${model}\nclaude --model ${model}`
         : `export ANTHROPIC_BASE_URL='${baseUrl}'\nexport ANTHROPIC_API_KEY=${shellKey}\nexport ANTHROPIC_MODEL='${model}'\nclaude --model ${model}`
   const claudeBase = claudeCredential?.base_url || "https://www.sixtysix.online"
-  const claudeModel = claudeCredential?.model_id || "claude-fable-5-2"
+  const claudeModel = claudeCredential?.model_id && !/fable/i.test(claudeCredential.model_id) ? claudeCredential.model_id : "claude-opus-5-5"
   // Modelo escolhido no guia (Claude Code, VS Code e app Claude): os quatro funcionam pelo formato da Anthropic.
   const guideModel = pickedModel || claudeModel
   const guideModelName = CLAUDE_TOOL_MODELS.find(([id]) => id === guideModel)?.[1] || modelLabel(guideModel)
@@ -2354,10 +2353,10 @@ sudo apt update && sudo apt install claude-desktop`}
                   {!preview && (
                     <p>
                       {trial?.active && !subscription?.active
-                        ? "Modelos liberados no teste: Fable 5.2, Argon 4 e Astra 6. Todos disponíveis durante as 3 horas, com velocidade reduzida."
+                        ? "Modelos liberados no teste: Claude Opus 5.5, Argon 4 e Astra 6. Todos disponíveis durante as 3 horas, com velocidade reduzida."
                         : subscription
                           ? `Modelos do seu plano: ${subscription.models.map(modelLabel).join(", ")}.`
-                          : "Seu espaço para construir com Fable 5.2, Argon 4 e Astra 6."}
+                          : "Seu espaço para construir com Claude Opus 5.5, Argon 4 e Astra 6."}
                     </p>
                   )}
                   <div className="six-plan-price">
@@ -2500,7 +2499,7 @@ sudo apt update && sudo apt install claude-desktop`}
                   ],
                   [
                     "Onde uso o Argon 4?",
-                    "O Argon 4 é um modelo Gemini: use no Cline (VS Code) ou no OpenCode (terminal), com a URL https://www.sixtysix.online/v1 e o modelo argon-4. O passo a passo está em Como conectar. No Claude Code, use o Fable.",
+                    "O Argon 4 é um modelo Gemini: use no Cline (VS Code) ou no OpenCode (terminal), com a URL https://www.sixtysix.online/v1 e o modelo argon-4. O passo a passo está em Como conectar. No Claude Code, use o Claude Opus 5.5.",
                   ],
                   [
                     "O Claude Desktop não salva a conexão.",
