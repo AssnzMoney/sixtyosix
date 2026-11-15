@@ -1895,3 +1895,57 @@
   border-top: 1px solid var(--line);
   vertical-align: top;
 }
+
+/* Aba Consumo: ranking no Discord */
+.sx-discord-rank {
+  margin: 14px 18px 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line, rgba(127, 127, 127, 0.25));
+  border-radius: 14px;
+}
+.sx-discord-rank header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sx-discord-rank h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: 700 16px/1.2 'Fustat', sans-serif;
+}
+.sx-discord-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sx-discord-actions select {
+  width: auto;
+}
+.sx-discord-rank > .sx-admin-hint {
+  margin: 10px 0 0;
+}
+.sx-discord-ok {
+  color: var(--green-text);
+  font-weight: 600;
+}
+.sx-discord-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+.sx-discord-col h4 {
+  margin: 0 0 6px;
+  font: 700 13.5px/1.2 'Fustat', sans-serif;
+}
+.sx-discord-col ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.7;
+}

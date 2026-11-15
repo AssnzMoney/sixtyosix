@@ -9,6 +9,7 @@ import accountHandler from '../api/account.js'
 import managementHandler from '../api/management.js'
 import mercadoPagoHandler from '../api/mercadopago.js'
 import notificationsHandler from '../api/notifications.js'
+import discordRankHandler from '../api/discord-rank.js'
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => unknown | Promise<unknown>
 type Rule = { pattern: RegExp; handler: Handler; target: (match: RegExpMatchArray) => Record<string, string> }
@@ -30,6 +31,7 @@ export const RULES: Rule[] = [
   { pattern: /^\/api\/management\/?$/, handler: managementHandler, target: () => ({}) },
   { pattern: /^\/api\/mercadopago\/?$/, handler: mercadoPagoHandler, target: () => ({}) },
   { pattern: /^\/api\/notifications\/?$/, handler: notificationsHandler, target: () => ({}) },
+  { pattern: /^\/api\/discord-rank\/?$/, handler: discordRankHandler, target: () => ({}) },
 ]
 
 /** Acha a função e monta a URL que ela espera (como a Vercel fazia: pasta da função + query da reescrita). */
