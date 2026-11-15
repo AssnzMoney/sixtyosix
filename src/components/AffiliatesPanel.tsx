@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Check, Copy, ExternalLink, Gift, MessageCircle, UserPlus } from 'lucide-react'
+import { Fragment, useEffect, useState } from 'react'
+import { Check, ChevronDown, Copy, ExternalLink, Gift, MessageCircle, UserPlus, Users } from 'lucide-react'
 import { adminHeaders } from '../lib/adminSession'
 
 type Affiliate = {
@@ -15,6 +15,27 @@ type Affiliate = {
   paying: number
   payments: number
   totalDays: number
+  people?: Referred[]
+}
+/** Quem chegou pelo link (ou código) do afiliado. */
+type Referred = {
+  user_id: string | null
+  name: string
+  email: string
+  whatsapp: string
+  linked_at: string
+  payments: number
+  days: number
+  last_payment: string | null
+  plan: string | null
+  paid_until: string | null
+  active: boolean
+  note?: string
+}
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')
+const phone = (raw: string) => {
+  const d = raw.replace(/\D/g, '')
+  return d.length >= 12 ? `+${d.slice(0, 2)} (${d.slice(2, 4)}) ${d.slice(4, -4)}-${d.slice(-4)}` : raw
 }
 
 /**
@@ -30,6 +51,8 @@ export default function AffiliatesPanel({ token }: { token: string }) {
   const [sale, setSale] = useState<{ user_id: string; email: string; note: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState('')
+  // Afiliado com a lista de indicados aberta.
+  const [open, setOpen] = useState('')
 
   async function call<T>(body: Record<string, unknown>): Promise<T> {
     const response = await fetch('/api/management', {
@@ -166,7 +189,8 @@ export default function AffiliatesPanel({ token }: { token: string }) {
               </thead>
               <tbody>
                 {list.map((a) => (
-                  <tr key={a.user_id}>
+                  <Fragment key={a.user_id}>
+                  <tr>
                     <td>
                       <strong>{a.name || a.email}</strong>
                       {a.name && <small style={{ display: 'block' }}>{a.email}</small>}
@@ -179,7 +203,11 @@ export default function AffiliatesPanel({ token }: { token: string }) {
                         <ExternalLink size={14} /> Abrir
                       </a>
                     </td>
-                    <td>{a.referred}</td>
+                    <td>
+                      <button type="button" className={`sx-btn${open === a.user_id ? ' is-primary' : ''}`} disabled={!a.people?.length} onClick={() => setOpen(open === a.user_id ? '' : a.user_id)}>
+                        <Users size={14} /> {a.referred} {a.referred === 1 ? 'pessoa' : 'pessoas'} <ChevronDown size={14} style={{ transform: open === a.user_id ? 'rotate(180deg)' : undefined }} />
+                      </button>
+                    </td>
                     <td>
                       {a.paying}
                       {a.payments > a.paying ? <small style={{ display: 'block' }}>{a.payments} pagamentos</small> : null}
@@ -208,6 +236,54 @@ export default function AffiliatesPanel({ token }: { token: string }) {
                       </button>
                     </td>
                   </tr>
+                  {open === a.user_id && a.people?.length ? (
+                    <tr className="sx-aff-people-row">
+                      <td colSpan={6}>
+                        <div className="sx-aff-people">
+                          <strong>Quem veio pelo link de {a.name || a.email}</strong>
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Pessoa</th>
+                                <th>Entrou pelo link em</th>
+                                <th>Situação</th>
+                                <th>Plano</th>
+                                <th>Pagamentos</th>
+                                <th>Dias para o afiliado</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {a.people.map((p, i) => (
+                                <tr key={p.user_id || `manual-${i}`}>
+                                  <td>
+                                    <strong>{p.name || p.email || 'Sem nome'}</strong>
+                                    {p.name && p.email && <small style={{ display: 'block' }}>{p.email}</small>}
+                                    {p.whatsapp && <small style={{ display: 'block' }}>{phone(p.whatsapp)}</small>}
+                                    {p.note && <small style={{ display: 'block' }}>{p.note}</small>}
+                                  </td>
+                                  <td>{when(p.linked_at)}</td>
+                                  <td>
+                                    <span className={`sx-state ${p.payments ? 'is-confirmed' : 'is-pending'}`}>
+                                      {p.user_id === null ? 'Venda pelo WhatsApp' : p.payments ? 'Pagou' : 'Só criou a conta'}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    {p.plan ? `${p.plan}${p.active ? ` até ${new Date(p.paid_until!).toLocaleDateString('pt-BR')}` : ' (vencido)'}` : '—'}
+                                  </td>
+                                  <td>
+                                    {p.payments}
+                                    {p.last_payment && <small style={{ display: 'block' }}>último {when(p.last_payment)}</small>}
+                                  </td>
+                                  <td>{p.days ? `+${p.days}` : '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
                 ))}
               </tbody>
             </table>

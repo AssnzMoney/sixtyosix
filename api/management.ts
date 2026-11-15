@@ -301,16 +301,40 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    if(!affiliates.length)return {affiliates:[]}
    const ids=affiliates.map(a=>a.user_id).join(',')
    const [referrals,rewards]=await Promise.all([
-    read<Row[]>('affiliate_referrals',{affiliate_user_id:`in.(${ids})`,select:'affiliate_user_id,referred_user_id'}),
-    read<Row[]>('affiliate_rewards',{affiliate_user_id:`in.(${ids})`,select:'affiliate_user_id,referred_user_id,days,revoked_at'}),
+    read<Row[]>('affiliate_referrals',{affiliate_user_id:`in.(${ids})`,select:'affiliate_user_id,referred_user_id,code,created_at',order:'created_at.desc'}),
+    read<Row[]>('affiliate_rewards',{affiliate_user_id:`in.(${ids})`,select:'*',order:'created_at.desc'}),
    ])
+   // Contas (nome, e-mail, WhatsApp) e planos de quem veio pelo link, para mostrar cada pessoa.
+   const people=new Map<string,ReturnType<typeof userFromAuth>>()
+   for(let page=1;page<=40;page++){
+    const response=await request(`${config.url}/auth/v1/admin/users?page=${page}&per_page=500`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(15000)}).catch(()=>null)
+    if(!response?.ok)break
+    const list=(((await response.json()) as Row).users||[]) as Row[]
+    for(const u of list)people.set(String(u.id),userFromAuth(u))
+    if(list.length<500)break
+   }
+   const referredIds=[...new Set(referrals.map(r=>String(r.referred_user_id)))]
+   const plans=referredIds.length?await read<Row[]>('billing_subscription_state',{user_id:`in.(${referredIds.join(',')})`,select:'user_id,plan_code,paid_until,entitled,created_at',order:'created_at.desc'}).catch(()=>[] as Row[]):[]
+   const planNames:Record<string,string>={pro:'Pro',devApi:'Dev + API',dev:'Dev'}
    const out=[]
    for(const a of affiliates){
-    const found=await request(`${config.url}/auth/v1/admin/users/${a.user_id}`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(10000)}).catch(()=>null)
-    const user=found?.ok?userFromAuth(await found.json()):null
-    const valid=rewards.filter(r=>r.affiliate_user_id===a.user_id&&!r.revoked_at)
+    const user=people.get(String(a.user_id))||null
+    const mine=rewards.filter(r=>r.affiliate_user_id===a.user_id)
+    const valid=mine.filter(r=>!r.revoked_at)
+    const list=referrals.filter(r=>r.affiliate_user_id===a.user_id).map(r=>{
+     const person=people.get(String(r.referred_user_id))
+     const paid=valid.filter(x=>x.referred_user_id===r.referred_user_id)
+     const plan=plans.find(p=>p.user_id===r.referred_user_id)
+     const active=Boolean(plan&&plan.entitled!==false&&plan.paid_until&&Date.parse(plan.paid_until)>Date.now())
+     return {user_id:r.referred_user_id,name:person?.name||'',email:person?.email||'',whatsapp:person?.whatsapp||'',linked_at:r.created_at,
+      payments:paid.length,days:paid.reduce((s,x)=>s+Number(x.days||0),0),last_payment:paid[0]?.created_at||null,
+      plan:plan?planNames[plan.plan_code]||plan.plan_code:null,paid_until:plan?.paid_until||null,active}
+    })
+    // Vendas pelo WhatsApp sem conta do cliente: aparecem como uma linha cada.
+    const manual=valid.filter(r=>!r.referred_user_id).map(r=>({user_id:null,name:'Venda pelo WhatsApp',email:'',whatsapp:'',linked_at:r.created_at,payments:1,days:Number(r.days||0),last_payment:r.created_at,plan:null,paid_until:null,active:false,note:r.note||''}))
     out.push({user_id:a.user_id,email:user?.email||'',name:user?.name||'',code:a.code,days:a.days_per_payment,referredDays:a.referred_days??null,enabled:a.enabled,created_at:a.created_at,link:`https://www.sixtysix.online/convite/${a.code}`,
-     referred:referrals.filter(r=>r.affiliate_user_id===a.user_id).length,paying:new Set(valid.filter(r=>r.referred_user_id).map(r=>r.referred_user_id)).size+valid.filter(r=>!r.referred_user_id).length,payments:valid.length,totalDays:valid.reduce((s,r)=>s+Number(r.days||0),0)})
+     referred:list.length,paying:new Set(valid.filter(r=>r.referred_user_id).map(r=>r.referred_user_id)).size+valid.filter(r=>!r.referred_user_id).length,payments:valid.length,totalDays:valid.reduce((s,r)=>s+Number(r.days||0),0),
+     people:[...list,...manual]})
    }
    return {affiliates:out}
   }
