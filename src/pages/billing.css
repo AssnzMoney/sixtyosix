@@ -4,8 +4,8 @@
 .six-pay-return{text-align:center}
 .six-pay-return h1{margin-bottom:6px}
 .six-pay-return h1 em{color:#16a34a;font-style:normal}
-.six-pay-return>p{margin:0 auto;max-width:400px}
-.six-pay-actions{display:grid;gap:12px;justify-items:center;opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s cubic-bezier(.22,1,.36,1);pointer-events:none}
+.six-pay-return>p{margin:0 auto;max-width:400px;min-height:48px}
+.six-pay-actions{display:grid;gap:12px;justify-items:center;align-content:start;min-height:124px;opacity:0;transform:translateY(10px);transition:opacity .5s ease,transform .5s cubic-bezier(.22,1,.36,1);pointer-events:none}
 .six-pay-actions.is-in{opacity:1;transform:none;pointer-events:auto}
 .six-pay-actions .six-trial-primary,.six-pay-actions .six-trial-secondary{width:100%;justify-content:center}
 .six-pay-actions p{margin:0;font-size:13px;color:#4e6b68}

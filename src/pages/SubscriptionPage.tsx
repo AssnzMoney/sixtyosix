@@ -107,7 +107,7 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (!justPaid) return
     // Sem animação (movimento reduzido), os botões aparecem do mesmo jeito.
-    const timer = setTimeout(() => setPrinted(true), 3600)
+    const timer = setTimeout(() => setPrinted(true), 3900)
     if (!demo) sessionStorage.removeItem(PENDING_ORDER)
     return () => clearTimeout(timer)
   }, [justPaid, demo])
@@ -176,9 +176,9 @@ export default function SubscriptionPage() {
                 {error}
               </p>
             )}
-            <PaymentMachine state={justPaid ? 'aprovado' : 'aguardando'} receipt={receipt} onPrinted={() => setPrinted(true)} />
+            <PaymentMachine state={justPaid ? 'aprovado' : 'aguardando'} receipt={receipt} onPrinted={() => setTimeout(() => setPrinted(true), 450)} />
             {justPaid ? (
-              <div className={`six-pay-actions${printed ? ' is-in' : ''}`}>
+              <div key="pago" className={`six-pay-actions${printed ? ' is-in' : ''}`}>
                 <Link to={chosen?.api ? '/dashboard?aba=keys' : '/dashboard'} className="six-trial-primary">
                   {chosen?.api ? (
                     <>
@@ -195,7 +195,7 @@ export default function SubscriptionPage() {
                 </Link>
               </div>
             ) : (
-              <div className="six-pay-actions is-in">
+              <div key="aguardando" className="six-pay-actions is-in">
                 {slow && <p>Já pagou e ainda não confirmou? O Pix pode demorar alguns minutos. Se passar disso, fale com a gente.</p>}
                 <button disabled={busy} className="six-trial-secondary" onClick={() => void update('sync')}>
                   <RefreshCw size={16} /> {busy ? 'Conferindo…' : 'Já paguei, conferir agora'}
