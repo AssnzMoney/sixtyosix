@@ -234,6 +234,17 @@ test('Claude Code 2.1.323: campo safeguards recusado sai do pedido (no topo e na
   assert.equal(sent.messages[0].content, 'oi', 'a conversa não muda')
 })
 
+test('Claude Code 2.1.325: thinking.block_binding recusado sai do pedido e o thinking continua', async () => {
+  const { unsupportedFix, rememberUnsupported } = await import('./supplier.ts')
+  const fix = unsupportedFix(400, '{"type":"error","error":{"type":"invalid_request_error","message":"thinking.adaptive.block_binding: Extra inputs are not permitted"}}')
+  assert.equal(fix, 'thinking.block_binding')
+  assert.equal(rememberUnsupported('teste/block-binding', fix!), true)
+  const sent = JSON.parse(supplierRequestBody({ model: 'claude-opus-5-5', thinking: { type: 'adaptive', block_binding: 'strict' }, messages: [{ role: 'user', content: 'oi' }] }, '/v1/messages', 'teste/block-binding').body)
+  assert.deepEqual(sent.thinking, { type: 'adaptive' })
+  assert.equal(unsupportedFix(400, '{"error":{"message":"thinking.type: Extra inputs are not permitted"}}'), null, 'o tipo do thinking nunca sai')
+  assert.equal(rememberUnsupported('teste/block-binding', 'thinking.type'), false)
+})
+
 test('omp/Cline: "store" recusado na conversão do chat sai só dos pedidos de chat; o Codex continua mandando', async () => {
   const { unsupportedFix, rememberUnsupported } = await import('./supplier.ts')
   const text = '{"error":{"type":"invalid_request_error","code":"invalid_request_error","message":"Parâmetro não suportado nesta conversão: store. Use /v1/responses nativo."}}'

@@ -47,8 +47,14 @@ const TOOL_FIELDS = ['defer_loading', 'eager_input_streaming', 'strict', 'input_
 const CHAT_CONVERSION_FIELDS = ['store', 'parallel_tool_calls', 'metadata', 'user', 'prediction', 'logit_bias', 'logprobs', 'top_logprobs', 'seed', 'prompt_cache_key', 'safety_identifier', 'service_tier']
 const unsupported = new Map<string, Set<string>>()
 
+/*
+ * Campo extra dentro do thinking ("thinking.adaptive.block_binding: Extra inputs are not permitted", Claude Code 2.1.325).
+ * Lembrado como "thinking.<campo>": sai só o campo, o thinking continua. O "type" nunca sai.
+ */
+const THINKING_FIELD = /^thinking\.(?!type$|disabled$|between_tools$)[a-z][a-z_]*$/
+
 const allowedFix = (fix: string) =>
-  STRIPPABLE.includes(fix) || /^beta:[\w.-]+$/.test(fix) || /^tool:[\w.-]+$/.test(fix) || TOOL_FIELDS.some((f) => fix === `tools.*.${f}`) ||
+  STRIPPABLE.includes(fix) || THINKING_FIELD.test(fix) || /^beta:[\w.-]+$/.test(fix) || /^tool:[\w.-]+$/.test(fix) || TOOL_FIELDS.some((f) => fix === `tools.*.${f}`) ||
   CHAT_CONVERSION_FIELDS.some((f) => fix === `chat:${f}`)
 
 /**
@@ -68,6 +74,9 @@ export function unsupportedFix(status: number, text: string, sent?: Record<strin
   if (/thinking\.type\.disabled"? is not supported/i.test(message)) return 'thinking.disabled'
   // Modo de pensamento novo do Claude Code 2.1.323 ("between_tools") que o modelo não tem: vai sem o ajuste de pensamento.
   if (/thinking\.type\.between_tools"? is not supported/i.test(message)) return 'thinking.between_tools'
+  // "thinking.adaptive.block_binding: Extra inputs are not permitted": tira só o campo novo do thinking.
+  const thinkingField = /\bthinking\.(?:[a-z_]+\.)?([a-z][a-z_]*)['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|unknown field)/i.exec(message)
+  if (thinkingField && THINKING_FIELD.test(`thinking.${thinkingField[1].toLowerCase()}`)) return `thinking.${thinkingField[1].toLowerCase()}`
   const tool = /\btools\.(\d+)(?:\.(\w+))?/.exec(message)
   if (tool) {
     if (tool[2] && TOOL_FIELDS.includes(tool[2]) && /extra inputs|not permitted|not supported|unknown field|unexpected/i.test(message)) return `tools.*.${tool[2]}`
