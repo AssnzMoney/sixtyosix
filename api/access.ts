@@ -148,7 +148,7 @@ const limits={recovered:0,failed:0,other:0,since:Date.now()}
 function limitStats(kind:'recovered'|'failed'|'other'){
   limits[kind]++
   if(Date.now()-limits.since<60000)return
-  console.log(`Limite do fornecedor (último minuto): ${limits.recovered} salvas pela espera, ${limits.failed} repassadas ao cliente, ${limits.other} com outro erro`)
+  console.log(`Limite ou instabilidade do fornecedor (último minuto): ${limits.recovered} salvas pela espera, ${limits.failed} repassadas ao cliente, ${limits.other} com outro erro`)
   limits.recovered=limits.failed=limits.other=0;limits.since=Date.now()
 }
 /** Chama o provedor do Roteador com a key mestra, repassa a resposta e grava o consumo do cliente. */
@@ -198,8 +198,11 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
    * repetia na hora, piorando o pico. Agora o gateway tenta a próxima key na hora (se houver mais de uma) e, depois de
    * passar por todas, espera um pouco (o retry-after do fornecedor, ou 1,5 s dobrando até 10 s) e tenta de novo, por
    * até SIXTYSIX_429_WAIT_MS (30 s). Só então o 429 segue para o cliente.
+   * Instabilidade passageira do fornecedor (502, 503 e 529: "pool sem contas", "sobrecarregado") recebe o mesmo
+   * tratamento: em 16/11 o fornecedor ficou devolvendo 503 em ~85% das chamadas, e as que tentavam de novo passavam.
    */
   const waitLimit=process.env.SIXTYSIX_429_WAIT_MS!==undefined?Number(process.env.SIXTYSIX_429_WAIT_MS):30000
+  const busy=(status:number)=>status===429||status===502||status===503||status===529
   const send=async(payloadBody:string)=>{
     // Betas que o modelo já recusou não vão no cabeçalho.
     const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
@@ -208,7 +211,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     for(let attempt=0;;attempt++){
       const key=keys[(firstKey+attempt)%keys.length]
       const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:payloadBody,redirect:'manual',signal:controller.signal})
-      if(response.status!==429){if(waited||attempt)limitStats(response.ok?'recovered':'other');return response}
+      if(!busy(response.status)){if(waited||attempt)limitStats(response.ok?'recovered':'other');return response}
       // Ainda há outra key nesta volta: tenta nela na hora.
       const lap=(attempt+1)%keys.length===0
       const hinted=Number(response.headers.get('retry-after'))

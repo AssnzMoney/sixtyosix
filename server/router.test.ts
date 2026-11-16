@@ -229,6 +229,32 @@ test('limite do fornecedor (429) com uma key só: espera o retry-after e tenta d
   })
 })
 
+test('fornecedor instável (503 "pool sem contas"): espera, tenta de novo e o cliente recebe a resposta', async () => {
+  let calls = 0
+  const supplier = () => (++calls === 1 ? Response.json({ type: 'error', error: { type: 'api_error', message: 'Serviço de IA indisponível (sem chaves ativas no pool).' } }, { status: 503, headers: { 'retry-after': '1' } }) : Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } }))
+  await withAccess({ supplier }, async (base) => {
+    const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
+    assert.equal(response.status, 200)
+    assert.equal(calls, 2)
+  })
+})
+
+test('fornecedor fora do ar o tempo todo: depois da espera o cliente recebe o 503 genérico, sem o nome do fornecedor', async () => {
+  process.env.SIXTYSIX_429_WAIT_MS = '4000'
+  try {
+    let calls = 0
+    const supplier = () => { calls++; return Response.json({ error: { type: 'pool_unavailable', message: 'Nenhuma conta elegível disponível. Equipe DelverTokens' } }, { status: 503 }) }
+    await withAccess({ supplier }, async (base) => {
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
+      assert.equal(response.status, 503)
+      assert.ok(calls >= 2, 'tentou de novo antes de desistir')
+      assert.ok(!(await response.text()).toLowerCase().includes('delver'))
+    })
+  } finally {
+    delete process.env.SIXTYSIX_429_WAIT_MS
+  }
+})
+
 test('duas chamadas ao mesmo tempo com o mesmo recurso recusado: as duas tentam sem ele e dão certo', async () => {
   const errors = console.error
   console.error = () => {}
