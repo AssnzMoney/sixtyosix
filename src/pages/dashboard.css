@@ -2514,15 +2514,199 @@
   font: 14px/1.7 'Manrope', sans-serif;
 }
 
-.six-dashboard[data-theme] .six-site-chat .six-chat-reset {
+/* Histórico: coluna de conversas ao lado (no celular abre pelo botão "Conversas"). */
+.six-dashboard[data-theme] .six-site-chat .six-chat-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-main {
+  min-width: 0;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-main .six-chat-tools {
+  margin-top: 0;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-sidebar {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-sidebar[data-open='true'] {
+  display: flex;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-history-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.six-dashboard[data-theme] .six-site-chat .six-chat-reset:disabled {
-  opacity: 0.45;
+@media (min-width: 960px) {
+  .six-dashboard[data-theme] .six-site-chat .six-chat-layout {
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+
+  .six-dashboard[data-theme] .six-site-chat .six-chat-sidebar {
+    display: flex;
+    align-self: start;
+    position: sticky;
+    top: 16px;
+    max-height: calc(60vh + 190px);
+  }
+
+  .six-dashboard[data-theme] .six-site-chat .six-chat-history-toggle {
+    display: none;
+  }
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--bubble);
+  color: var(--bubble-foreground);
+  font: 700 13.5px/1 'Fustat', sans-serif;
+  cursor: pointer;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-new:disabled {
+  opacity: 0.5;
   cursor: default;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-sidebar-title {
+  margin: 10px 6px 2px;
+  color: var(--muted);
+  font: 700 11px/1 'Manrope', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-sidebar-empty {
+  margin: 4px 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-list li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-list li:hover,
+.six-dashboard[data-theme] .six-site-chat .six-chat-list li[data-active='true'] {
+  background: var(--green-soft);
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 34px 9px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-item svg {
+  margin-top: 2px;
+  color: var(--muted);
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-item-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-item-title {
+  overflow: hidden;
+  font: 600 13px/1.3 'Manrope', sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.six-dashboard[data-theme] .six-site-chat li[data-active='true'] .six-chat-item-title {
+  font-weight: 700;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-item-when {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-item-delete {
+  position: absolute;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.six-dashboard[data-theme] .six-site-chat li:hover .six-chat-item-delete,
+.six-dashboard[data-theme] .six-site-chat .six-chat-item-delete:focus-visible {
+  opacity: 1;
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-item-delete:hover {
+  color: var(--danger, #b42318);
+}
+
+@media (hover: none) {
+  .six-dashboard[data-theme] .six-site-chat .six-chat-item-delete {
+    opacity: 1;
+  }
+}
+
+.six-dashboard[data-theme] .six-site-chat .six-chat-current {
+  overflow: hidden;
+  min-width: 0;
+  max-width: 260px;
+  color: var(--muted);
+  font: 600 13px/1.3 'Manrope', sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Conversa vazia: convite e ideias prontas. */
