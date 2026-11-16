@@ -1895,3 +1895,64 @@
   border-top: 1px solid var(--line);
   vertical-align: top;
 }
+
+/* ==========================================================================
+   Casca no visual do painel do cliente (nov/2026): barra lateral, topo e títulos vêm do dashboard.css
+   (.six-sidebar, .six-topbar, .six-heading). Aqui só o que o admin precisa a mais e o tema escuro.
+   ========================================================================== */
+.six-dashboard.sx-admin {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+}
+.sx-admin .six-topbar,
+.sx-admin .six-main {
+  max-width: 1320px;
+}
+.sx-admin .six-main {
+  padding-bottom: 56px;
+}
+.sx-admin .six-heading {
+  margin-bottom: 22px;
+}
+.sx-admin .six-sidebar nav button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.sx-admin a.six-help-link {
+  text-decoration: none;
+}
+.sx-admin .six-help-link:hover {
+  background: var(--surface-2);
+}
+.sx-admin .six-topbar-right .six-icon-button:disabled {
+  opacity: 0.5;
+}
+
+/* Tema escuro: as cores comuns (--surface, --ink, --line...) vêm do tema escuro do painel; estas são só do admin. */
+.six-dashboard.sx-admin[data-theme='dark'] {
+  --paper: #0f2a2b;
+  --lime: #9eea6c;
+  --lime-ink: #0b3824;
+  --green: #9eea6c;
+  --mint: rgba(158, 234, 108, 0.14);
+  --info: #9cc3ff;
+  --info-soft: rgba(120, 160, 255, 0.14);
+}
+.sx-admin[data-theme='dark'] .sx-admin-metrics .is-alert { background: var(--danger-soft); border-color: rgba(255, 138, 122, 0.3); }
+.sx-admin[data-theme='dark'] .sx-admin-metrics .is-info { background: var(--info-soft); border-color: rgba(156, 195, 255, 0.28); }
+.sx-admin[data-theme='dark'] .sx-admin-metrics .is-warn { background: var(--warning-soft); border-color: rgba(246, 199, 125, 0.3); }
+.sx-admin[data-theme='dark'] .sx-detail-list li { border-color: var(--line-strong); }
+.sx-admin[data-theme='dark'] :is(input, select, textarea) { color-scheme: dark; }
+.sx-admin[data-theme='dark'] .sx-form-grid :is(input, select, textarea) { background: var(--input-bg); }
+
+/* Coluna de ações: os botões ficam numa linha só (com a barra lateral a área ficou mais estreita e eles empilhavam,
+   deixando cada linha alta). Sem caber, a tabela rola para o lado sem esconder nenhuma coluna. */
+.sx-admin-table td:has(> .sx-actions) {
+  max-width: none;
+  overflow: visible;
+}
+.sx-admin-table td > .sx-actions {
+  flex-wrap: nowrap;
+}

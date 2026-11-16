@@ -1,8 +1,24 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
+  Activity,
   ArrowLeft,
   Ban,
+  ChevronRight,
+  CreditCard,
+  Gift,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Route,
+  Sun,
+  Trophy,
+  Users,
+  type LucideIcon,
   BellRing,
   Check,
   CircleAlert,
@@ -35,6 +51,7 @@ import {
   type DeliveryProduct,
   type DeliveryRow,
 } from '../lib/deliveries'
+import './dashboard.css'
 import './admin.css'
 import { isLocalhost } from '../lib/isLocalhost'
 import { adminDemoData } from '../lib/adminDemo'
@@ -43,7 +60,7 @@ type Row = Record<string, any>
 const brShort = (day: string) => day.split('-').reverse().slice(0, 2).join('/')
 
 const tabs: Array<[string, string]> = [
-  ['service', 'Atendimento'],
+  ['service', 'Visão geral'],
   ['customers', 'Clientes'],
   ['pending', 'Pendentes'],
   ['users', 'Usuários'],
@@ -55,6 +72,26 @@ const tabs: Array<[string, string]> = [
   ['affiliates', 'Afiliados'],
   ['rank', 'Rank'],
 ]
+/** Barra lateral, no mesmo visual do painel do cliente: seções agrupadas, com ícone e contador. */
+const NAV: { label: string; items: [string, string, LucideIcon][] }[] = [
+  { label: 'Operação', items: [['service', 'Visão geral', LayoutDashboard], ['customers', 'Clientes', Users], ['pending', 'Pendentes', Clock], ['users', 'Usuários', UserRound], ['deliveries', 'Credenciais', KeyRound]] },
+  { label: 'Vendas', items: [['subscriptions', 'Planos', CreditCard], ['payments', 'Pagamentos', Wallet], ['affiliates', 'Afiliados', Gift], ['rank', 'Rank', Trophy]] },
+  { label: 'Sistema', items: [['usage', 'Consumo e falhas', Activity], ['router', 'Roteador', Route]] },
+]
+const UNCOUNTED = new Set(['service', 'router', 'affiliates', 'rank'])
+const HEADINGS: Record<string, { eyebrow: string; title: string; accent: string; description: string }> = {
+  service: { eyebrow: 'controle da operação', title: 'Atendimento', accent: 'automático.', description: 'A chave sai pelo site no pagamento e renova sozinha. Aqui fica só o que precisa da sua atenção.' },
+  customers: { eyebrow: 'clientes', title: 'Quem', accent: 'já pagou.', description: 'Clientes com plano ativo ou vencido, a chave e a situação de cada um.' },
+  pending: { eyebrow: 'compras abertas', title: 'Começou e', accent: 'não pagou.', description: 'Contas que abriram o pagamento e não concluíram. Um bom lugar para um lembrete no WhatsApp.' },
+  users: { eyebrow: 'contas', title: 'Todas as', accent: 'contas.', description: 'Todo mundo que criou conta no site: clientes, pendentes e quem só se cadastrou.' },
+  deliveries: { eyebrow: 'entregas', title: 'Credenciais', accent: 'entregues.', description: 'Chaves entregues pelo WhatsApp e a confirmação de recebimento de cada cliente.' },
+  subscriptions: { eyebrow: 'assinaturas', title: 'Planos', accent: 'do site.', description: 'Assinaturas pagas pelo site, com o plano, a validade e a situação.' },
+  payments: { eyebrow: 'financeiro', title: 'Pagamentos', accent: 'do período.', description: 'Pagamentos do Mercado Pago, bônus de indicação e prêmios do rank no período escolhido.' },
+  usage: { eyebrow: 'gateway', title: 'Consumo', accent: 'e falhas.', description: 'Chamadas dos clientes, tokens e erros no período escolhido.' },
+  router: { eyebrow: 'roteador', title: 'Provedores', accent: 'e modelos.', description: 'Fornecedores, modelos vendidos, limites e as chaves do Roteador.' },
+  affiliates: { eyebrow: 'indique e ganhe', title: 'Afiliados', accent: 'e indicações.', description: 'Quem tem link de indicação, quem veio por ele e os dias ganhos.' },
+  rank: { eyebrow: 'desafio do mês', title: 'Rank', accent: 'do mês.', description: 'O tema de cada mês, os projetos enviados, a moderação e o campeão.' },
+}
 const resourceLabels: Record<string, string> = {
   clients: 'Vínculo das chaves',
   subscriptions: 'Planos',
@@ -151,10 +188,23 @@ type KeyDelivered = { key: string; hint: string; expires_at: string; models: str
 type Customer = { id: string; name: string; email: string; whatsapp: string }
 
 export default function AdminPage() {
-  const { session, loading } = useAuth()
+  const { session, loading, signOut } = useAuth()
+  const [theme, setTheme] = useState(() => localStorage.getItem('six-dashboard-theme-v2') || 'light')
+  useEffect(() => {
+    localStorage.setItem('six-dashboard-theme-v2', theme)
+  }, [theme])
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('six-admin-collapsed') === '1')
+  useEffect(() => {
+    localStorage.setItem('six-admin-collapsed', collapsed ? '1' : '0')
+  }, [collapsed])
+  const [drawer, setDrawer] = useState(false)
   const demo = isLocalhost() && new URLSearchParams(window.location.search).has('demo')
   const [data, setData] = useState<Record<string, Row[]>>({})
-  const [tab, setTab] = useState('service')
+  // ?aba=customers (e as outras seções) abre direto nela.
+  const [tab, setTab] = useState(() => {
+    const wanted = new URLSearchParams(window.location.search).get('aba') || ''
+    return tabs.some(([key]) => key === wanted) ? wanted : 'service'
+  })
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -743,34 +793,123 @@ export default function AdminPage() {
     ['Sem WhatsApp', number(queues.noWhatsapp.length), queues.noWhatsapp.length ? 'muted' : 'ok', <MessageCircle size={16} key="w" />],
   ]
 
-  return (
-    <main className="sx-admin">
-      <header className="sx-admin-top">
-        <div className="sx-admin-brand">
-          <img src="/assets/sidebar-logo.png" alt="SixtySix" />
-          <span>
-            Administração
-            <small>{adminEmail || 'Área privada'}</small>
-          </span>
-        </div>
-        <div className="sx-admin-top-actions">
-          {updated && <span className="sx-admin-updated">Atualizado às {updated}</span>}
-          <button type="button" className="sx-btn" disabled={busy || !session} onClick={() => setRevision((x) => x + 1)}>
-            <RefreshCw size={15} className={busy ? 'sx-spin' : ''} /> {busy ? 'Atualizando…' : 'Atualizar'}
-          </button>
-          <Link to="/dashboard" className="sx-btn">
-            <ArrowLeft size={15} /> Painel do cliente
-          </Link>
-        </div>
-      </header>
+  // Antes de liberar (login, código por e-mail, erro de acesso), o menu fica visível mas sem ação.
+  const gated = loading || (!session && !demo) || Boolean(codeStep) || Boolean(error && !data.users)
+  const heading = HEADINGS[tab] || HEADINGS.service
+  const tabLabel = tabs.find(([key]) => key === tab)?.[1] || 'Visão geral'
+  const openTab = (key: string) => {
+    setTab(key)
+    setSearch('')
+    setDrawer(false)
+    window.scrollTo({ top: 0 })
+  }
 
-      <section className="sx-admin-heading">
-        <span className="sx-eyebrow">controle da operação</span>
-        <h1>
-          Atendimento <em>automático.</em>
-        </h1>
-        <p>A chave sai pelo site no pagamento e renova sozinha. Aqui fica só o que precisa da sua atenção.</p>
-      </section>
+  return (
+    <div className="six-dashboard sx-admin" data-theme={theme} data-collapsed={collapsed}>
+      {drawer && <button type="button" className="six-overlay" aria-label="Fechar menu" onClick={() => setDrawer(false)} />}
+      <aside className={`six-sidebar ${drawer ? 'open' : ''}`} aria-label="Menu da administração">
+        <div className="six-sidebar-top">
+          <Link to="/" className="six-brand" aria-label="SixtySix, página inicial">
+            <img src="/assets/sidebar-logo.png" alt="SixtySix" />
+          </Link>
+          <button
+            type="button"
+            className="six-sidebar-toggle"
+            onClick={() => (drawer ? setDrawer(false) : setCollapsed(!collapsed))}
+            aria-label={drawer ? 'Fechar menu' : collapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
+            title={collapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
+          >
+            {drawer ? <X size={17} /> : collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
+          </button>
+        </div>
+        {NAV.map((group) => (
+          <Fragment key={group.label}>
+            <div className="six-nav-label">{group.label}</div>
+            <nav aria-label={group.label}>
+              {group.items.map(([key, label, Icon]) => (
+                <button
+                  key={key}
+                  type="button"
+                  title={label}
+                  aria-label={label}
+                  aria-current={tab === key ? 'page' : undefined}
+                  className={tab === key ? 'active' : ''}
+                  disabled={gated}
+                  onClick={() => openTab(key)}
+                >
+                  {tab === key && <motion.span layoutId="sx-nav-indicator" className="six-nav-indicator" transition={{ type: 'spring', stiffness: 450, damping: 34 }} />}
+                  <Icon size={18} />
+                  <span>{label}</span>
+                  {!gated && !UNCOUNTED.has(key) && data.users && <span className="six-nav-count">{countOf(key)}</span>}
+                </button>
+              ))}
+            </nav>
+          </Fragment>
+        ))}
+        <div className="six-sidebar-bottom">
+          <Link to="/dashboard" className="six-help-link" title="Painel do cliente">
+            <ArrowLeft size={18} />
+            <span>Painel do cliente</span>
+          </Link>
+          <div className="six-profile">
+            <span className="six-avatar">{(adminEmail || 'A').charAt(0).toUpperCase()}</span>
+            <span className="six-profile-text">
+              <strong>Administração</strong>
+              <small>{adminEmail || (demo ? 'Prévia local' : 'Área privada')}</small>
+            </span>
+            {session && (
+              <button type="button" className="six-profile-action" aria-label="Sair da conta" title="Sair da conta" onClick={() => signOut().then(() => window.location.assign('/login'))}>
+                <LogOut size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      <div className="six-main-shell">
+        <header className="six-topbar">
+          <div className="six-topbar-left">
+            <button type="button" className="six-mobile-menu" aria-label="Abrir menu" onClick={() => setDrawer(true)}>
+              <Menu size={20} />
+            </button>
+            <Link to="/" className="six-mobile-brand" aria-label="SixtySix, página inicial">
+              <img src="/assets/sidebar-logo.png" alt="SixtySix" />
+            </Link>
+            <span className="six-crumb">
+              Administração <ChevronRight size={13} /> <strong>{tabLabel}</strong>
+            </span>
+          </div>
+          <div className="six-topbar-right">
+            {updated && (
+              <span className="six-connection" title="Hora da última atualização dos dados">
+                <span className="six-connection-dot" /> Atualizado às {updated}
+              </span>
+            )}
+            <button type="button" className="six-icon-button" disabled={busy || !session} onClick={() => setRevision((x) => x + 1)} aria-label="Atualizar dados" title="Atualizar dados">
+              <RefreshCw size={17} className={busy ? 'sx-spin' : ''} />
+            </button>
+            <button
+              type="button"
+              className="six-icon-button"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              title="Alternar aparência"
+            >
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+          </div>
+        </header>
+
+        <main className="six-main">
+          <div className="six-heading">
+            <div>
+              <span className="six-eyebrow">{heading.eyebrow}</span>
+              <h1>
+                {heading.title} <em>{heading.accent}</em>
+              </h1>
+              <p>{heading.description}</p>
+            </div>
+          </div>
 
       {loading ? (
         <p className="sx-admin-message" role="status">
@@ -860,6 +999,8 @@ export default function AdminPage() {
             </p>
           )}
 
+          {tab === 'service' && (
+          <>
           <div className="sx-admin-kpis">
             {kpis.map(([label, value, icon, hint]) => (
               <article key={label}>
@@ -881,30 +1022,16 @@ export default function AdminPage() {
             ))}
           </div>
 
-          <nav className="sx-admin-tabs" aria-label="Seções da administração">
-            {tabs.map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                className={tab === key ? 'active' : ''}
-                aria-current={tab === key ? 'page' : undefined}
-                onClick={() => {
-                  setTab(key)
-                  setSearch('')
-                }}
-              >
-                {label}
-                {key !== 'service' && key !== 'router' && key !== 'affiliates' && key !== 'rank' && <small>{countOf(key)}</small>}
-              </button>
-            ))}
-          </nav>
+          </>
+          )}
+
 
           {tab === 'affiliates' ? (
-            <AffiliatesPanel token={session!.access_token} />
+            <AffiliatesPanel token={session?.access_token || ''} />
           ) : tab === 'rank' ? (
             <RankAdminPanel token={session?.access_token || ''} users={data.users || []} />
           ) : tab === 'router' ? (
-            <RouterPanel token={session!.access_token} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} />
+            <RouterPanel token={session?.access_token || ''} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} />
           ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(
@@ -1612,6 +1739,8 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-    </main>
+        </main>
+      </div>
+    </div>
   )
 }
