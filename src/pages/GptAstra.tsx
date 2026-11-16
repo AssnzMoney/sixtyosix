@@ -994,6 +994,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
               <li><Check /> <span><strong>Claude Opus 5.5 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>Argon 4</strong></span></li>
+              <li><Check /> <span><strong>Geração de imagens</strong> com <strong>Gemini 3 Pro</strong> e outros modelos</span></li>
               <li><Check /> <span><strong>Uso conforme cotas</strong> (sem travas diárias)</span></li>
               <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
               <li><Check /> <span><strong>Perfis de acesso</strong> (disponibilidade variável)</span></li>
@@ -1119,6 +1120,8 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             <ul className="footer-link-list">
               <li><Link to="/astra-6" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>GPT Astra 6</Link></li>
               <li><Link to="/claude-code">Claude Opus 5.5 para Claude Code</Link></li>
+              <li><Link to="/#planos">Argon 4</Link></li>
+              <li><Link to="/#planos">Imagens com Gemini 3 Pro e outros</Link></li>
             </ul>
           </div>
 
