@@ -8,6 +8,7 @@ import { canonicalModels, createRouterAdmin, loadRouter, RouterError } from '../
 import { withPlanModels } from '../server/model-aliases.js'
 import { billingPlans } from './mercadopago.js'
 import { createAutoKeys } from '../server/auto-key.js'
+import { createRank, RankError } from '../server/rank.js'
 class AccountError extends Error { status:number; code?:string; constructor(status:number,message:string,code?:string){super(message);this.status=status;this.code=code} }
 
 /*
@@ -171,6 +172,17 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    }
    if(!actions[action])throw new AccountError(400,'Ação inválida.')
    try{return await actions[action](body)}catch(error){if(error instanceof RouterError)throw new AccountError(error.status,error.message);throw error}
+  }
+  // Rank do mês (server/rank.ts): temas, moderação dos projetos e confirmação do campeão (que já dá os dias do prêmio).
+  if(action.startsWith('rank-')){
+   const rank=createRank({SUPABASE_URL:config.url,SUPABASE_SERVICE_ROLE_KEY:config.secret},request)
+   try{
+    if(action==='rank-list')return await rank.adminOverview()
+    if(action==='rank-save')return await rank.saveChallenge(body)
+    if(action==='rank-hide')return await rank.hideEntry(body.id,body.hidden)
+    if(action==='rank-winner')return await rank.confirmWinner(body.challenge_id,body.entry_id,String(email||'admin'))
+   }catch(error){if(error instanceof RankError)throw new AccountError(error.status,error.message);throw error}
+   throw new AccountError(400,'Ação inválida.')
   }
   if(action==='revoke-old-trials'){
    const query=new URLSearchParams({resource:'trials',history:'1'}),read=createAdminService(env,request);let count=0

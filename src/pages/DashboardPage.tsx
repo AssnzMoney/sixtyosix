@@ -35,6 +35,7 @@ import {
   CircleCheck,
   Info,
   MessageSquare,
+  Trophy,
 } from "lucide-react"
 import { motion, useInView } from "framer-motion"
 import { useAuth } from "../lib/AuthContext"
@@ -59,12 +60,13 @@ import {
 import { purchaseMessage, supportWhatsappLink } from "../lib/whatsapp"
 import { STATE_LABELS, credentialTitle, deliveryConfirmationText, type DeliveryProduct } from "../lib/deliveries"
 import SiteChat from "../components/SiteChat"
+import RankPanel from "../components/RankPanel"
 import NumberRoller from "../components/ui/number-roller"
 import { PRO_BASE_MODELS, ROUTER_MODEL_NAMES } from "../lib/routerModels"
 import "./dashboard.css"
 import "./billing.css"
 
-type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help" | "chat" | "referrals"
+type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help" | "chat" | "referrals" | "rank"
 type RequestRow = {
   id: string
   date: string
@@ -149,6 +151,7 @@ const nav = [
   { id: "chat", label: "Conversar no site", icon: MessageSquare },
   { id: "keys", label: "Chaves de API", icon: KeyRound },
   { id: "guides", label: "Como conectar", icon: Terminal },
+  { id: "rank", label: "Rank do mês", icon: Trophy },
   { id: "plan", label: "Plano e assinatura", icon: CreditCard },
 ] as const
 
@@ -194,6 +197,12 @@ const headings: Record<Tab, { eyebrow: string; title: string; accent: string; de
     title: "Respostas para",
     accent: "continuar criando.",
     description: "O essencial sobre a sua conexão.",
+  },
+  rank: {
+    eyebrow: "desafio do mês",
+    title: "Rank",
+    accent: "do mês.",
+    description: "Um tema por mês: mande seu projeto, vote nos outros e entre para o hall dos campeões.",
   },
   referrals: {
     eyebrow: "indique e ganhe",
@@ -356,7 +365,7 @@ export default function DashboardPage() {
   // ?aba=keys (ex.: botão "Ver minha chave" depois do pagamento) abre direto nessa aba.
   const [tab, setTab] = useState<Tab>(() => {
     const wanted = new URLSearchParams(window.location.search).get("aba")
-    return (["overview", "usage", "keys", "guides", "plan", "help", "chat"] as string[]).includes(wanted || "") ? (wanted as Tab) : "overview"
+    return (["overview", "usage", "keys", "guides", "plan", "help", "chat", "rank"] as string[]).includes(wanted || "") ? (wanted as Tab) : "overview"
   })
   // Afiliado (só as contas ativadas no admin): aba Indicações, cartão na visão geral e aviso na 1ª entrada.
   const affiliate = useAffiliate(session?.access_token)
@@ -2385,6 +2394,8 @@ sudo apt update && sudo apt install claude-desktop`}
               </div>
             </>
           )}
+
+          {tab === "rank" && <RankPanel token={session?.access_token} onPlans={() => switchTab("plan")} />}
 
           {tab === "chat" && (
             <SiteChat

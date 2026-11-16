@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
 import AffiliatesPanel from '../components/AffiliatesPanel'
+import RankAdminPanel from '../components/RankAdminPanel'
 import { AdminCodeRequired, adminHeaders, clearAdminSession, saveAdminSession } from '../lib/adminSession'
 import { rememberReturn } from '../lib/authDestination'
 import { confirmationReminder, customerGreeting, deliveryMessage, formatWhatsapp, shortOrder, whatsappLink } from '../lib/whatsapp'
@@ -52,6 +53,7 @@ const tabs: Array<[string, string]> = [
   ['usage', 'Consumo e falhas'],
   ['router', 'Roteador'],
   ['affiliates', 'Afiliados'],
+  ['rank', 'Rank'],
 ]
 const resourceLabels: Record<string, string> = {
   clients: 'Vínculo das chaves',
@@ -464,7 +466,7 @@ export default function AdminPage() {
 
   /* ------------------------- Tabelas genéricas ------------------------ */
   const enriched = useMemo<Row[]>(() => {
-    if (tab === 'service' || tab === 'router' || tab === 'affiliates') return []
+    if (tab === 'service' || tab === 'router' || tab === 'affiliates' || tab === 'rank') return []
     const subs = new Map((data.subscriptions || []).map((x) => [x.id, x]))
     const clients = new Map<string, Row>((data.clients || []).map((x) => [x.id, { ...x, owner: x.user_id }]))
     for (const x of [...(data.keys || []), ...(data.trials || [])])
@@ -892,13 +894,15 @@ export default function AdminPage() {
                 }}
               >
                 {label}
-                {key !== 'service' && key !== 'router' && key !== 'affiliates' && <small>{countOf(key)}</small>}
+                {key !== 'service' && key !== 'router' && key !== 'affiliates' && key !== 'rank' && <small>{countOf(key)}</small>}
               </button>
             ))}
           </nav>
 
           {tab === 'affiliates' ? (
             <AffiliatesPanel token={session!.access_token} />
+          ) : tab === 'rank' ? (
+            <RankAdminPanel token={session?.access_token || ''} users={data.users || []} />
           ) : tab === 'router' ? (
             <RouterPanel token={session!.access_token} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} />
           ) : tab === 'service' ? (

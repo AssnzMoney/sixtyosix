@@ -121,7 +121,7 @@ export default function SubscriptionPage() {
         (p) =>
           p.subscription_id === orderId &&
           p.status === 'approved' &&
-          !/^(affiliate|welcome)-/.test(String(p.id)) &&
+          !/^(affiliate|welcome|rank)-/.test(String(p.id)) &&
           (String(p.id) === returnedPayment || Date.parse(p.approved_at || p.period_start || '') >= startedAt - 120000),
       )
     : undefined
@@ -351,7 +351,9 @@ export default function SubscriptionPage() {
             {data.payments.map((p) => (
               <article key={p.id}>
                 <strong>
-                  {/^(affiliate|welcome)-/.test(String(p.id))
+                  {/^rank-/.test(String(p.id))
+                    ? 'Prêmio do rank'
+                    : /^(affiliate|welcome)-/.test(String(p.id))
                     ? 'Bônus de indicação'
                     : (p.amount_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </strong>

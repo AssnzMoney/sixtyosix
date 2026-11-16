@@ -5,6 +5,7 @@ import { CONFIRMATION_TEXT_VERSION, deliveryConfirmationText, deliveryState, typ
 import { emailConfig, type EmailConfig } from '../server/email.js'
 import { createNotifier, userFromAuth } from '../server/notifications.js'
 import { AutoKeyError, createAutoKeys } from '../server/auto-key.js'
+import { authorName, createRank, RankError } from '../server/rank.js'
 
 type Config = { url: string; secret: string; publicKey: string;billingConnected?:boolean }
 type Client = { id: string; name: string; enabled: boolean; created_at: string; key_prefix: string | null;managed?:boolean;visible?:boolean;expires?:string|null;router?:boolean }
@@ -152,6 +153,25 @@ export function createAccountService(config: Config, request: typeof fetch = fet
           throw error
         }
       }
+      // Rank do mês (server/rank.ts): tema, projetos, votos e campeões.
+      if (path === 'rank' || path === 'rank-entry' || path === 'rank-vote' || path === 'rank-cover') {
+        const rank = createRank({ SUPABASE_URL: config.url, SUPABASE_SERVICE_ROLE_KEY: config.secret }, request)
+        try {
+          if (method === 'GET' && path === 'rank') return await rank.overview(userId)
+          if (method === 'POST' && path === 'rank-vote') return await rank.vote(userId, body.id)
+          if (method === 'POST' && path === 'rank-cover') return await rank.uploadCover(userId, body.image)
+          if (method === 'POST' && path === 'rank-entry') {
+            const response = await request(`${config.url}/auth/v1/user`, { headers: { apikey: config.publicKey, Authorization: authorization! }, signal: AbortSignal.timeout(10000) })
+            if (!response.ok) throw new AccountError(401, 'Sua sessão não pôde ser validada. Entre novamente.')
+            const user = (await response.json()) as { id?: string; email?: string; user_metadata?: Record<string, unknown> }
+            if (user.id !== userId) throw new AccountError(401, 'Sua sessão não pôde ser validada. Entre novamente.')
+            return await rank.submit(userId, authorName(user.user_metadata || {}, user.email || ''), body)
+          }
+        } catch (error) {
+          if (error instanceof RankError) throw new AccountError(error.status, error.message)
+          throw error
+        }
+      }
       if (method === 'POST' && (path === 'claim' || path === 'keys')) {
         throw new AccountError(410, 'As chaves antigas foram desativadas. Peça sua chave pelo WhatsApp: (81) 99237-6036.')
       }
@@ -227,7 +247,8 @@ export default async function handler(req: IncomingMessage & { body?: Record<str
       let text = ''
       for await (const chunk of req) {
         text += chunk
-        if (Buffer.byteLength(text) > 4096) throw new AccountError(413, 'Solicitação muito grande.')
+        // A capa do rank (imagem já reduzida no navegador) é a única coisa grande que chega aqui.
+        if (Buffer.byteLength(text) > (path === 'rank-cover' ? 1_300_000 : 4096)) throw new AccountError(413, path === 'rank-cover' ? 'Imagem muito grande. Use uma de até 900 KB.' : 'Solicitação muito grande.')
       }
       try { body = JSON.parse(text || '{}') } catch { throw new AccountError(400, 'Solicitação inválida.') }
     }
