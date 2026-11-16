@@ -128,3 +128,49 @@ test('verified Pix notification grants only its own exact-value production order
  for(const change of [{collector_id:123},{transaction_amount:1},{live_mode:false}])await assert.rejects(service.process('payment',{...payment,...change}),{status:403})
  await service.process('payment',{...payment,payment_method_id:'visa'})
 })
+test('conferir pagamento: pedido antigo recusado pelo Mercado Pago não impede de conferir os outros',async()=>{
+ const bad={...item,id:'22222222-2222-4222-8222-222222222222',provider_id:'bad1'},calls:string[]=[]
+ const request=async(input:string|URL|Request)=>{
+  const url=new URL(String(input));calls.push(url.pathname)
+  if(url.pathname==='/auth/v1/user')return Response.json({id:uid,email:'owner@example.com',email_confirmed_at:'2026-01-01'})
+  if(url.pathname==='/users/me')return Response.json({id:99})
+  if(url.pathname==='/preapproval/bad1')return Response.json({message:'invalid id'},{status:400})
+  if(url.pathname==='/preapproval/sub1')return Response.json(remote)
+  if(url.pathname==='/authorized_payments/search')return Response.json({results:[]})
+  if(url.pathname.endsWith('/billing_subscriptions'))return Response.json(url.searchParams.get('id')?[item]:[bad,item])
+  if(url.pathname.endsWith('/billing_subscription_state'))return Response.json([{...item,entitled:false}])
+  if(url.pathname.endsWith('/billing_payments')||url.pathname.endsWith('/billing_key_access'))return Response.json([])
+  if(url.pathname.includes('/rpc/'))return Response.json(true)
+  return Response.json([])
+ }
+ const errors=console.error;console.error=()=>{}
+ try{
+  const state=await createBillingService({...env,SIXTYSIX_AUTO_KEYS:'0'},request as typeof fetch).execute('sync','Bearer token') as {subscriptions:unknown[]}
+  assert.equal(state.subscriptions.length,1)
+  assert.ok(calls.includes('/preapproval/sub1'),'o pedido bom foi conferido')
+  assert.ok(calls.some(p=>p.endsWith('/billing_update_status')))
+ }finally{console.error=errors}
+})
+test('conferir Pix: tentativa antiga que não confere não esconde o Pix novo aprovado',async()=>{
+ const pix={...item,billing_mode:'pix',provider_id:'pref1',plan_code:'pro',amount_cents:11999},applied:string[]=[]
+ const payment=(id:number,amount:number,created:string)=>({id,collector_id:99,external_reference:order,transaction_amount:amount,currency_id:'BRL',live_mode:true,status:'approved',date_created:created,date_approved:created,date_last_updated:created})
+ const request=async(input:string|URL|Request,init?:RequestInit)=>{
+  const url=new URL(String(input)),body=init?.body?JSON.parse(String(init.body)):undefined
+  if(url.pathname==='/auth/v1/user')return Response.json({id:uid,email:'owner@example.com',email_confirmed_at:'2026-01-01'})
+  if(url.pathname==='/users/me')return Response.json({id:99})
+  if(url.pathname==='/v1/payments/search')return Response.json({results:[{id:2,date_created:'2026-11-15T12:00:00Z'},{id:1,date_created:'2026-10-01T12:00:00Z'}]})
+  if(url.pathname==='/v1/payments/1')return Response.json(payment(1,94.99,'2026-10-01T12:00:00Z'))
+  if(url.pathname==='/v1/payments/2')return Response.json(payment(2,119.99,'2026-11-15T12:00:00Z'))
+  if(url.pathname.endsWith('/billing_apply_payment')){applied.push(body.p_payment_id);return Response.json(true)}
+  if(url.pathname.endsWith('/billing_subscriptions'))return Response.json([pix])
+  if(url.pathname.endsWith('/billing_subscription_state'))return Response.json([{...pix,entitled:false}])
+  if(url.pathname.endsWith('/billing_payments')||url.pathname.endsWith('/billing_key_access'))return Response.json([])
+  if(url.pathname.includes('/rpc/'))return Response.json(true)
+  return Response.json([])
+ }
+ const errors=console.error;console.error=()=>{}
+ try{
+  await createBillingService({...env,SIXTYSIX_AUTO_KEYS:'0'},request as typeof fetch).execute('sync','Bearer token')
+  assert.deepEqual(applied,['2'])
+ }finally{console.error=errors}
+})

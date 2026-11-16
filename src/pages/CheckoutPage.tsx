@@ -27,7 +27,7 @@ export default function CheckoutPage(){
         if(used==='unknown'){setError('Código de indicação não encontrado. Confira o código ou deixe o campo em branco.');setBusy(false);return}
         if(used==='self'){setError('Esse é o seu próprio código de indicação: deixe o campo em branco.');setBusy(false);return}
       }
-      const result=await billingRequest<{id:string;url:string}>('checkout',{plan:code,payerEmail:payer,method});sessionStorage.removeItem('sixtysix_pending_purchase');window.location.assign(result.url)}
+      const result=await billingRequest<{id:string;url:string}>('checkout',{plan:code,payerEmail:payer,method});sessionStorage.removeItem('sixtysix_pending_purchase');try{localStorage.setItem('sixtysix_order_started',JSON.stringify({id:result.id,at:Date.now()}))}catch{/* sem armazenamento: a volta usa o pagamento informado pelo Mercado Pago */};window.location.assign(result.url)}
     catch(err){setError(err instanceof Error?err.message:'Não foi possível abrir o pagamento.');setBusy(false)}
   }
   return <main className="six-trial-page"><section className="six-trial-card">

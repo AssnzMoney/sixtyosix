@@ -47,6 +47,8 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
   async function mp(path:string,method='GET',body?:unknown,idempotency?:string):Promise<ObjectValue>{
     if(!token||!env.MERCADOPAGO_WEBHOOK_SECRET)throw new WebhookError(503,'A conexão de pagamentos está sendo configurada.')
     const response=await request(`https://api.mercadopago.com/${path}`,{method,headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',...(idempotency?{'X-Idempotency-Key':idempotency}:{})},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(20000)})
+    // Recusa do Mercado Pago vai para o log com o endereço (sem os números do pedido) e a resposta, para dar para saber qual consulta falhou.
+    if(!response.ok){console.error('Mercado Pago recusou',method,path.replace(/[?].*$/,'').replace(/[0-9a-f-]{8,}/gi,'…'),response.status,(await response.text().catch(()=>'')).slice(0,300))}
     if(!response.ok)throw new WebhookError(response.status===400?400:503,response.status===400?'O Mercado Pago não aceitou os dados. Confira o e-mail usado para pagar e tente novamente.':'Não foi possível consultar o Mercado Pago. Tente novamente.')
     return object(await response.json())
   }
@@ -196,10 +198,16 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
       if(action==='sync'){
         if(await db<boolean>('rpc/billing_take_sync',{},'POST',{p_user_id:user.id})){
           const rows=await db<Subscription[]>('billing_subscriptions',{user_id:`eq.${user.id}`,provider_id:'not.is.null',select:'*',order:'created_at.desc',limit:'3'})
-          for(const item of rows){
+          // Cada pedido é conferido sozinho: um pedido antigo que o Mercado Pago recusa não impede de conferir os outros
+          // (o cliente via "O Mercado Pago não aceitou os dados" ao apertar "Já paguei"). A falha fica no log.
+          for(const item of rows)try{
             if(item.billing_mode==='pix'){
               const found=await mp(`v1/payments/search?external_reference=${encodeURIComponent(item.id)}&sort=date_created&criteria=desc&limit=50`)
-              for(const payment of (Array.isArray(found.results)?found.results:[]).map(object).sort((a,b)=>Date.parse(String(a.date_created))-Date.parse(String(b.date_created))))await processPix(await mp(`v1/payments/${identifier(payment.id)}`),item)
+              // Uma tentativa antiga que não confere (ex.: valor de antes de trocar o plano) não pode esconder o Pix novo aprovado.
+              for(const payment of (Array.isArray(found.results)?found.results:[]).map(object).sort((a,b)=>Date.parse(String(a.date_created))-Date.parse(String(b.date_created)))){
+                try{await processPix(await mp(`v1/payments/${identifier(payment.id)}`),item)}
+                catch(error){console.error('conferir pagamento: Pix não conferido',item.id.slice(0,8),String(payment.status||''),error instanceof Error?error.message:error)}
+              }
               continue
             }
             await refreshSubscription(item.provider_id!)
@@ -212,7 +220,7 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
             }
             recent.sort((a,b)=>Date.parse(String(b.debit_date))-Date.parse(String(a.debit_date)))
             for(const row of recent.slice(0,6))await processInvoice(identifier(row.id))
-          }
+          }catch(error){console.error('conferir pagamento: pedido não conferido',item.id.slice(0,8),item.billing_mode||'recurring',error instanceof Error?error.message:error)}
         }
         return status(user.id)
       }

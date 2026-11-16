@@ -24,6 +24,11 @@ export default function PaymentMachine({ state, receipt, onPrinted }: { state: '
 
   return (
     <div className={`pm${approved ? ' is-approved' : ''}`} role="img" aria-label={approved ? `Pagamento aprovado: ${receipt.plan}, ${receipt.amount}` : 'Aguardando a confirmação do pagamento'}>
+      <span className="pm-grid" aria-hidden="true" />
+      <span className="pm-floor" aria-hidden="true" />
+      <span className="pm-glow" aria-hidden="true" />
+      <span className="pm-ripple" aria-hidden="true" />
+      <span className="pm-ripple" aria-hidden="true" />
       <div className="pm-window" aria-hidden="true">
         {approved && (
           <div className="pm-paper" onAnimationEnd={(e) => { if (e.animationName === 'pm-print') onPrinted?.() }}>
@@ -61,6 +66,11 @@ export default function PaymentMachine({ state, receipt, onPrinted }: { state: '
               <small>Confirmando com o banco</small>
             </div>
           )}
+        </div>
+        <div className="pm-keys">
+          <span />
+          <span />
+          <span />
         </div>
         <img className="pm-brand" src="/assets/sidebar-logo.png" alt="" />
       </div>
