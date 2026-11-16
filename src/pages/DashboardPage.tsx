@@ -353,7 +353,11 @@ export default function DashboardPage() {
   useEffect(() => {
     localStorage.setItem("six-dashboard-theme-v2", theme)
   }, [theme])
-  const [tab, setTab] = useState<Tab>("overview")
+  // ?aba=keys (ex.: botão "Ver minha chave" depois do pagamento) abre direto nessa aba.
+  const [tab, setTab] = useState<Tab>(() => {
+    const wanted = new URLSearchParams(window.location.search).get("aba")
+    return (["overview", "usage", "keys", "guides", "plan", "help", "chat"] as string[]).includes(wanted || "") ? (wanted as Tab) : "overview"
+  })
   // Afiliado (só as contas ativadas no admin): aba Indicações, cartão na visão geral e aviso na 1ª entrada.
   const affiliate = useAffiliate(session?.access_token)
   const navItems: { id: Tab; label: string; icon: typeof Gift }[] = affiliate?.enabled ? [...nav, { id: "referrals", label: "Indicações", icon: Gift }] : [...nav]

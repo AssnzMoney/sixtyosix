@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { MessageCircle, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ArrowRight, KeyRound, MessageCircle, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { billingRequest, type BillingState } from '../lib/billing'
-import { purchaseMessage, supportWhatsappLink } from '../lib/whatsapp'
+import { supportWhatsappLink } from '../lib/whatsapp'
+import { isLocalhost } from '../lib/isLocalhost'
+import PaymentMachine, { type Receipt } from '../components/PaymentMachine'
 import './trial.css'
 import './billing.css'
 
 // Pedido que voltou do Mercado Pago; sobrevive a um desvio para o login/onboarding.
 const PENDING_ORDER = 'sixtysix_pending_order'
-const HANDOFF_SECONDS = 5
 
 export default function SubscriptionPage() {
   const { session, user, loading } = useAuth()
@@ -19,7 +20,10 @@ export default function SubscriptionPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [cancelIntent, setCancelIntent] = useState(false)
-  const [countdown, setCountdown] = useState<number | null>(null)
+  // Notinha já impressa: mostra os botões depois da animação.
+  const [printed, setPrinted] = useState(false)
+  // Prévia no computador local: /assinatura?demo=pago (aguarda e aprova) ou ?demo=aguardando.
+  const demo = isLocalhost() ? params.get('demo') : null
 
   const urlOrder = params.get('order')
   useEffect(() => {
@@ -33,7 +37,22 @@ export default function SubscriptionPage() {
     data?.subscriptions[0]
 
   useEffect(() => {
-    if (loading) return
+    if (!demo) return
+    type Sub = BillingState['subscriptions'][number]
+    const base = { id: 'demo-pedido-a1b2c3', name: 'Pro', plan: 'pro', amount: 119.99, api: true, models: [], status: 'approved', mode: 'pix', checkoutUrl: null } as unknown as Sub
+    const pending = { ...base, active: false, expires: null } as unknown as Sub
+    const expires = new Date(Date.now() + 30 * 86400000).toISOString()
+    const paid = { ...base, active: true, expires } as unknown as Sub
+    const payment = { id: '1', subscription_id: base.id, status: 'approved', amount_cents: 11999, currency: 'BRL', approved_at: new Date().toISOString(), period_start: new Date().toISOString(), period_end: expires }
+    sessionStorage.setItem(PENDING_ORDER, base.id)
+    setData({ subscriptions: [pending], payments: [] })
+    if (demo !== 'pago') return
+    const timer = setTimeout(() => setData({ subscriptions: [paid], payments: [payment] }), 2500)
+    return () => clearTimeout(timer)
+  }, [demo])
+
+  useEffect(() => {
+    if (loading || demo) return
     sessionStorage.removeItem('sixtysix_pending_trial')
     sessionStorage.removeItem('sixtysix_pending_purchase')
     if (!session) {
@@ -65,52 +84,45 @@ export default function SubscriptionPage() {
       }
     }
     void refresh(Boolean(orderId))
-    const timer = setInterval(() => void refresh(), 10000)
+    // Voltou do pagamento: confere a cada 4 s até aprovar; fora disso, a cada 10 s.
+    const timer = setInterval(() => void refresh(), orderId ? 4000 : 10000)
     return () => {
       controller.abort()
       clearInterval(timer)
     }
-  }, [loading, session?.user.id, user?.hasCompletedOnboarding, navigate, orderId])
+  }, [loading, session?.user.id, user?.hasCompletedOnboarding, navigate, orderId, demo])
 
-  // Pagamento do pedido que acabou de voltar foi aprovado → leva ao WhatsApp uma única vez.
+  // Pedido que acabou de voltar do Mercado Pago: a maquininha espera o Pix e imprime a notinha quando aprova.
+  const returning = Boolean(orderId) && (!data || !chosen || chosen.id === orderId)
   const justPaid = Boolean(chosen && orderId && chosen.id === orderId && chosen.active)
-  const handoffKey = chosen ? `wa_sent_${chosen.id}` : ''
-  const whatsappUrl = chosen
-    ? supportWhatsappLink(purchaseMessage({ name: user?.name, plan: chosen.name, order: chosen.id, email: user?.email }))
-    : supportWhatsappLink('Olá! Quero falar sobre a minha assinatura SixtySix.')
-
+  const whatsappUrl = supportWhatsappLink('Olá! Quero falar sobre a minha assinatura SixtySix.')
+  const [waitingSince] = useState(() => Date.now())
+  const [, setTick] = useState(0)
   useEffect(() => {
-    if (!justPaid || !handoffKey) return
-    if (localStorage.getItem(handoffKey)) {
-      sessionStorage.removeItem(PENDING_ORDER)
-      return
-    }
-    setCountdown(HANDOFF_SECONDS)
-  }, [justPaid, handoffKey])
-
+    if (!returning || justPaid) return
+    const timer = setInterval(() => setTick((v) => v + 1), 15000)
+    return () => clearInterval(timer)
+  }, [returning, justPaid])
+  const slow = returning && !justPaid && Date.now() - waitingSince > 120000
   useEffect(() => {
-    if (countdown === null) return
-    if (countdown <= 0) {
-      localStorage.setItem(handoffKey, new Date().toISOString())
-      sessionStorage.removeItem(PENDING_ORDER)
-      window.location.assign(whatsappUrl)
-      return
-    }
-    const timer = setTimeout(() => setCountdown((value) => (value === null ? null : value - 1)), 1000)
+    if (!justPaid) return
+    // Sem animação (movimento reduzido), os botões aparecem do mesmo jeito.
+    const timer = setTimeout(() => setPrinted(true), 3600)
+    if (!demo) sessionStorage.removeItem(PENDING_ORDER)
     return () => clearTimeout(timer)
-  }, [countdown, handoffKey, whatsappUrl])
-
-  function cancelHandoff() {
-    if (handoffKey) localStorage.setItem(handoffKey, new Date().toISOString())
-    sessionStorage.removeItem(PENDING_ORDER)
-    setCountdown(null)
-  }
-
-  function openWhatsapp() {
-    if (handoffKey) localStorage.setItem(handoffKey, new Date().toISOString())
-    sessionStorage.removeItem(PENDING_ORDER)
-    setCountdown(null)
-  }
+  }, [justPaid, demo])
+  const paidAt = chosen ? data?.payments.find((p) => p.subscription_id === chosen.id && p.status === 'approved' && !/^(affiliate|welcome)-/.test(String(p.id))) : undefined
+  const receipt: Receipt | null =
+    justPaid && chosen
+      ? {
+          plan: chosen.name,
+          amount: chosen.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+          method: chosen.mode === 'pix' ? 'Pix' : 'Cartão',
+          date: new Date(paidAt?.approved_at || paidAt?.period_start || Date.now()).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          until: chosen.expires ? new Date(chosen.expires).toLocaleDateString('pt-BR') : '',
+          order: '#' + chosen.id.replace(/-/g, '').slice(-6).toUpperCase(),
+        }
+      : null
 
   async function update(action: 'sync' | 'cancel') {
     setBusy(true)
@@ -147,6 +159,57 @@ export default function SubscriptionPage() {
         <span className="six-trial-pill">
           <ShieldCheck size={15} /> Minha assinatura
         </span>
+        {returning ? (
+          <div className="six-pay-return">
+            <h1>
+              {justPaid ? (
+                <>
+                  Pagamento <em>confirmado!</em>
+                </>
+              ) : (
+                'Confirmando seu pagamento…'
+              )}
+            </h1>
+            <p>{justPaid ? 'Tudo certo. Sua chave já está pronta no painel.' : 'Assim que o Mercado Pago confirmar, a notinha sai aqui. Pode levar alguns segundos.'}</p>
+            {error && (
+              <p role="alert" className="six-trial-error">
+                {error}
+              </p>
+            )}
+            <PaymentMachine state={justPaid ? 'aprovado' : 'aguardando'} receipt={receipt} onPrinted={() => setPrinted(true)} />
+            {justPaid ? (
+              <div className={`six-pay-actions${printed ? ' is-in' : ''}`}>
+                <Link to={chosen?.api ? '/dashboard?aba=keys' : '/dashboard'} className="six-trial-primary">
+                  {chosen?.api ? (
+                    <>
+                      <KeyRound size={18} /> Ver minha chave
+                    </>
+                  ) : (
+                    <>
+                      Abrir meu painel <ArrowRight size={18} />
+                    </>
+                  )}
+                </Link>
+                <Link to="/assinatura" className="six-trial-guide" onClick={() => sessionStorage.removeItem(PENDING_ORDER)}>
+                  Ver detalhes da assinatura
+                </Link>
+              </div>
+            ) : (
+              <div className="six-pay-actions is-in">
+                {slow && <p>Já pagou e ainda não confirmou? O Pix pode demorar alguns minutos. Se passar disso, fale com a gente.</p>}
+                <button disabled={busy} className="six-trial-secondary" onClick={() => void update('sync')}>
+                  <RefreshCw size={16} /> {busy ? 'Conferindo…' : 'Já paguei, conferir agora'}
+                </button>
+                {slow && (
+                  <a className="six-trial-guide" href={whatsappUrl}>
+                    <MessageCircle size={16} /> Falar no WhatsApp
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
         <h1>
           {justPaid ? (
             <>
@@ -168,21 +231,14 @@ export default function SubscriptionPage() {
         {chosen && chosen.active && (
           <div className="six-trial-handoff">
             <p>
-              {justPaid
-                ? 'Agora fale com a gente no WhatsApp: é por lá que enviamos sua chave e a URL de configuração.'
-                : 'Sua chave e a URL de configuração são enviadas pelo WhatsApp. Precisa de uma nova chave ou de ajuda? Fale com a gente.'}
+              {chosen.api ? 'Sua chave fica no painel, em Chaves de API. Precisa de ajuda? Fale com a gente.' : 'Seu plano é usado pelo site. Precisa de ajuda? Fale com a gente.'}
             </p>
-            <a className="six-trial-primary" href={whatsappUrl} onClick={openWhatsapp}>
-              <MessageCircle size={18} /> {justPaid ? 'Receber minha chave no WhatsApp' : 'Falar no WhatsApp'}
+            <Link className="six-trial-primary" to={chosen.api ? '/dashboard?aba=keys' : '/dashboard'}>
+              {chosen.api ? <><KeyRound size={18} /> Ver minha chave</> : <>Abrir meu painel <ArrowRight size={18} /></>}
+            </Link>
+            <a className="six-trial-secondary" href={whatsappUrl}>
+              <MessageCircle size={16} /> Falar no WhatsApp
             </a>
-            {countdown !== null && (
-              <div className="six-trial-countdown" role="status" aria-live="polite">
-                <span>Abrindo o WhatsApp em {countdown}s…</span>
-                <button type="button" onClick={cancelHandoff}>
-                  Cancelar
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -289,6 +345,8 @@ export default function SubscriptionPage() {
         <Link to="/dashboard" className="six-trial-guide">
           Voltar ao painel
         </Link>
+          </>
+        )}
       </section>
     </main>
   )
