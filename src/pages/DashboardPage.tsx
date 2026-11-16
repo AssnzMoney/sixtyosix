@@ -756,6 +756,10 @@ export default function DashboardPage() {
     null,
     2,
   )
+  // Orca (vários agentes em paralelo): as mesmas variáveis, no formato do campo de ambiente do agente no Orca.
+  const orcaEnv = `ANTHROPIC_BASE_URL=${claudeBase}
+ANTHROPIC_AUTH_TOKEN=${actualKey}
+ANTHROPIC_MODEL=${guideModel}`
   const modelSwitch = CLAUDE_TOOL_MODELS.map(([id, name]) => `/model ${id}`.padEnd(26) + `# ${name}`).join("\n")
   const codexConfig = `model = "gpt-6-astra"\nmodel_provider = "sixtysix"\nweb_search = "disabled"\n\n[model_providers.sixtysix]\nname = "Gateway"\nbase_url = "https://www.sixtysix.online/v1"\nwire_api = "responses"\nrequires_openai_auth = false\nenv_http_headers = { "x-api-key" = "SIXTYSIX_GATEWAY_API_KEY" }\nmodel_catalog_url = "https://www.sixtysix.online/api/codex/models"`
   // OpenCode (Argon 4): provedor compatível com OpenAI no opencode.json, já com a chave do cliente.
@@ -1918,6 +1922,7 @@ export default function DashboardPage() {
                 {[
                   ["claude", "Claude Code", "Terminal · todos os modelos", "claude"],
                   ["vscode", "Claude Code no VS Code", "Extensão · todos os modelos", "vscode"],
+                  ["orca", "Orca", "Vários agentes · todos os modelos", "orca"],
                   ["desktop", "Claude Desktop", "Aplicativo · todos os modelos", "claude"],
                   ["codex", "Codex", "Terminal e desktop", "openai"],
                   ["cline", "Cline", "VS Code · Argon 4", "vscode"],
@@ -1948,6 +1953,8 @@ export default function DashboardPage() {
                           ? `${guideModelName} no seu terminal`
                           : tool === "vscode"
                             ? `${guideModelName} no VS Code`
+                          : tool === "orca"
+                            ? `${guideModelName} no Orca`
                           : tool === "codex"
                             ? "Astra 6 no Codex"
                             : tool === "desktop"
@@ -1981,7 +1988,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   )}
-                  {(tool === "claude" || tool === "vscode" || tool === "desktop") && (
+                  {(tool === "claude" || tool === "vscode" || tool === "desktop" || tool === "orca") && (
                     <div className="six-segmented is-compact" role="tablist" aria-label="Modelo">
                       {CLAUDE_TOOL_MODELS.map(([id, label]) => (
                         <button
@@ -1997,7 +2004,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   )}
-                  {(tool === "desktop" || tool === "vscode") && (
+                  {(tool === "desktop" || tool === "vscode" || tool === "orca") && (
                     <div className="six-segmented is-compact" role="tablist" aria-label="Sistema">
                       {(
                         [
@@ -2086,6 +2093,61 @@ export default function DashboardPage() {
                       <GuideStep number="05" title="Troque de modelo quando quiser">
                         <p>No campo de mensagem, digite um destes comandos. Os modelos disponíveis dependem do seu plano.</p>
                         <CodeBlock code={modelSwitch} copy={copy} label="Claude Code" />
+                      </GuideStep>
+                    </>
+                  )}
+                  {tool === "orca" && (
+                    <>
+                      <GuideStep number="01" title="Instale o Claude Code">
+                        <p>
+                          O Orca abre os agentes que já estão instalados no seu computador, cada um numa cópia do projeto. Com Node.js e npm
+                          instalados, abra o terminal e execute:
+                        </p>
+                        <CodeBlock code="npm install -g @anthropic-ai/claude-code" copy={copy} label="Terminal" />
+                      </GuideStep>
+                      <GuideStep number="02" title="Crie o arquivo com a sua chave">
+                        {desktopOs === "windows" ? (
+                          <>
+                            <p>Abra o <strong>PowerShell</strong> e rode os dois comandos (se o Bloco de Notas perguntar, clique em Sim):</p>
+                            <CodeBlock code={`mkdir "$env:USERPROFILE\\.claude" -Force\nnotepad "$env:USERPROFILE\\.claude\\settings.json"`} copy={copy} label="PowerShell" />
+                          </>
+                        ) : (
+                          <>
+                            <p>Abra o <strong>Terminal</strong> e rode:</p>
+                            <CodeBlock code="mkdir -p ~/.claude && nano ~/.claude/settings.json" copy={copy} label="Terminal" />
+                          </>
+                        )}
+                        <p>
+                          Cole o conteúdo abaixo e salve{desktopOs === "windows" ? " com Ctrl+S" : " (no nano: Ctrl+O, Enter e Ctrl+X)"}. É o mesmo
+                          arquivo do Claude Code no terminal e no VS Code: se ele já existe, só confira o bloco <code>"env"</code>.
+                        </p>
+                        <CodeBlock code={vscodeSettings} copy={copy} label="settings.json" />
+                      </GuideStep>
+                      <GuideStep number="03" title="No Orca, use a conta padrão do Claude">
+                        <p>
+                          Abra o Orca e, em <strong>Settings</strong>, nas contas do Claude, deixe a <strong>conta padrão do sistema</strong>. Não
+                          adicione um login da Anthropic pelo Orca: as contas que ele adiciona usam outra pasta de configuração e não leem a sua
+                          chave.
+                        </p>
+                        <p>
+                          Se o Orca ainda pedir login, vá em <strong>Settings → Agents → Claude Code</strong> e, no ambiente (environment) do
+                          agente, acrescente estas linhas:
+                        </p>
+                        <CodeBlock code={orcaEnv} copy={copy} label="Orca · environment" />
+                      </GuideStep>
+                      <GuideStep number="04" title="Abra os agentes e teste">
+                        <p>
+                          Feche e abra o Orca. Clique em <strong>+</strong>, escolha <strong>Claude Code</strong>, dê um nome à tarefa e mande um
+                          "oi". Cada tarefa roda o seu próprio agente com a mesma chave: até <strong>6 agentes respondendo ao mesmo tempo</strong>.
+                          Acima disso, os outros esperam alguns segundos e seguem sozinhos.
+                        </p>
+                      </GuideStep>
+                      <GuideStep number="05" title="Codex no Orca (opcional)">
+                        <p>
+                          Para usar o Astra 6 pelo Codex dentro do Orca, siga o guia do <strong>Codex</strong> (botão acima) para criar o{" "}
+                          <code>config.toml</code>. Depois, em <strong>Settings → Agents → Codex</strong>, acrescente no ambiente:
+                        </p>
+                        <CodeBlock code={`SIXTYSIX_GATEWAY_API_KEY=${actualKey}`} copy={copy} label="Orca · environment" />
                       </GuideStep>
                     </>
                   )}
