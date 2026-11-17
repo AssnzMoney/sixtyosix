@@ -1956,3 +1956,29 @@
 .sx-admin-table td > .sx-actions {
   flex-wrap: nowrap;
 }
+
+/* Rolagem das tabelas: com muitas linhas, a barra de rolar para o lado ficava lá no fim da tabela, fora da tela,
+   e não dava para ver as colunas da direita (Planos, Clientes...). Agora a tabela tem altura própria: a barra lateral
+   fica sempre à vista no pé da caixa, o cabeçalho fica parado ao descer e a barra tem cor para achar e arrastar. */
+.sx-admin-table {
+  max-height: min(70vh, 780px);
+  overflow: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: auto;
+  scrollbar-color: var(--muted) var(--surface-2);
+}
+.sx-admin-table::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.sx-admin-table::-webkit-scrollbar-track {
+  background: var(--surface-2);
+}
+.sx-admin-table::-webkit-scrollbar-thumb {
+  border: 3px solid var(--surface-2);
+  border-radius: 999px;
+  background: var(--muted);
+}
+.sx-admin-table th {
+  z-index: 1;
+}
