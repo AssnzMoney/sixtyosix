@@ -935,3 +935,27 @@ test('resultado de pesquisa selado de outro modelo no histórico: as pesquisas v
     console.error = errors
   }
 })
+
+test('Argon 4: bloco que o fornecedor não sabe converter vira texto e a conversa segue (antes falhava toda vez com 400)', async () => {
+  const errors = console.error
+  console.error = () => {}
+  const supplier = (_url: string, init: RequestInit) => {
+    const body = String(init.body)
+    if (body.includes('"type":"document"')) return Response.json({ type: 'error', error: { type: 'unsupported_content', code: 'unsupported_content', message: 'Tipo de bloco sem conversão validada; nenhum conteúdo foi removido.', param: 'messages.content.type' } }, { status: 400 })
+    return Response.json({ model: 'google/gemini-4-argon', content: [{ type: 'text', text: 'resumo' }], usage: { input_tokens: 2, output_tokens: 1 } })
+  }
+  try {
+    await withAccess({ supplier }, async (base, _usage, calls) => {
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', {
+        model: 'argon-4', max_tokens: 10,
+        messages: [{ role: 'user', content: [{ type: 'document', title: 'spec.md', source: { type: 'text', media_type: 'text/plain', data: 'a spec' } }, { type: 'text', text: 'resume' }] }],
+      })
+      assert.equal(response.status, 200, 'o cliente recebe a resposta')
+      assert.equal(calls.length, 2, 'uma recusa e uma tentativa com o bloco em texto')
+      const last = JSON.parse(String(calls.at(-1)!.init.body))
+      assert.deepEqual(last.messages[0].content[0], { type: 'text', text: '[Documento: spec.md]\na spec' })
+    })
+  } finally {
+    console.error = errors
+  }
+})

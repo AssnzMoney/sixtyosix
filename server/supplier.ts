@@ -305,6 +305,76 @@ export function withoutEncryptedSearch(body: string): string {
   return JSON.stringify(next)
 }
 
+/**
+ * Bloco que o fornecedor não sabe traduzir para o modelo ("Tipo de bloco sem conversão validada", unsupported_content):
+ * em 17/11 um cliente no Argon 4 tinha todas as chamadas recusadas assim, porque a ferramenta dele põe no histórico um
+ * tipo de bloco fora do básico (texto, imagem, uso de ferramenta e resultado de ferramenta).
+ */
+export const unsupportedContentError = (text: string) => /unsupported_content|sem convers\S*o validada/i.test(text)
+
+const BASIC_BLOCKS = new Set(['text', 'image', 'tool_use', 'tool_result'])
+/** Um bloco fora do básico vira texto (ou some, no caso de pensamento). Devolve null para tirar o bloco. */
+function blockAsText(block: Block): Block | null {
+  if (block.type === 'thinking' || block.type === 'redacted_thinking') return null
+  const search = searchAsText(block)
+  if (search) return search
+  if (block.type === 'document') {
+    const source = (block.source || {}) as Block
+    const body = source.type === 'text' && typeof source.data === 'string' ? source.data : ''
+    return { type: 'text', text: [`[Documento${typeof block.title === 'string' ? `: ${block.title}` : ''}]`, body].filter(Boolean).join('\n').slice(0, 100000) }
+  }
+  if (typeof block.text === 'string') return { type: 'text', text: block.text }
+  return { type: 'text', text: `[${String(block.type || 'conteúdo')}]` }
+}
+/**
+ * Deixa só os blocos básicos no histórico: o resto vira texto (documento com o texto dele, pesquisa com título e link,
+ * o nome do tipo nos outros), pensamento sai e citações saem do texto. Devolve também quais tipos foram trocados.
+ */
+export function basicContentOnly(body: string): { body: string; converted: string[] } {
+  let next: Record<string, unknown>
+  try { next = JSON.parse(body) } catch { return { body, converted: [] } }
+  if (!Array.isArray(next.messages)) return { body, converted: [] }
+  const converted = new Set<string>()
+  const fix = (content: Block[], inside = false): Block[] => {
+    const out: Block[] = []
+    for (const b of content) {
+      if (!b || typeof b !== 'object') continue
+      const keep = inside ? b.type === 'text' || b.type === 'image' : BASIC_BLOCKS.has(String(b.type))
+      if (keep) {
+        if (b.type === 'tool_result' && Array.isArray(b.content)) out.push({ ...b, content: fix(b.content as Block[], true) })
+        else if (b.type === 'text' && Array.isArray(b.citations)) { const { citations: _c, ...rest } = b; out.push(rest) }
+        else out.push(b)
+        continue
+      }
+      converted.add(String(b.type))
+      const text = blockAsText(b)
+      if (text) out.push(text)
+    }
+    return out
+  }
+  next.messages = (next.messages as Block[]).map((m) => {
+    if (!m || !Array.isArray(m.content)) return m
+    const content = fix(m.content as Block[])
+    return { ...m, content: content.length ? content : [{ type: 'text', text: '…' }] }
+  })
+  return { body: JSON.stringify(next), converted: [...converted] }
+}
+
+/** Tipos de bloco no histórico (para o registro de falhas: ajuda a achar o que o fornecedor não aceita). */
+export function blockTypes(payload: Record<string, unknown>): string[] {
+  const types = new Set<string>()
+  const walk = (content: unknown) => {
+    if (!Array.isArray(content)) return
+    for (const b of content as Block[]) {
+      if (!b || typeof b !== 'object') continue
+      types.add(String(b.type))
+      if (b.type === 'tool_result') walk(b.content)
+    }
+  }
+  for (const m of (Array.isArray(payload.messages) ? payload.messages : []) as Block[]) walk(m?.content)
+  return [...types]
+}
+
 export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string, name?: string) {
   const next: Record<string, unknown> = { ...payload, model: supplierId }
   capReasoning(next)

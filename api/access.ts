@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch } from '../server/supplier.js'
+import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { providerAlertFromEnv } from '../server/provider-alert.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
@@ -237,7 +237,9 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     let thinking=0
     // Resultado de pesquisa selado do histórico recusado (veio de outro modelo): as pesquisas antigas viram texto.
     let searchAsText=false
-    const rebuild=()=>{let body=supplierRequestBody(call.payload,call.path,route.upstream,name).body;if(thinking)body=withoutThinkingHistory(body,thinking===2);if(searchAsText)body=withoutEncryptedSearch(body);return body}
+    // Bloco que o fornecedor não sabe traduzir (unsupported_content): o histórico fica só com os blocos básicos.
+    let basicOnly=false
+    const rebuild=()=>{let body=supplierRequestBody(call.payload,call.path,route.upstream,name).body;if(thinking)body=withoutThinkingHistory(body,thinking===2);if(searchAsText)body=withoutEncryptedSearch(body);if(basicOnly)body=basicContentOnly(body).body;return body}
     for(let attempt=0;status===400;attempt++){
       const text=await response.text().catch(()=>'')
       if(attempt<6&&thinking<2&&thinkingSignatureError(text)){
@@ -248,6 +250,11 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       if(attempt<6&&!searchAsText&&encryptedSearchError(text)){
         searchAsText=true
         console.error('Provedor recusou um resultado de pesquisa selado do histórico; tentando com as pesquisas em texto',provider.name,route.upstream)
+        sent=rebuild();response=await send(sent);status=response.status;continue
+      }
+      if(attempt<6&&!basicOnly&&unsupportedContentError(text)){
+        basicOnly=true
+        console.error('Provedor recusou um tipo de bloco do histórico; tentando com ele em texto',provider.name,route.upstream,basicContentOnly(sent).converted.join(',')||'(nenhum tipo fora do básico)')
         sent=rebuild();response=await send(sent);status=response.status;continue
       }
       let sentJson:Record<string,unknown>|undefined
@@ -277,7 +284,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Nenhum cabeçalho dele passa; no 429 vai só o retry-after.
     if(status>=400){
       const text=await response.text().catch(()=>'')
-      console.error('Provedor recusou a chamada',provider.name,status,text.slice(0,500))
+      console.error('Provedor recusou a chamada',provider.name,status,JSON.stringify({model:route.upstream,path:call.path,blocks:blockTypes(call.payload as Record<string,unknown>)}),text.slice(0,400))
       // Conversa grande demais: vai como 400 com o texto que o Claude Code/Codex reconhecem, para eles resumirem a conversa.
       const overflow=contextOverflow(status,text)
       if(res.headersSent)return streamError((overflow?contextOverflowBody(kind,overflow):supplierErrorBody(kind,status)) as {error:Record<string,unknown>})

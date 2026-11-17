@@ -336,3 +336,24 @@ test('pesquisa selada: reconhece o erro e troca por texto também dentro de tool
   assert.deepEqual(next.messages[1].content, [{ type: 'tool_use', id: 't2', name: 'Read', input: {} }, { type: 'text', text: 'ok' }])
   assert.equal(withoutEncryptedSearch('não é json'), 'não é json')
 })
+
+test('bloco sem conversão no fornecedor: reconhece o erro e deixa só os blocos básicos (documento vira texto, pensamento sai)', async () => {
+  const { unsupportedContentError, basicContentOnly, blockTypes } = await import('./supplier.ts')
+  assert.ok(unsupportedContentError('{"type":"error","error":{"type":"unsupported_content","message":"Tipo de bloco sem conversão validada; nenhum conteúdo foi removido.","param":"messages.content.type"}}'))
+  assert.ok(!unsupportedContentError('{"error":{"message":"max_tokens: muito alto"}}'))
+  const payload = { model: 'x', messages: [
+    { role: 'user', content: [{ type: 'document', title: 'spec.md', source: { type: 'text', media_type: 'text/plain', data: 'conteúdo da spec' } }, { type: 'text', text: 'resume isso' }] },
+    { role: 'assistant', content: [{ type: 'thinking', thinking: 'pensando', signature: 'x' }, { type: 'tool_use', id: 't1', name: 'Read', input: {} }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: [{ type: 'text', text: 'ok' }, { type: 'container_upload', file_id: 'f1' }] }] },
+    { role: 'assistant', content: [{ type: 'redacted_thinking', data: 'z' }] },
+  ] }
+  assert.deepEqual(blockTypes(payload).sort(), ['container_upload', 'document', 'redacted_thinking', 'text', 'thinking', 'tool_result', 'tool_use'])
+  const { body, converted } = basicContentOnly(JSON.stringify(payload))
+  const next = JSON.parse(body)
+  assert.deepEqual(converted.sort(), ['container_upload', 'document', 'redacted_thinking', 'thinking'])
+  assert.deepEqual(next.messages[0].content[0], { type: 'text', text: '[Documento: spec.md]\nconteúdo da spec' })
+  assert.deepEqual(next.messages[1].content, [{ type: 'tool_use', id: 't1', name: 'Read', input: {} }], 'o pensamento sai, a ferramenta fica')
+  assert.deepEqual(next.messages[2].content[0].content, [{ type: 'text', text: 'ok' }, { type: 'text', text: '[container_upload]' }])
+  assert.deepEqual(next.messages[3].content, [{ type: 'text', text: '…' }], 'mensagem nunca fica vazia')
+  assert.deepEqual(basicContentOnly('não é json'), { body: 'não é json', converted: [] })
+})
