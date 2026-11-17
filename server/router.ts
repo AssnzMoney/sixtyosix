@@ -214,7 +214,9 @@ export async function authorizeRouterKey(env: Env, request: typeof fetch, token:
   }
   const active = [...router.routes.keys()]
   const allowed = Array.isArray(row.models) ? canonicalModels(router, row.models as string[]) : active
-  return { clientId: String(row.gateway_client_id), allowed }
+  // Chave de poucas horas é teste grátis (mesma regra do auto-key): não gera vídeo.
+  const life = Date.parse(row.expires_at) - Date.parse(row.created_at)
+  return { clientId: String(row.gateway_client_id), allowed, trial: life > 0 && life < 23 * 3600000 }
 }
 
 /* ------------------------------------------------------------------ admin */

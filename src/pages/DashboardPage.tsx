@@ -140,7 +140,7 @@ const PLANS: Array<{
     price: "119,99",
     period: "/mês",
     desc: "Acesso irrestrito aos modelos de ponta para quem constrói sem parar.",
-    note: "Acesso à API incluso",
+    note: "API inclusa, com imagens e 10 vídeos por mês",
     cta: "Contratar o Pro",
     message: "Olá! Quero contratar o plano Pro Ilimitado da SixtySix.",
     code: "pro",

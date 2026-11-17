@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID }
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
+import { CREATE_PATH, ITEM_PATH, createVideo, isVideoRoute, monthStart, monthlyLimit, openVideoId, videoItem, videoRequestProblem, videoWeight, videosUsed } from '../server/videos.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { providerAlertFromEnv } from '../server/provider-alert.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
@@ -387,18 +388,18 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     const model=typeof payload?.model==='string'?payload.model:''
     if(req.method==='POST'&&!model)throw new AccessError(400,'Selecione um modelo para continuar.')
     const router=await loadRouter(process.env)
-    let allowed:string[]=[],clientId=''
+    let allowed:string[]=[],clientId='',trial=false
     // O modelo pedido é conferido mais abaixo, depois de resolver o nome no Roteador (inclui o caso dos modelos internos do Claude Code).
     const authorize=async(token:string)=>{
-      if(token.startsWith('sk-sx-')){const trial=await service.authorize(token,router);return {allowed:trial.models,clientId:trial.clientId}}
-      if(token.startsWith('sk-sp-')){const paid=await service.authorizePaid(token,undefined,router.proAliases);return {allowed:paid.models,clientId:paid.clientId}}
-      try{const key=await authorizeRouterKey(process.env,fetch,token,router);return {allowed:key.allowed,clientId:key.clientId}}
+      if(token.startsWith('sk-sx-')){const found=await service.authorize(token,router);return {allowed:found.models,clientId:found.clientId,trial:true}}
+      if(token.startsWith('sk-sp-')){const paid=await service.authorizePaid(token,undefined,router.proAliases);return {allowed:paid.models,clientId:paid.clientId,trial:false}}
+      try{const key=await authorizeRouterKey(process.env,fetch,token,router);return {allowed:key.allowed,clientId:key.clientId,trial:key.trial}}
       catch(error){if(error instanceof RouterError)throw new AccessError(error.status,error.message);throw error}
     }
     // Tenta cada chave recebida; fica a primeira que vale. Sem nenhuma válida, mostra o erro da primeira.
     let firstError:unknown=null
     for(const candidate of tokens){
-      try{const found=await authorize(candidate);allowed=found.allowed;clientId=found.clientId;firstError=null;break}
+      try{const found=await authorize(candidate);allowed=found.allowed;clientId=found.clientId;trial=found.trial;firstError=null;break}
       catch(error){if(!(error instanceof AccessError)||error.status>=500)throw error;firstError??=error}
     }
     if(firstError)throw firstError
@@ -409,6 +410,18 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       res.statusCode=200;res.setHeader('Content-Type','application/json; charset=utf-8')
       res.end(req.method==='HEAD'?undefined:JSON.stringify({object:'list',data,has_more:false,first_id:data[0]?.id??null,last_id:data[data.length-1]?.id??null}));return
     }
+    // Vídeo: situação (GET /v1/videos/{id}) e arquivo (GET /v1/videos/{id}/content). O id é assinado com a conta.
+    const videoPath=ITEM_PATH.exec(path)
+    if((req.method==='GET'||req.method==='HEAD')&&videoPath&&!CREATE_PATH.test(path)){
+      const secret=process.env.SUPABASE_SERVICE_ROLE_KEY
+      const opened=clientId&&secret?openVideoId(videoPath[1],clientId,secret):null
+      const route=opened?router.routes.get(opened.alias)||[...router.routes.values()].find(isVideoRoute):undefined
+      if(!opened||!route)throw new AccessError(404,'Vídeo não encontrado.')
+      const item=await videoItem(process.env,fetch,{route,supplierId:opened.supplierId,content:Boolean(videoPath[2]),clientId,secret:secret!})
+      res.statusCode=item.status
+      if('file' in item&&item.file){res.setHeader('Content-Type',item.type);res.setHeader('Content-Length',String(item.file.length));res.setHeader('Content-Disposition','inline; filename="video.mp4"');res.end(req.method==='HEAD'?undefined:item.file);return}
+      res.setHeader('Content-Type','application/json; charset=utf-8');res.end(req.method==='HEAD'?undefined:JSON.stringify(item.json));return
+    }
     if(req.method==='POST'&&payload&&path.startsWith('/v1/')){
       // Contagem de tokens do Claude Code: o fornecedor não tem e respondia 404, e isso aparecia para ele como
       // erro vindo da nossa chave. Respondemos aqui mesmo; o Claude Code já seguia normal com o 404.
@@ -417,10 +430,30 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       if(!route)throw new AccessError(404,'Este modelo não está disponível. Veja os modelos liberados para a sua chave em /v1/models.')
       if(!allowed.includes(route.alias)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
       // Proteção contra sobrecarga e IP bloqueado: acima do limite, 429 com Retry-After (a ferramenta tenta de novo).
+      const wantsVideo=CREATE_PATH.test(path)
+      if(wantsVideo!==isVideoRoute(route))throw new AccessError(400,wantsVideo?'Use um modelo de vídeo (veo-3.1-fast ou veo-3.1) em /v1/videos.':'Modelo de vídeo: crie o vídeo em /v1/videos.')
+      if(wantsVideo){
+        if(trial)throw new AccessError(403,'O teste grátis não inclui vídeo. O vídeo faz parte do plano Pro: sixtysix.online.')
+        const problem=videoRequestProblem(payload)
+        if(problem)throw new AccessError(400,problem)
+        const limit=monthlyLimit(process.env),weight=videoWeight(route)
+        let used=0
+        try{used=await videosUsed(process.env,fetch,clientId,router)}
+        catch(error){console.error('Vídeo: não foi possível conferir o limite',error instanceof Error?error.message:error);throw new AccessError(503,'Não foi possível conferir o seu limite de vídeos agora. Tente novamente em instantes.')}
+        if(used+weight>limit){
+          const next=new Date(new Date(monthStart()).getTime()+32*86400000).toISOString().slice(0,7)
+          throw new AccessError(429,`Você já usou ${used} de ${limit} vídeos deste mês${weight>1?' (o Veo 3.1 conta 2; o Veo 3.1 Fast conta 1)':''}. O limite renova em 01/${next.slice(5,7)}.`)
+        }
+      }
       const requestId=randomUUID()
       const gate=await gateRequest(process.env,fetch,{clientId,ip:clientIp(req.headers,req.socket?.remoteAddress||''),requestId,device:deviceOf(req.headers,payload)})
       if(!gate.ok){if(gate.retryAfter)res.setHeader('retry-after',String(gate.retryAfter));throw new AccessError(gate.status,gate.message)}
-      try{await proxySupplier(req,res,{route,path,params,payload,clientId})}
+      try{
+        if(wantsVideo){
+          const created=await createVideo(process.env,fetch,{route,payload,clientId,secret:process.env.SUPABASE_SERVICE_ROLE_KEY||''})
+          res.statusCode=created.status;res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(created.body))
+        }else await proxySupplier(req,res,{route,path,params,payload,clientId})
+      }
       finally{if(gate.leased)await releaseRequest(process.env,fetch,requestId)}
       return
     }

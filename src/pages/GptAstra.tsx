@@ -1122,6 +1122,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
               <li><Link to="/claude-code">Claude Opus 5.5 para Claude Code</Link></li>
               <li><Link to="/#planos">Argon 4</Link></li>
               <li><Link to="/#planos">Imagens com Gemini 3 Pro e outros</Link></li>
+              <li><Link to="/#planos">Vídeos com Veo 3.1</Link></li>
             </ul>
           </div>
 

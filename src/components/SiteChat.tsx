@@ -23,8 +23,8 @@ export function modelLabel(alias: string) {
   return out.join(' ') || alias
 }
 
-/** Modelos de imagem não respondem texto: ficam fora do chat. */
-const isChatModel = (alias: string) => !/image/i.test(alias)
+/** Modelos de imagem e de vídeo não respondem texto: ficam fora do chat. */
+const isChatModel = (alias: string) => !/image|veo|video/i.test(alias)
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string; at: number; model?: string }
 type Conversation = { id: string; title: string; model: string; updatedAt: number; messages: ChatMessage[] }
