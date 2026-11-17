@@ -236,8 +236,33 @@ export function withoutThinkingHistory(body: string, all: boolean): string {
   return JSON.stringify(next)
 }
 
+/*
+ * Raciocínio no máximo (max/xhigh) passa do tempo que o fornecedor aguenta: atrás da Cloudflare dele, a chamada cai com
+ * 100 a 125 s sem resposta (524) ou volta 502. Em 16/11 o Argon 4 e o Claude Opus 5.5 em "max" caíam assim e as
+ * ferramentas ficavam repetindo sem parar. O gateway manda no máximo SIXTYSIX_MAX_EFFORT (padrão "high"; "off" desliga)
+ * e põe teto no orçamento de pensamento explícito (thinking.budget_tokens, SIXTYSIX_MAX_THINKING_BUDGET, padrão 32.000).
+ * Troca só a cópia que vai ao fornecedor; o pedido do cliente fica como veio.
+ */
+const EFFORT_ORDER = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+export function capReasoning(next: Record<string, unknown>) {
+  const ceiling = (process.env.SIXTYSIX_MAX_EFFORT || 'high').toLowerCase()
+  if (ceiling === 'off') return
+  const limit = EFFORT_ORDER.indexOf(ceiling)
+  if (limit < 0) return
+  const over = (v: unknown) => typeof v === 'string' && EFFORT_ORDER.indexOf(v.toLowerCase()) > limit
+  const config = next.output_config as Record<string, unknown> | undefined
+  if (config && typeof config === 'object' && over(config.effort)) next.output_config = { ...config, effort: ceiling }
+  if (over(next.reasoning_effort)) next.reasoning_effort = ceiling
+  const reasoning = next.reasoning as Record<string, unknown> | undefined
+  if (reasoning && typeof reasoning === 'object' && over(reasoning.effort)) next.reasoning = { ...reasoning, effort: ceiling }
+  const thinking = next.thinking as Record<string, unknown> | undefined
+  const budget = Number(process.env.SIXTYSIX_MAX_THINKING_BUDGET) || 32000
+  if (thinking && typeof thinking === 'object' && typeof thinking.budget_tokens === 'number' && thinking.budget_tokens > budget) next.thinking = { ...thinking, budget_tokens: budget }
+}
+
 export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string, name?: string) {
   const next: Record<string, unknown> = { ...payload, model: supplierId }
+  capReasoning(next)
   const schema = jsonSchemaOf(payload)
   if (endpointKind(path) === 'anthropic' && Array.isArray(next.messages)) next.messages = (next.messages as unknown[]).filter((m) => !emptySystem(m))
   for (const fix of unsupported.get(supplierId) || []) applyFix(next, fix, path)

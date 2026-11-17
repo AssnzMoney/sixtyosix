@@ -295,3 +295,30 @@ test('pensamentos do histórico: 1ª etapa mantém os da última resposta; 2ª t
   assert.equal(two.thinking, undefined)
   assert.equal(withoutThinkingHistory('não é json', true), 'não é json')
 })
+
+test('raciocínio max/xhigh vai ao fornecedor como high (senão ele cai por demora), nos três formatos; o pedido do cliente não muda', () => {
+  const anthropic = { model: 'x', output_config: { effort: 'max' }, thinking: { type: 'enabled', budget_tokens: 63999 }, max_tokens: 128000 }
+  const sent = JSON.parse(supplierRequestBody(anthropic, '/v1/messages', 'anthropic/claude-opus-5-5').body)
+  assert.equal(sent.output_config.effort, 'high')
+  assert.equal(sent.thinking.budget_tokens, 32000)
+  assert.equal(sent.max_tokens, 128000, 'o limite de saída continua o pedido')
+  assert.equal(anthropic.output_config.effort, 'max', 'o pedido original fica como veio')
+  assert.equal(anthropic.thinking.budget_tokens, 63999)
+  assert.equal(JSON.parse(supplierRequestBody({ model: 'x', reasoning_effort: 'xhigh' }, '/v1/chat/completions', 'google/gemini-4-argon').body).reasoning_effort, 'high')
+  assert.equal(JSON.parse(supplierRequestBody({ model: 'x', reasoning: { effort: 'max', summary: 'auto' } }, '/v1/responses', 'openai/gpt-6.1-sol').body).reasoning.summary, 'auto')
+  assert.equal(JSON.parse(supplierRequestBody({ model: 'x', reasoning: { effort: 'max' } }, '/v1/responses', 'openai/gpt-6.1-sol').body).reasoning.effort, 'high')
+  // Abaixo do teto, nada muda.
+  const medium = JSON.parse(supplierRequestBody({ model: 'x', output_config: { effort: 'medium' }, thinking: { type: 'enabled', budget_tokens: 8000 } }, '/v1/messages', 'y').body)
+  assert.equal(medium.output_config.effort, 'medium')
+  assert.equal(medium.thinking.budget_tokens, 8000)
+  assert.equal(JSON.parse(supplierRequestBody({ model: 'x', thinking: { type: 'adaptive' } }, '/v1/messages', 'y').body).thinking.type, 'adaptive')
+})
+
+test('SIXTYSIX_MAX_EFFORT=off desliga o teto do raciocínio', () => {
+  process.env.SIXTYSIX_MAX_EFFORT = 'off'
+  try {
+    assert.equal(JSON.parse(supplierRequestBody({ model: 'x', output_config: { effort: 'max' } }, '/v1/messages', 'y').body).output_config.effort, 'max')
+  } finally {
+    delete process.env.SIXTYSIX_MAX_EFFORT
+  }
+})
