@@ -96,26 +96,46 @@ export function createAgent(env: Env, request: typeof fetch = fetch) {
     async ask(history: Turn[]) {
       const router = await loadRouter(env, request)
       const messages = toMessages(history)
+      // Limite ou instabilidade do fornecedor (429, 502, 503, 529): tenta a próxima key e, a cada volta pelas keys,
+      // espera um pouco (retry-after ou 1,5 s dobrando até 8 s), por até DISCORD_AGENT_WAIT_MS (padrão 40 s) no total.
+      // Só depois passa para o modelo reserva. É o mesmo cuidado que o gateway tem com os clientes.
+      const deadline = Date.now() + (env.DISCORD_AGENT_WAIT_MS !== undefined ? Number(env.DISCORD_AGENT_WAIT_MS) : 40000)
       for (const model of models) {
         const route = findRoute(router, model)
         if (!route) continue
-        const key = route.provider.keys?.[0] || route.provider.key
-        try {
-          const response = await request(supplierUrl(route.provider.url, '/v1/chat/completions'), {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, 'x-api-key': key },
-            body: JSON.stringify({ model: route.upstream, max_tokens: 1200, temperature: 0.3, messages }),
-            signal: AbortSignal.timeout(90000),
-          })
-          if (!response.ok) {
-            console.error('discord: o modelo recusou', model, response.status, (await response.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200))
-            continue
+        const keys = route.provider.keys?.length ? route.provider.keys : [route.provider.key]
+        let pause = 1500
+        for (let attempt = 0; ; attempt++) {
+          const key = keys[attempt % keys.length]
+          let status = 0, retryAfter = NaN
+          try {
+            const response = await request(supplierUrl(route.provider.url, '/v1/chat/completions'), {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, 'x-api-key': key },
+              body: JSON.stringify({ model: route.upstream, max_tokens: 1200, temperature: 0.3, messages }),
+              signal: AbortSignal.timeout(90000),
+            })
+            status = response.status
+            if (response.ok) {
+              const data = (await response.json()) as { choices?: { message?: { content?: unknown } }[] }
+              const text = textOf(data.choices?.[0]?.message?.content)
+              if (text.trim()) return { ...parseReply(text), model }
+              break
+            }
+            retryAfter = Number(response.headers.get('retry-after'))
+            console.error('discord: o modelo recusou', model, status, (await response.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200))
+          } catch (error) {
+            console.error('discord: falha ao chamar o modelo', model, error instanceof Error ? error.message : error)
+            break
           }
-          const data = (await response.json()) as { choices?: { message?: { content?: unknown } }[] }
-          const text = textOf(data.choices?.[0]?.message?.content)
-          if (text.trim()) return { ...parseReply(text), model }
-        } catch (error) {
-          console.error('discord: falha ao chamar o modelo', model, error instanceof Error ? error.message : error)
+          if (![429, 502, 503, 529].includes(status)) break
+          const lap = (attempt + 1) % keys.length === 0
+          const wait = lap ? Math.min(8000, retryAfter > 0 ? retryAfter * 1000 : pause) : 0
+          if (Date.now() + wait > deadline) break
+          if (wait) {
+            await new Promise((resolve) => setTimeout(resolve, wait))
+            pause = Math.min(pause * 2, 8000)
+          }
         }
       }
       throw new Error('nenhum modelo respondeu')

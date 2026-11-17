@@ -52,7 +52,7 @@ test('limite por pessoa: 8 perguntas em 10 minutos, e libera depois', () => {
 })
 
 test('agente: chama o modelo pelo Roteador e, se ele falhar, tenta o argon-4', async () => {
-  const env = { SUPABASE_URL: 'https://exemplo.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_x' }
+  const env = { SUPABASE_URL: 'https://exemplo.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_x', DISCORD_AGENT_WAIT_MS: '0' }
   clearRouterCache()
   const encrypted_key = sealSecret('gw_master', env.SUPABASE_SERVICE_ROLE_KEY, 'router:provider:p')
   const asked: string[] = []
@@ -80,6 +80,31 @@ test('agente: chama o modelo pelo Roteador e, se ele falhar, tenta o argon-4', a
     assert.equal(reply.text, 'Precisa da equipe.')
     assert.equal(reply.escalate, true)
     assert.equal(reply.model, 'argon-4')
+  } finally {
+    console.error = errors
+  }
+})
+
+test('agente: limite do fornecedor (429) espera e tenta de novo no mesmo modelo', async () => {
+  const env = { SUPABASE_URL: 'https://exemplo2.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'sb_secret_y', DISCORD_AGENT_WAIT_MS: '5000' }
+  clearRouterCache()
+  const encrypted_key = sealSecret('gw_master', env.SUPABASE_SERVICE_ROLE_KEY, 'router:provider:p')
+  let calls = 0
+  const request = async (input: string | URL | Request) => {
+    const url = String(input)
+    if (url.includes('/rest/v1/router_models')) return Response.json([{ alias: 'claude-opus-5-5', label: 'Claude Opus 5.5', upstream_model: 'anthropic/claude-opus-5-5', in_pro: true, provider: { id: 'p', name: 'Principal', base_url: 'https://fornecedor.exemplo/v1', encrypted_key, enabled: true } }])
+    if (url.includes('/chat/completions')) return ++calls === 1 ? Response.json({ error: { message: 'Limite de requisições atingido.' } }, { status: 429, headers: { 'retry-after': '1' } }) : Response.json({ choices: [{ message: { content: 'Confira o endereço.' } }] })
+    return Response.json([])
+  }
+  const errors = console.error
+  console.error = () => {}
+  try {
+    const started = Date.now()
+    const reply = await createAgent(env, request as typeof fetch).ask([{ role: 'user', name: 'Ana', content: 'deu 401' }])
+    assert.equal(reply.text, 'Confira o endereço.')
+    assert.equal(reply.model, 'claude-opus-5-5')
+    assert.equal(calls, 2)
+    assert.ok(Date.now() - started >= 900, 'esperou o retry-after')
   } finally {
     console.error = errors
   }

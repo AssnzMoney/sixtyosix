@@ -19,9 +19,10 @@ fi
 npm run build
 npm test
 
-# Espera o processo da porta responder /healthz (até 60 s).
+# Espera o processo da porta responder /healthz. Antes de sair, o processo termina as respostas em andamento (até
+# 10 min, DRAIN_MS): por isso a espera vai até 11 min (antes eram 60 s e o deploy parava no meio, sem erro de verdade).
 up() {
-  for i in $(seq 1 60); do
+  for i in $(seq 1 660); do
     if curl -fsS "http://127.0.0.1:$1/healthz" >/dev/null 2>&1; then return 0; fi
     sleep 1
   done
