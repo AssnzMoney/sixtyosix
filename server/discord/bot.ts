@@ -1,6 +1,6 @@
 import { ChannelType, Client, Events, GatewayIntentBits, PermissionFlagsBits, type GuildMember, type Message, type Role } from 'discord.js'
-import { createAgent, hasKey, RateLimiter, splitMessage, type Turn } from './agent.ts'
-import { WHATSAPP_LINK } from './knowledge.ts'
+import { createAgent, hasKey, RateLimiter, type Turn } from './agent.ts'
+import { failure, keyWarning, replyPayloads, slowDown, staffAlert } from './embeds.ts'
 
 /*
  * Agente de suporte da SixtySix no Discord (processo "sixtysix-discord" no PM2; liga só com DISCORD_BOT_TOKEN no .env).
@@ -43,9 +43,10 @@ async function notifyStaff(message: Message, target: Message['channel'], reason:
   const log = logChannel(message)
   if (!log || !log.isSendable()) return false
   const roles = staffRoles(message)
-  const question = describe(message).replace(/\s+/g, ' ').slice(0, 300)
+  const question = describe(message).replace(/\s+/g, ' ').slice(0, 1000)
+  const url = 'url' in target && typeof target.url === 'string' ? target.url : message.url
   await log.send({
-    content: `${roles.map((r) => `<@&${r.id}>`).join(' ')} ${reason}\nQuem: ${nameOf(message)}\nConversa: ${'url' in target ? target.url : message.url}\nÚltima mensagem: "${question}"`.trim(),
+    ...staffAlert(roles.map((r) => r.id), reason, nameOf(message), url, question),
     allowedMentions: { parse: [], roles: roles.map((r) => r.id) },
   }).catch((error) => console.error('discord: não consegui avisar a equipe', error instanceof Error ? error.message : error))
   return true
@@ -67,7 +68,10 @@ async function history(message: Message, inThread: boolean): Promise<Turn[]> {
   const recent = await thread.messages.fetch({ limit: 25 })
   for (const m of [...recent.values()].reverse()) {
     if (m.system) continue
-    turns.push(m.author.id === client.user?.id ? { role: 'assistant', content: m.content } : { role: 'user', name: nameOf(m), content: describe(m) })
+    if (m.author.id === client.user?.id) {
+      const said = m.embeds.filter((e) => e.title !== 'Equipe avisada').map((e) => e.description || '').filter(Boolean).join('\n') || m.content
+      if (said) turns.push({ role: 'assistant', content: said })
+    } else turns.push({ role: 'user', name: nameOf(m), content: describe(m) })
   }
   return turns
 }
@@ -77,26 +81,26 @@ async function answer(message: Message, target: Message['channel'], inThread: bo
   const roles = staffRoles(message)
   const hasLog = !!logChannel(message)
   // Com canal de registro, a equipe é avisada lá; sem ele, os cargos são marcados na própria conversa.
-  const staffMention = !hasLog && roles.length ? roles.map((r) => `<@&${r.id}>`).join(' ') : 'A equipe'
   const mentionRoles = !hasLog ? roles.map((r) => r.id) : []
+  const mentionText = mentionRoles.map((id) => `<@&${id}>`).join(' ') || undefined
   if (!limiter.allow(message.author.id)) {
-    await target.send({ content: `Muitas perguntas seguidas. Espere uns minutos e mande de novo; se for urgente, chame no WhatsApp: ${WHATSAPP_LINK}`, allowedMentions: { parse: [] } })
+    await target.send({ ...slowDown(), allowedMentions: { parse: [] } })
     return
   }
   await target.sendTyping().catch(() => undefined)
   const typing = setInterval(() => target.sendTyping().catch(() => undefined), 8000)
   try {
     const reply = await agent.ask(await history(message, inThread))
-    let text = reply.text
-    if (reply.escalate) {
-      await notifyStaff(message, target, 'Uma dúvida no suporte precisa de vocês.')
-      text += `\n\n${staffMention} já foi avisada e responde por aqui. Se for urgente, chame no WhatsApp: ${WHATSAPP_LINK}`
+    if (reply.escalate) await notifyStaff(message, target, 'Uma dúvida no suporte precisa de vocês')
+    const payloads = replyPayloads(reply.text, reply.escalate)
+    for (const [i, payload] of payloads.entries()) {
+      const last = i === payloads.length - 1
+      await target.send({ ...payload, content: last && reply.escalate ? mentionText : undefined, allowedMentions: { parse: [], roles: last && reply.escalate ? mentionRoles : [] } })
     }
-    for (const chunk of splitMessage(text)) await target.send({ content: chunk, allowedMentions: { parse: [], roles: reply.escalate ? mentionRoles : [] } })
   } catch (error) {
     console.error('discord: não consegui responder', error instanceof Error ? error.message : error)
-    await notifyStaff(message, target, 'O assistente não conseguiu responder esta dúvida.')
-    await target.send({ content: `Não consegui responder agora. ${staffMention} vai ver sua mensagem; se for urgente, chame no WhatsApp: ${WHATSAPP_LINK}`, allowedMentions: { parse: [], roles: mentionRoles } })
+    await notifyStaff(message, target, 'O assistente não conseguiu responder esta dúvida')
+    await target.send({ ...failure(), content: mentionText, allowedMentions: { parse: [], roles: mentionRoles } })
   } finally {
     clearInterval(typing)
   }
@@ -109,10 +113,7 @@ client.on(Events.MessageCreate, async (message) => {
     if (message.inGuild() && hasKey(message.content)) {
       await message.delete().catch(() => undefined)
       if (message.channel.isSendable()) {
-        const warn = await message.channel.send({
-          content: `<@${message.author.id}>, apaguei sua mensagem porque tinha uma chave da SixtySix. Nunca cole a chave aqui. Para garantir, gere uma nova no painel: https://www.sixtysix.online/dashboard (Chaves de API, Gerar nova).`,
-          allowedMentions: { users: [message.author.id] },
-        })
+        const warn = await message.channel.send({ ...keyWarning(message.author.id), allowedMentions: { users: [message.author.id] } })
         setTimeout(() => void warn.delete().catch(() => undefined), 60_000)
       }
       return

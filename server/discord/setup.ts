@@ -1,16 +1,17 @@
 import { ChannelType, OverwriteType, PermissionFlagsBits, REST, Routes } from 'discord.js'
-import { WHATSAPP } from './knowledge.ts'
+import { CHANNEL_MESSAGES } from './channel-messages.ts'
 
 /*
  * Arruma o servidor da SixtySix no Discord pelo bot (precisa do DISCORD_BOT_TOKEN e do bot como Administrador):
  *   node --env-file=.env --experimental-strip-types server/discord/setup.ts listar
  *   node ... server/discord/setup.ts arrumar      cria só o que falta (cargo Equipe, categorias e canais) e posta os textos
  *   node ... server/discord/setup.ts convite      convite que não vence (para o rodapé do site)
- * Nunca apaga nem move canal existente. Os textos só vão para canais criados agora ou vazios.
+ * Nunca apaga nem move canal existente. Os textos (embeds de channel-messages.ts) editam a mensagem que o bot já
+ * postou no canal; sem ela, só vão para canais criados agora ou vazios.
  */
 type Channel = { id: string; name: string; type: number; parent_id: string | null; position: number; topic?: string | null; permission_overwrites?: { id: string; type: number; allow: string; deny: string }[] }
 type Role = { id: string; name: string; permissions: string; position: number; managed: boolean }
-type Spec = { name: string; topic: string; readOnly?: boolean; announcement?: boolean; support?: boolean; text?: (ids: Record<string, string>) => string; pin?: boolean }
+type Spec = { name: string; topic: string; readOnly?: boolean; announcement?: boolean; support?: boolean; pin?: boolean }
 type Group = { category: string; staffOnly?: boolean; channels: Spec[] }
 
 const token = process.env.DISCORD_BOT_TOKEN
@@ -30,16 +31,13 @@ const PLAN: Group[] = [
     channels: [
       {
         name: 'boas-vindas', topic: 'Comece por aqui.', readOnly: true,
-        text: (ids) => `**Bem-vindo à comunidade da SixtySix.**\nAqui você tira dúvidas, acompanha as novidades e troca ideia com quem programa e automatiza com IA.\n\n**Por onde começar**\n- Dúvida ou problema: escreva em ${link(ids, 'atendimento')}. O assistente responde na hora e a equipe acompanha.\n- Planos e preços: ${link(ids, 'planos')}.\n- Configurar sua ferramenta: ${link(ids, 'como-conectar')}.\n- Novidades: ${link(ids, 'anúncios')}.\n- Mostre o que você está construindo: ${link(ids, 'projetos')}.\n\nAinda não é cliente? Planos a partir de R$ 79,99 no Pix e teste grátis de 3 horas: https://www.sixtysix.online`,
       },
       {
         name: 'regras', topic: 'Regras da comunidade.', readOnly: true,
-        text: (ids) => `**Regras**\n1. Respeito com todo mundo. Sem ofensa, spam ou divulgação de outros serviços.\n2. Nunca cole sua chave da SixtySix aqui. Mensagem com chave é apagada na hora.\n3. Dúvidas vão em ${link(ids, 'atendimento')}: o assistente abre um tópico só para você.\n4. Pagamento e conta são resolvidos pela equipe, no tópico ou no WhatsApp ${WHATSAPP}.\n5. Conteúdo ilegal ou pirataria leva a banimento.`,
       },
       { name: 'anúncios', topic: 'Novidades da SixtySix.', readOnly: true, announcement: true },
       {
         name: 'planos', topic: 'Planos e preços da SixtySix.', readOnly: true, announcement: true,
-        text: () => `**Planos da SixtySix**\nPreço fixo em reais no Pix, sem IOF, sem rateio e sem cota a cada 5 horas.\n\n**Dev, R$ 79,99 por mês**\nGPT Astra 6 pelo site (conversa no painel). Sem chave de API.\n\n**Dev + API, R$ 94,99 por mês**\nGPT Astra 6 com chave de API para Claude Code, Cursor e VS Code.\n\n**Pro, R$ 119,99 por mês**\nChave de API com Claude Opus 5.5, GPT Astra 6 e Argon 4, mais geração de imagens (Gemini 3 Pro e outros). Uso ilimitado no Claude Code, Cursor, VS Code, Codex, Cline, OpenCode e Orca.\n\nPix vale 30 dias, sem renovação automática; no cartão renova todo mês. Teste grátis de 3 horas pelo WhatsApp ${WHATSAPP}.\nAssinar: https://www.sixtysix.online/#planos`,
       },
     ],
   },
@@ -48,11 +46,9 @@ const PLAN: Group[] = [
     channels: [
       {
         name: 'atendimento', topic: 'Mande sua dúvida aqui: o assistente da SixtySix abre um tópico com você e responde. A equipe acompanha.', support: true, pin: true,
-        text: () => `**Como funciona o atendimento**\nEscreva sua dúvida aqui, numa mensagem só: a ferramenta, o sistema e a mensagem de erro (sem a chave). O assistente da SixtySix abre um tópico com o seu nome e responde em segundos. Se precisar, ele chama a equipe, que continua no mesmo tópico.\n\nUrgente ou assunto de pagamento: WhatsApp ${WHATSAPP}.`,
       },
       {
         name: 'como-conectar', topic: 'Endereços e modelos de cada ferramenta.', readOnly: true,
-        text: (ids) => `**Como conectar**\nO passo a passo completo, já com a sua chave, fica no painel: https://www.sixtysix.online/dashboard (aba Como conectar).\n\n**Endereços**\n- Claude Code, Claude Desktop e Orca: \`https://www.sixtysix.online\`\n- Codex, Cline, OpenCode e Cursor: \`https://www.sixtysix.online/v1\`\n\n**Modelos**\n- \`claude-opus-5-5\`: Claude Code e Claude Desktop\n- \`gpt-6-astra\`: Codex\n- \`argon-4\`: Cline, OpenCode, Orca e Cursor\n\n**Claude Code no PowerShell**\n\`\`\`\n$env:ANTHROPIC_BASE_URL='https://www.sixtysix.online'\n$env:ANTHROPIC_API_KEY='SUA_CHAVE'\nclaude --model claude-opus-5-5\n\`\`\`\nDeu erro? Pergunte em ${link(ids, 'atendimento')}.`,
       },
     ],
   },
@@ -155,16 +151,26 @@ async function arrumar() {
     }
   }
   const ids = Object.fromEntries([...byName.entries()].map(([k, c]) => [k, c.id]))
+  const me = (await rest.get(Routes.user('@me'))) as { id: string }
   for (const group of PLAN) {
     for (const spec of group.channels) {
       const channel = byName.get(norm(spec.name))
-      if (!channel || !spec.text) continue
-      const last = (await rest.get(Routes.channelMessages(channel.id), { query: new URLSearchParams({ limit: '1' }) })) as unknown[]
-      if (!created.has(channel.id) && last.length) {
-        console.log(`#${channel.name} já tem mensagens: texto não postado`)
+      const build = CHANNEL_MESSAGES[norm(spec.name)]
+      if (!channel || !build) continue
+      const body = { content: '', ...build(ids), allowed_mentions: { parse: [] } }
+      const recent = (await rest.get(Routes.channelMessages(channel.id), { query: new URLSearchParams({ limit: '50' }) })) as { id: string; author: { id: string } }[]
+      // A mensagem mais antiga do bot no canal é a do texto fixo: edita ela (sem repetir mensagem).
+      const mine = recent.filter((m) => m.author.id === me.id).at(-1)
+      if (mine) {
+        await rest.patch(Routes.channelMessage(channel.id, mine.id), { body })
+        console.log(`Texto atualizado em #${channel.name}`)
         continue
       }
-      const message = (await rest.post(Routes.channelMessages(channel.id), { body: { content: spec.text(ids), allowed_mentions: { parse: [] } } })) as { id: string }
+      if (!created.has(channel.id) && recent.length) {
+        console.log(`#${channel.name} já tem mensagens de outras pessoas: texto não postado`)
+        continue
+      }
+      const message = (await rest.post(Routes.channelMessages(channel.id), { body })) as { id: string }
       if (spec.pin) await rest.put(Routes.channelPin(channel.id, message.id)).catch(() => undefined)
       console.log(`Texto postado em #${channel.name}`)
     }

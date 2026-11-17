@@ -109,3 +109,51 @@ test('agente: limite do fornecedor (429) espera e tenta de novo no mesmo modelo'
     console.error = errors
   }
 })
+
+test('embeds: respostas longas viram várias mensagens e o chamado da equipe leva cartão âmbar e botão do WhatsApp', async () => {
+  const { replyPayloads, COLORS } = await import('./discord/embeds.ts')
+  const short = replyPayloads('Confira o endereço.', false)
+  assert.equal(short.length, 1)
+  assert.equal(short[0].embeds[0].description, 'Confira o endereço.')
+  assert.deepEqual(short[0].components, [])
+  const long = replyPayloads(Array.from({ length: 300 }, (_, i) => `linha ${i} com bastante texto para passar do limite`).join('\n'), true)
+  assert.ok(long.length > 1)
+  for (const p of long) assert.ok((p.embeds[0].description || '').length <= 4096)
+  const last = long.at(-1)!
+  assert.equal(last.embeds[1].color, COLORS.warn)
+  assert.equal(last.components?.[0].components[0].url, 'https://wa.me/5581992376036')
+  assert.ok(long.slice(0, -1).every((p) => p.embeds.length === 1 && !p.components?.length), 'só a última leva o chamado')
+})
+
+test('embeds: aviso para a equipe marca os cargos no texto (é o que notifica) e leva o link da conversa', async () => {
+  const { staffAlert } = await import('./discord/embeds.ts')
+  const alert = staffAlert(['111', '222'], 'Uma dúvida no suporte precisa de vocês', 'Ana', 'https://discord.com/channels/1/2', 'meu pix não caiu')
+  assert.equal(alert.content, '<@&111> <@&222>')
+  assert.equal(alert.components?.[0].components[0].url, 'https://discord.com/channels/1/2')
+  assert.equal(alert.embeds[0].fields?.find((f) => f.name === 'Última mensagem')?.value, 'meu pix não caiu')
+})
+
+test('embeds dos canais respeitam os limites do Discord (título, campos, total e botões)', async () => {
+  const { CHANNEL_MESSAGES } = await import('./discord/channel-messages.ts')
+  const ids = { atendimento: '1', planos: '2', comoconectar: '3', anuncios: '4', projetos: '5' }
+  for (const [name, build] of Object.entries(CHANNEL_MESSAGES)) {
+    const payload = build(ids)
+    let total = 0
+    for (const e of payload.embeds) {
+      assert.ok(!e.title || e.title.length <= 256, `${name}: título`)
+      assert.ok(!e.description || e.description.length <= 4096, `${name}: descrição`)
+      assert.ok((e.fields || []).length <= 25, `${name}: campos`)
+      for (const f of e.fields || []) {
+        assert.ok(f.name.length <= 256 && f.value.length <= 1024 && f.value.length > 0, `${name}: campo ${f.name}`)
+        total += f.name.length + f.value.length
+      }
+      total += (e.title || '').length + (e.description || '').length + (e.footer?.text || '').length
+    }
+    assert.ok(total <= 6000, `${name}: total ${total}`)
+    for (const row of payload.components || []) {
+      assert.ok(row.components.length <= 5, `${name}: botões`)
+      for (const b of row.components) assert.ok(b.label.length <= 80 && /^https:\/\//.test(b.url), `${name}: botão ${b.label}`)
+    }
+    assert.ok(!JSON.stringify(payload).includes('#atendimento'), `${name}: menciona o canal pelo id, não pelo nome`)
+  }
+})
