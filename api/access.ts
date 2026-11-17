@@ -254,7 +254,11 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     }
     // Recusa da key mestra (saldo, bloqueio) ou falha do fornecedor: o cliente não vê detalhes do fornecedor.
     if(status===401||status===402||status===403||status>=500||(status>=300&&status<400)){
-      console.error('Provedor recusou a chamada',provider.name,status,(await response.text().catch(()=>'')).slice(0,500))
+      // Junto vai o formato do pedido (nunca o conteúdo): modelo, stream, nível de raciocínio, limite de saída e tamanho,
+      // para saber por que o fornecedor não respondeu (ex.: 524 = ele passou de 100 s sem mandar nada).
+      const p=call.payload as Record<string,any>
+      const shape={model:route.upstream,path:call.path,stream:p.stream===true,effort:p.output_config?.effort??p.reasoning_effort??p.reasoning?.effort??null,thinking:p.thinking?{type:p.thinking.type,budget:p.thinking.budget_tokens??null}:null,max_tokens:p.max_tokens??p.max_output_tokens??null,messages:Array.isArray(p.messages)?p.messages.length:Array.isArray(p.input)?p.input.length:null,bytes:sent.length,ms:Date.now()-started}
+      console.error('Provedor recusou a chamada',provider.name,status,JSON.stringify(shape),(await response.text().catch(()=>'')).replace(/s+/g,' ').slice(0,300))
       if(res.headersSent)return streamError({error:{message:unavailable,type:'api_error',code:null}})
       throw new AccessError(503,unavailable)
     }
