@@ -36,7 +36,7 @@ for app in sixtysix-b:8081 sixtysix-a:8080; do
   pm2 startOrReload deploy/ecosystem.config.cjs --only "$name" --update-env
   up "$port" "$name"
 done
-# Agente do Discord: só com DISCORD_BOT_TOKEN no .env (sem o token, fica desligado).
+# Bot do Discord (cargos automáticos): só com DISCORD_BOT_TOKEN no .env (sem o token, fica desligado).
 if grep -q '^DISCORD_BOT_TOKEN=..*' .env 2>/dev/null; then
   pm2 startOrReload deploy/ecosystem.config.cjs --only sixtysix-discord --update-env
 fi

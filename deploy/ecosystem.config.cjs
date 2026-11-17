@@ -20,7 +20,7 @@ const app = (name, port) => ({
   time: true,
 })
 
-// Agente de suporte do Discord (server/discord/bot.ts). Sem DISCORD_BOT_TOKEN no .env ele sai na hora (código 0)
+// Bot do Discord (server/discord/bot.ts): fica online e dá os cargos automáticos. Sem DISCORD_BOT_TOKEN no .env ele sai na hora (código 0)
 // e o PM2 não fica reiniciando. O deploy só sobe este processo quando o token existe.
 const discord = {
   name: 'sixtysix-discord',
