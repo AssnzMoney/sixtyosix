@@ -42,7 +42,7 @@ export function adminDemoData(): Record<string, Row[]> {
   const clients = users.map((u, i) => ({ id: id(500 + i), user_id: u.id, name: 'Roteador · ' + u.name, enabled: true, created_at: u.created_at, key_prefix: 'sk-rt-demo' + i }))
   const models = ['claude-fable-5-2', 'claude-opus-5-5', 'gpt-6-astra', 'argon-4']
   const usage = Array.from({ length: 240 }, (_, i) => ({
-    id: i + 1, client_id: clients[i % 8].id, requested_alias: models[i % 4], status_code: i % 17 === 0 ? 429 : 200,
+    id: i + 1, client_id: clients[i % 8].id, requested_alias: models[i % 4], status_code: i % 37 === 1 ? 401 : i % 23 === 2 ? 503 : i % 17 === 0 ? 429 : i % 29 === 3 ? 499 : i % 41 === 4 ? 400 : 200,
     input_tokens: 2000 + ((i * 937) % 40000), output_tokens: 200 + ((i * 131) % 3000), latency_ms: 800 + ((i * 53) % 9000),
     created_at: new Date(Date.now() - (i % 28) * DAY - i * 60000).toISOString(),
   }))

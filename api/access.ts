@@ -318,7 +318,10 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Saúde do fornecedor para o alerta. Chamada que o próprio cliente cancelou não conta como falha.
     if(!controller.signal.aborted)providerAlert.record(provider.name,status)
     // Contar tokens (/v1/messages/count_tokens) não é uso do modelo: não entra no consumo.
-    if(!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:status,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
+    // Cliente desistiu antes de qualquer resposta (Esc, conexão caiu): grava 499, não o 502 inicial, para não
+    // parecer queda do fornecedor no admin.
+    const recorded=controller.signal.aborted&&!tap&&status===502?499:status
+    if(!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:recorded,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
   }
 }
 

@@ -54,6 +54,7 @@ import {
 import './dashboard.css'
 import './admin.css'
 import { isLocalhost } from '../lib/isLocalhost'
+import { SOURCE_LABELS, statusMeaning } from '../lib/statusMeanings'
 import { adminDemoData } from '../lib/adminDemo'
 
 type Row = Record<string, any>
@@ -542,6 +543,24 @@ export default function AdminPage() {
       })
       .filter((x) => !term || JSON.stringify(x).toLowerCase().includes(term))
   }, [data, tab, search, deliveries, usersById, people])
+
+  // Aba Consumo: cada código de erro do período, com o significado. Key mestra primeiro (derruba todo mundo).
+  const usageErrors = useMemo(() => {
+    if (tab !== 'usage') return []
+    const counts = new Map<number, { count: number; last: string }>()
+    for (const row of enriched) {
+      const code = Number(row.status_code)
+      if (!(code >= 400)) continue
+      const c = counts.get(code) || { count: 0, last: '' }
+      c.count++
+      if (String(row.created_at || '') > c.last) c.last = String(row.created_at)
+      counts.set(code, c)
+    }
+    const urgent = (code: number) => (statusMeaning(code).source === 'chave-mestra' ? 0 : 1)
+    return [...counts.entries()]
+      .map(([code, c]) => ({ code, ...c, ...statusMeaning(code) }))
+      .sort((a, b) => urgent(a.code) - urgent(b.code) || b.count - a.count)
+  }, [tab, enriched])
 
   // Aba Consumo: soma por cliente (todas as chaves dele), do maior consumo para o menor. Respeita período e busca.
   const usageByCustomer = useMemo(() => {
@@ -1266,6 +1285,29 @@ export default function AdminPage() {
                       <strong>{number(usageByCustomer.total.errors)}{usageByCustomer.total.requests ? ` (${Math.round((usageByCustomer.total.errors / usageByCustomer.total.requests) * 100)}%)` : ''}</strong>
                     </article>
                   </div>
+                  {usageErrors.length > 0 && (
+                    <section className="sx-error-guide" aria-label="O que foram os erros">
+                      <h3>O que foram os erros</h3>
+                      <div className="sx-error-list">
+                        {usageErrors.map((e) => (
+                          <article key={e.code} className={`is-${e.source}`}>
+                            <header>
+                              <strong className="sx-error-code">{e.code}</strong>
+                              <span className="sx-error-title">{e.title}</span>
+                              <span className="sx-error-source">{SOURCE_LABELS[e.source]}</span>
+                              <span className="sx-error-count">
+                                {number(e.count)} {e.count === 1 ? 'chamada' : 'chamadas'}
+                                {usageByCustomer.total.requests ? ` · ${Math.max(0.1, Math.round((e.count / usageByCustomer.total.requests) * 1000) / 10).toLocaleString('pt-BR')}%` : ''}
+                                {e.last ? ` · última ${shortDate(e.last)}` : ''}
+                              </span>
+                            </header>
+                            <p>{e.meaning}</p>
+                            <p className="sx-error-action"><b>O que fazer:</b> {e.action}</p>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
                   {usageByCustomer.list.length ? (
                     <div className="sx-admin-table">
                       <table>
@@ -1329,7 +1371,15 @@ export default function AdminPage() {
                       <tr key={row.id || row.subscription_id || i}>
                         {columns[tab].map((c) => (
                           <td key={c} className={c === 'status_code' && row[c] >= 400 ? 'sx-admin-failure' : ''}>
-                            {c === 'state' ? <span className={`sx-state is-${row.state}`}>{format(c, row[c])}</span> : format(c, row[c])}
+                            {c === 'state' ? (
+                              <span className={`sx-state is-${row.state}`}>{format(c, row[c])}</span>
+                            ) : c === 'status_code' && row[c] != null ? (
+                              <span title={`${statusMeaning(Number(row[c])).meaning}\n\nO que fazer: ${statusMeaning(Number(row[c])).action}`}>
+                                {row[c]} · {statusMeaning(Number(row[c])).title}
+                              </span>
+                            ) : (
+                              format(c, row[c])
+                            )}
                           </td>
                         ))}
                         {['customers', 'users'].includes(tab) && (
