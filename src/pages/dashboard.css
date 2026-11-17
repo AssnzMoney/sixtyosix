@@ -3615,3 +3615,14 @@
   color: inherit;
   text-decoration: underline;
 }
+
+/* Aviso no topo de um guia do Como conectar (ex.: vídeo só no Pro, com limite) */
+.six-guide-note {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border: 1px solid rgba(22, 163, 74, 0.28);
+  border-radius: 16px;
+  background: var(--track);
+  font-size: 14px;
+  line-height: 1.55;
+}

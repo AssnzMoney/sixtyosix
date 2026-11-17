@@ -764,6 +764,27 @@ export default function DashboardPage() {
       : os === "powershell"
         ? `'${actualKey.replace(/'/g, "''")}'`
         : actualKey
+  // Guia de vídeo (Veo, só no Pro): pedir, acompanhar e baixar pela API, com a chave já preenchida.
+  const videoBase = "https://www.sixtysix.online/v1/videos"
+  const videoPrompt = "Um robo verde acenando num escritorio moderno, camera suave"
+  const videoCreate =
+    os === "powershell"
+      ? `$key = ${shellKey}\n$body = @{ model = 'veo-3.1-fast'; prompt = '${videoPrompt}'; seconds = '8'; size = '1280x720' } | ConvertTo-Json\n$video = Invoke-RestMethod ${videoBase} -Method Post -Headers @{ Authorization = "Bearer $key" } -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body))\n$video.id`
+      : os === "cmd"
+        ? `curl -s ${videoBase} -H "Authorization: Bearer ${shellKey}" -H "Content-Type: application/json" -d "{\\"model\\": \\"veo-3.1-fast\\", \\"prompt\\": \\"${videoPrompt}\\", \\"seconds\\": \\"8\\", \\"size\\": \\"1280x720\\"}"`
+        : `KEY=${shellKey}\ncurl -s ${videoBase} \\\n  -H "Authorization: Bearer $KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"model": "veo-3.1-fast", "prompt": "${videoPrompt}", "seconds": "8", "size": "1280x720"}'`
+  const videoWait =
+    os === "powershell"
+      ? `do {\n  Start-Sleep 10\n  $video = Invoke-RestMethod "${videoBase}/$($video.id)" -Headers @{ Authorization = "Bearer $key" }\n  "$($video.status) $($video.progress)%"\n} until ($video.status -in 'completed', 'failed')`
+      : os === "cmd"
+        ? `curl -s ${videoBase}/ID_DO_VIDEO -H "Authorization: Bearer ${shellKey}"`
+        : `ID=ID_DO_VIDEO\ncurl -s ${videoBase}/$ID -H "Authorization: Bearer $KEY"`
+  const videoDownload =
+    os === "powershell"
+      ? `Invoke-WebRequest "${videoBase}/$($video.id)/content" -Headers @{ Authorization = "Bearer $key" } -OutFile video.mp4`
+      : os === "cmd"
+        ? `curl -s ${videoBase}/ID_DO_VIDEO/content -H "Authorization: Bearer ${shellKey}" -o video.mp4`
+        : `curl -s ${videoBase}/$ID/content -H "Authorization: Bearer $KEY" -o video.mp4`
   // Com credencial entregue, os comandos usam a URL e o modelo enviados pelo WhatsApp.
   const anthropicCommands = (baseUrl: string, model: string) =>
     os === "powershell"
@@ -2031,6 +2052,7 @@ ANTHROPIC_MODEL=${guideModel}`
                   ["cline", "Cline", "VS Code · Argon 4", "vscode"],
                   ["opencode", "OpenCode", "Terminal · Argon 4", "gemini"],
                   ["pi", "pi", "Terminal · Argon 4", "pi"],
+                  ["video", "Vídeo (Veo)", "API · Pro, 10 por mês", "gemini"],
                 ].map(([id, title, desc, icon]) => (
                   <button
                     key={id}
@@ -2066,12 +2088,14 @@ ANTHROPIC_MODEL=${guideModel}`
                                 ? "Argon 4 no Cline"
                                 : tool === "pi"
                                   ? "Argon 4 no pi"
-                                  : "Argon 4 no OpenCode"}
+                                  : tool === "video"
+                                    ? "Vídeos com Veo 3.1"
+                                    : "Argon 4 no OpenCode"}
                       </h2>
                     </div>
-                    <span className="six-pill">{tool === "codex" ? "Responses" : tool === "cline" || tool === "opencode" || tool === "pi" ? "OpenAI" : "Anthropic"}</span>
+                    <span className="six-pill">{tool === "codex" ? "Responses" : tool === "video" ? "Vídeo" : tool === "cline" || tool === "opencode" || tool === "pi" ? "OpenAI" : "Anthropic"}</span>
                   </div>
-                  {(tool === "claude" || tool === "codex" || tool === "opencode" || tool === "pi") && (
+                  {(tool === "claude" || tool === "codex" || tool === "opencode" || tool === "pi" || tool === "video") && (
                     <div className="six-segmented is-compact" role="tablist" aria-label="Sistema ou terminal">
                       {[
                         ["powershell", "Windows · PowerShell"],
@@ -2436,6 +2460,36 @@ sudo apt update && sudo apt install claude-desktop`}
                           Para deixar o Argon 4 como padrão, digite <code>/model</code> dentro do pi, escolha SixtySix · Argon 4 e
                           aperte Ctrl+S. Se mudar o arquivo com o pi aberto, o <code>/model</code> recarrega a configuração.
                         </p>
+                      </GuideStep>
+                    </>
+                  )}
+                  {tool === "video" && (
+                    <>
+                      <p className="six-guide-note">
+                        O vídeo faz parte do plano <strong>Pro</strong>: são <strong>10 vídeos por mês</strong> (o Veo 3.1 Fast conta 1, o Veo 3.1
+                        conta 2), com até 8 segundos cada. Ele funciona pela API, não pelo Claude Code nem pelo Codex.
+                      </p>
+                      <GuideStep number="01" title="Peça o vídeo">
+                        <p>Troque o texto do <code>prompt</code> pelo que você quer ver e rode:</p>
+                        <CodeBlock code={videoCreate} copy={copy} label={osLabel} />
+                        <p>
+                          A resposta traz o <code>id</code> do vídeo (começa com <code>video_</code>). Dá para escolher <code>seconds</code> 4, 6 ou 8,{" "}
+                          <code>size</code> <code>1280x720</code> (deitado) ou <code>720x1280</code> (em pé, para Reels), e o modelo{" "}
+                          <code>veo-3.1-fast</code> (mais rápido) ou <code>veo-3.1</code> (mais qualidade).
+                        </p>
+                      </GuideStep>
+                      <GuideStep number="02" title="Espere ficar pronto">
+                        <p>
+                          {os === "powershell"
+                            ? "Leva cerca de um minuto. Este comando confere a cada 10 segundos e para quando o vídeo fica pronto:"
+                            : "Leva cerca de um minuto. Troque ID_DO_VIDEO pelo id do passo 1 e rode até aparecer \"status\":\"completed\":"}
+                        </p>
+                        <CodeBlock code={videoWait} copy={copy} label={osLabel} />
+                      </GuideStep>
+                      <GuideStep number="03" title="Baixe o vídeo">
+                        <p>O arquivo vai para a pasta onde você está, com o nome video.mp4:</p>
+                        <CodeBlock code={videoDownload} copy={copy} label={osLabel} />
+                        <p>O vídeo fica disponível por 2 dias. Conferir e baixar não gastam o seu limite.</p>
                       </GuideStep>
                     </>
                   )}
