@@ -20,4 +20,18 @@ const app = (name, port) => ({
   time: true,
 })
 
-module.exports = { apps: [app('sixtysix-a', 8080), app('sixtysix-b', 8081)] }
+// Agente de suporte do Discord (server/discord/bot.ts). Sem DISCORD_BOT_TOKEN no .env ele sai na hora (código 0)
+// e o PM2 não fica reiniciando. O deploy só sobe este processo quando o token existe.
+const discord = {
+  name: 'sixtysix-discord',
+  cwd: path.resolve(__dirname, '..'),
+  script: 'node',
+  args: '--env-file=.env --experimental-strip-types --import ./scripts/test-register.mjs server/discord/bot.ts',
+  interpreter: 'none',
+  env: { NODE_ENV: 'production' },
+  max_memory_restart: '300M',
+  stop_exit_codes: [0],
+  time: true,
+}
+
+module.exports = { apps: [app('sixtysix-a', 8080), app('sixtysix-b', 8081), discord] }
