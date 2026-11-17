@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, unsupportedFix, UsageTap, withoutThinkingHistory } from '../server/supplier.js'
+import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch } from '../server/supplier.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
@@ -232,12 +232,19 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Pensamento do histórico com assinatura inválida (cliente trocou de modelo na conversa): 1 = sem os pensamentos
     // antigos, 2 = sem nenhum pensamento. Só para esta chamada; vale também quando o corpo é remontado abaixo.
     let thinking=0
-    const rebuild=()=>{const body=supplierRequestBody(call.payload,call.path,route.upstream,name).body;return thinking?withoutThinkingHistory(body,thinking===2):body}
+    // Resultado de pesquisa selado do histórico recusado (veio de outro modelo): as pesquisas antigas viram texto.
+    let searchAsText=false
+    const rebuild=()=>{let body=supplierRequestBody(call.payload,call.path,route.upstream,name).body;if(thinking)body=withoutThinkingHistory(body,thinking===2);if(searchAsText)body=withoutEncryptedSearch(body);return body}
     for(let attempt=0;status===400;attempt++){
       const text=await response.text().catch(()=>'')
       if(attempt<6&&thinking<2&&thinkingSignatureError(text)){
         thinking++
         console.error('Provedor recusou a assinatura de um pensamento do histórico; tentando sem',thinking===1?'os pensamentos antigos':'nenhum pensamento',provider.name,route.upstream)
+        sent=rebuild();response=await send(sent);status=response.status;continue
+      }
+      if(attempt<6&&!searchAsText&&encryptedSearchError(text)){
+        searchAsText=true
+        console.error('Provedor recusou um resultado de pesquisa selado do histórico; tentando com as pesquisas em texto',provider.name,route.upstream)
         sent=rebuild();response=await send(sent);status=response.status;continue
       }
       let sentJson:Record<string,unknown>|undefined

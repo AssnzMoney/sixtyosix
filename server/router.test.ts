@@ -895,3 +895,43 @@ test('nada do fornecedor sai do gateway: diagnóstico só local e texto solto de
   assert.equal(page.end(), '')
   assert.ok(page.failure)
 })
+
+test('resultado de pesquisa selado de outro modelo no histórico: as pesquisas viram texto e a conversa segue', async () => {
+  const errors = console.error
+  console.error = () => {}
+  const refuse = (message: string) => Response.json({ type: 'error', error: { type: 'invalid_request_error', message } }, { status: 400 })
+  const supplier = (_url: string, init: RequestInit) => {
+    const body = String(init.body)
+    if (body.includes('encrypted_content')) return refuse('messages.2.content.1: Invalid `encrypted_content` in `search_result` block')
+    return Response.json({ model: 'anthropic/claude-opus-5-5', content: [{ type: 'text', text: 'oi' }], usage: { input_tokens: 2, output_tokens: 1 } })
+  }
+  try {
+    await withAccess({ supplier }, async (base, _usage, calls) => {
+      const ask = {
+        model: 'claude-opus-5-5', max_tokens: 10,
+        messages: [
+          { role: 'user', content: 'pesquisa o preço do café' },
+          { role: 'assistant', content: [
+            { type: 'server_tool_use', id: 'srvtoolu_1', name: 'web_search', input: { query: 'preço do café hoje' } },
+            { type: 'web_search_tool_result', tool_use_id: 'srvtoolu_1', content: [{ type: 'web_search_result', url: 'https://exemplo.com/cafe', title: 'Café sobe 3%', encrypted_content: 'de-outro-modelo', page_age: '1 dia' }] },
+            { type: 'text', text: 'O café subiu.', citations: [{ type: 'web_search_result_location', url: 'https://exemplo.com/cafe', encrypted_index: 'x', title: 'Café sobe 3%', cited_text: 'subiu' }] },
+          ] },
+          { role: 'user', content: 'e o açúcar?' },
+        ],
+      }
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', ask)
+      assert.equal(response.status, 200, 'o cliente recebe a resposta')
+      assert.equal(calls.length, 2, 'uma recusa e uma tentativa com as pesquisas em texto')
+      const last = JSON.parse(String(calls.at(-1)!.init.body))
+      const content = last.messages[1].content
+      assert.deepEqual(content.map((b: { type: string }) => b.type), ['text', 'text', 'text'])
+      assert.match(content[0].text, /Pesquisa na web: preço do café hoje/)
+      assert.match(content[1].text, /Café sobe 3% - https:\/\/exemplo\.com\/cafe/)
+      assert.equal(content[2].citations, undefined, 'as citações com índice selado saem; o texto fica')
+      assert.equal(content[2].text, 'O café subiu.')
+      assert.ok(!String(calls.at(-1)!.init.body).includes('encrypted'), 'nada selado vai na segunda tentativa')
+    })
+  } finally {
+    console.error = errors
+  }
+})

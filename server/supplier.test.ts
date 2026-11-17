@@ -322,3 +322,17 @@ test('SIXTYSIX_MAX_EFFORT=off desliga o teto do raciocínio', () => {
     delete process.env.SIXTYSIX_MAX_EFFORT
   }
 })
+
+test('pesquisa selada: reconhece o erro e troca por texto também dentro de tool_result, sem mexer no resto', async () => {
+  const { encryptedSearchError, withoutEncryptedSearch } = await import('./supplier.ts')
+  assert.ok(encryptedSearchError('{"error":{"message":"messages.168.content.0: Invalid `encrypted_content` in `search_result` block"}}'))
+  assert.ok(!encryptedSearchError('{"error":{"message":"Invalid `signature` in `thinking` block"}}'))
+  const body = JSON.stringify({ model: 'x', messages: [
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: [{ type: 'search_result', source: 'https://docs.exemplo.com', title: 'Docs', content: [{ type: 'text', text: 'trecho' }], encrypted_content: 'z' }] }] },
+    { role: 'assistant', content: [{ type: 'tool_use', id: 't2', name: 'Read', input: {} }, { type: 'text', text: 'ok' }] },
+  ] })
+  const next = JSON.parse(withoutEncryptedSearch(body))
+  assert.deepEqual(next.messages[0].content[0].content, [{ type: 'text', text: 'Docs - https://docs.exemplo.com\ntrecho' }])
+  assert.deepEqual(next.messages[1].content, [{ type: 'tool_use', id: 't2', name: 'Read', input: {} }, { type: 'text', text: 'ok' }])
+  assert.equal(withoutEncryptedSearch('não é json'), 'não é json')
+})

@@ -260,6 +260,51 @@ export function capReasoning(next: Record<string, unknown>) {
   if (thinking && typeof thinking === 'object' && typeof thinking.budget_tokens === 'number' && thinking.budget_tokens > budget) next.thinking = { ...thinking, budget_tokens: budget }
 }
 
+/** Resultado de busca "selado" do histórico recusado (veio de outro modelo, ex.: trocou de modelo depois de pesquisar). */
+export const encryptedSearchError = (text: string) => /invalid\W*(encrypted_content|encrypted_index)/i.test(text)
+
+type Block = Record<string, unknown>
+const resultLine = (r: Block) => [r.title, r.url ?? (r.source as string | undefined)].filter((v) => typeof v === 'string' && v).join(' - ')
+/** Um bloco de busca vira texto: o que foi pesquisado ou a lista de resultados (título e link). */
+function searchAsText(block: Block): Block | null {
+  if (block.type === 'server_tool_use' && (block.name === 'web_search' || block.name === 'web_fetch')) {
+    const input = (block.input || {}) as Block
+    return { type: 'text', text: `[${block.name === 'web_fetch' ? 'Leitura de página' : 'Pesquisa na web'}: ${String(input.query ?? input.url ?? '')}]` }
+  }
+  if (block.type === 'web_search_tool_result' || block.type === 'web_fetch_tool_result') {
+    const items = Array.isArray(block.content) ? (block.content as Block[]) : block.content && typeof block.content === 'object' ? [block.content as Block] : []
+    const lines = items.map(resultLine).filter(Boolean)
+    return { type: 'text', text: lines.length ? `Resultados da pesquisa:\n${lines.map((l) => `- ${l}`).join('\n')}` : '[Resultado de pesquisa]' }
+  }
+  if (block.type === 'search_result' || block.type === 'web_search_result' || typeof block.encrypted_content === 'string') {
+    const body = Array.isArray(block.content) ? (block.content as Block[]).map((c) => (typeof c.text === 'string' ? c.text : '')).filter(Boolean).join('\n') : ''
+    return { type: 'text', text: [resultLine(block), body].filter(Boolean).join('\n') || '[Resultado de pesquisa]' }
+  }
+  return null
+}
+/**
+ * Troca por texto os blocos de pesquisa do histórico (o pedido de busca, os resultados e as citações com índice selado),
+ * para a conversa seguir quando o fornecedor recusa o conteúdo selado de um deles. O contexto (títulos e links) fica.
+ */
+export function withoutEncryptedSearch(body: string): string {
+  let next: Record<string, unknown>
+  try { next = JSON.parse(body) } catch { return body }
+  if (!Array.isArray(next.messages)) return body
+  const fix = (content: unknown): unknown => {
+    if (!Array.isArray(content)) return content
+    return (content as Block[]).map((b) => {
+      if (!b || typeof b !== 'object') return b
+      const text = searchAsText(b)
+      if (text) return text
+      if (b.type === 'tool_result' && Array.isArray(b.content)) return { ...b, content: fix(b.content) }
+      if (b.type === 'text' && Array.isArray(b.citations)) { const { citations: _c, ...rest } = b; return rest }
+      return b
+    })
+  }
+  next.messages = (next.messages as Block[]).map((m) => (m && Array.isArray(m.content) ? { ...m, content: fix(m.content) } : m))
+  return JSON.stringify(next)
+}
+
 export function supplierRequestBody(payload: Record<string, unknown>, path: string, supplierId: string, name?: string) {
   const next: Record<string, unknown> = { ...payload, model: supplierId }
   capReasoning(next)
