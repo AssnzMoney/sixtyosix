@@ -8,8 +8,10 @@ import { WHATSAPP_LINK } from './knowledge.ts'
  *  - Alguém da equipe escreveu no tópico: o agente para de responder nele (a pessoa assumiu). Citar o bot volta.
  *  - Em outros canais, responde quando alguém cita o bot.
  *  - Chave da SixtySix colada em qualquer canal: apaga a mensagem e avisa para gerar uma nova.
- * Configuração opcional: DISCORD_SUPPORT_CHANNEL (nome ou id, padrão "suporte"), DISCORD_STAFF_ROLE (nome ou id,
- * padrão "Equipe"), DISCORD_AGENT_MODEL (padrão claude-opus-5-5).
+ *  - Precisou da equipe: avisa no canal privado de registro (DISCORD_LOG_CHANNEL) com o link do tópico, marcando os
+ *    cargos da equipe lá dentro, sem marcar ninguém no canal público.
+ * Configuração opcional: DISCORD_SUPPORT_CHANNEL (nome ou id, padrão "suporte"), DISCORD_STAFF_ROLE (nomes ou ids
+ * separados por vírgula, padrão "Equipe"), DISCORD_LOG_CHANNEL (nome ou id, opcional), DISCORD_AGENT_MODEL.
  */
 const env = process.env
 const token = env.DISCORD_BOT_TOKEN
@@ -18,7 +20,8 @@ if (!token) {
   process.exit(0)
 }
 const supportName = (env.DISCORD_SUPPORT_CHANNEL || 'suporte').toLowerCase()
-const staffName = (env.DISCORD_STAFF_ROLE || 'Equipe').toLowerCase()
+const staffNames = (env.DISCORD_STAFF_ROLE || 'Equipe').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+const logName = (env.DISCORD_LOG_CHANNEL || '').toLowerCase()
 const agent = createAgent(env)
 const limiter = new RateLimiter(8, 10 * 60_000)
 /** Tópicos em que a equipe já está atendendo: o agente não se mete. */
@@ -29,9 +32,24 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 const isSupport = (channel: Message['channel']) => channel.type === ChannelType.GuildText && (channel.id === supportName || channel.name.toLowerCase() === supportName)
 const isSupportThread = (channel: Message['channel']) =>
   channel.isThread() && channel.ownerId === client.user?.id && !!channel.parent && (channel.parent.id === supportName || channel.parent.name.toLowerCase() === supportName)
-const staffRole = (message: Message): Role | undefined =>
-  message.guild?.roles.cache.find((r) => r.id === staffName || r.name.toLowerCase() === staffName)
-const isStaff = (member: GuildMember | null, role?: Role) => !!member && (member.permissions.has(PermissionFlagsBits.Administrator) || (!!role && member.roles.cache.has(role.id)))
+const staffRoles = (message: Message): Role[] =>
+  message.guild ? [...message.guild.roles.cache.values()].filter((r) => staffNames.includes(r.id) || staffNames.includes(r.name.toLowerCase())) : []
+const isStaff = (member: GuildMember | null, roles: Role[]) => !!member && (member.permissions.has(PermissionFlagsBits.Administrator) || roles.some((r) => member.roles.cache.has(r.id)))
+const logChannel = (message: Message) =>
+  logName ? message.guild?.channels.cache.find((c) => (c.id === logName || c.name.toLowerCase() === logName) && c.isSendable()) : undefined
+
+/** Avisa a equipe no canal privado de registro, com o link da conversa. Devolve se conseguiu avisar. */
+async function notifyStaff(message: Message, target: Message['channel'], reason: string) {
+  const log = logChannel(message)
+  if (!log || !log.isSendable()) return false
+  const roles = staffRoles(message)
+  const question = describe(message).replace(/\s+/g, ' ').slice(0, 300)
+  await log.send({
+    content: `${roles.map((r) => `<@&${r.id}>`).join(' ')} ${reason}\nQuem: ${nameOf(message)}\nConversa: ${'url' in target ? target.url : message.url}\nÚltima mensagem: "${question}"`.trim(),
+    allowedMentions: { parse: [], roles: roles.map((r) => r.id) },
+  }).catch((error) => console.error('discord: não consegui avisar a equipe', error instanceof Error ? error.message : error))
+  return true
+}
 const nameOf = (message: Message) => message.member?.displayName || message.author.globalName || message.author.username
 const strip = (text: string) => text.replace(new RegExp(`<@!?${client.user?.id}>`, 'g'), '').trim()
 const describe = (message: Message) => {
@@ -56,10 +74,13 @@ async function history(message: Message, inThread: boolean): Promise<Turn[]> {
 
 async function answer(message: Message, target: Message['channel'], inThread: boolean) {
   if (!target.isSendable()) return
-  const role = staffRole(message)
-  const staffMention = role ? `<@&${role.id}>` : 'a equipe'
+  const roles = staffRoles(message)
+  const hasLog = !!logChannel(message)
+  // Com canal de registro, a equipe é avisada lá; sem ele, os cargos são marcados na própria conversa.
+  const staffMention = !hasLog && roles.length ? roles.map((r) => `<@&${r.id}>`).join(' ') : 'A equipe'
+  const mentionRoles = !hasLog ? roles.map((r) => r.id) : []
   if (!limiter.allow(message.author.id)) {
-    await target.send({ content: `Muitas perguntas seguidas. Espere uns minutos ou chame ${staffMention}.`, allowedMentions: { parse: [] } })
+    await target.send({ content: `Muitas perguntas seguidas. Espere uns minutos e mande de novo; se for urgente, chame no WhatsApp: ${WHATSAPP_LINK}`, allowedMentions: { parse: [] } })
     return
   }
   await target.sendTyping().catch(() => undefined)
@@ -67,11 +88,15 @@ async function answer(message: Message, target: Message['channel'], inThread: bo
   try {
     const reply = await agent.ask(await history(message, inThread))
     let text = reply.text
-    if (reply.escalate) text += `\n\n${staffMention} vai te ajudar por aqui. Se preferir, chame no WhatsApp: ${WHATSAPP_LINK}`
-    for (const chunk of splitMessage(text)) await target.send({ content: chunk, allowedMentions: { parse: [], roles: reply.escalate && role ? [role.id] : [] } })
+    if (reply.escalate) {
+      await notifyStaff(message, target, 'Uma dúvida no suporte precisa de vocês.')
+      text += `\n\n${staffMention} já foi avisada e responde por aqui. Se for urgente, chame no WhatsApp: ${WHATSAPP_LINK}`
+    }
+    for (const chunk of splitMessage(text)) await target.send({ content: chunk, allowedMentions: { parse: [], roles: reply.escalate ? mentionRoles : [] } })
   } catch (error) {
     console.error('discord: não consegui responder', error instanceof Error ? error.message : error)
-    await target.send({ content: `Não consegui responder agora. ${staffMention} vai ver sua mensagem; se for urgente, chame no WhatsApp: ${WHATSAPP_LINK}`, allowedMentions: { parse: [], roles: role ? [role.id] : [] } })
+    await notifyStaff(message, target, 'O assistente não conseguiu responder esta dúvida.')
+    await target.send({ content: `Não consegui responder agora. ${staffMention} vai ver sua mensagem; se for urgente, chame no WhatsApp: ${WHATSAPP_LINK}`, allowedMentions: { parse: [], roles: mentionRoles } })
   } finally {
     clearInterval(typing)
   }
@@ -93,15 +118,15 @@ client.on(Events.MessageCreate, async (message) => {
       return
     }
     const mentioned = message.mentions.users.has(client.user.id)
-    const role = staffRole(message)
+    const roles = staffRoles(message)
     if (isSupport(message.channel)) {
-      if (isStaff(message.member, role)) return
+      if (isStaff(message.member, roles)) return
       const thread = await message.startThread({ name: `Dúvida de ${nameOf(message)}`.slice(0, 90), autoArchiveDuration: 1440 })
       await answer(message, thread, true)
       return
     }
     if (isSupportThread(message.channel)) {
-      if (isStaff(message.member, role)) {
+      if (isStaff(message.member, roles)) {
         humanThreads.add(message.channel.id)
         return
       }
@@ -116,7 +141,7 @@ client.on(Events.MessageCreate, async (message) => {
 })
 
 client.once(Events.ClientReady, (ready) => {
-  console.log(`Agente do Discord no ar como ${ready.user.tag}, em ${ready.guilds.cache.size} servidor(es). Canal de suporte: #${supportName}.`)
+  console.log(`Agente do Discord no ar como ${ready.user.tag}, em ${ready.guilds.cache.size} servidor(es). Suporte: #${supportName}. Equipe: ${staffNames.join(', ')}. Registro: ${logName ? `#${logName}` : '(nenhum)'}.`)
 })
 client.on(Events.Error, (error) => console.error('discord: erro do cliente', error.message))
 process.on('unhandledRejection', (error) => console.error('discord: erro sem tratamento', error instanceof Error ? error.message : error))
