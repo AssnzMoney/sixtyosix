@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch } from '../server/supplier.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
+import { providerAlertFromEnv } from '../server/provider-alert.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
@@ -143,6 +144,8 @@ const modelEntry=(id:string,label?:string)=>({id,object:'model',type:'model',dis
 type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string}
 /** Revezamento das keys do provedor entre as chamadas. */
 let keyTurn=0
+/** E-mail para a administração quando o fornecedor recusa a key mestra ou fica instável (server/provider-alert.ts). */
+const providerAlert=providerAlertFromEnv()
 /** Resumo, uma vez por minuto no log, do limite do fornecedor: quantas chamadas a espera salvou e quantas não deu. */
 const limits={recovered:0,failed:0,other:0,since:Date.now()}
 function limitStats(kind:'recovered'|'failed'|'other'){
@@ -312,6 +315,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     throw error
   }finally{
     stopPing()
+    // Saúde do fornecedor para o alerta. Chamada que o próprio cliente cancelou não conta como falha.
+    if(!controller.signal.aborted)providerAlert.record(provider.name,status)
     // Contar tokens (/v1/messages/count_tokens) não é uso do modelo: não entra no consumo.
     if(!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:status,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
   }
