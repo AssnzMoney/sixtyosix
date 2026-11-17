@@ -112,7 +112,7 @@ export function createAgent(env: Env, request: typeof fetch = fetch) {
             const response = await request(supplierUrl(route.provider.url, '/v1/chat/completions'), {
               method: 'POST',
               headers: { 'content-type': 'application/json', authorization: `Bearer ${key}`, 'x-api-key': key },
-              body: JSON.stringify({ model: route.upstream, max_tokens: 1200, temperature: 0.3, messages }),
+              body: JSON.stringify({ model: route.upstream, max_tokens: 1200, messages }),
               signal: AbortSignal.timeout(90000),
             })
             status = response.status
