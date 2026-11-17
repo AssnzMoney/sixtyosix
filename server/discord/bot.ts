@@ -43,18 +43,29 @@ client.on(Events.GuildMemberAdd, (member) => {
   ensureRole(member, 'Entrou no servidor').catch((error) => console.error('discord: erro ao dar cargo', error instanceof Error ? error.message : error))
 })
 
+/** Confere todo mundo do servidor e dá o cargo a quem ainda não tem. */
+async function review(guild: Guild) {
+  try {
+    warned.clear()
+    const members = await guild.members.fetch()
+    let given = 0
+    for (const member of members.values()) if (await ensureRole(member, 'Cargo automático')) given++
+    console.log(`discord: ${guild.name}: ${members.size} membros conferidos, ${given} receberam cargo agora.`)
+  } catch (error) {
+    console.error('discord: não consegui conferir os membros', guild.name, error instanceof Error ? error.message : error)
+  }
+}
+
 client.once(Events.ClientReady, async (ready) => {
   console.log(`Bot do Discord online como ${ready.user.tag}, em ${ready.guilds.cache.size} servidor(es). Cargos automáticos: ${memberRole} (pessoas) e ${botRole} (bots).`)
-  for (const guild of ready.guilds.cache.values()) {
-    try {
-      const members = await guild.members.fetch()
-      let given = 0
-      for (const member of members.values()) if (await ensureRole(member, 'Cargo automático')) given++
-      console.log(`discord: ${guild.name}: ${members.size} membros conferidos, ${given} receberam cargo agora.`)
-    } catch (error) {
-      console.error('discord: não consegui conferir os membros', guild.name, error instanceof Error ? error.message : error)
-    }
-  }
+  for (const guild of ready.guilds.cache.values()) await review(guild)
+})
+
+// Mexeram na ordem ou nas permissões dos cargos (ex.: subiram o cargo do bot): confere todo mundo de novo.
+const pending = new Map<string, ReturnType<typeof setTimeout>>()
+client.on(Events.GuildRoleUpdate, (_before, role) => {
+  clearTimeout(pending.get(role.guild.id))
+  pending.set(role.guild.id, setTimeout(() => void review(role.guild), 3000))
 })
 client.on(Events.Error, (error) => console.error('discord: erro do cliente', error.message))
 process.on('unhandledRejection', (error) => console.error('discord: erro sem tratamento', error instanceof Error ? error.message : error))
