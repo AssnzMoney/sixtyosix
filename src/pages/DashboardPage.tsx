@@ -277,8 +277,11 @@ function DashboardNumber({
   const reducedMotion = false
   const target = useRef<HTMLSpanElement>(null)
   const visible = useInView(target, { amount: 0.3 })
-  const divisor = format === "compact" ? (value >= 1000000 ? 1000000 : value >= 1000 ? 1000 : 1) : 1
-  const suffix = format === "percent" ? "%" : divisor === 1000000 ? " mi" : divisor === 1000 ? " mil" : ""
+  // Escala do número: mil, mi, bi e tri (antes parava em "mi" e 1,5 bilhão aparecia como "1.500 mi").
+  const scales: Array<[number, string]> = [[1e12, " tri"], [1e9, " bi"], [1e6, " mi"], [1e3, " mil"]]
+  const scale = format === "compact" ? scales.find(([size]) => value >= size) : undefined
+  const divisor = scale ? scale[0] : 1
+  const suffix = format === "percent" ? "%" : scale ? scale[1] : ""
   const decimals = format === "money" ? 2 : format === "percent" || format === "decimal" ? 1 : divisor > 1 ? 2 : 0
   const label =
     format === "money"
