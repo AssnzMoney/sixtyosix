@@ -36,6 +36,7 @@ import {
   Info,
   MessageSquare,
   Trophy,
+  CalendarClock,
 } from "lucide-react"
 import { motion, useInView } from "framer-motion"
 import { useAuth } from "../lib/AuthContext"
@@ -61,6 +62,8 @@ import { purchaseMessage, supportWhatsappLink } from "../lib/whatsapp"
 import { STATE_LABELS, credentialTitle, deliveryConfirmationText, type DeliveryProduct } from "../lib/deliveries"
 import SiteChat from "../components/SiteChat"
 import RankPanel from "../components/RankPanel"
+import { billingRequest, type BillingState } from "../lib/billing"
+import { isLocalhost } from "../lib/isLocalhost"
 import NumberRoller from "../components/ui/number-roller"
 import { PRO_BASE_MODELS, ROUTER_MODEL_NAMES } from "../lib/routerModels"
 import "./dashboard.css"
@@ -404,13 +407,21 @@ export default function DashboardPage() {
   const ownData = accountData?.owner === session?.user.id ? accountData : null
   const keys = ownData?.keys || []
   const trial = ownData?.trial ?? null
-  const subscription = ownData?.subscription ?? null
+  // Prévia local sem conta (/dashboard?demo=1&plano=pix-2, cartao-2 ou pix-18): plano de exemplo para revisar a
+  // contagem de dias e o lembrete de renovação. Só no computador local; no site, nada é simulado.
+  const demoPlan = preview && isLocalhost() ? new URLSearchParams(window.location.search).get("plano") : null
+  const demoSubscription = demoPlan && /^(pix|cartao)-\d+$/.test(demoPlan)
+    ? { id: "demo", plan: "pro", name: "Pro", amount: 119.99, api: true, models: PRO_BASE_MODELS, active: true, expires: new Date(Date.now() + Number(demoPlan.split("-")[1]) * 86400000 - 3600000).toISOString(), status: demoPlan.startsWith("pix") ? "approved" : "authorized", mode: demoPlan.startsWith("pix") ? "pix" : "recurring" }
+    : null
+  const subscription = ownData?.subscription ?? demoSubscription
   const [devWithApi, setDevWithApi] = useState(false)
   const [accountError, setAccountError] = useState("")
   const [busy, setBusy] = useState(false)
   const [keyState, setKeyState] = useState<"idle" | "loading" | "loaded" | "error">("idle")
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [refresh, setRefresh] = useState(0)
+  // "Já paguei" do lembrete de renovação: conferindo no Mercado Pago, ou não achou a renovação ainda.
+  const [renewCheck, setRenewCheck] = useState<"idle" | "checking" | "notFound">("idle")
   const [gateway, setGateway] = useState<GatewayStatus>("checking")
   const [credentials, setCredentials] = useState<{
     status: "idle" | "loading" | "ready" | "unavailable" | "error"
@@ -1025,6 +1036,32 @@ ANTHROPIC_MODEL=${guideModel}`
           ? "Teste encerrado"
           : "Sem acesso vinculado"
 
+  // Quanto falta para o plano acabar (aba de plano) e o lembrete de renovação nos últimos 3 dias.
+  const DAY = 86400000
+  const planEnd = subscription?.expires ? Date.parse(subscription.expires) : NaN
+  const msLeft = Number.isFinite(planEnd) ? planEnd - Date.now() : NaN
+  const daysLeft = Number.isFinite(msLeft) ? Math.ceil(msLeft / DAY) : null
+  // Cartão renova sozinho pelo Mercado Pago; Pix (e cartão com a renovação cancelada) precisa pagar de novo.
+  const autoRenews = Boolean(subscription && subscription.mode !== "pix" && subscription.status !== "cancelled")
+  const renewSoon = Boolean(subscription?.active && daysLeft !== null && daysLeft <= 3)
+  const endTime = Number.isFinite(planEnd) ? new Date(planEnd).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""
+  const endDay = Number.isFinite(planEnd) ? new Date(planEnd).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) : ""
+  const endsToday = Number.isFinite(msLeft) && msLeft < DAY
+  const planExpired = Boolean(subscription && !subscription.active && Number.isFinite(planEnd) && planEnd <= Date.now())
+  async function checkRenewal() {
+    if (!subscription) return
+    setRenewCheck("checking")
+    try {
+      const state = await billingRequest<BillingState>("sync", {})
+      const fresh = state.subscriptions.find((s) => s.id === subscription.id)
+      // Renovou: a validade passou da que estava; o lembrete some quando o painel atualiza.
+      setRenewCheck(fresh?.expires && Date.parse(fresh.expires) > planEnd + 3600000 ? "idle" : "notFound")
+    } catch {
+      setRenewCheck("notFound")
+    }
+    setRefresh((v) => v + 1)
+  }
+
   const credentialsKnown = preview || credentials.status === "ready" || credentials.status === "unavailable"
   const needsSetup =
     activeCredentials.length === 0 && !keys.some((k) => k.active) && (preview || (keyState === "loaded" && credentialsKnown))
@@ -1301,6 +1338,56 @@ ANTHROPIC_MODEL=${guideModel}`
                   </button>
                 </>
               )}
+            </div>
+          )}
+
+          {renewSoon && subscription && (
+            <div className={`six-renew-banner${autoRenews ? "" : " is-due"}`} role="status">
+              <span className="six-paid-banner-text">
+                <CalendarClock size={20} aria-hidden="true" />
+                <span>
+                  {autoRenews ? (
+                    <>
+                      <strong>
+                        Seu plano {subscription.name} renova {endsToday ? `hoje, às ${endTime}` : `em ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"} (${endDay})`}.
+                      </strong>{" "}
+                      A cobrança é no cartão, pelo Mercado Pago. Confira se o cartão tem limite para não ficar sem acesso.
+                    </>
+                  ) : (
+                    <>
+                      <strong>
+                        Seu plano {subscription.name} acaba {endsToday ? `hoje, às ${endTime}` : `em ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"} (${endDay})`}.
+                      </strong>{" "}
+                      Já renovou? Se ainda não, renove agora: os dias que faltam continuam valendo, a renovação começa depois deles.
+                    </>
+                  )}
+                  {renewCheck === "notFound" && (
+                    <span className="six-renew-note">
+                      Ainda não encontramos a renovação. O Pix pode levar alguns minutos; se já faz mais tempo,{" "}
+                      <a href={supportLink("Olá! Renovei meu plano SixtySix e ainda não apareceu no painel.")} target="_blank" rel="noopener noreferrer">
+                        fale com a gente
+                      </a>
+                      .
+                    </span>
+                  )}
+                </span>
+              </span>
+              <span className="six-renew-actions">
+                {autoRenews ? (
+                  <button type="button" className="six-secondary" onClick={() => switchTab("plan")}>
+                    Ver meu plano
+                  </button>
+                ) : (
+                  <>
+                    <Link className="six-primary" to={`/comprar/${subscription.plan}`}>
+                      Renovar agora <ArrowRight size={15} />
+                    </Link>
+                    <button type="button" className="six-secondary" disabled={renewCheck === "checking"} onClick={() => void checkRenewal()}>
+                      {renewCheck === "checking" ? "Conferindo…" : "Já paguei"}
+                    </button>
+                  </>
+                )}
+              </span>
             </div>
           )}
 
@@ -2419,6 +2506,27 @@ sudo apt update && sudo apt install claude-desktop`}
                 <section className="six-panel six-plan-main">
                   <span className="six-step-badge">Minha assinatura</span>
                   <h2>{preview ? "Entre para ver seu plano" : planTitle}</h2>
+                  {subscription?.active && daysLeft !== null && (
+                    <div className={`six-plan-countdown${renewSoon ? " is-soon" : ""}`}>
+                      <strong>{endsToday ? "Hoje" : daysLeft}</strong>
+                      <span>
+                        {endsToday
+                          ? `seu plano ${autoRenews ? "renova" : "acaba"} hoje, às ${endTime}`
+                          : `${daysLeft === 1 ? "dia" : "dias"} para o seu plano ${autoRenews ? "renovar" : "acabar"}`}
+                        <small>
+                          {autoRenews ? "Renova no cartão em " : "Vence em "}
+                          {fullDateTime(subscription.expires!)}
+                        </small>
+                      </span>
+                      <i aria-hidden="true" style={{ ["--fill" as string]: `${Math.max(3, Math.min(100, (msLeft / (30 * DAY)) * 100))}%` }} />
+                    </div>
+                  )}
+                  {planExpired && subscription && (
+                    <p className="six-plan-expired">
+                      Seu plano venceu em {fullDateTime(subscription.expires!)}.{" "}
+                      <Link to={`/comprar/${subscription.plan}`}>Renovar agora</Link>
+                    </p>
+                  )}
                   {subscription && (
                     <p>
                       {subscription.expires

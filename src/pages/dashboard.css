@@ -3506,3 +3506,112 @@
   overflow-wrap: anywhere;
   user-select: all;
 }
+
+/* --------------------------------------------------------------------------
+   Validade do plano: contagem na aba de plano e lembrete de renovação (últimos 3 dias)
+   -------------------------------------------------------------------------- */
+.six-renew-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 18px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(22, 163, 74, 0.3);
+  border-radius: 20px;
+  background: var(--track);
+}
+.six-renew-banner.is-due {
+  border-color: rgba(217, 119, 6, 0.38);
+  background: var(--warning-soft);
+}
+.six-renew-banner.is-due .six-paid-banner-text svg {
+  color: var(--warning);
+}
+.six-renew-note {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.six-renew-note a {
+  color: var(--green-text);
+  font-weight: 700;
+}
+.six-renew-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.six-renew-actions :is(.six-primary, .six-secondary) {
+  height: 40px;
+}
+
+.six-plan-countdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 14px;
+  padding: 14px 16px 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface-2);
+}
+.six-plan-countdown > strong {
+  min-width: 2ch;
+  color: var(--ink);
+  font: 800 38px/1 'Fustat', sans-serif;
+  letter-spacing: -0.04em;
+}
+.six-plan-countdown > span {
+  display: grid;
+  gap: 2px;
+  font-weight: 700;
+}
+.six-plan-countdown small {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.six-plan-countdown > i {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 8px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+}
+.six-plan-countdown > i::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fill, 100%);
+  border-radius: inherit;
+  background: var(--em);
+}
+.six-plan-countdown.is-soon {
+  border-color: rgba(217, 119, 6, 0.38);
+  background: var(--warning-soft);
+}
+.six-plan-countdown.is-soon > strong {
+  color: var(--warning);
+}
+.six-plan-countdown.is-soon > i::after {
+  background: var(--warning);
+}
+.six-plan-expired {
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-weight: 600;
+}
+.six-plan-expired a {
+  color: inherit;
+  text-decoration: underline;
+}
