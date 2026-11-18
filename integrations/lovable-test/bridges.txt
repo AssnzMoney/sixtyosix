@@ -1,0 +1,4 @@
+# Adicione aqui as URLs das pontes da Lovable (uma por linha)
+# O servidor faz rotação e failover automático se alguma conta der 402 (saldo esgotado).
+https://bright-byte-bulletin.lovable.app/api/public/six-test/v1
+https://radar-tech-ticker.lovable.app/api/public/six-test/v1
