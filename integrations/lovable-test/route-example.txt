@@ -1,0 +1,19 @@
+COPIAR PARA O PROJETO LOVABLE; NÃO É UMA ROTA DA SIX.
+
+Copie handler.ts para src/lib/six-test-bridge.server.ts.
+Crie src/routes/api/six-test/v1/chat/completions.ts:
+
+import { createFileRoute } from '@tanstack/react-router';
+import { createTestBridge } from '@/lib/six-test-bridge.server';
+const handle = createTestBridge(process.env);
+export const Route = createFileRoute('/api/six-test/v1/chat/completions')({
+  server: { handlers: { POST: ({ request }) => handle(request) } },
+});
+
+O exemplo precisa de build no Lovable para validar os tipos e a rota gerada.
+Configurar via Secrets, nunca no chat ou fonte:
+SIX_TEST_BRIDGE_KEY: segredo aleatório de ao menos 32 caracteres, diferente de LOVABLE_API_KEY.
+SIX_TEST_BRIDGE_EXPIRES_AT: ISO UTC futuro, no máximo uma hora.
+LOVABLE_API_KEY: permanece a variável gerenciada do projeto; não copiar.
+
+Nenhum deploy/publicação é feito pelos arquivos deste diretório.

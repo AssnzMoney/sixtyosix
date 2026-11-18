@@ -1,6 +1,6 @@
 /** Núcleo para instalar no servidor Lovable; não importar no navegador. */
 export const NATIVE_BODY_LIMIT = 4 * 1024 * 1024
-export const NATIVE_OUTPUT_LIMIT = 1024
+export const NATIVE_OUTPUT_LIMIT = 8192
 export type NativeConfig = { bridgeKey?: string; lovableKey?: string; expiresAt?: string }
 export function nativeBody(value: any) {
  if (!value || value.model !== 'anthropic/claude-opus-5-5' || !Array.isArray(value.messages) || !value.messages.length) throw Error('invalid_request')

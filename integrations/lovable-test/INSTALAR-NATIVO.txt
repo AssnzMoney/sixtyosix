@@ -1,0 +1,9 @@
+No projeto atual, acrescente uma ponte Anthropic nativa para o teste LOCAL do Claude Desktop. A ponte Chat Completions atual é pequena demais para contexto e ferramentas. Não alterar a Six de produção.
+
+1. Copie o arquivo anexo native-messages.server.ts para src/lib/six-native-messages.server.ts. Ele já contém autenticação, expiração, limite de corpo de 4 MiB, teto de 1.024 tokens de saída, até três tentativas por instância, timeout de 60 segundos e encaminhamento nativo do stream. A trava por instância não é orçamento global.
+2. Crie src/routes/api/public/six-test/v1/messages.ts usando o conteúdo de native-route-example.txt. Reutilize os Secrets existentes. Não exiba seus valores.
+3. Preserve system, histórico, tools, tool_choice, tool_use e tool_result. Modelo permitido somente anthropic/claude-opus-5-5. O upstream é https://ai.gateway.lovable.dev/v1/messages, autenticado com Authorization: Bearer usando LOVABLE_API_KEY. Não converter para Chat Completions nem fabricar SSE ou resposta OK. O modo de teste limita a saída e desativa o raciocínio estendido.
+4. Preserve a rota Chat Completions antiga, Apenas convidados e os bloqueios dos quatro botões. Não invente contagem de tokens: o gateway local já retorna 404 explícito em count_tokens; isso não é a causa do 413.
+5. Rode testes simulados de autenticação, expiração, contexto acima de 256 KiB, ferramentas, streaming, limite de 4 MiB, saída e três tentativas. Compile. Não execute chamadas reais neste preparo. Avise quando a alteração estiver pronta para publicar e se a expiração atual já venceu.
+
+Arquivos anexos: native-messages.server.ts e native-route-example.txt.

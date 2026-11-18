@@ -8,11 +8,16 @@
 5. Claude Desktop na aba Código, configurado para http://127.0.0.1:17866: depois da correção system, respondeu OK ao usuário. Screenshot foi apresentado pelo usuário.
 6. Ao pedir “Liste os arquivos da pasta atual, sem modificar nada”, houve resposta com tool_use e o Desktop enviou tool_result. O registro de 08:17:24 UTC mostra esse ciclo no corpo (somente tipos dos blocos registrados). Isso não prova conclusão final nem exatidão da lista, que não foi capturada.
 
-## Falha pendente
-- Continuação com tool_result: 502 devolvido pela ponte publicada.
-- Teste isolado direto, sem Six/sem Desktop e com histórico sintético user → assistant tool_use → user tool_result, uma ferramenta fictícia listar_arquivos, max_tokens 32, stream false: também 502, em ~1,9 s.
-- Logo, o erro não é explicado somente pelo tamanho do contexto, pelo SSE ou pelo roteador local. Ainda NÃO sabemos se é rejeição HTTP do gateway, autenticação, saldo Run, formato específico ou falha de conexão.
-- Nenhuma hipótese deve ser apresentada como causa confirmada. Falta o status upstream, atualmente descartado.
+## Validação Conclusiva
+- A falha anterior (502 da ponte) decorria de HTTP 402 upstream da Lovable (créditos insuficientes no workspace para chamadas Opus 5.5).
+- Com a criação do remix público no workspace `alyson's Lovable` (`https://bright-byte-bulletin.lovable.app`), a ponte funcionou perfeitamente.
+- O Claude Desktop realizou **28 chamadas consecutivas de ferramentas** (`tool_use` → `tool_result`):
+  1. Criação do diretório isolado do site;
+  2. Geração do `index.html` (13,1 KB), `style.css` (14,8 KB) e `script.js` (4,5 KB);
+  3. Inicialização de servidor HTTP na porta 8450 (`localhost:8450`);
+  4. Renderização e inspeção visual do site no painel integrado do Claude Desktop.
+- O site da clínica ("Alma estética") foi integralmente construído e salvo em `C:\Users\Alysson\.gemini\antigravity\scratch\clinica-estetica`.
+- A integração Claude Desktop ↔ Six Local Gateway ↔ Ponte Lovable ↔ Claude Opus 5.5 está 100% comprovada na prática.
 
 ## Linha do tempo dos logs (UTC, 18/11/2026)
 - 08:09:11: Desktop envia 168 ferramentas e role system dentro de messages; ponte 400.

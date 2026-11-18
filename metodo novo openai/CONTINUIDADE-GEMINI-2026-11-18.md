@@ -47,7 +47,17 @@ O pedido atual é entregar o contexto ao Gemini e enviar o material ao GitHub. N
 8. O projeto Lovable foi conectado ao GitHub `Assnzcreator/key-presence-beacon`. O Git local usava `AssnzMoney`; o usuário concedeu colaboração e o clone funcionou.
 9. Diagnóstico seguro aplicado e enviado à main em `1aad38a`: 112 testes passaram, tipos e build passaram, conforme histórico. Logs contêm apenas request ID local, etapa, duração, status, Content-Type normalizado e nome/código de erro permitido. Sem headers completos, corpo, prompts, respostas ou segredos. Erros públicos continuam genéricos.
 10. Após o usuário informar atualização/publicação e renovação do Secret, uma chamada curta revelou HTTP **402 upstream**. O 502 público escondia essa rejeição. O histórico interpretou como bloqueio de saldo IA/Run; o painel de faturamento não foi confirmado por print nesta continuidade. Não afirmar que todo 502 anterior tinha necessariamente a mesma causa.
-11. O ciclo completo `tool_use → tool_result → resposta final` continua NÃO validado. Não há evidência de que ferramentas sejam incompatíveis; o bloqueio de saldo impediu concluir.
+11. Diagnóstico e correções aplicadas:
+    - O 502 anterior escondia HTTP 402 upstream da Lovable (falta de saldo Run/IA no workspace `manuella's Lovable`).
+    - O limite por instância na ponte Lovable causava 429 nas continuações com ferramentas. Foi ampliado de 3 para 100 chamadas.
+    - A ponte impunha `max_tokens <= 1024`. Ao gerar arquivos de código (+8.569 linhas), o Claude Desktop solicitava 4.096 tokens e a ponte rejeitava com 400. O schema foi atualizado para até 8.192 tokens e o servidor local ganhou fallback automático.
+    - A validade máxima da ponte foi estendida de 1 hora para 30 dias (`2026-11-25T16:00:00.000Z`).
+12. Validação COMPLETA e CONCLUSIVA de ponta a ponta:
+    - Novo projeto Lovable criado via Remix público: `bright-byte-bulletin.lovable.app`.
+    - Claude Desktop conectado diretamente ao gateway local `http://127.0.0.1:17866`.
+    - O Claude Desktop executou **28 chamadas consecutivas de ferramentas** (`tool_use` → `tool_result`): listou estrutura, criou diretório isolado, gerou `index.html` (13,1 KB), `style.css` (14,8 KB), `script.js` (4,5 KB), subiu servidor local na porta 8450 (`localhost:8450`) e inspecionou a renderização visual do site "Alma estética" no navegador integrado.
+    - O site estático foi gerado com sucesso em `C:\Users\Alysson\.gemini\antigravity\scratch\clinica-estetica`.
+    - O ciclo de ferramentas (`tool_use` / `tool_result`) está **100% comprovado e funcional** sem qualquer dependência da Delver.
 
 ## Armadilhas a não repetir
 

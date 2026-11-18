@@ -8,7 +8,7 @@
  *
  * Sem retry: cada execução gasta uma das 3 tentativas da instância da ponte e créditos de IA.
  */
-const PONTE = 'https://key-presence-beacon.lovable.app/api/public/six-test/v1/messages'
+const PONTE = process.env.SIX_TEST_BRIDGE_URL || 'https://radar-tech-ticker.lovable.app/api/public/six-test/v1/messages'
 
 const chave = process.env.SIX_TEST_BRIDGE_KEY
 if (!chave || chave.length < 32) {
