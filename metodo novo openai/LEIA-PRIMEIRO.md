@@ -1,4 +1,6 @@
-# Continuidade para Claude — método novo OpenAI / Lovable / Six
+# Continuidade para Claude - método novo OpenAI / Lovable / Six
+
+> **Atualização para Gemini (18/11/2026): leia primeiro [CONTINUIDADE-GEMINI-2026-11-18.md](CONTINUIDADE-GEMINI-2026-11-18.md).** O diagnóstico foi posteriormente enviado ao repositório Lovable e uma tentativa revelou HTTP 402 upstream. As afirmações abaixo de diagnóstico ainda não publicado e causa desconhecida são históricas e foram substituídas pela atualização.
 
 Preparado em 18/11/2026. Leia este documento, ESTADO-E-EVIDENCIAS.md, HISTORICO-E-ERROS.md e PROXIMOS-PASSOS.md antes de agir.
 
