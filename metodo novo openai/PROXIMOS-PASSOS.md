@@ -1,5 +1,16 @@
 # Próximos passos — ordem para economizar tempo e créditos
 
+## Atualização 18/11/2026 (Claude Code)
+- Escopo: teste pessoal no workspace próprio. Não ligar a clientes nem usar como fornecedor da Six: os termos da
+  Lovable proíbem disponibilizar o serviço a terceiros ("resell, provide, or make the Services available to any third party").
+- `codigo/integrations/lovable-test/lovable-source/six-test-messages-bridge.server.ts` agora devolve ao chamador autenticado
+  o status, o tipo e a mensagem (cortada e limpa) da recusa do gateway, mais cabeçalhos `X-Six-Bridge-*`. Log sem mensagem.
+- `lovable-source/bridge-real.test.ts` testa o arquivo REAL com gateway simulado (zod 3 fora do repo via `SIX_ZOD_DIR`).
+  21 testes passando no checkout da Six. Continua NÃO publicado na Lovable.
+- `probe-ponte-tool-result.ts`: uma chamada única com histórico sintético tool_use → tool_result.
+- `PUBLICAR-DIAGNOSTICO.md`: passo a passo. Bloqueio atual: não há repositório GitHub conhecido do projeto
+  key-presence-beacon (nenhum público; nomes prováveis não existem) e o editor está Read only.
+
 1. Leia o código ORIGINAL baixado da Lovable e compare com o arquivo com diagnóstico. Não alegue que testes simulados revelam a causa do 502 real. O estado do servidor publicado é o original, sem diagnóstico.
 2. Verifique acesso ao projeto Lovable e à possível sincronização GitHub. Conta atual do navegador integrado não tem acesso; URL terminou com permissionView=requestSent. O usuário pediu navegador integrado, não Chrome nativo. Não estamos logados na conta certa nesse navegador. Se for necessário login/autorização, o usuário deve fazer o passo protegido no destino correto; nunca copiar cookies/tokens de outro navegador.
 3. Editor Lovable exibiu “Read only / Upgrade”. Créditos de edição acabaram. Não usar métodos ocultos para ignorar o bloqueio. Conexão legítima GitHub é alternativa a investigar; não foi estabelecida na conversa. O repo da Six não é o repo Lovable.
