@@ -8,6 +8,7 @@ import { localBudgetExhausted, localBridgeFailure } from './local-test-errors.ts
 import { createHash, randomBytes } from 'node:crypto'
 import accessHandler from '../../api/access.ts'
 import { clearRouterCache, sealSecret } from '../../server/router.ts'
+import { sortearMatriz, registrarNovaMatriz, marcarMatrizMorta, carregarMatrizes } from './matrix-pool.ts'
 
 const mock = process.argv.includes('--mock')
 const bridgeKey = mock ? 'local-simulated-key-1234567890123456' : process.env.SIX_TEST_BRIDGE_KEY
@@ -21,7 +22,7 @@ const alias = 'claude-opus-5-5'
 const bridgeDispatcher = 'https://six-bridge-dispatcher.local/v1'
 
 const bridgesFile = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
-function getBridgePool(): string[] {
+export function getBridgePool(): string[] {
     const fromEnv = process.env.SIX_TEST_BRIDGE_URLS
         ? process.env.SIX_TEST_BRIDGE_URLS.split(',').map(s => s.trim()).filter(Boolean)
         : []
@@ -128,13 +129,98 @@ const server = createServer(async (req, res) => {
     const summary: any = { method: req.method, path: u.pathname }
     res.on('finish', () => diagnostic({ ...summary, status: res.statusCode, externalCalls, bridgeStatus }))
     try {
-        if (u.pathname === '/' && ['GET', 'HEAD'].includes(req.method || '')) { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ ok: true, mode: 'six-local-test' })); return }
+        if (u.pathname === '/' && ['GET', 'HEAD'].includes(req.method || '')) {
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ ok: true, mode: 'six-local-test', active_bridge_pool: getBridgePool().length, matrices: carregarMatrizes().length }))
+            return
+        }
+
+        // --- ENDPOINTS DO SISTEMA DE MATRIZES E AUTO-REGISTRO ---
+        if (u.pathname === '/api/public/v1/matrix/next' && req.method === 'GET') {
+            const matrixId = sortearMatriz()
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({
+                ok: Boolean(matrixId),
+                matrix_id: matrixId,
+                remix_url: matrixId ? `https://lovable.dev/projects/${matrixId}/remix` : null
+            }))
+            return
+        }
+
         if (req.method === 'POST') {
             const chunks: Buffer[] = []; let size = 0
             for await (const part of req) { const bytes = Buffer.from(part); size += bytes.length; if (size > NATIVE_BODY_LIMIT) { res.statusCode = 413; res.end(); return } chunks.push(bytes) }
             const raw = Buffer.concat(chunks); (req as any).body = raw
+
+            // Auto-registro de Remixes/Workers (chamado pelo child-handshake)
+            if (u.pathname === '/api/public/v1/workers/register') {
+                try {
+                    const data = JSON.parse(raw.toString('utf8'))
+                    const origin = data.project_origin ? new URL(data.project_origin).origin : null
+                    if (!origin) {
+                        res.statusCode = 400
+                        res.setHeader('Content-Type', 'application/json')
+                        res.end(JSON.stringify({ error: 'invalid_origin', registered: false }))
+                        return
+                    }
+
+                    const bridgeUrl = `${origin}/api/public/six-test/v1`
+                    const pool = getBridgePool()
+                    if (!pool.includes(bridgeUrl)) {
+                        appendFileSync(bridgesFile, bridgeUrl + '\n')
+                        console.log(`[AUTO-REGISTRO] Novo worker registrado e adicionado ao pool: ${bridgeUrl}`)
+                        diagnostic({ phase: 'auto-registration-success', origin, bridgeUrl })
+                    }
+
+                    const workerId = 'wrk_' + randomBytes(12).toString('hex')
+                    res.statusCode = 200
+                    res.setHeader('Content-Type', 'application/json')
+                    res.end(JSON.stringify({ registered: true, worker_id: workerId }))
+                    return
+                } catch (e) {
+                    res.statusCode = 400
+                    res.setHeader('Content-Type', 'application/json')
+                    res.end(JSON.stringify({ error: 'invalid_json', registered: false }))
+                    return
+                }
+            }
+
+            // Registrar nova matriz no pool de matrizes
+            if (u.pathname === '/api/public/v1/matrix/register') {
+                try {
+                    const data = JSON.parse(raw.toString('utf8'))
+                    const id = String(data.project_id || '').trim()
+                    const ok = registrarNovaMatriz(id)
+                    res.setHeader('Content-Type', 'application/json')
+                    res.end(JSON.stringify({ ok, registered: ok, project_id: id }))
+                    return
+                } catch {
+                    res.statusCode = 400
+                    res.end(JSON.stringify({ error: 'invalid_payload' }))
+                    return
+                }
+            }
+
+            // Relatar matriz morta (403/404)
+            if (u.pathname === '/api/public/v1/matrix/report-dead') {
+                try {
+                    const data = JSON.parse(raw.toString('utf8'))
+                    const id = String(data.project_id || '').trim()
+                    const reason = String(data.reason || 'unspecified').trim()
+                    marcarMatrizMorta(id, reason)
+                    res.setHeader('Content-Type', 'application/json')
+                    res.end(JSON.stringify({ ok: true, removed: id }))
+                    return
+                } catch {
+                    res.statusCode = 400
+                    res.end(JSON.stringify({ error: 'invalid_payload' }))
+                    return
+                }
+            }
+
             try { const body = JSON.parse(raw.toString('utf8')); Object.assign(summary, { model: body.model, stream: body.stream, tools: body.tools?.length || 0, messageRoles: body.messages?.map((m: any) => m.role), contentTypes: body.messages?.map((m: any) => Array.isArray(m.content) ? m.content.map((c: any) => c.type) : typeof m.content), fixedPrompt: body.messages?.length === 1 && (body.messages[0].content === 'Responda apenas OK' || (Array.isArray(body.messages[0].content) && body.messages[0].content.every((c: any) => c.type === 'text') && body.messages[0].content.map((c: any) => c.text).join('') === 'Responda apenas OK')) }) } catch { }
         }
+
         if (u.pathname.startsWith('/v1/')) req.url = '/api/access?action=proxy&path=' + encodeURIComponent(u.pathname)
         await accessHandler(req, res)
     } catch { if (!res.headersSent) { res.statusCode = 500; res.end('Local test error') } else res.destroy() }
@@ -145,6 +231,5 @@ console.log('READY http://127.0.0.1:17866')
 const stop = (reason?: string) => { console.log('STOPPING SERVER:', reason); server.closeAllConnections(); server.close(() => process.exit(0)) }
 process.on('SIGTERM', () => stop('SIGTERM'))
 process.on('SIGINT', () => stop('SIGINT'))
-// Rodar continuamente sem timeout automático; se configurado SIX_LOCAL_TIMEOUT_MS, respeita o valor
 const timeoutMs = process.env.SIX_LOCAL_TIMEOUT_MS ? Number(process.env.SIX_LOCAL_TIMEOUT_MS) : 0
 if (timeoutMs > 0) setTimeout(() => stop('TIMEOUT'), timeoutMs)
