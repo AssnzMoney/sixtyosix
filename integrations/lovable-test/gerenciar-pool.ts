@@ -41,6 +41,23 @@ switch (cmd) {
         }
         break
     }
+    case 'add-bridge': {
+        if (!arg1) {
+            console.log('❌ Informe a URL da ponte. Exemplo: add-bridge https://meu-projeto.lovable.app/api/public/six-test/v1')
+        } else {
+            const bridgesFile = 'integrations/lovable-test/bridges.txt'
+            const pool = getBridgePool()
+            if (pool.includes(arg1.trim())) {
+                console.log(`⚠️ Ponte ${arg1} já existe no pool.`)
+            } else {
+                import('node:fs').then(({ appendFileSync }) => {
+                    appendFileSync(bridgesFile, arg1.trim() + '\n')
+                    console.log(`✅ Ponte ${arg1.trim()} adicionada com sucesso ao bridges.txt!`)
+                })
+            }
+        }
+        break
+    }
     case 'mata-matriz': {
         if (!arg1) {
             console.log('❌ Informe o ID do projeto a ser desativado.')

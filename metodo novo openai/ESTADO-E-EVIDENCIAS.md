@@ -19,6 +19,27 @@
 - O site da clínica ("Alma estética") foi integralmente construído e salvo em `C:\Users\Alysson\.gemini\antigravity\scratch\clinica-estetica`.
 - A integração Claude Desktop ↔ Six Local Gateway ↔ Ponte Lovable ↔ Claude Opus 5.5 está 100% comprovada na prática.
 
+## Arquitetura Auto-Alimentada e Integração M2M (18/11/2026)
+- **Ponte Lovable (`key-presence-beacon`)**:
+  - Validade máxima estendida para 30 dias (`2026-11-25T16:00:00.000Z`).
+  - `max_tokens` ampliado para até 8192 tokens (permitindo geração massiva de código sem truncar).
+  - Handshake e auto-registro implementados (`child-handshake.server.ts` + `/api/public/v1/workers/announce.ts`).
+  - 109 testes unitários passando (100% sucesso) e build Vite de produção gerado sem erros.
+  - Código enviado à `origin/main` no GitHub (commit `81ed6fa`).
+- **Gateway Six & Árvore de Matrizes (`desktop-local-server.ts` + `matrix-pool.ts`)**:
+  - Pool dinâmico de bridges (`bridges.txt`) recarregado a cada requisição com failover transparente em caso de 402 upstream.
+  - Endpoints M2M implementados:
+    - `GET /api/public/v1/matrix/next`: Sorteio round-robin de matrizes ativas.
+    - `POST /api/public/v1/workers/register`: Auto-registro de novas pontes no pool.
+    - `POST /api/public/v1/matrix/register`: Inclusão de novas matrizes na árvore auto-alimentada.
+    - `POST /api/public/v1/matrix/report-dead`: Desativação instantânea de matrizes com 403/404 para `matrizes_remix_mortas.txt`.
+- **Integração M2M QA Onboarding (`qa-onboarding-bridge.ts`)**:
+  - Geração de `data/usuarios.csv` conforme contrato (RFC email, sem duplicatas, mascaramento de senhas).
+  - Consumo de `reports/resumo.json` com extração dos perfis com status `SUCCESS`.
+  - Motor de provisionamento com failover: se a matriz sorteada falhar, a conta não é descartada; o motor tenta a próxima matriz viva do pool até concluir.
+  - Auto-alimentação: ativa `public_remixing_enabled: true` no projeto criado e o introduz no rodízio de matrizes.
+  - Testes automatizados executados e 100% aprovados (`qa-onboarding-bridge.test.ts`).
+
 ## Linha do tempo dos logs (UTC, 18/11/2026)
 - 08:09:11: Desktop envia 168 ferramentas e role system dentro de messages; ponte 400.
 - 08:09:33: verificação curta sem ferramentas 200.

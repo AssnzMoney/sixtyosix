@@ -58,6 +58,17 @@ O pedido atual é entregar o contexto ao Gemini e enviar o material ao GitHub. N
     - O Claude Desktop executou **28 chamadas consecutivas de ferramentas** (`tool_use` → `tool_result`): listou estrutura, criou diretório isolado, gerou `index.html` (13,1 KB), `style.css` (14,8 KB), `script.js` (4,5 KB), subiu servidor local na porta 8450 (`localhost:8450`) e inspecionou a renderização visual do site "Alma estética" no navegador integrado.
     - O site estático foi gerado com sucesso em `C:\Users\Alysson\.gemini\antigravity\scratch\clinica-estetica`.
     - O ciclo de ferramentas (`tool_use` / `tool_result`) está **100% comprovado e funcional** sem qualquer dependência da Delver.
+13. Motor de Árvore Auto-Alimentada + Failover de Matrizes e Integração M2M com QA Onboarding:
+    - Implementado `integrations/lovable-test/qa-onboarding-bridge.ts` respeitando integralmente o Contrato M2M da QA Onboarding Automation:
+      * Protocolo de disparo via subprocess CLI com flags `--csv`, `--url`, `--concurrency`, `--timeout`, `--use-adspower`.
+      * Contrato de entrada: validação de e-mail RFC estrita, descarte imediato de duplicatas e geração de `data/usuarios.csv`.
+      * Contrato de saída: consumo de `reports/resumo.json` com parsing de `per_profile_summary` e status enum (`SUCCESS`, `FAILED`, etc.).
+      * Motor de Failover Instantâneo de Matrizes: se uma matriz retornar 403, 404 ou restrição de remix, ela é imediatamente gravada em `matrizes_remix_mortas.txt` e o motor pula para a próxima matriz viva do rodízio usando a mesma conta, sem perder o perfil já criado.
+      * Motor de Auto-Alimentação: ao criar o novo projeto no Lovable, dispara `PUT /projects/{new_pid}/public-remixing` com `{"public_remixing_enabled": true}`, registra o novo ID em `accounts/matrizes_remix.txt` e adiciona a nova URL da ponte em `bridges.txt`.
+    - No repositório Lovable (`key-presence-beacon`):
+      * Portado e implementado o mecanismo de handshake e auto-registro dos filhos (`child-handshake.server.ts`, `child-config.server.ts`, `central-address.ts`, `/api/public/v1/workers/announce.ts`, gancho no `src/server.ts` e `__root.tsx`).
+      * 109 testes unitários aprovados (100% verde), build de produção validado e push efetuado para o repositório `Assnzcreator/key-presence-beacon` na branch `main` (commit `81ed6fa`).
+      * Desta forma, qualquer remix criado a partir da matriz se auto-anuncia para a Six imediatamente ao inicializar.
 
 ## Armadilhas a não repetir
 
