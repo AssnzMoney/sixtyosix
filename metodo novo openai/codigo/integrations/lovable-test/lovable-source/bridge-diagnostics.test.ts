@@ -1,0 +1,6 @@
+import {test} from 'node:test'
+import assert from 'node:assert/strict'
+import {safeBridgeDiagnostic} from './bridge-diagnostics.ts'
+test('registra status sem headers secretos, corpo ou detalhes privados',()=>{const response=new Response('PRIVATE_BODY',{status:400,headers:{'content-type':'application/json; private=PRIVATE_TYPE',authorization:'PRIVATE_KEY'}});const output=safeBridgeDiagnostic('test','upstream_rejected',Date.now(),response);assert.equal(output.status,400);assert.equal(output.contentType,'application/json');assert.ok(!JSON.stringify(output).includes('PRIVATE'))})
+test('distingue rejeição HTTP de erro de conexão sem registrar mensagem',()=>{const error=Object.assign(new TypeError('PRIVATE_MESSAGE'),{cause:{code:'ECONNRESET'}});const output=safeBridgeDiagnostic('test','fetch_exception',Date.now(),undefined,error);assert.equal(output.errorName,'TypeError');assert.equal(output.errorCode,'ECONNRESET');assert.equal(output.status,undefined);assert.ok(!JSON.stringify(output).includes('PRIVATE'))})
+test('descarta nomes e códigos de erro não permitidos',()=>{const output=safeBridgeDiagnostic('test','fetch_exception',Date.now(),undefined,{name:'PRIVATE',code:'PRIVATE'});assert.equal(output.errorName,'OtherError');assert.equal(output.errorCode,undefined)})

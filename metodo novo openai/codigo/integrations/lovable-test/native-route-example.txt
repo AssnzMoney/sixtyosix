@@ -1,0 +1,10 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { createNativeBridge } from '@/lib/six-native-messages.server'
+const handle = createNativeBridge()
+export const Route = createFileRoute('/api/public/six-test/v1/messages')({
+ server: { handlers: { POST: ({ request }) => handle(request, {
+  bridgeKey: process.env.SIX_TEST_BRIDGE_KEY,
+  lovableKey: process.env.LOVABLE_API_KEY,
+  expiresAt: process.env.SIX_TEST_BRIDGE_EXPIRES_AT,
+ }) } },
+})
