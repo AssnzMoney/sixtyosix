@@ -259,8 +259,14 @@ export async function provisionarContaComFailover(
 // 4. PROTOCOLO DE DISPARO: SUBPROCESS CLI
 // -----------------------------------------------------------------------------
 
+export const DEFAULT_QA_DIR = process.env.QA_ONBOARDING_PATH ||
+    (existsSync('C:\\Users\\Alysson\\Documents\\ChatGPT\\minha virada de chave\\qa-onboarding-automation')
+        ? 'C:\\Users\\Alysson\\Documents\\ChatGPT\\minha virada de chave\\qa-onboarding-automation'
+        : join(process.cwd(), '../qa-onboarding-automation'))
+
 export function dispararQaOnboarding(config: DisparoConfig): Promise<{ exitCode: number; stdout: string; stderr: string }> {
     return new Promise((resolve) => {
+        const cwd = config.scriptPath || DEFAULT_QA_DIR
         const args = ['main.py']
         if (config.csvPath) args.push('--csv', config.csvPath)
         if (config.url) args.push('--url', config.url)
@@ -268,10 +274,11 @@ export function dispararQaOnboarding(config: DisparoConfig): Promise<{ exitCode:
         if (config.timeoutMs) args.push('--timeout', String(config.timeoutMs))
         if (config.useAdsPower) args.push('--use-adspower')
 
+        console.log(`[M2M CLI] Diretório de Execução: ${cwd}`)
         console.log(`[M2M CLI] Executando: python ${args.join(' ')}`)
 
         const proc = spawn('python', args, {
-            cwd: config.scriptPath || process.cwd(),
+            cwd,
             shell: true
         })
 
@@ -328,6 +335,28 @@ if (process.argv[1] && process.argv[1].endsWith('qa-onboarding-bridge.ts')) {
                 console.log(`[RESULTADO CONTA ${u.profile_id}]:`, r)
             })
         }
+    } else if (comando === 'gerar-lote') {
+        const qtd = parseInt(args[1] || '5', 10)
+        const dominio = args[2] || 'sixtysix.online'
+        const destino = join(DEFAULT_QA_DIR, 'data/usuarios.csv')
+
+        console.log(`Gerando lote de ${qtd} contas para o domínio @${dominio}...`)
+        const usuarios: UsuarioCadastro[] = []
+        for (let i = 1; i <= qtd; i++) {
+            const pad = String(i).padStart(3, '0')
+            usuarios.push({
+                profile_id: i,
+                email: `six_user_${pad}@${dominio}`,
+                password: `SixPass_${Math.random().toString(36).substring(2, 8)}!2026`,
+                name: `Six User ${pad}`
+            })
+        }
+        const res = gerarCsvUsuarios(usuarios, destino)
+        if (res.ok) {
+            console.log(`✅ Lote gerado com sucesso em: ${destino} (${res.count} contas)`)
+        } else {
+            console.error(`❌ Erro ao gerar lote:`, res.error)
+        }
     } else if (comando === 'consumir' && args[1]) {
         const caminhoJson = args[1]
         console.log(`Consumindo relatório de resumo: ${caminhoJson}`)
@@ -339,10 +368,16 @@ if (process.argv[1] && process.argv[1].endsWith('qa-onboarding-bridge.ts')) {
         console.log(`Total testes: ${rel.total_tests} | Sucessos: ${rel.success_count} | Falhas: ${rel.failure_count}`)
         const sucessos = extrairPerfisSucesso(rel)
         console.log(`Perfis validados prontos para remix:`, sucessos)
+        for (const u of sucessos) {
+            provisionarContaComFailover(u.profileId, u.email).then((r) => {
+                console.log(`[PROVISIONAMENTO PERFIL ${u.profileId}]:`, r)
+            })
+        }
     } else {
         console.log(`
 Uso do QA Onboarding Bridge:
   npx tsx integrations/lovable-test/qa-onboarding-bridge.ts simular
+  npx tsx integrations/lovable-test/qa-onboarding-bridge.ts gerar-lote [quantidade] [dominio]
   npx tsx integrations/lovable-test/qa-onboarding-bridge.ts consumir <caminho_resumo.json>
 `)
     }
