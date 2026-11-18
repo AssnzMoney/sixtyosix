@@ -10,6 +10,75 @@ export function safeBridgeDiagnostic(requestId:string,stage:string,started:numbe
  return result
 }
 
+// Motivo da recusa do gateway, devolvido SÓ ao chamador autenticado com a chave da ponte.
+// Lê no máximo 8 KiB, aceita só JSON ou texto puro (HTML nunca), corta a mensagem e apaga qualquer
+// coisa com cara de chave. O log continua registrando só o tipo do erro, nunca a mensagem.
+export type ErroUpstream = { tipo?: string; mensagem?: string };
+const LIMITE_ERRO_UPSTREAM_BYTES = 8 * 1024;
+
+export async function lerErroUpstream(response: Response): Promise<ErroUpstream> {
+  if (!response.body) return {};
+  const tipoConteudo = response.headers.get("content-type")?.toLowerCase() ?? "";
+  const eJson = tipoConteudo.includes("json");
+  if (!eJson && !tipoConteudo.startsWith("text/plain")) return {};
+  const reader = response.body.getReader();
+  const partes: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (total < LIMITE_ERRO_UPSTREAM_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      partes.push(value);
+      total += value.byteLength;
+    }
+  } catch {
+    return {};
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+
+  const bytes = new Uint8Array(Math.min(total, LIMITE_ERRO_UPSTREAM_BYTES));
+  let deslocamento = 0;
+  for (const parte of partes) {
+    const resto = bytes.length - deslocamento;
+    if (resto <= 0) break;
+    bytes.set(parte.subarray(0, resto), deslocamento);
+    deslocamento += Math.min(parte.byteLength, resto);
+  }
+
+  const texto = new TextDecoder().decode(bytes);
+  if (!eJson) return texto.trim() ? { mensagem: limparMensagemUpstream(texto) } : {};
+
+  let json: unknown;
+  try {
+    json = JSON.parse(texto);
+  } catch {
+    return {};
+  }
+  if (typeof json !== "object" || json === null) return {};
+  const raiz = json as { error?: unknown; message?: unknown; type?: unknown };
+  const erro = (typeof raiz?.error === "object" && raiz.error !== null ? raiz.error : raiz) as {
+    type?: unknown;
+    code?: unknown;
+    message?: unknown;
+  };
+  const candidatoTipo = typeof erro.type === "string" && erro.type !== "error" ? erro.type : erro.code;
+  const tipo = typeof candidatoTipo === "string" && /^[a-z_]{1,40}$/.test(candidatoTipo) ? candidatoTipo : undefined;
+  const textoMensagem =
+    typeof erro.message === "string" ? erro.message : typeof raiz?.error === "string" ? raiz.error : undefined;
+  return { tipo, mensagem: textoMensagem === undefined ? undefined : limparMensagemUpstream(textoMensagem) };
+}
+
+export function limparMensagemUpstream(texto: string): string {
+  const limpo = texto
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/Bearer\s+\S+/gi, "Bearer [omitido]")
+    .replace(/[A-Za-z0-9_\-]{32,}/g, "[omitido]")
+    .replace(/\s+/g, " ")
+    .trim();
+  return limpo.length > 300 ? `${limpo.slice(0, 300)}…` : limpo;
+}
+
 // Temporary native Anthropic bridge for the local Claude Desktop test.
 // Secrets arrive as parameters and are never logged, returned or persisted.
 
@@ -153,12 +222,15 @@ export async function processarRequisicaoMessagesSixTest(
       signal: controlador.signal,
     });
   } catch (error) {
-    console.info("six-test-bridge", safeBridgeDiagnostic(diagnosticId, "fetch_exception", diagnosticStart, undefined, error));
+    const diagnostico = safeBridgeDiagnostic(diagnosticId, "fetch_exception", diagnosticStart, undefined, error);
+    console.info("six-test-bridge", diagnostico);
     aoFinalizar();
+    const causa = [diagnostico.errorName, diagnostico.errorCode].filter(Boolean).join(" ");
     return respostaErro(
       estado.motivoAbort === "timeout" ? 504 : 502,
-      "Não foi possível concluir o teste no gateway de IA.",
+      `Não foi possível concluir o teste no gateway de IA (sem resposta do gateway: ${causa || "erro de conexão"}).`,
       "api_error",
+      cabecalhosDiagnostico(diagnostico),
     );
   }
 
@@ -168,10 +240,22 @@ export async function processarRequisicaoMessagesSixTest(
   const eJson = contentType.startsWith("application/json");
   if (!upstream.ok || !upstream.body || (!eSse && !eJson)) {
     const stage = !upstream.ok ? "upstream_rejected" : !upstream.body ? "upstream_empty_body" : "upstream_invalid_content_type";
-    console.info("six-test-bridge", safeBridgeDiagnostic(diagnosticId, stage, diagnosticStart, upstream));
+    const erroUpstream = !upstream.ok ? await lerErroUpstream(upstream) : {};
+    const diagnostico = safeBridgeDiagnostic(diagnosticId, stage, diagnosticStart, upstream);
+    console.info("six-test-bridge", { ...diagnostico, upstreamErrorType: erroUpstream.tipo });
     aoFinalizar();
     await upstream.body?.cancel().catch(() => undefined);
-    return respostaErro(502, "Não foi possível concluir o teste no gateway de IA.", "api_error");
+    const resumo = [`HTTP ${upstream.status}`, erroUpstream.tipo].filter(Boolean).join(", ");
+    const motivo =
+      stage === "upstream_rejected"
+        ? `o gateway recusou (${resumo})${erroUpstream.mensagem ? `: ${erroUpstream.mensagem}` : ""}`
+        : stage === "upstream_empty_body"
+          ? `o gateway respondeu ${upstream.status} sem corpo`
+          : `o gateway respondeu ${upstream.status} com tipo de conteúdo ${diagnostico.contentType ?? "ausente"}`;
+    return respostaErro(502, `Não foi possível concluir o teste no gateway de IA: ${motivo}.`, "api_error", {
+      ...cabecalhosDiagnostico(diagnostico),
+      ...(erroUpstream.tipo ? { "X-Six-Bridge-Upstream-Error-Type": erroUpstream.tipo } : {}),
+    });
   }
 
   // Only the safe content type is forwarded. The body remains byte-for-byte native Anthropic.
@@ -316,10 +400,19 @@ function requisicaoInvalida(): Response {
   return respostaErro(400, "A requisição não corresponde ao teste permitido.", "invalid_request_error");
 }
 
-function respostaErro(status: number, message: string, type: string): Response {
+function cabecalhosDiagnostico(diagnostico: BridgeDiagnostic): Record<string, string> {
+  return {
+    "X-Six-Bridge-Request-Id": diagnostico.requestId,
+    "X-Six-Bridge-Stage": diagnostico.stage,
+    ...(diagnostico.status === undefined ? {} : { "X-Six-Bridge-Upstream-Status": String(diagnostico.status) }),
+  };
+}
+
+function respostaErro(status: number, message: string, type: string, extras: Record<string, string> = {}): Response {
   return new Response(JSON.stringify({ type: "error", error: { type, message } }), {
     status,
     headers: {
+      ...extras,
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
     },
