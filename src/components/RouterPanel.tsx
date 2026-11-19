@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Ban, Check, CircleAlert, Copy, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X } from 'lucide-react'
+import { Ban, Check, CircleAlert, Copy, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X, Zap } from 'lucide-react'
 import { suggestAlias, suggestLabel } from '../lib/routerModels'
 import { adminHeaders } from '../lib/adminSession'
+import { PoolAndModelsPanel } from './PoolAndModelsPanel'
 
 /**
  * Aba "Roteador" do /admin, no estilo 9router:
@@ -72,7 +73,8 @@ function Modal({ eyebrow, title, onClose, children }: { eyebrow: string; title: 
   )
 }
 
-export default function RouterPanel({ token, usage, period, users = [], siteKeys = [] }: { token: string; usage: Row[]; period: string; users?: Row[]; siteKeys?: SiteKey[] }) {
+export default function RouterPanel({ token, usage, period, users = [], siteKeys = [], onSelectPool }: { token: string; usage: Row[]; period: string; users?: Row[]; siteKeys?: SiteKey[]; onSelectPool?: () => void }) {
+  const [showPool, setShowPool] = useState(false)
   // Contas cadastradas: para ligar uma chave ao e-mail do cliente e mostrar a quem ela pertence.
   const accounts = useMemo(() => new Map(users.map((u) => [String(u.id), u])), [users])
   const accountEmail = (id?: string | null) => (id ? String(accounts.get(id)?.email || '') : '')
@@ -441,6 +443,40 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
           <code>{SITE}/v1</code> <small>Codex, Cline, OpenCode</small> <Copy size={13} />
         </button>
       </div>
+
+      <section className="sx-admin-panel" style={{ background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.08) 0%, rgba(20, 20, 20, 0.8) 100%)', border: '1px solid rgba(147, 51, 234, 0.25)', marginBottom: '20px' }}>
+        <div className="sx-router-head" style={{ marginBottom: showPool ? '20px' : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(147, 51, 234, 0.2)', color: '#c084fc' }}>
+              <Zap size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Pool Automatizado de IA & Contas (Lovable / Claude)
+                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 600 }}>
+                  99 Contas Ativas (22 Online Prontas)
+                </span>
+              </h3>
+              <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#a3a3a3' }}>
+                Bypass de alta escala com rotação de IP residencial, failover instantâneo e modelos customizáveis.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="sx-btn is-primary"
+            onClick={() => onSelectPool ? onSelectPool() : setShowPool(!showPool)}
+            style={{ background: '#9333ea', borderColor: '#a855f7' }}
+          >
+            <Zap size={15} /> {showPool ? 'Recolher Monitor' : 'Ver Pool & Modelos'}
+          </button>
+        </div>
+        {showPool && (
+          <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <PoolAndModelsPanel />
+          </div>
+        )}
+      </section>
 
       <section className="sx-admin-panel">
         <div className="sx-router-head">

@@ -66,10 +66,11 @@ import { billingRequest, type BillingState } from "../lib/billing"
 import { isLocalhost } from "../lib/isLocalhost"
 import NumberRoller from "../components/ui/number-roller"
 import { PRO_BASE_MODELS, ROUTER_MODEL_NAMES } from "../lib/routerModels"
+import { PoolAndModelsPanel } from "../components/PoolAndModelsPanel"
 import "./dashboard.css"
 import "./billing.css"
 
-type Tab = "overview" | "usage" | "keys" | "guides" | "plan" | "help" | "chat" | "referrals" | "rank"
+type Tab = "overview" | "pool" | "usage" | "keys" | "guides" | "plan" | "help" | "chat" | "referrals" | "rank"
 type RequestRow = {
   id: string
   date: string
@@ -150,6 +151,7 @@ const PLANS: Array<{
 
 const nav = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
+  { id: "pool", label: "Contas & Modelos", icon: Zap },
   { id: "usage", label: "Meu consumo", icon: Activity },
   { id: "chat", label: "Conversar no site", icon: MessageSquare },
   { id: "keys", label: "Chaves de API", icon: KeyRound },
@@ -164,6 +166,12 @@ const headings: Record<Tab, { eyebrow: string; title: string; accent: string; de
     title: "",
     accent: "Bom te ver por aqui.",
     description: "Seu consumo, suas chaves e o passo a passo para conectar suas ferramentas, em um só lugar.",
+  },
+  pool: {
+    eyebrow: "infraestrutura & ia",
+    title: "Contas &",
+    accent: "Modelos de IA.",
+    description: "Monitore o pool de contas online em tempo real e gerencie os modelos habilitados para você e sua equipe.",
   },
   usage: {
     eyebrow: "consumo",
@@ -1431,6 +1439,35 @@ ANTHROPIC_MODEL=${guideModel}`
             ) : null}
           </div>
 
+          {tab === "overview" && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 shadow-md mb-6">
+              <div className="flex items-center gap-3.5">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                  <Zap size={20} className="animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    Pool de IA SixtySix: 99 Contas Conectadas
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+                      🟢 100% Online
+                    </span>
+                  </h3>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    22 instâncias em alta velocidade com failover automático e 6 modelos de IA ativos.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="six-primary text-xs"
+                style={{ padding: '8px 16px', whiteSpace: 'nowrap' }}
+                onClick={() => switchTab("pool")}
+              >
+                Gerenciar Contas & Modelos <ArrowRight size={14} />
+              </button>
+            </div>
+          )}
+
           {tab === "overview" && pendingCredentials.length > 0 && (
             <section className="six-panel six-credentials-panel" aria-labelledby="six-cred-title">
               <div className="six-panel-head">
@@ -1679,6 +1716,8 @@ ANTHROPIC_MODEL=${guideModel}`
               </section>
             </>
           )}
+
+          {tab === "pool" && <PoolAndModelsPanel />}
 
           {tab === "keys" && (
             <>
