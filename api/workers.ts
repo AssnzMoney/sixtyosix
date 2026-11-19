@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -39,10 +39,6 @@ async function saveKeyToSupabase(apiKey: string, origin: string): Promise<boolea
   }
 
   try {
-    // 1. Grava no gateway_settings ou router_providers
-    const hint = apiKey.length > 8 ? `…${apiKey.slice(-4)}` : '…key'
-    
-    // Tenta gravar em alerts ou tabela de sincronia
     const resp = await fetch(`${base}/rest/v1/alerts`, {
       method: 'POST',
       headers: {
@@ -52,9 +48,11 @@ async function saveKeyToSupabase(apiKey: string, origin: string): Promise<boolea
         Prefer: 'return=minimal',
       },
       body: JSON.stringify({
-        level: 'info',
-        message: `Novo worker Lovable auto-registrado: ${origin}`,
-        details: { api_key: apiKey, origin, registered_at: new Date().toISOString() },
+        type: 'info',
+        title: `Worker Lovable: ${origin}`,
+        desc: apiKey,
+        time: 'agora',
+        icon: 'Key',
       }),
       signal: AbortSignal.timeout(8000),
     })
@@ -62,6 +60,27 @@ async function saveKeyToSupabase(apiKey: string, origin: string): Promise<boolea
   } catch (err) {
     console.error('Falha ao salvar chave no Supabase:', err)
     return false
+  }
+}
+
+async function getKeysFromSupabase(): Promise<string[]> {
+  const base = process.env.SUPABASE_URL?.replace(/\/+$/, '')
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!base || !secret) return []
+
+  try {
+    const resp = await fetch(`${base}/rest/v1/alerts?select=desc&type=eq.info&icon=eq.Key&order=created_at.desc&limit=25`, {
+      headers: {
+        apikey: secret,
+        Authorization: `Bearer ${secret}`,
+      },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!resp.ok) return []
+    const rows = await resp.json() as Array<{ desc: string }>
+    return rows.map(r => r.desc).filter(Boolean)
+  } catch {
+    return []
   }
 }
 
@@ -73,6 +92,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
     res.end()
     return
+  }
+
+  if (req.method === 'GET') {
+    const keys = await getKeysFromSupabase()
+    return json(res, { ok: true, keys, count: keys.length }, 200)
   }
 
   if (req.method === 'POST') {
