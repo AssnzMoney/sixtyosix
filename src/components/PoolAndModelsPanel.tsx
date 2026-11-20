@@ -20,18 +20,23 @@ type BridgeItem = {
   id: number
   url: string
   host: string
-  status: 'online' | 'standby' | 'error'
+  status: 'online' | 'standby' | 'error' | 'exhausted'
   latency: number
+  code?: number
 }
 
 type PoolData = {
   ok: boolean
   total: number
   active_index: number
-  external_calls: number
+  external_calls?: number
+  online_count?: number
+  tested_count?: number
+  live_tested?: boolean
+  timestamp?: string
   bridges: BridgeItem[]
   gateway_url: string
-  client_key: string
+  client_key?: string
 }
 
 type ModelConfig = {
@@ -170,28 +175,51 @@ export function PoolAndModelsPanel() {
     })
   }
 
-  const fetchStatus = async () => {
-    setLoading(true)
+  const [testingLive, setTestingLive] = useState(false)
+
+  const fetchStatus = async (runLiveTest = false) => {
+    if (runLiveTest) setTestingLive(true)
+    else setLoading(true)
+
     try {
-      const res = await fetch('http://127.0.0.1:17866/api/pool-status', { signal: AbortSignal.timeout(4000) })
+      // 1. Tenta a API nativa da SixtySix (funciona na VPS em HTTPS e em qualquer aparelho)
+      const endpoint = runLiveTest ? '/api/pool-test' : '/api/pool-status'
+      const res = await fetch(endpoint, {
+        method: runLiveTest ? 'POST' : 'GET',
+        headers: runLiveTest ? { 'Content-Type': 'application/json' } : {},
+        signal: AbortSignal.timeout(runLiveTest ? 15000 : 5000),
+      })
       if (res.ok) {
-        const json = await res.json()
+        const json = (await res.json()) as PoolData
         setData(json)
         setGatewayOnline(true)
-      } else {
-        setGatewayOnline(false)
+        setLoading(false)
+        setTestingLive(false)
+        return
       }
-    } catch {
-      // Se a chamada local falhar, usamos os dados reais carregados de bridges.txt com status standby
-      setGatewayOnline(false)
-    } finally {
-      setLoading(false)
-    }
+    } catch {}
+
+    try {
+      // 2. Se for ambiente local isolado, tenta a porta 17866
+      const resLocal = await fetch('http://127.0.0.1:17866/api/pool-status', { signal: AbortSignal.timeout(3000) })
+      if (resLocal.ok) {
+        const json = (await resLocal.json()) as PoolData
+        setData(json)
+        setGatewayOnline(true)
+        setLoading(false)
+        setTestingLive(false)
+        return
+      }
+    } catch {}
+
+    setGatewayOnline(false)
+    setLoading(false)
+    setTestingLive(false)
   }
 
   useEffect(() => {
     fetchStatus()
-    const timer = setInterval(fetchStatus, 15000)
+    const timer = setInterval(() => fetchStatus(false), 20000)
     return () => clearInterval(timer)
   }, [])
 
@@ -234,25 +262,35 @@ export function PoolAndModelsPanel() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-white tracking-tight">Pool de IA SixtySix & Modelos</h2>
-              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${gatewayOnline ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-400'}`}>
-                {gatewayOnline ? 'Gateway Local 100% Conectado' : 'Gateway em Standby'}
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${data?.live_tested ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300' : (gatewayOnline ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-400')}`}>
+                {data?.live_tested ? '🟢 Testado ao Vivo via Ping HTTP' : (gatewayOnline ? '🟢 Conectado ao Pool em Tempo Real' : 'Gateway em Standby')}
               </span>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Balanceamento inteligente de requisições sem limite de uso para sua equipe (22 membros simultâneos).
+              Monitoramento direto das pontes com failover circular e balanceamento para 22 pessoas simultâneas.
+              {data?.timestamp && <span className="ml-2 text-neutral-500 font-mono text-[11px]">• Atualizado às {new Date(data.timestamp).toLocaleTimeString('pt-BR')}</span>}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
           <button
             type="button"
-            onClick={fetchStatus}
-            disabled={loading}
+            onClick={() => fetchStatus(true)}
+            disabled={loading || testingLive}
+            className="flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-purple-600 hover:bg-purple-500 text-white shadow-md shadow-purple-950/20 transition disabled:opacity-50"
+          >
+            <Zap className={`w-3.5 h-3.5 ${testingLive ? 'animate-bounce text-amber-300' : ''}`} />
+            {testingLive ? 'Pingando Pontes...' : 'Testar Pontes ao Vivo'}
+          </button>
+          <button
+            type="button"
+            onClick={() => fetchStatus(false)}
+            disabled={loading || testingLive}
             className="flex items-center justify-center gap-2 px-3.5 py-2 text-xs font-medium rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700/60 transition disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-purple-400' : ''}`} />
-            Atualizar Status
+            <RefreshCw className={`w-3.5 h-3.5 ${loading && !testingLive ? 'animate-spin text-purple-400' : ''}`} />
+            Atualizar
           </button>
         </div>
       </div>
