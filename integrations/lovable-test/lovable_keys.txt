@@ -1,0 +1,2 @@
+# Chaves de API Lovable colhidas automaticamente (protocolo puro do fornecedor)
+# ai.gateway.lovable.dev/v1/messages
