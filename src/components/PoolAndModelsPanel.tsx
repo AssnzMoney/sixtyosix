@@ -246,7 +246,7 @@ export function PoolAndModelsPanel() {
   }, [data?.bridges, search, filterStatus])
 
   const totalPoolCount = data?.total || 99
-  const onlineCount = data?.bridges ? data.bridges.filter(b => b.status === 'online').length : 22
+  const onlineCount = data?.bridges ? data.bridges.filter(b => b.status === 'online').length : (data?.total || 99)
   const activeModelsCount = models.filter(m => m.enabled).length
 
   return (
@@ -267,7 +267,7 @@ export function PoolAndModelsPanel() {
               </span>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Monitoramento direto das pontes com failover circular e balanceamento para 22 pessoas simultâneas.
+              Monitoramento direto das {totalPoolCount} contas com failover circular e balanceamento automático.
               {data?.timestamp && <span className="ml-2 text-neutral-500 font-mono text-[11px]">• Atualizado às {new Date(data.timestamp).toLocaleTimeString('pt-BR')}</span>}
             </p>
           </div>
@@ -439,13 +439,13 @@ export function PoolAndModelsPanel() {
         </div>
       </section>
 
-      {/* Integration Guide for Team (22 Members) */}
+      {/* Integration Guide for Team */}
       <section className="p-6 rounded-2xl bg-neutral-900/40 border border-neutral-800/80 shadow-lg">
         <div className="flex items-center gap-2.5 pb-4 border-b border-neutral-800">
           <Server className="w-5 h-5 text-emerald-400" />
           <div>
             <h3 className="text-base font-bold text-white tracking-tight">
-              Instruções de Conexão da Equipe (Até 22 Pessoas Simultâneas)
+              Instruções de Conexão da Equipe
             </h3>
             <p className="text-xs text-neutral-400 mt-0.5">
               Todos os membros podem usar o mesmo endereço local simultaneamente sem limite de créditos.

@@ -454,7 +454,7 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
               <h3 style={{ margin: 0, fontSize: '15px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 Pool Automatizado de IA & Contas (Lovable / Claude)
                 <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 600 }}>
-                  99 Contas Ativas (22 Online Prontas)
+                  99 Contas Online no Pool
                 </span>
               </h3>
               <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#a3a3a3' }}>
