@@ -1,6 +1,6 @@
 /** Usa o handler REAL da Six, com banco e configurações isolados em memória. */
 import { createServer } from 'node:http'
-import { appendFileSync, readFileSync, existsSync } from 'node:fs'
+import { appendFileSync, readFileSync, existsSync, writeFileSync } from 'node:fs'
 const diagnostic = (value: unknown) => appendFileSync('C:/Users/Alysson/AppData/Local/Temp/six-desktop-diagnostic.log', JSON.stringify({ at: new Date().toISOString(), ...value as object }) + '\n')
 import { join } from 'node:path'
 import { nativeBody, NATIVE_BODY_LIMIT } from './native-messages.server.ts'
@@ -22,6 +22,21 @@ const alias = 'claude-opus-5-5'
 const bridgeDispatcher = 'https://six-bridge-dispatcher.local/v1'
 
 const bridgesFile = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
+
+export function purgeBridge(deadBridge: string, reason: string): void {
+    try {
+        if (!existsSync(bridgesFile)) return
+        const normalized = deadBridge.replace(/\/$/, '')
+        const lines = readFileSync(bridgesFile, 'utf8')
+            .split('\n')
+            .filter(l => l.trim() && !l.trim().startsWith('#') && !l.includes(normalized))
+        writeFileSync(bridgesFile, lines.join('\n') + '\n', 'utf8')
+        console.log(`[AUTO-PURGE] 🗑️ Ponte esgotada/morta removida do pool: ${deadBridge} (${reason})`)
+        diagnostic({ phase: 'bridge-purged', bridge: deadBridge, reason })
+    } catch (e) {
+        console.error('[AUTO-PURGE ERROR]', e)
+    }
+}
 export function getBridgePool(): string[] {
     const fromEnv = process.env.SIX_TEST_BRIDGE_URLS
         ? process.env.SIX_TEST_BRIDGE_URLS.split(',').map(s => s.trim()).filter(Boolean)
@@ -99,13 +114,16 @@ globalThis.fetch = (async (input, init = {}) => {
 
             // Failover se o workspace atual estiver sem saldo (402 ou 502 com upstream 402)
             const isExhausted = curRes.status === 402 || (curRes.status === 502 && curRes.headers.get('x-six-test-upstream-status') === '402')
-            if (isExhausted && pool.length > 1 && attempts < pool.length - 1) {
-                const nextIndex = (activeBridgeIndex + 1) % pool.length
-                console.log(`[FAILOVER] Workspace ${targetBridge} esgotou saldo (402). Alternando para ${pool[nextIndex]}...`)
-                diagnostic({ phase: 'bridge-failover', from: targetBridge, to: pool[nextIndex], reason: '402_QUOTA_EXHAUSTED' })
-                activeBridgeIndex = nextIndex
-                attempts++
-                continue
+            if (isExhausted) {
+                purgeBridge(targetBridge, '402_QUOTA_EXHAUSTED')
+                if (pool.length > 1 && attempts < pool.length - 1) {
+                    const nextIndex = (activeBridgeIndex + 1) % pool.length
+                    console.log(`[FAILOVER] Workspace ${targetBridge} esgotou saldo (402). Alternando para ${pool[nextIndex]}...`)
+                    diagnostic({ phase: 'bridge-failover', from: targetBridge, to: pool[nextIndex], reason: '402_QUOTA_EXHAUSTED' })
+                    activeBridgeIndex = nextIndex
+                    attempts++
+                    continue
+                }
             }
 
             response = curRes
@@ -117,6 +135,9 @@ globalThis.fetch = (async (input, init = {}) => {
         if (!response!.ok) {
             const errorText = await response!.text().catch(() => '')
             diagnostic({ phase: 'bridge-error-detail', status: response!.status, errorText, headers: Object.fromEntries(response!.headers.entries()) })
+            if ([401, 402, 404, 502].includes(response!.status)) {
+                purgeBridge(pool[activeBridgeIndex % pool.length].replace(/\/$/, ''), 'HTTP_' + response!.status)
+            }
             return localBridgeFailure(response!.status)
         }
         return response!
@@ -130,8 +151,18 @@ const server = createServer(async (req, res) => {
     res.on('finish', () => diagnostic({ ...summary, status: res.statusCode, externalCalls, bridgeStatus }))
     try {
         if (u.pathname === '/' && ['GET', 'HEAD'].includes(req.method || '')) {
+            const activePool = getBridgePool()
             res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ ok: true, mode: 'six-local-test', active_bridge_pool: getBridgePool().length, matrices: carregarMatrizes().length }))
+            res.end(JSON.stringify({
+                ok: true,
+                mode: 'six-local-test',
+                active_bridge_pool: activePool.length,
+                estimated_tokens: activePool.length * 100_000,
+                estimated_tokens_formatted: (activePool.length * 0.1).toFixed(1) + ' Milhões',
+                matrices: carregarMatrizes().length,
+                auto_purge: true,
+                auto_replenish: true
+            }))
             return
         }
 
