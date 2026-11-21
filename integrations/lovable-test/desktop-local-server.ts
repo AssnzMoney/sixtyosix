@@ -89,37 +89,52 @@ globalThis.fetch = (async (input, init = {}) => {
         const pool = getBridgePool()
         let response: Response | null = null
         let attempts = 0
+        const maxAttempts = Math.min(pool.length, 6)
 
-        while (attempts < pool.length) {
-            const targetBridge = pool[activeBridgeIndex % pool.length].replace(/\/$/, '')
-            let curRes = await realFetch(targetBridge + '/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
-                body: JSON.stringify(translated),
-                redirect: 'manual',
-                signal: AbortSignal.timeout(65000)
-            })
+        while (attempts < maxAttempts) {
+            const currentPool = getBridgePool()
+            if (currentPool.length === 0) break
+            const targetBridge = currentPool[activeBridgeIndex % currentPool.length].replace(/\/$/, '')
+            let curRes: Response | null = null
+            try {
+                curRes = await realFetch(targetBridge + '/messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
+                    body: JSON.stringify(translated),
+                    redirect: 'manual',
+                    signal: AbortSignal.timeout(65000)
+                })
+            } catch (networkErr: any) {
+                console.error(`[FAILOVER] Falha de conexão na ponte ${targetBridge}: ${networkErr?.message || networkErr}`)
+                purgeBridge(targetBridge, 'NETWORK_ERROR')
+                activeBridgeIndex++
+                attempts++
+                continue
+            }
 
             // Fallback de tokens se a versão na Lovable estiver limitada a 1024
             if (curRes.status === 400 && translated.max_tokens > 1024) {
                 diagnostic({ phase: 'bridge-fallback-tokens', bridge: targetBridge, originalMaxTokens: translated.max_tokens })
-                curRes = await realFetch(targetBridge + '/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
-                    body: JSON.stringify({ ...translated, max_tokens: 1024 }),
-                    redirect: 'manual',
-                    signal: AbortSignal.timeout(65000)
-                })
+                try {
+                    curRes = await realFetch(targetBridge + '/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
+                        body: JSON.stringify({ ...translated, max_tokens: 1024 }),
+                        redirect: 'manual',
+                        signal: AbortSignal.timeout(65000)
+                    })
+                } catch { }
             }
 
-            // Failover se o workspace atual estiver sem saldo (402 ou 502 com upstream 402)
-            const isExhausted = curRes.status === 402 || (curRes.status === 502 && curRes.headers.get('x-six-test-upstream-status') === '402')
-            if (isExhausted) {
-                purgeBridge(targetBridge, '402_QUOTA_EXHAUSTED')
-                if (pool.length > 1 && attempts < pool.length - 1) {
-                    const nextIndex = (activeBridgeIndex + 1) % pool.length
-                    console.log(`[FAILOVER] Workspace ${targetBridge} esgotou saldo (402). Alternando para ${pool[nextIndex]}...`)
-                    diagnostic({ phase: 'bridge-failover', from: targetBridge, to: pool[nextIndex], reason: '402_QUOTA_EXHAUSTED' })
+            // Failover transparente em qualquer falha de ponte (401, 402, 404, 500, 502, 503)
+            const isDead = !curRes.ok && [401, 402, 404, 500, 502, 503].includes(curRes.status)
+            if (isDead) {
+                const reason = curRes.status === 402 ? '402_QUOTA_EXHAUSTED' : `HTTP_${curRes.status}`
+                purgeBridge(targetBridge, reason)
+                if (currentPool.length > 1 && attempts < maxAttempts - 1) {
+                    const nextIndex = (activeBridgeIndex + 1) % currentPool.length
+                    console.log(`[FAILOVER] 🔄 Ponte ${targetBridge} falhou (${curRes.status}). Alternando automaticamente para ${currentPool[nextIndex]}...`)
+                    diagnostic({ phase: 'bridge-failover', from: targetBridge, to: currentPool[nextIndex], reason })
                     activeBridgeIndex = nextIndex
                     attempts++
                     continue
@@ -132,15 +147,13 @@ globalThis.fetch = (async (input, init = {}) => {
             break
         }
 
-        if (!response!.ok) {
-            const errorText = await response!.text().catch(() => '')
-            diagnostic({ phase: 'bridge-error-detail', status: response!.status, errorText, headers: Object.fromEntries(response!.headers.entries()) })
-            if ([401, 402, 404, 502].includes(response!.status)) {
-                purgeBridge(pool[activeBridgeIndex % pool.length].replace(/\/$/, ''), 'HTTP_' + response!.status)
-            }
-            return localBridgeFailure(response!.status)
+        if (!response || !response.ok) {
+            const errStatus = response?.status || 502
+            const errorText = await response?.text().catch(() => '') || ''
+            diagnostic({ phase: 'bridge-error-detail', status: errStatus, errorText, headers: Object.fromEntries(response?.headers.entries() || []) })
+            return localBridgeFailure(errStatus)
         }
-        return response!
+        return response
     }
     throw Error('Destino bloqueado pelo isolamento do teste local.')
 }) as typeof fetch
