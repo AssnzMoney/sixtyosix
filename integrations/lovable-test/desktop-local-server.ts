@@ -1,6 +1,6 @@
 /** Usa o handler REAL da Six, com banco e configurações isolados em memória. */
 import { createServer } from 'node:http'
-import { appendFileSync, readFileSync, existsSync } from 'node:fs'
+import { appendFileSync, readFileSync, existsSync, writeFileSync } from 'node:fs'
 const diagnostic = (value: unknown) => appendFileSync('C:/Users/Alysson/AppData/Local/Temp/six-desktop-diagnostic.log', JSON.stringify({ at: new Date().toISOString(), ...value as object }) + '\n')
 import { join } from 'node:path'
 import { nativeBody, NATIVE_BODY_LIMIT } from './native-messages.server.ts'
@@ -22,27 +22,21 @@ const alias = 'claude-opus-5-5'
 const bridgeDispatcher = 'https://six-bridge-dispatcher.local/v1'
 
 const bridgesFile = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
-const keysFile = join(process.cwd(), 'integrations/lovable-test/lovable_keys.txt')
 
-export function getLovableKeyPool(): string[] {
-    const fromEnv = process.env.LOVABLE_API_KEYS
-        ? process.env.LOVABLE_API_KEYS.split(',').map(s => s.trim()).filter(Boolean)
-        : []
-    if (fromEnv.length > 0) return fromEnv
-
-    if (existsSync(keysFile)) {
-        try {
-            const lines = readFileSync(keysFile, 'utf8')
-                .split('\n')
-                .map(l => l.trim())
-                .filter(l => l && !l.startsWith('#'))
-            if (lines.length > 0) return lines
-        } catch { }
+export function purgeBridge(deadBridge: string, reason: string): void {
+    try {
+        if (!existsSync(bridgesFile)) return
+        const normalized = deadBridge.replace(/\/$/, '')
+        const lines = readFileSync(bridgesFile, 'utf8')
+            .split('\n')
+            .filter(l => l.trim() && !l.trim().startsWith('#') && !l.includes(normalized))
+        writeFileSync(bridgesFile, lines.join('\n') + '\n', 'utf8')
+        console.log(`[AUTO-PURGE] 🗑️ Ponte esgotada/morta removida do pool: ${deadBridge} (${reason})`)
+        diagnostic({ phase: 'bridge-purged', bridge: deadBridge, reason })
+    } catch (e) {
+        console.error('[AUTO-PURGE ERROR]', e)
     }
-    return process.env.LOVABLE_API_KEY ? [process.env.LOVABLE_API_KEY] : []
 }
-let activeKeyIndex = 0
-
 export function getBridgePool(): string[] {
     const fromEnv = process.env.SIX_TEST_BRIDGE_URLS
         ? process.env.SIX_TEST_BRIDGE_URLS.split(',').map(s => s.trim()).filter(Boolean)
@@ -74,43 +68,10 @@ clearRouterCache()
 
 globalThis.fetch = (async (input, init = {}) => {
     const url = String(input)
-    const supportedAliases = [
-        'claude-opus-5-5',
-        'claude-opus-4-8',
-        'claude-sonnet-5',
-        'claude-haiku-4-5',
-        'gpt-6.1-sol',
-        'gpt-6-astra',
-        'gemini-3.1-pro-preview',
-        'gemini-3.6-flash',
-        'argon-4',
-        'claude-3-5-sonnet-20241022',
-        'claude-3-7-sonnet-20250219',
-        'claude-3-haiku-20240307'
-    ]
-    if (url.startsWith(db + '/rest/v1/router_models?')) {
-        return Response.json(supportedAliases.map(al => ({
-            alias: al,
-            label: al,
-            upstream_model: 'anthropic/claude-opus-5-5',
-            in_pro: false,
-            provider: {
-                id: providerId,
-                name: 'Lovable local test',
-                base_url: bridgeDispatcher,
-                encrypted_key: sealSecret(bridgeKey, dbSecret, 'router:provider:' + providerId),
-                enabled: true
-            }
-        })))
-    }
+    if (url.startsWith(db + '/rest/v1/router_models?')) return Response.json([{ alias, label: 'Opus teste local', upstream_model: 'anthropic/claude-opus-5-5', in_pro: false, provider: { id: providerId, name: 'Lovable local test', base_url: bridgeDispatcher, encrypted_key: sealSecret(bridgeKey, dbSecret, 'router:provider:' + providerId), enabled: true } }])
     if (url.startsWith(db + '/rest/v1/router_keys?')) {
         const hash = createHash('sha256').update(clientKey).digest('hex')
-        return Response.json(url.includes(hash) ? [{
-            gateway_client_id: clientId,
-            models: supportedAliases,
-            expires_at: new Date(Date.now() + 300000).toISOString(),
-            revoked_at: null
-        }] : [])
+        return Response.json(url.includes(hash) ? [{ gateway_client_id: clientId, models: [alias], expires_at: new Date(Date.now() + 300000).toISOString(), revoked_at: null }] : [])
     }
     if (url.startsWith(db + '/rest/v1/gateway_usage')) { usage.push(JSON.parse(String(init.body))); return new Response(null, { status: 201 }) }
     if (url === db + '/rest/v1/rpc/gateway_gate') return Response.json({ ok: true, leased: true })
@@ -125,79 +86,59 @@ globalThis.fetch = (async (input, init = {}) => {
             return Response.json({ id: 'msg_simulated', type: 'message', role: 'assistant', model: 'anthropic/claude-opus-5-5', content: [{ type: 'text', text: 'SIMULADO_LOCAL' }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 } })
         }
 
-        // --- 1. MODO DIRETO DO FORNECEDOR (Lovable AI Gateway Oficial) ---
-        const directKeys = getLovableKeyPool()
-        if (directKeys.length > 0) {
-            let keyAttempts = 0
-            while (keyAttempts < directKeys.length) {
-                const activeKey = directKeys[activeKeyIndex % directKeys.length]
-                let curRes = await realFetch('https://ai.gateway.lovable.dev/v1/messages', {
+        const pool = getBridgePool()
+        let response: Response | null = null
+        let attempts = 0
+        const maxAttempts = Math.min(pool.length, 6)
+
+        while (attempts < maxAttempts) {
+            const currentPool = getBridgePool()
+            if (currentPool.length === 0) break
+            const targetBridge = currentPool[activeBridgeIndex % currentPool.length].replace(/\/$/, '')
+            let curRes: Response | null = null
+            try {
+                curRes = await realFetch(targetBridge + '/messages', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Lovable-API-Key': activeKey,
-                        'X-Lovable-AIG-SDK': 'fetch',
-                        'anthropic-version': '2023-06-01'
-                    },
+                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
                     body: JSON.stringify(translated),
                     redirect: 'manual',
                     signal: AbortSignal.timeout(65000)
                 })
-
-                if (curRes.status === 402 || curRes.status === 429) {
-                    const nextKeyIdx = (activeKeyIndex + 1) % directKeys.length
-                    console.log(`[FAILOVER KEY] Chave Lovable esgotada (${curRes.status}). Alternando para a próxima...`)
-                    diagnostic({ phase: 'key-failover', from: activeKey.slice(0, 4) + '...', status: curRes.status })
-                    activeKeyIndex = nextKeyIdx
-                    keyAttempts++
-                    continue
-                }
-
-                if (curRes.ok) {
-                    bridgeStatus = curRes.status
-                    diagnostic({ phase: 'lovable-direct-response', status: curRes.status, externalCalls, contentType: curRes.headers.get('content-type') })
-                    return curRes
-                }
-                break
+            } catch (networkErr: any) {
+                console.error(`[FAILOVER] Falha de conexão na ponte ${targetBridge}: ${networkErr?.message || networkErr}`)
+                purgeBridge(targetBridge, 'NETWORK_ERROR')
+                activeBridgeIndex++
+                attempts++
+                continue
             }
-        }
-
-        // --- 2. FALLBACK PARA O POOL DE PONTES LOCAIS/PUBLICADAS ---
-        const pool = getBridgePool()
-        let response: Response | null = null
-        let attempts = 0
-
-        while (attempts < pool.length) {
-            const targetBridge = pool[activeBridgeIndex % pool.length].replace(/\/$/, '')
-            let curRes = await realFetch(targetBridge + '/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
-                body: JSON.stringify(translated),
-                redirect: 'manual',
-                signal: AbortSignal.timeout(65000)
-            })
 
             // Fallback de tokens se a versão na Lovable estiver limitada a 1024
             if (curRes.status === 400 && translated.max_tokens > 1024) {
                 diagnostic({ phase: 'bridge-fallback-tokens', bridge: targetBridge, originalMaxTokens: translated.max_tokens })
-                curRes = await realFetch(targetBridge + '/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
-                    body: JSON.stringify({ ...translated, max_tokens: 1024 }),
-                    redirect: 'manual',
-                    signal: AbortSignal.timeout(65000)
-                })
+                try {
+                    curRes = await realFetch(targetBridge + '/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
+                        body: JSON.stringify({ ...translated, max_tokens: 1024 }),
+                        redirect: 'manual',
+                        signal: AbortSignal.timeout(65000)
+                    })
+                } catch { }
             }
 
-            // Failover se o workspace atual estiver sem saldo (402), indisponível (404, 502, 503) ou rate limited (429)
-            const shouldFailover = !curRes.ok && curRes.status !== 400 && curRes.status !== 401 && pool.length > 1 && attempts < pool.length - 1
-            if (shouldFailover) {
-                const nextIndex = (activeBridgeIndex + 1) % pool.length
-                console.log(`[FAILOVER] Workspace ${targetBridge} falhou (${curRes.status}). Alternando para ${pool[nextIndex]}...`)
-                diagnostic({ phase: 'bridge-failover', from: targetBridge, to: pool[nextIndex], reason: `HTTP_${curRes.status}` })
-                activeBridgeIndex = nextIndex
-                attempts++
-                continue
+            // Failover transparente em qualquer falha de ponte (401, 402, 404, 500, 502, 503)
+            const isDead = !curRes.ok && [401, 402, 404, 500, 502, 503].includes(curRes.status)
+            if (isDead) {
+                const reason = curRes.status === 402 ? '402_QUOTA_EXHAUSTED' : `HTTP_${curRes.status}`
+                purgeBridge(targetBridge, reason)
+                if (currentPool.length > 1 && attempts < maxAttempts - 1) {
+                    const nextIndex = (activeBridgeIndex + 1) % currentPool.length
+                    console.log(`[FAILOVER] 🔄 Ponte ${targetBridge} falhou (${curRes.status}). Alternando automaticamente para ${currentPool[nextIndex]}...`)
+                    diagnostic({ phase: 'bridge-failover', from: targetBridge, to: currentPool[nextIndex], reason })
+                    activeBridgeIndex = nextIndex
+                    attempts++
+                    continue
+                }
             }
 
             response = curRes
@@ -206,55 +147,34 @@ globalThis.fetch = (async (input, init = {}) => {
             break
         }
 
-        if (!response!.ok) {
-            const errorText = await response!.text().catch(() => '')
-            diagnostic({ phase: 'bridge-error-detail', status: response!.status, errorText, headers: Object.fromEntries(response!.headers.entries()) })
-            return localBridgeFailure(response!.status)
+        if (!response || !response.ok) {
+            const errStatus = response?.status || 502
+            const errorText = await response?.text().catch(() => '') || ''
+            diagnostic({ phase: 'bridge-error-detail', status: errStatus, errorText, headers: Object.fromEntries(response?.headers.entries() || []) })
+            return localBridgeFailure(errStatus)
         }
-        return response!
+        return response
     }
     throw Error('Destino bloqueado pelo isolamento do teste local.')
 }) as typeof fetch
 
 const server = createServer(async (req, res) => {
-    // Habilita CORS para o painel frontend da SixtySix e extensões locais
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD')
-    res.setHeader('Access-Control-Allow-Headers', '*')
-    if (req.method === 'OPTIONS') {
-        res.statusCode = 204
-        res.end()
-        return
-    }
-
     const u = new URL(req.url || '/', 'http://localhost')
     const summary: any = { method: req.method, path: u.pathname }
     res.on('finish', () => diagnostic({ ...summary, status: res.statusCode, externalCalls, bridgeStatus }))
     try {
         if (u.pathname === '/' && ['GET', 'HEAD'].includes(req.method || '')) {
-            res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ ok: true, mode: 'six-local-test', lovable_keys: getLovableKeyPool().length, active_bridge_pool: getBridgePool().length, matrices: carregarMatrizes().length }))
-            return
-        }
-
-        // Endpoint de métricas em tempo real para o Painel SixtySix
-        if (u.pathname === '/api/pool-status' && ['GET', 'HEAD'].includes(req.method || '')) {
-            const pool = getBridgePool()
+            const activePool = getBridgePool()
             res.setHeader('Content-Type', 'application/json')
             res.end(JSON.stringify({
                 ok: true,
-                total: pool.length,
-                active_index: activeBridgeIndex,
-                external_calls: externalCalls,
-                bridges: pool.slice(0, 50).map((b, idx) => ({
-                    id: idx + 1,
-                    url: b,
-                    host: b.replace(/^https?:\/\//, '').split('/')[0],
-                    status: idx < 22 ? 'online' : 'standby',
-                    latency: Math.floor(110 + (idx * 5) % 60)
-                })),
-                gateway_url: 'http://127.0.0.1:17866/v1',
-                client_key: clientKey
+                mode: 'six-local-test',
+                active_bridge_pool: activePool.length,
+                estimated_tokens: activePool.length * 100_000,
+                estimated_tokens_formatted: (activePool.length * 0.1).toFixed(1) + ' Milhões',
+                matrices: carregarMatrizes().length,
+                auto_purge: true,
+                auto_replenish: true
             }))
             return
         }
@@ -276,40 +196,24 @@ const server = createServer(async (req, res) => {
             for await (const part of req) { const bytes = Buffer.from(part); size += bytes.length; if (size > NATIVE_BODY_LIMIT) { res.statusCode = 413; res.end(); return } chunks.push(bytes) }
             const raw = Buffer.concat(chunks); (req as any).body = raw
 
-            // Claude Desktop count_tokens endpoint handler (evita "Requisição inválida" no Claude Desktop)
-            if (u.pathname === '/v1/messages/count_tokens' || u.pathname.endsWith('/count_tokens')) {
-                const estTokens = Math.max(1, Math.round(raw.length / 4) || 15)
-                res.statusCode = 200
-                res.setHeader('Content-Type', 'application/json')
-                res.end(JSON.stringify({ input_tokens: estTokens }))
-                return
-            }
-
             // Auto-registro de Remixes/Workers (chamado pelo child-handshake)
             if (u.pathname === '/api/public/v1/workers/register') {
                 try {
                     const data = JSON.parse(raw.toString('utf8'))
-                    
-                    // Captura e armazena chave Lovable automaticamente (protocolo puro do fornecedor)
-                    if (data.api_key && typeof data.api_key === 'string' && data.api_key.trim().length > 10) {
-                        const key = data.api_key.trim()
-                        const currentKeys = getLovableKeyPool()
-                        if (!currentKeys.includes(key)) {
-                            appendFileSync(keysFile, key + '\n')
-                            console.log(`[AUTO-REGISTRO CHAVE] Nova chave Lovable registrada no pool ativo! (Total: ${currentKeys.length + 1})`)
-                            diagnostic({ phase: 'auto-registration-key-success', keyHint: key.slice(0, 4) + '...' + key.slice(-4) })
-                        }
+                    const origin = data.project_origin ? new URL(data.project_origin).origin : null
+                    if (!origin) {
+                        res.statusCode = 400
+                        res.setHeader('Content-Type', 'application/json')
+                        res.end(JSON.stringify({ error: 'invalid_origin', registered: false }))
+                        return
                     }
 
-                    const origin = data.project_origin ? new URL(data.project_origin).origin : null
-                    if (origin) {
-                        const bridgeUrl = `${origin}/api/public/six-test/v1`
-                        const pool = getBridgePool()
-                        if (!pool.includes(bridgeUrl)) {
-                            appendFileSync(bridgesFile, bridgeUrl + '\n')
-                            console.log(`[AUTO-REGISTRO] Novo worker registrado e adicionado ao pool: ${bridgeUrl}`)
-                            diagnostic({ phase: 'auto-registration-success', origin, bridgeUrl })
-                        }
+                    const bridgeUrl = `${origin}/api/public/six-test/v1`
+                    const pool = getBridgePool()
+                    if (!pool.includes(bridgeUrl)) {
+                        appendFileSync(bridgesFile, bridgeUrl + '\n')
+                        console.log(`[AUTO-REGISTRO] Novo worker registrado e adicionado ao pool: ${bridgeUrl}`)
+                        diagnostic({ phase: 'auto-registration-success', origin, bridgeUrl })
                     }
 
                     const workerId = 'wrk_' + randomBytes(12).toString('hex')
