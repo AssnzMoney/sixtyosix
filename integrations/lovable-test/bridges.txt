@@ -1,21 +1,13 @@
-https://six-bridge-647758e0.lovable.app/api/public/six-test/v1
-https://six-bridge-4adbdfb8.lovable.app/api/public/six-test/v1
-https://six-bridge-ae21c00f.lovable.app/api/public/six-test/v1
+https://six-bridge-ff4664e0.lovable.app/api/public/six-test/v1
+https://six-bridge-257024d9.lovable.app/api/public/six-test/v1
+https://six-bridge-64e4fde6.lovable.app/api/public/six-test/v1
 https://six-bridge-3d46942e.lovable.app/api/public/six-test/v1
-https://six-bridge-257c5754.lovable.app/api/public/six-test/v1
 https://six-bridge-87cbbfe8.lovable.app/api/public/six-test/v1
-https://six-bridge-1f8c77dc.lovable.app/api/public/six-test/v1
 https://six-bridge-9d7754f9.lovable.app/api/public/six-test/v1
-https://six-bridge-eaeb155e.lovable.app/api/public/six-test/v1
 https://six-bridge-79a20cdc.lovable.app/api/public/six-test/v1
-https://six-bridge-2aff6cf6.lovable.app/api/public/six-test/v1
-https://six-bridge-e1513bdc.lovable.app/api/public/six-test/v1
 https://six-bridge-64763e41.lovable.app/api/public/six-test/v1
-https://six-bridge-c15bf875.lovable.app/api/public/six-test/v1
 https://six-bridge-082b6719.lovable.app/api/public/six-test/v1
-https://six-bridge-bc24b741.lovable.app/api/public/six-test/v1
 https://six-bridge-2c3411e3.lovable.app/api/public/six-test/v1
-https://six-bridge-c9aec60e.lovable.app/api/public/six-test/v1
 https://six-bridge-d70b389d.lovable.app/api/public/six-test/v1
 https://six-bridge-f274ae76.lovable.app/api/public/six-test/v1
 https://six-bridge-0ed01fed.lovable.app/api/public/six-test/v1
@@ -57,7 +49,5 @@ https://six-bridge-94d5259d.lovable.app/api/public/six-test/v1
 https://six-bridge-f3509d98.lovable.app/api/public/six-test/v1
 https://six-bridge-d4b30bdb.lovable.app/api/public/six-test/v1
 https://six-bridge-861a186d.lovable.app/api/public/six-test/v1
-# Adicione aqui as URLs das pontes da Lovable (uma por linha)
-# O servidor faz rotação e failover automático se alguma conta der 402 (saldo esgotado).
 https://bright-byte-bulletin.lovable.app/api/public/six-test/v1
 https://radar-tech-ticker.lovable.app/api/public/six-test/v1
