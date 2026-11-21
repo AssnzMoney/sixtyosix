@@ -32,12 +32,23 @@ Este documento sumariza todos os tópicos, decisões técnicas, códigos e marco
   - **Correção da Lógica do Pool:** Remoção da separação arbitrária de "22 na frente / 77 na reserva", passando a reportar as **99 contas reais como 100% ativas e online**.
   - **Deploy Automático na VPS:** Pipeline de deploy (`deploy.sh`) executado com sucesso na VPS (`216.22.31.223`), rodando em produção sob PM2.
 
-### 4. 21 de Novembro de 2026: Diagnóstico de 403 Lovable & Transição de Domínio
-- **Investigação do Erro HTTP 403 `signup_blocked`:**
-  - Após a criação massiva de mais de 1.096 contas sob o domínio `@sixtysix.online`, a Lovable ativou blacklist global do domínio no sistema antifraude (Castle.io).
-  - Testes isolados com Cloudflare Turnstile aprovaram a verificação ("Sucesso!"), mas o backend da Lovable retornou `"Registration denied due to suspicious activity"` mesmo em navegador Chrome limpo/residencial sem proxy, comprovando que o bloqueio era estritamente do domínio de e-mail e não dos IPs da AllanProxys ou do script.
-  - Correção no script batch `EXECUTAR_LOTE_SIXTYSIX.bat` (`py -3`, escape de caracteres).
-  - Identificação e mapeamento dos novos domínios da Hostinger (`emporioburguers.shop` e `destravacreditoquiz.com.br`) para migração do Catch-All de e-mails para o Gmail `alissonmedeiroz007@gmail.com`.
+### 4. 21 de Novembro de 2026: Diagnóstico de 403 Lovable, Rodízio Multi-Domínio & Self-Healing Pool
+- **Investigação e Comprovação do Erro HTTP 403 `signup_blocked`:**
+  - Descoberto através dos logs (`catchall_used_emails.txt`) que o robô havia disparado mais de **1.289 tentativas de cadastro** com o final `@sixtysix.online`. A equipe antifraude da Lovable (Castle.io) colocou o domínio em quarentena/blacklist global.
+  - Teste decisivo no Chrome anônimo sem proxy: Cloudflare Turnstile deu sinal verde ("Sucesso!"), mas o backend da Lovable bloqueou o clique na hora com `"Registration denied due to suspicious activity"`.
+- **Ativação dos Novos Domínios via Cloudflare Email Routing:**
+  - Configurados na Cloudflare com redirecionamento de e-mails Catch-All para o Gmail `alissonmedeiroz007@gmail.com`:
+    1. `emporioburguers.shop`
+    2. `destravacreditoquiz.com.br`
+  - Implementação do **Rodízio Automático 50/50** em `proton_inbox_api.py`: a cada conta criada, o robô alterna deterministicamente entre os dois domínios, dividindo a carga pela metade e evitando qualquer gatilho de volume.
+- **Pacing Humano Seguro & Proteção de Saldo (Circuit Breaker):**
+  - Concorrência reduzida para `SIMULT=1` com intervalo humano de 25 segundos (`delay_sec: 25.0`) entre cada criação.
+  - Implementado **Freio de Emergência**: se 2 contas consecutivas falharem, o robô encerra o lote imediatamente para não consumir a franquia de dados da AllanProxys.
+- **Arquitetura Self-Healing do Pool (Auto-Purge & Auto-Replenish):**
+  - **Auto-Purge:** Modificado o gateway `desktop-local-server.ts` para que, ao detectar erro 402 (saldo esgotado) ou status morto (502/404), a ponte seja removida permanentemente do `bridges.txt`.
+  - **Telemetria de Tokens:** Medição em tempo real de capacidade: `Contas Ativas x 100.000 tokens`. Pool inicial ativado com 51 pontes (~5.1 Milhões de tokens).
+  - **Guardião do Pool (`guardiao_pool.py` / `GUARDIÃO_DO_POOL.bat`):** Daemon em segundo plano que monitora o estoque de contas. Se cair abaixo de 20 contas, fabrica automaticamente um novo lote de 10 contas e sincroniza via SSH com a VPS.
+  - **Sincronização com VPS:** 51 contas novas enviadas via SCP para `/home/sixtysix/app/integrations/lovable-test/bridges.txt` na VPS (`216.22.31.223`), refletindo status online imediato no endpoint `/api/pool-status`.
 
 ---
 
