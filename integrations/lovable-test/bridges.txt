@@ -1,3 +1,13 @@
+https://six-bridge-647758e0.lovable.app/api/public/six-test/v1
+https://six-bridge-4adbdfb8.lovable.app/api/public/six-test/v1
+https://six-bridge-ae21c00f.lovable.app/api/public/six-test/v1
+https://six-bridge-3d46942e.lovable.app/api/public/six-test/v1
+https://six-bridge-257c5754.lovable.app/api/public/six-test/v1
+https://six-bridge-87cbbfe8.lovable.app/api/public/six-test/v1
+https://six-bridge-1f8c77dc.lovable.app/api/public/six-test/v1
+https://six-bridge-9d7754f9.lovable.app/api/public/six-test/v1
+https://six-bridge-eaeb155e.lovable.app/api/public/six-test/v1
+https://six-bridge-79a20cdc.lovable.app/api/public/six-test/v1
 https://six-bridge-2aff6cf6.lovable.app/api/public/six-test/v1
 https://six-bridge-e1513bdc.lovable.app/api/public/six-test/v1
 https://six-bridge-64763e41.lovable.app/api/public/six-test/v1
