@@ -217,6 +217,45 @@ test('limite do fornecedor (429): tenta a outra key na hora e o cliente nem vê 
   })
 })
 
+test('key do pool sem saldo (402): a chamada segue na outra key e as próximas nem passam por ela', async () => {
+  const errors = console.error
+  console.error = () => {}
+  try {
+    const used: string[] = []
+    const supplier = (_url: string, init: RequestInit) => {
+      const key = (init.headers as Record<string, string>)['x-api-key']
+      used.push(key)
+      return key === 'key_seca' ? Response.json({ error: { message: 'Saldo insuficiente' } }, { status: 402 }) : Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } })
+    }
+    await withAccess({ supplier, providerKey: 'key_seca\nkey_boa' }, async (base, usage) => {
+      for (let i = 0; i < 4; i++) {
+        const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
+        assert.equal(response.status, 200, `chamada ${i + 1}`)
+      }
+      assert.ok(usage.every((u) => u.status_code === 200))
+      assert.ok(used.filter((key) => key === 'key_seca').length <= 1, 'a key seca descansa depois da primeira recusa')
+    })
+  } finally {
+    console.error = errors
+  }
+})
+
+test('todas as keys do pool recusadas: o cliente recebe o erro genérico, sem ficar tentando', async () => {
+  const errors = console.error
+  console.error = () => {}
+  try {
+    let calls = 0
+    await withAccess({ supplier: () => { calls++; return Response.json({ error: { message: 'Token inválido delver' } }, { status: 401 }) }, providerKey: 'k1\nk2\nk3' }, async (base) => {
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
+      assert.equal(response.status, 503)
+      assert.ok(!(await response.text()).toLowerCase().includes('delver'))
+      assert.equal(calls, 3, 'uma tentativa por key')
+    })
+  } finally {
+    console.error = errors
+  }
+})
+
 test('limite do fornecedor (429) com uma key só: espera o retry-after e tenta de novo', async () => {
   let calls = 0
   const supplier = () => (++calls === 1 ? new Response('{}', { status: 429, headers: { 'retry-after': '1' } }) : Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } }))

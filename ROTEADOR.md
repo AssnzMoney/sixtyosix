@@ -22,6 +22,7 @@ Não existe limite diário: o cliente usa quanto quiser. A proteção só impede
 - **Limite próprio** de uma chave: botão **IPs** na chave. Vazio = usa o padrão.
 - **IPs**: o botão IPs mostra cada IP que usou a chave (primeiro e último uso, número de chamadas). Dá para bloquear o IP só naquela chave ou em todas. A lista "IPs bloqueados em todas as chaves" aceita IP ou faixa (`177.10.20.0/24`).
 - Vale para chaves manuais `sk-rt-`, do plano `sk-sp-`, do teste `sk-sx-` e para o chat do site.
+- **Pool de keys do provedor** (várias keys, uma por linha): cada chamada começa numa key diferente. Key recusada (401/402/403, ex.: sem saldo) descansa 5 minutos e a chamada segue na próxima, sem o cliente ver erro; a administração recebe um e-mail com o final da key. Key no limite (429) descansa o retry-after (até 60 s). As que descansam vão para o fim da fila, mas nunca saem dela (`server/key-pool.ts`).
 - Uma checagem por chamada (`gateway_gate` no Supabase). Se o banco falhar ou a migração não estiver aplicada, a chamada segue normalmente.
 
 ## Endereço dos clientes

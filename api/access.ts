@@ -7,6 +7,7 @@ import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememb
 import { CREATE_PATH, ITEM_PATH, createVideo, isVideoRoute, monthStart, monthlyLimit, openVideoId, videoItem, videoRequestProblem, videoWeight, videosUsed } from '../server/videos.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { providerAlertFromEnv } from '../server/provider-alert.js'
+import { KeyPool, keyHint } from '../server/key-pool.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
@@ -145,8 +146,8 @@ export function localRequest(req:Pick<IncomingMessage,'headers'|'socket'>){
 const modelEntry=(id:string,label?:string)=>({id,object:'model',type:'model',display_name:label||id,owned_by:'sixtysix',created:1767225600,created_at:'2026-01-01T00:00:00Z'})
 
 type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string}
-/** Revezamento das keys do provedor entre as chamadas. */
-let keyTurn=0
+/** Pool das keys do provedor: revezamento e descanso da key recusada ou no limite (server/key-pool.ts). */
+const keyPool=new KeyPool()
 /** E-mail para a administração quando o fornecedor recusa a key mestra ou fica instável (server/provider-alert.ts). */
 const providerAlert=providerAlertFromEnv()
 /** Resumo, uma vez por minuto no log, do limite do fornecedor: quantas chamadas a espera salvou e quantas não deu. */
@@ -165,9 +166,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
   const {body,injectedUsage}=supplierRequestBody(call.payload,call.path,route.upstream,name)
   const headers:Record<string,string>={'content-type':'application/json'}
   for(const key of ['accept','anthropic-version','openai-beta']){const value=single(req.headers[key]);if(value)headers[key]=value}
-  // Provedor com várias keys (uma por linha no admin): cada chamada começa numa key diferente.
+  // Provedor com várias keys (uma por linha no admin): cada envio começa numa key diferente, e as que descansam vão para o fim.
   const keys=provider.keys?.length?provider.keys:[provider.key]
-  const firstKey=keyTurn++%keys.length
   const controller=new AbortController(),started=Date.now()
   req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
   let status=502,tap:UsageTap|null=null
@@ -213,14 +213,30 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Betas que o modelo já recusou não vão no cabeçalho.
     const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
     const deadline=Date.now()+waitLimit
-    let pause=1500,waited=false
+    // Keys desta chamada; a recusada sai da lista (não volta na próxima volta).
+    const live=keyPool.order(keys)
+    let pause=1500,waited=false,turn=0
     for(let attempt=0;;attempt++){
-      const key=keys[(firstKey+attempt)%keys.length]
+      const key=live[turn%live.length]
       const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:payloadBody,redirect:'manual',signal:controller.signal})
-      if(!busy(response.status)){if(waited||attempt)limitStats(response.ok?'recovered':'other');return response}
-      // Ainda há outra key nesta volta: tenta nela na hora.
-      const lap=(attempt+1)%keys.length===0
       const hinted=Number(response.headers.get('retry-after'))
+      // Key recusada (sem saldo, bloqueada): descansa e a chamada segue na próxima. Todas recusadas: a recusa segue
+      // adiante (o cliente vê o erro genérico e o alerta avisa a administração).
+      if(response.status===401||response.status===402||response.status===403){
+        const first=keyPool.rest(key,'refused')
+        if(first)console.error('Provedor recusou uma key do pool; ela descansa alguns minutos',provider.name,keyHint(key),response.status)
+        if(live.length===1)return response
+        // As outras keys vão segurar: o cliente não vê nada, então a administração recebe o aviso desta key.
+        if(first)providerAlert.keyRefused(provider.name,keyHint(key),response.status)
+        live.splice(turn%live.length,1)
+        await response.body?.cancel().catch(()=>undefined)
+        continue
+      }
+      if(!busy(response.status)){if(response.ok)keyPool.ok(key);if(waited||attempt)limitStats(response.ok?'recovered':'other');return response}
+      // Limite desta key: as próximas chamadas começam por outra até o retry-after passar.
+      if(response.status===429)keyPool.rest(key,'limit',Number.isFinite(hinted)?hinted:undefined)
+      // Ainda há outra key nesta volta: tenta nela na hora.
+      const lap=++turn%live.length===0
       const wait=lap?Math.min(10000,Number.isFinite(hinted)&&hinted>0?hinted*1000:pause)*(0.75+Math.random()*0.5):0
       if(Date.now()+wait>deadline){limitStats('failed');return response}
       await response.body?.cancel().catch(()=>undefined)
