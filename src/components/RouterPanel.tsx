@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Ban, Check, CircleAlert, Copy, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X } from 'lucide-react'
+import { Ban, Check, CircleAlert, Copy, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X, Zap } from 'lucide-react'
 import { suggestAlias, suggestLabel } from '../lib/routerModels'
 import { adminHeaders } from '../lib/adminSession'
+import { PoolAndModelsPanel } from './PoolAndModelsPanel'
 
 /**
  * Aba "Roteador" do /admin, no estilo 9router:
@@ -11,7 +12,7 @@ import { adminHeaders } from '../lib/adminSession'
 
 type Row = Record<string, any>
 type Provider = { id: string; name: string; base_url: string; key_hint: string; enabled: boolean; created_at: string }
-type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean }
+type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean; fallback_alias?: string | null }
 type RouterKey = { id: string; gateway_client_id: string; name: string; contact: string | null; token_prefix: string; models: string[] | null; expires_at: string; revoked_at: string | null; created_at: string; user_id?: string | null }
 type Limits = { rpm: number | null; concurrency: number | null; max_ips?: number | null; trial_rpm?: number | null; trial_concurrency?: number | null }
 type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[]; ipLimit?: boolean; trialLimit?: boolean }
@@ -72,7 +73,8 @@ function Modal({ eyebrow, title, onClose, children }: { eyebrow: string; title: 
   )
 }
 
-export default function RouterPanel({ token, usage, period, users = [], siteKeys = [] }: { token: string; usage: Row[]; period: string; users?: Row[]; siteKeys?: SiteKey[] }) {
+export default function RouterPanel({ token, usage, period, users = [], siteKeys = [], onSelectPool }: { token: string; usage: Row[]; period: string; users?: Row[]; siteKeys?: SiteKey[]; onSelectPool?: () => void }) {
+  const [showPool, setShowPool] = useState(false)
   // Contas cadastradas: para ligar uma chave ao e-mail do cliente e mostrar a quem ela pertence.
   const accounts = useMemo(() => new Map(users.map((u) => [String(u.id), u])), [users])
   const accountEmail = (id?: string | null) => (id ? String(accounts.get(id)?.email || '') : '')
@@ -442,6 +444,40 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
         </button>
       </div>
 
+      <section className="sx-admin-panel" style={{ background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.08) 0%, rgba(20, 20, 20, 0.8) 100%)', border: '1px solid rgba(147, 51, 234, 0.25)', marginBottom: '20px' }}>
+        <div className="sx-router-head" style={{ marginBottom: showPool ? '20px' : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(147, 51, 234, 0.2)', color: '#c084fc' }}>
+              <Zap size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '15px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Pool Automatizado de IA & Contas (Lovable / Claude)
+                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 600 }}>
+                  99 Contas Online no Pool
+                </span>
+              </h3>
+              <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#a3a3a3' }}>
+                Bypass de alta escala com rotação de IP residencial, failover instantâneo e modelos customizáveis.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="sx-btn is-primary"
+            onClick={() => onSelectPool ? onSelectPool() : setShowPool(!showPool)}
+            style={{ background: '#9333ea', borderColor: '#a855f7' }}
+          >
+            <Zap size={15} /> {showPool ? 'Recolher Monitor' : 'Ver Pool & Modelos'}
+          </button>
+        </div>
+        {showPool && (
+          <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <PoolAndModelsPanel />
+          </div>
+        )}
+      </section>
+
       <section className="sx-admin-panel">
         <div className="sx-router-head">
           <h3>
@@ -495,6 +531,56 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
                       <Trash2 size={15} />
                     </button>
                   </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="sx-admin-panel">
+        <div className="sx-router-head">
+          <h3>
+            <RefreshCw size={17} /> Reserva automática
+          </h3>
+        </div>
+        <p className="sx-admin-hint sx-router-note">
+          Se o provedor de um modelo cair, recusar todas as keys ou continuar no limite, a chamada segue no modelo reserva de outro provedor, sem o cliente ver erro. O consumo fica com o modelo que respondeu.
+        </p>
+        {providers.filter((p) => p.enabled).length < 2 ? (
+          <p className="sx-admin-empty">Cadastre um segundo provedor oficial (outra API ou revendedor autorizado) para escolher reservas.</p>
+        ) : (
+          <ul className="sx-router-list">
+            {sellable.map((m) => {
+              const options = sellable.filter((o) => o.provider_id !== m.provider_id)
+              const current = m.fallback_alias || ''
+              return (
+                <li key={m.alias}>
+                  <div className="sx-router-main">
+                    <strong>{m.label}</strong>
+                    <span>
+                      {m.alias} · {providerById.get(m.provider_id)?.name}
+                    </span>
+                  </div>
+                  <select
+                    aria-label={`Reserva de ${m.label}`}
+                    value={current}
+                    disabled={working === 'fallback:' + m.alias || !options.length}
+                    onChange={(e) => {
+                      const fallback = e.target.value
+                      run('fallback:' + m.alias, async () => {
+                        await call({ action: 'router-model-fallback', alias: m.alias, fallback })
+                        return fallback ? `${m.label} agora tem ${labelOf(fallback)} como reserva.` : `${m.label} ficou sem reserva.`
+                      })
+                    }}
+                  >
+                    <option value="">{options.length ? 'Sem reserva' : 'Nenhum modelo de outro provedor'}</option>
+                    {options.map((o) => (
+                      <option key={o.alias} value={o.alias}>
+                        {o.label} · {providerById.get(o.provider_id)?.name}
+                      </option>
+                    ))}
+                  </select>
                 </li>
               )
             })}
@@ -824,6 +910,7 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
             <label>
               URL base
               <input value={providerForm.base_url} placeholder="https://api.exemplo.com/v1" spellCheck={false} onChange={(e) => setProviderForm({ ...providerForm, base_url: e.target.value })} />
+              <small>Gateway na sua máquina ou rede interna pode ser http, ex.: http://127.0.0.1:8317/v1</small>
             </label>
             <label className="is-wide">
               API keys

@@ -6,6 +6,8 @@
  * - "auth": key mestra recusada (401, 402 = sem saldo, 403). 5 em 5 minutos já avisam.
  * - "down": falha do fornecedor (5xx, inclusive 504 nosso). 15 em 5 minutos e pelo menos 40% das chamadas.
  * Depois do aviso, quando a janela volta a ter só respostas boas, vai um e-mail de "voltou".
+ * - "key do pool recusada": com várias keys, a recusada descansa e a chamada segue na próxima, então o cliente não vê
+ *   nada e o aviso acima não dispara. Esse aviso sai na primeira recusa de cada key (no máximo um a cada 30 minutos).
  * No máximo um aviso de cada tipo a cada 30 minutos; a chave de idempotência do Resend evita que os dois processos
  * da VPS mandem o mesmo aviso duas vezes. Nunca lança erro nem atrasa a resposta ao cliente.
  */
@@ -43,6 +45,26 @@ export function createProviderAlert(send: Send, now: () => number = Date.now) {
   }
 
   return {
+    /** Uma key do pool foi recusada e as outras seguraram as chamadas. hint = final da key (…2959). */
+    keyRefused(provider: string, hint: string, status: number) {
+      try {
+        const at = now(), id = `${provider}:key:${hint}`
+        if (at - (lastSent.get(id) || 0) < COOLDOWN_MS) return
+        lastSent.set(id, at)
+        notify(
+          `⚠️ Fornecedor ${provider}: uma key do pool foi recusada`,
+          [
+            `O fornecedor ${provider} recusou a key que termina em ${hint} (${status}${status === 402 ? ', sem saldo' : ''}).`,
+            'As outras keys do pool estão atendendo, então os clientes não foram afetados. A key recusada fica de lado e é testada de novo a cada 5 minutos.',
+            'Confira o saldo dela no painel do fornecedor; se for trocar, atualize as keys do provedor no admin (Roteador).',
+            `Quando: ${brTime(at)}.`,
+          ].join('\n\n'),
+          `provider-key:${id}:${Math.floor(at / COOLDOWN_MS)}`,
+        )
+      } catch (error) {
+        console.error('Alerta do fornecedor: falha ao registrar', error)
+      }
+    },
     record(provider: string, status: number) {
       try {
         const at = now()

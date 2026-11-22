@@ -24,6 +24,7 @@ export const RULES: Rule[] = [
   { pattern: /^(\/api\/codex(?:\/.*)?)$/, handler: accessHandler, target: (m) => ({ action: 'proxy', path: m[1] }) },
   { pattern: /^\/api\/health\/?$/, handler: accessHandler, target: () => ({ action: 'health' }) },
   { pattern: /^\/api\/router-status\/?$/, handler: accessHandler, target: () => ({ action: 'router-status' }) },
+  { pattern: /^\/api\/pool-(status|test)\/?$/, handler: accessHandler, target: (m) => ({ action: 'pool-' + m[1] }) },
   // Rotas que a Vercel resolvia pelo nome do arquivo em api/.
   { pattern: /^\/api\/access\/?$/, handler: accessHandler, target: () => ({}) },
   { pattern: /^\/api\/account\/?$/, handler: accountHandler, target: () => ({}) },

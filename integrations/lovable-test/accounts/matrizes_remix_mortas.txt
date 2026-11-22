@@ -1,0 +1,1 @@
+# Matrizes que retornaram 403, 404 ou remix_not_allowed (para não serem mais sorteadas)

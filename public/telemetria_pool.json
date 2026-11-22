@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-11-21T21:39:51Z",
+  "active_accounts": 51,
+  "estimated_tokens_total": 5100000,
+  "estimated_tokens_formatted": "5.1 Milhões",
+  "domains_in_rotation": [
+    "emporioburguers.shop",
+    "destravacreditoquiz.com.br"
+  ],
+  "status": "healthy",
+  "minimum_threshold": 20
+}

@@ -22,6 +22,10 @@ Não existe limite diário: o cliente usa quanto quiser. A proteção só impede
 - **Limite próprio** de uma chave: botão **IPs** na chave. Vazio = usa o padrão.
 - **IPs**: o botão IPs mostra cada IP que usou a chave (primeiro e último uso, número de chamadas). Dá para bloquear o IP só naquela chave ou em todas. A lista "IPs bloqueados em todas as chaves" aceita IP ou faixa (`177.10.20.0/24`).
 - Vale para chaves manuais `sk-rt-`, do plano `sk-sp-`, do teste `sk-sx-` e para o chat do site.
+- **Pool de keys do provedor** (várias keys, uma por linha): cada chamada começa numa key diferente. Key recusada (401/402/403, ex.: sem saldo) descansa 5 minutos e a chamada segue na próxima, sem o cliente ver erro; a administração recebe um e-mail com o final da key. Key no limite (429) descansa o retry-after (até 60 s). As que descansam vão para o fim da fila, mas nunca saem dela (`server/key-pool.ts`).
+- **Aba Pool de IA → Pool de keys do Roteador**: cada key de cada provedor com a saúde ao vivo (respondendo, no limite, recusada com a hora de volta, com erro, sem uso), contagem de acertos e falhas e o tempo da última resposta, desde que o servidor ligou. **Testar** usa `GET /models` (não gasta crédito). **Desligar/Ligar** guarda a key com `!` na frente e o gateway para de usar em segundos, sem reiniciar; **Adicionar keys** acrescenta sem mexer nas atuais; **Remover** tira de vez. Não deixa desligar ou remover a última key ligada. O painel só vê o final da key.
+- **Gateway local**: a URL do provedor pode ser `http://` quando é a própria máquina ou a rede interna (`127.0.0.1`, `localhost`, `192.168.x`, `10.x`, `172.16–31.x`, Tailscale `100.64–127.x`, `*.local`). Endereço público continua exigindo `https://`. O servidor que roda o site precisa alcançar esse endereço: com o site na VPS, `127.0.0.1` é a própria VPS.
+- **Reserva automática** (seção na aba Roteador, precisa de `supabase/router-fallback.sql`): cada modelo pode ter um modelo reserva de **outro** provedor. Se o provedor do modelo cair (sem resposta, 5xx), recusar todas as keys (401/402/403) ou continuar no limite (429) depois da espera, a chamada segue no reserva antes de qualquer pedaço da resposta chegar ao cliente. O reserva do reserva também vale (até 2 saltos, sem repetir provedor). Erro do pedido (400, 404, conversa grande demais) não troca de provedor. O consumo fica com o modelo que respondeu; a falha do primeiro continua contando no alerta. O reserva precisa estar ativo, então ele também aparece para as chaves com "todos os modelos".
 - Uma checagem por chamada (`gateway_gate` no Supabase). Se o banco falhar ou a migração não estiver aplicada, a chamada segue normalmente.
 
 ## Endereço dos clientes
@@ -47,7 +51,6 @@ Trocar a `SUPABASE_SERVICE_ROLE_KEY` invalida as keys de provedor guardadas (e a
 ## Ainda não coberto
 
 - As páginas de venda e de planos não citam os modelos novos.
-- Fallback automático entre provedores (se um cair, tentar outro).
 - Limite próprio e lista de IPs para chaves do plano e do teste (hoje só pelo padrão e pela lista de IPs bloqueados em todas as chaves).
 - O valor pago ao provedor por cliente não é calculado; o consumo é em tokens.
 

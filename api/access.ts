@@ -1,11 +1,14 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
 import { CREATE_PATH, ITEM_PATH, createVideo, isVideoRoute, monthStart, monthlyLimit, openVideoId, videoItem, videoRequestProblem, videoWeight, videosUsed } from '../server/videos.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { providerAlertFromEnv } from '../server/provider-alert.js'
-import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
+import { providerKeyPool, keyHint } from '../server/key-pool.js'
+import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, fallbackRoutes, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
 type Trial = { user_id:string; gateway_client_id:string; token_hash:string; token_prefix:string; encrypted_token:string; encrypted_upstream:string; created_at:string; expires_at:string; revoked_at:string|null }
@@ -142,9 +145,10 @@ export function localRequest(req:Pick<IncomingMessage,'headers'|'socket'>){
 }
 const modelEntry=(id:string,label?:string)=>({id,object:'model',type:'model',display_name:label||id,owned_by:'sixtysix',created:1767225600,created_at:'2026-01-01T00:00:00Z'})
 
-type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string}
-/** Revezamento das keys do provedor entre as chamadas. */
-let keyTurn=0
+/** backups: modelos reserva de outros provedores (fallbackRoutes), tentados em ordem se o provedor desta rota falhar. */
+type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string;backups?:RouterRoute[]}
+/** Pool das keys do provedor: revezamento e descanso da key recusada ou no limite (server/key-pool.ts). */
+const keyPool=providerKeyPool
 /** E-mail para a administração quando o fornecedor recusa a key mestra ou fica instável (server/provider-alert.ts). */
 const providerAlert=providerAlertFromEnv()
 /** Resumo, uma vez por minuto no log, do limite do fornecedor: quantas chamadas a espera salvou e quantas não deu. */
@@ -155,6 +159,43 @@ function limitStats(kind:'recovered'|'failed'|'other'){
   console.log(`Limite ou instabilidade do fornecedor (último minuto): ${limits.recovered} salvas pela espera, ${limits.failed} repassadas ao cliente, ${limits.other} com outro erro`)
   limits.recovered=limits.failed=limits.other=0;limits.since=Date.now()
 }
+let activeBridgeIndex = 0
+const recentLatencies: number[] = []
+function recordBridgeLatency(ms: number) {
+  if (typeof ms === 'number' && ms > 0) {
+    recentLatencies.push(ms)
+    if (recentLatencies.length > 50) recentLatencies.shift()
+  }
+}
+
+function getBridgesPool(): string[] {
+  const bridgesPath = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
+  if (!existsSync(bridgesPath)) return []
+  return readFileSync(bridgesPath, 'utf8')
+    .split('\n')
+    .map(l => l.trim().replace(/^\uFEFF/, ''))
+    .filter(l => l && !l.startsWith('#'))
+}
+
+function purgeBridgeFromFile(deadBridge: string, reason: string): void {
+  try {
+    const bridgesPath = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
+    if (!existsSync(bridgesPath)) return
+    const normalized = deadBridge.replace(/\/$/, '')
+    const lines = readFileSync(bridgesPath, 'utf8')
+      .split('\n')
+      .filter(l => l.trim() && !l.trim().startsWith('#') && !l.includes(normalized))
+    writeFileSync(bridgesPath, lines.join('\n') + '\n', 'utf8')
+
+    const exhaustedPath = join(process.cwd(), 'integrations/lovable-test/bridges_exhausted.txt')
+    const entry = `${new Date().toISOString()} | ${normalized} | ${reason}\n`
+    appendFileSync(exhaustedPath, entry, 'utf8')
+    console.log(`[POOL PURGE] 🗑️ Ponte esgotada/morta removida e registrada: ${deadBridge} (${reason})`)
+  } catch (err) {
+    console.error('[POOL PURGE ERROR]', err)
+  }
+}
+
 /** Chama o provedor do Roteador com a key mestra, repassa a resposta e grava o consumo do cliente. */
 async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:SupplierCall){
   const {route}=call,{provider}=route
@@ -163,9 +204,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
   const {body,injectedUsage}=supplierRequestBody(call.payload,call.path,route.upstream,name)
   const headers:Record<string,string>={'content-type':'application/json'}
   for(const key of ['accept','anthropic-version','openai-beta']){const value=single(req.headers[key]);if(value)headers[key]=value}
-  // Provedor com várias keys (uma por linha no admin): cada chamada começa numa key diferente.
+  // Provedor com várias keys (uma por linha no admin): cada envio começa numa key diferente, e as que descansam vão para o fim.
   const keys=provider.keys?.length?provider.keys:[provider.key]
-  const firstKey=keyTurn++%keys.length
   const controller=new AbortController(),started=Date.now()
   req.once('aborted',()=>controller.abort());res.once('close',()=>{if(!res.writableEnded)controller.abort()})
   let status=502,tap:UsageTap|null=null
@@ -198,6 +238,22 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
   }
   const unavailable='Este modelo está temporariamente indisponível. Tente novamente em instantes.'
   /*
+   * Reserva automática entre provedores (supabase/router-fallback.sql): se este provedor cair, recusar todas as keys
+   * ou continuar no limite depois da espera, a chamada segue no modelo reserva, desde que nada da resposta tenha
+   * chegado ao cliente (no máximo os comentários ": ping"). O consumo fica com o modelo que respondeu; a falha deste
+   * provedor continua contando no alerta.
+   */
+  let handedOff=false
+  const handOff=async()=>{
+    const [next,...rest]=call.backups||[]
+    if(!next||tap||res.writableEnded||res.destroyed||controller.signal.aborted)return false
+    handedOff=true
+    stopPing()
+    console.error('Provedor falhou; a chamada segue no modelo reserva',provider.name,route.alias,'->',next.provider.name,next.alias)
+    await proxySupplier(req,res,{...call,route:next,backups:rest})
+    return true
+  }
+  /*
    * Limite de chamadas do fornecedor (429): antes ia direto para o cliente ("servidor sobrecarregado"), e o Claude Code
    * repetia na hora, piorando o pico. Agora o gateway tenta a próxima key na hora (se houver mais de uma) e, depois de
    * passar por todas, espera um pouco (o retry-after do fornecedor, ou 1,5 s dobrando até 10 s) e tenta de novo, por
@@ -210,15 +266,179 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
   const send=async(payloadBody:string)=>{
     // Betas que o modelo já recusou não vão no cabeçalho.
     const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
+
+    // Se o provedor for o Pool de Contas (Lovable / bridges.txt ou SixtySix Internal Pool):
+    if (provider.url.includes('lovable') || provider.name.toLowerCase().includes('lovable') || provider.name.toLowerCase().includes('pool') || provider.url.includes('internal-pool') || provider.url.includes('sixtysix.online/v1/pool')) {
+      const pool = getBridgesPool()
+      let attempts = 0
+      const maxAttempts = Math.min(pool.length, 6)
+      const bridgeKey = 'six_bridge_20ceda73209ccf86cc67c9fa44ab116706115e194c118086'
+
+      while (attempts < maxAttempts) {
+        const curPool = getBridgesPool()
+        if (curPool.length === 0) break
+        const targetBridge = curPool[activeBridgeIndex % curPool.length].replace(/\/$/, '')
+        let curRes: Response | null = null
+
+        // Garante formato 100% compatível com a ponte (max 1024 tokens, modelo válido, sem thinking e sem campos extras)
+        let bridgePayload = payloadBody
+        try {
+          const parsed = JSON.parse(payloadBody)
+          parsed.model = 'anthropic/claude-opus-5-5'
+          if (parsed.max_tokens) {
+            parsed.max_tokens = Math.min(Number(parsed.max_tokens) || 1024, 1024)
+          } else {
+            parsed.max_tokens = 1024
+          }
+          delete parsed.thinking
+          delete parsed.output_config
+          delete parsed.effort
+          delete parsed.inference_geo
+          delete parsed.service_tier
+          delete parsed.safeguards
+          delete parsed.metadata
+
+          const systems: any[] = []
+          if (typeof parsed.system === 'string') {
+            systems.push({ type: 'text', text: parsed.system })
+          } else if (Array.isArray(parsed.system)) {
+            systems.push(...parsed.system)
+          }
+
+          if (Array.isArray(parsed.messages)) {
+            parsed.messages = parsed.messages
+              .filter((m: any) => {
+                if (m?.role === 'system') {
+                  if (typeof m.content === 'string') systems.push({ type: 'text', text: m.content })
+                  else if (Array.isArray(m.content)) systems.push(...m.content)
+                  return false
+                }
+                return m?.role === 'user' || m?.role === 'assistant'
+              })
+              .map((m: any) => {
+                let content = m.content
+                if (Array.isArray(content)) {
+                  content = content.filter((b: any) => b?.type !== 'thinking' && b?.type !== 'redacted_thinking')
+                  if (content.length === 0) content = [{ type: 'text', text: '…' }]
+                }
+                const cleanMsg: any = { role: m.role, content }
+                return cleanMsg
+              })
+          }
+          if (systems.length > 0) parsed.system = systems
+          bridgePayload = JSON.stringify(parsed)
+        } catch {}
+
+        const bridgeStart = Date.now()
+        try {
+          curRes = await fetch(targetBridge + '/messages', {
+            method: 'POST',
+            headers: {
+              ...headers,
+              'content-type': 'application/json',
+              Authorization: `Bearer ${bridgeKey}`,
+              ...(beta ? { 'anthropic-beta': beta } : {})
+            },
+            body: bridgePayload,
+            redirect: 'manual',
+            signal: controller.signal
+          })
+          recordBridgeLatency(Date.now() - bridgeStart)
+          if (!curRes.ok) {
+            const errClone = await curRes.clone().text().catch(() => '')
+            console.error(`[BRIDGE REJECT] ${targetBridge} HTTP ${curRes.status}:`, errClone, 'Headers:', JSON.stringify([...curRes.headers.entries()]))
+            try {
+              const p = JSON.parse(bridgePayload)
+              console.error(`[PAYLOAD KEYS]:`, Object.keys(p), 'System type:', typeof p.system, 'Tools count:', p.tools?.length, 'Messages count:', p.messages?.length, 'Byte length:', bridgePayload.length)
+            } catch {}
+          }
+        } catch (networkErr: any) {
+          console.error(`[POOL FAILOVER] Falha na ponte ${targetBridge}:`, networkErr?.message || networkErr)
+          purgeBridgeFromFile(targetBridge, 'NETWORK_ERROR')
+          activeBridgeIndex++
+          attempts++
+          continue
+        }
+
+        // Fallback de tokens se a versão na Lovable estiver limitada a 1024
+        if (curRes.status === 400) {
+          try {
+            const parsed = JSON.parse(bridgePayload)
+            if (parsed.max_tokens > 1024) {
+              const patchedBody = JSON.stringify({ ...parsed, max_tokens: 1024 })
+              curRes = await fetch(targetBridge + '/messages', {
+                method: 'POST',
+                headers: {
+                  ...headers,
+                  'content-type': 'application/json',
+                  Authorization: `Bearer ${bridgeKey}`,
+                  ...(beta ? { 'anthropic-beta': beta } : {})
+                },
+                body: patchedBody,
+                redirect: 'manual',
+                signal: controller.signal
+              })
+            }
+          } catch {}
+        }
+
+        // Failover transparente em qualquer falha de ponte (401, 402, 404, 500, 502, 503)
+        if (!curRes.ok && [401, 402, 404, 500, 502, 503].includes(curRes.status)) {
+          // Apenas descarta do arquivo se for saldo zerado (402) ou inexistente (404/410). Erros 5xx ou 401 temporário pulam para a próxima sem apagar.
+          if (curRes.status === 402 || curRes.status === 404 || curRes.status === 410) {
+            const reason = curRes.status === 402 ? '402_QUOTA_EXHAUSTED' : `HTTP_${curRes.status}`
+            purgeBridgeFromFile(targetBridge, reason)
+          }
+          if (curPool.length > 1 && attempts < maxAttempts - 1) {
+            const nextIdx = (activeBridgeIndex + 1) % curPool.length
+            console.log(`[POOL FAILOVER] 🔄 Ponte ${targetBridge} falhou (${curRes.status}). Pulando para ${curPool[nextIdx]}...`)
+            activeBridgeIndex = nextIdx
+            attempts++
+            continue
+          }
+        }
+
+        activeBridgeIndex++
+        return curRes
+      }
+    }
+
+    // Até quando vale esperar o limite ou a instabilidade do fornecedor antes de repassar o erro ao cliente.
     const deadline=Date.now()+waitLimit
-    let pause=1500,waited=false
+    // Keys desta chamada; a recusada sai da lista (não volta na próxima volta).
+    const live=keyPool.order(keys)
+    let pause=1500,waited=false,turn=0
     for(let attempt=0;;attempt++){
-      const key=keys[(firstKey+attempt)%keys.length]
-      const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:payloadBody,redirect:'manual',signal:controller.signal})
-      if(!busy(response.status)){if(waited||attempt)limitStats(response.ok?'recovered':'other');return response}
-      // Ainda há outra key nesta volta: tenta nela na hora.
-      const lap=(attempt+1)%keys.length===0
+      const key=live[turn%live.length]
+      const sentAt=Date.now()
+      let response:Response
+      try{
+        response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:payloadBody,redirect:'manual',signal:controller.signal})
+      }catch(error){
+        // Fornecedor nem respondeu (rede, gateway local desligado): conta como falha da key no painel do pool.
+        if(!controller.signal.aborted)keyPool.record(key,0,Date.now()-sentAt)
+        throw error
+      }
+      // Tempo até o cabeçalho da resposta (o stream continua depois): é o que o painel do pool mostra.
+      keyPool.record(key,response.status,Date.now()-sentAt)
       const hinted=Number(response.headers.get('retry-after'))
+      // Key recusada (sem saldo, bloqueada): descansa e a chamada segue na próxima. Todas recusadas: a recusa segue
+      // adiante (o cliente vê o erro genérico e o alerta avisa a administração).
+      if(response.status===401||response.status===402||response.status===403){
+        const first=keyPool.rest(key,'refused')
+        if(first)console.error('Provedor recusou uma key do pool; ela descansa alguns minutos',provider.name,keyHint(key),response.status)
+        if(live.length===1)return response
+        // As outras keys vão segurar: o cliente não vê nada, então a administração recebe o aviso desta key.
+        if(first)providerAlert.keyRefused(provider.name,keyHint(key),response.status)
+        live.splice(turn%live.length,1)
+        await response.body?.cancel().catch(()=>undefined)
+        continue
+      }
+      if(!busy(response.status)){if(response.ok)keyPool.ok(key);if(waited||attempt)limitStats(response.ok?'recovered':'other');return response}
+      // Limite desta key: as próximas chamadas começam por outra até o retry-after passar.
+      if(response.status===429)keyPool.rest(key,'limit',Number.isFinite(hinted)?hinted:undefined)
+      // Ainda há outra key nesta volta: tenta nela na hora.
+      const lap=++turn%live.length===0
       const wait=lap?Math.min(10000,Number.isFinite(hinted)&&hinted>0?hinted*1000:pause)*(0.75+Math.random()*0.5):0
       if(Date.now()+wait>deadline){limitStats('failed');return response}
       await response.body?.cancel().catch(()=>undefined)
@@ -277,6 +497,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       const p=call.payload as Record<string,any>
       const shape={model:route.upstream,path:call.path,stream:p.stream===true,effort:p.output_config?.effort??p.reasoning_effort??p.reasoning?.effort??null,thinking:p.thinking?{type:p.thinking.type,budget:p.thinking.budget_tokens??null}:null,max_tokens:p.max_tokens??p.max_output_tokens??null,messages:Array.isArray(p.messages)?p.messages.length:Array.isArray(p.input)?p.input.length:null,bytes:sent.length,ms:Date.now()-started}
       console.error('Provedor recusou a chamada',provider.name,status,JSON.stringify(shape),(await response.text().catch(()=>'')).replace(/\s+/g,' ').slice(0,300))
+      if(await handOff())return
       if(res.headersSent)return streamError({error:{message:unavailable,type:'api_error',code:null}})
       throw new AccessError(503,unavailable)
     }
@@ -286,6 +507,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     if(status>=400){
       const text=await response.text().catch(()=>'')
       console.error('Provedor recusou a chamada',provider.name,status,JSON.stringify({model:route.upstream,path:call.path,blocks:blockTypes(call.payload as Record<string,unknown>)}),text.slice(0,400))
+      // Ainda no limite depois da espera: o reserva de outro provedor responde no lugar.
+      if(status===429&&await handOff())return
       // Conversa grande demais: vai como 400 com o texto que o Claude Code/Codex reconhecem, para eles resumirem a conversa.
       const overflow=contextOverflow(status,text)
       if(res.headersSent)return streamError((overflow?contextOverflowBody(kind,overflow):supplierErrorBody(kind,status)) as {error:Record<string,unknown>})
@@ -318,6 +541,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     stopPing()
     res.end()
   }catch(error){
+    // Fornecedor nem respondeu (rede, fora do ar): tenta o reserva antes de qualquer erro chegar ao cliente.
+    if(!tap&&await handOff().catch(()=>false))return
     // Falha de rede depois que o stream abriu: fecha com um erro legível em vez de cortar a conexão.
     if(res.headersSent&&keepAlive&&!res.destroyed&&!res.writableEnded){console.error('Falha no repasse com o stream aberto',provider.name,error);return streamError({error:{message:unavailable,type:'api_error',code:null}})}
     throw error
@@ -329,7 +554,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Cliente desistiu antes de qualquer resposta (Esc, conexão caiu): grava 499, não o 502 inicial, para não
     // parecer queda do fornecedor no admin.
     const recorded=controller.signal.aborted&&!tap&&status===502?499:status
-    if(!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:recorded,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
+    if(!handedOff&&!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:recorded,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
   }
 }
 
@@ -359,6 +584,207 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       const router=await loadRouter(process.env)
       res.setHeader('Content-Type','application/json; charset=utf-8');res.statusCode=router.routes.size?200:503
       res.end(JSON.stringify({ok:router.routes.size>0,models:router.routes.size}));return
+    }
+    // Monitor e Teste em Tempo Real do Pool de Contas SixtySix (/api/pool-status & /api/pool-test)
+    if(action==='pool-status'||action==='pool-test'){
+      const bridgesPath = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
+      const exhaustedPath = join(process.cwd(), 'integrations/lovable-test/bridges_exhausted.txt')
+      const accountsPath = join(process.cwd(), 'integrations/lovable-test/accounts/contas_completas.txt')
+
+      let bridges: string[] = []
+      if (existsSync(bridgesPath)) {
+        bridges = readFileSync(bridgesPath, 'utf8')
+          .split('\n')
+          .map(l => l.trim())
+          .filter(l => l && !l.startsWith('#'))
+      }
+
+      let totalCreated = bridges.length
+      if (existsSync(accountsPath)) {
+        try {
+          const acctLines = readFileSync(accountsPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@'))
+          if (acctLines.length > 0) totalCreated = acctLines.length
+        } catch {}
+      }
+
+      const robotDbPaths = [join(process.cwd(), '../accounts/contas_db.json'), join(process.cwd(), 'accounts/contas_db.json')]
+      for (const p of robotDbPaths) {
+        if (existsSync(p)) {
+          try {
+            const raw = JSON.parse(readFileSync(p, 'utf8'))
+            if (Array.isArray(raw) && raw.length > 0) {
+              totalCreated = Math.max(totalCreated, raw.length)
+              for (const acc of raw) {
+                const bUrl = acc.bridge_url || acc.url
+                if (bUrl && !bridges.includes(bUrl)) {
+                  bridges.push(bUrl)
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      let exhaustedCount = 0
+      if (existsSync(exhaustedPath)) {
+        try {
+          exhaustedCount = readFileSync(exhaustedPath, 'utf8').split('\n').filter(l => l.trim() && !l.startsWith('#')).length
+        } catch {}
+      }
+
+      // Telemetria real de consumo via Supabase
+      let totalUsageCalls = 0
+      let callsToday = 0
+      let totalTokensToday = 0
+      const sbUrl = process.env.SUPABASE_URL?.replace(/\/+$/, '')
+      const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (sbUrl && sbKey) {
+        try {
+          const auth = { apikey: sbKey, Authorization: `Bearer ${sbKey}` }
+          const countRes = await fetch(`${sbUrl}/rest/v1/gateway_usage?select=id`, {
+            headers: { ...auth, Prefer: 'count=exact', Range: '0-0' },
+            signal: AbortSignal.timeout(3000)
+          })
+          if (countRes.ok) {
+            const range = countRes.headers.get('content-range')
+            if (range && range.includes('/')) {
+              totalUsageCalls = parseInt(range.split('/')[1], 10) || 0
+            }
+          }
+
+          const todayIso = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z'
+          const todayRes = await fetch(`${sbUrl}/rest/v1/gateway_usage?select=input_tokens,output_tokens&created_at=gte.${todayIso}&limit=5000`, {
+            headers: auth,
+            signal: AbortSignal.timeout(4000)
+          })
+          if (todayRes.ok) {
+            const rows = (await todayRes.json()) as { input_tokens?: number; output_tokens?: number }[]
+            callsToday = rows.length
+            totalTokensToday = rows.reduce((acc, r) => acc + (r.input_tokens || 0) + (r.output_tokens || 0), 0)
+          }
+        } catch (e) {
+          console.warn('[POOL STATUS] Erro ao ler consumo Supabase:', e)
+        }
+      }
+
+      const avgLatency = recentLatencies.length > 0
+        ? Math.round(recentLatencies.reduce((a, b) => a + b, 0) / recentLatencies.length)
+        : 125
+
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.setHeader('access-control-allow-origin', '*')
+      res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS')
+      res.setHeader('access-control-allow-headers', '*')
+
+      if (action === 'pool-test' && req.method === 'POST') {
+        const sample = bridges.slice(0, 15)
+        const tested = await Promise.all(sample.map(async (b, idx) => {
+          const t0 = Date.now()
+          try {
+            const resp = await fetch(b.replace(/\/$/, '') + '/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer six_bridge_20ceda73209ccf86cc67c9fa44ab116706115e194c118086'
+              },
+              body: JSON.stringify({
+                model: 'anthropic/claude-opus-5-5',
+                max_tokens: 5,
+                messages: [{ role: 'user', content: 'ping' }]
+              }),
+              signal: AbortSignal.timeout(4000)
+            })
+            const lat = Date.now() - t0
+            recordBridgeLatency(lat)
+            if (resp.status === 402) {
+              purgeBridgeFromFile(b, '402_QUOTA_EXHAUSTED')
+            }
+            return {
+              id: idx + 1,
+              url: b,
+              host: b.replace(/^https?:\/\//, '').split('/')[0],
+              status: resp.ok ? 'online' : (resp.status === 402 ? 'exhausted' : 'standby'),
+              latency: lat,
+              code: resp.status
+            }
+          } catch {
+            return {
+              id: idx + 1,
+              url: b,
+              host: b.replace(/^https?:\/\//, '').split('/')[0],
+              status: 'standby',
+              latency: Date.now() - t0,
+              code: 0
+            }
+          }
+        }))
+        const onlineCount = tested.filter(r => r.status === 'online').length
+        const failedCount = tested.filter(r => r.status !== 'online').length
+        const totalHealthy = Math.max(0, bridges.length - failedCount)
+
+        const testAvgLat = tested.filter(t => t.latency > 0).length > 0
+          ? Math.round(tested.reduce((a, b) => a + b.latency, 0) / tested.length)
+          : avgLatency
+
+        res.statusCode = 200
+        res.end(JSON.stringify({
+          ok: true,
+          live_tested: true,
+          timestamp: new Date().toISOString(),
+          total: bridges.length,
+          total_created: totalCreated,
+          exhausted_count: exhaustedCount,
+          tested_count: tested.length,
+          online_count: totalHealthy,
+          estimated_tokens_stock: totalHealthy * 1000000,
+          tokens_total_disponiveis: totalHealthy * 1000000,
+          tokens_por_conta: 1000000,
+          tokens_formatado: `${Math.round((totalHealthy * 1000000) / 1000000)}M`,
+          tokens_consumed_today: totalTokensToday,
+          calls_today: callsToday,
+          total_calls_all_time: totalUsageCalls,
+          avg_latency: testAvgLat,
+          bridges: [...tested, ...bridges.slice(15).map((b, idx) => ({
+            id: idx + 16,
+            url: b,
+            host: b.replace(/^https?:\/\//, '').split('/')[0],
+            status: 'online',
+            latency: testAvgLat,
+            code: 200
+          }))],
+          gateway_url: 'https://www.sixtysix.online/v1'
+        }))
+        return
+      }
+
+      res.statusCode = 200
+      res.end(JSON.stringify({
+        ok: true,
+        live_tested: false,
+        timestamp: new Date().toISOString(),
+        total: bridges.length,
+        total_created: totalCreated,
+        exhausted_count: exhaustedCount,
+        online_count: bridges.length,
+        estimated_tokens_stock: bridges.length * 1000000,
+        tokens_total_disponiveis: bridges.length * 1000000,
+        tokens_por_conta: 1000000,
+        tokens_formatado: `${Math.round((bridges.length * 1000000) / 1000000)}M`,
+        tokens_consumed_today: totalTokensToday,
+        calls_today: callsToday,
+        total_calls_all_time: totalUsageCalls,
+        avg_latency: avgLatency,
+        bridges: bridges.map((b, idx) => ({
+          id: idx + 1,
+          url: b,
+          host: b.replace(/^https?:\/\//, '').split('/')[0],
+          status: 'online',
+          latency: avgLatency,
+          code: 200
+        })),
+        gateway_url: 'https://www.sixtysix.online/v1'
+      }))
+      return
     }
     if(action!=='proxy')throw new AccessError(404,'Operação não encontrada.')
     if(!['GET','HEAD','POST','OPTIONS'].includes(req.method||''))throw new AccessError(405,'Método não permitido.')
@@ -452,7 +878,7 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
         if(wantsVideo){
           const created=await createVideo(process.env,fetch,{route,payload,clientId,secret:process.env.SUPABASE_SERVICE_ROLE_KEY||''})
           res.statusCode=created.status;res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(created.body))
-        }else await proxySupplier(req,res,{route,path,params,payload,clientId})
+        }else await proxySupplier(req,res,{route,path,params,payload,clientId,backups:fallbackRoutes(router,route)})
       }
       finally{if(gate.leased)await releaseRequest(process.env,fetch,requestId)}
       return

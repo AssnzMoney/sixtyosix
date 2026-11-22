@@ -172,7 +172,9 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    const actions:Record<string,(input:Row)=>Promise<unknown>>={
     'router-key-link':async(input:Row)=>{const user=await findUser(input.email);return {...await router.linkKey({id:input.id,user_id:user?.id||null}),user}},
     'router-provider-save':router.saveProvider,'router-provider-enabled':router.setProviderEnabled,'router-provider-delete':router.deleteProvider,
-    'router-provider-models':router.providerModels,'router-models-save':router.saveModels,
+    'router-provider-models':router.providerModels,'router-models-save':router.saveModels,'router-model-fallback':router.setFallback,
+    'router-key-pool':router.keyPool,'router-pool-test':router.testProviderKeys,'router-pool-key-enabled':router.setProviderKeyEnabled,
+    'router-pool-key-remove':router.removeProviderKey,'router-pool-keys-add':router.addProviderKeys,
     'router-key-create':router.createKey,'router-key-renew':router.renewKey,'router-key-block':router.setKeyBlocked,'router-key-reveal':router.revealKey,
     'router-guard-save':router.saveGuardSettings,'router-network-block':router.setNetworkBlocked,
     'router-key-ips':router.keyIps,'router-key-ip-block':router.setKeyIpBlocked,'router-key-limits':router.saveKeyLimits,

@@ -1,6 +1,6 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
-import {createNativeBridge,nativeBody,NATIVE_BODY_LIMIT} from './native-messages.server.ts'
+import {createNativeBridge,nativeBody,NATIVE_BODY_LIMIT,NATIVE_OUTPUT_LIMIT} from './native-messages.server.ts'
 const now=Date.now()
 const config={bridgeKey:'test-bridge-key-with-at-least-32-characters',lovableKey:'simulated-upstream-secret',expiresAt:new Date(now+1800000).toISOString()}
 const payload={model:'anthropic/claude-opus-5-5',system:[{type:'text',text:'Sistema real'}],messages:[{role:'user',content:'Olá'},{role:'assistant',content:[{type:'tool_use',id:'call_1',name:'Read',input:{path:'a.ts'}}]},{role:'user',content:[{type:'tool_result',tool_use_id:'call_1',content:'arquivo'}]}],tools:[{name:'Read',description:'Ler',input_schema:{type:'object',properties:{path:{type:'string'}}}}],max_tokens:32000,stream:true}
@@ -8,7 +8,7 @@ const request=(body:any=payload,key=config.bridgeKey)=>new Request('https://own.
 test('preserva sistema, histórico, ferramentas e streaming; limita saída',()=>{
  const actual=nativeBody({...payload,thinking:{type:'adaptive'},output_config:{effort:'high'}})
  assert.deepEqual(actual.messages,payload.messages);assert.deepEqual(actual.tools,payload.tools);assert.deepEqual(actual.system,payload.system)
- assert.equal(actual.max_tokens,1024);assert.equal(actual.stream,true);assert.equal(actual.thinking,undefined)
+ assert.equal(actual.max_tokens,NATIVE_OUTPUT_LIMIT);assert.equal(actual.stream,true);assert.equal(actual.thinking,undefined)
 })
 test('rejeita modelo diferente e limites inválidos',()=>{for(const change of [{model:'other'},{max_tokens:0},{max_tokens:1.5},{stream:'yes'},{messages:[]},{tools:{}}])assert.throws(()=>nativeBody({...payload,...change}))})
 test('autenticação e expiração impedem chamadas externas',async()=>{
