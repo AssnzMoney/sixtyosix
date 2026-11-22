@@ -292,6 +292,9 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
           }
           delete parsed.thinking
           delete parsed.output_config
+          delete parsed.effort
+          delete parsed.inference_geo
+          delete parsed.service_tier
 
           const systems: any[] = []
           if (typeof parsed.system === 'string') {
@@ -370,8 +373,11 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
 
         // Failover transparente em qualquer falha de ponte (401, 402, 404, 500, 502, 503)
         if (!curRes.ok && [401, 402, 404, 500, 502, 503].includes(curRes.status)) {
-          const reason = curRes.status === 402 ? '402_QUOTA_EXHAUSTED' : `HTTP_${curRes.status}`
-          purgeBridgeFromFile(targetBridge, reason)
+          // Apenas descarta do arquivo se for saldo zerado (402) ou inexistente (404/410). Erros 5xx ou 401 temporário pulam para a próxima sem apagar.
+          if (curRes.status === 402 || curRes.status === 404 || curRes.status === 410) {
+            const reason = curRes.status === 402 ? '402_QUOTA_EXHAUSTED' : `HTTP_${curRes.status}`
+            purgeBridgeFromFile(targetBridge, reason)
+          }
           if (curPool.length > 1 && attempts < maxAttempts - 1) {
             const nextIdx = (activeBridgeIndex + 1) % curPool.length
             console.log(`[POOL FAILOVER] 🔄 Ponte ${targetBridge} falhou (${curRes.status}). Pulando para ${curPool[nextIdx]}...`)
