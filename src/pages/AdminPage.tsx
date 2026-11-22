@@ -95,7 +95,7 @@ const HEADINGS: Record<string, { eyebrow: string; title: string; accent: string;
   payments: { eyebrow: 'financeiro', title: 'Pagamentos', accent: 'do período.', description: 'Pagamentos do Mercado Pago, bônus de indicação e prêmios do rank no período escolhido.' },
   usage: { eyebrow: 'gateway', title: 'Consumo', accent: 'e falhas.', description: 'Chamadas dos clientes, tokens e erros no período escolhido.' },
   router: { eyebrow: 'roteador', title: 'Provedores', accent: 'e modelos.', description: 'Fornecedores, modelos vendidos, limites e as chaves do Roteador.' },
-  pool: { eyebrow: 'infraestrutura e ia', title: 'Pool de', accent: 'Contas & Modelos.', description: 'Monitore a saúde do pool de 99 contas automatizadas em tempo real, latência e gerencie os modelos habilitados.' },
+  pool: { eyebrow: 'infraestrutura e ia', title: 'Pool de', accent: 'Contas & Modelos.', description: 'Monitore a saúde do pool de contas automatizadas e tokens em tempo real, latência e gerencie os modelos habilitados.' },
   affiliates: { eyebrow: 'indique e ganhe', title: 'Afiliados', accent: 'e indicações.', description: 'Quem tem link de indicação, quem veio por ele e os dias ganhos.' },
   rank: { eyebrow: 'desafio do mês', title: 'Rank', accent: 'do mês.', description: 'O tema de cada mês, os projetos enviados, a moderação e o campeão.' },
 }

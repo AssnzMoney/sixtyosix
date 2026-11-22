@@ -590,6 +590,24 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
         } catch {}
       }
 
+      const robotDbPaths = [join(process.cwd(), '../accounts/contas_db.json'), join(process.cwd(), 'accounts/contas_db.json')]
+      for (const p of robotDbPaths) {
+        if (existsSync(p)) {
+          try {
+            const raw = JSON.parse(readFileSync(p, 'utf8'))
+            if (Array.isArray(raw) && raw.length > 0) {
+              totalCreated = Math.max(totalCreated, raw.length)
+              for (const acc of raw) {
+                const bUrl = acc.bridge_url || acc.url
+                if (bUrl && !bridges.includes(bUrl)) {
+                  bridges.push(bUrl)
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
       let exhaustedCount = 0
       if (existsSync(exhaustedPath)) {
         try {
@@ -701,7 +719,10 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
           exhausted_count: exhaustedCount,
           tested_count: tested.length,
           online_count: totalHealthy,
-          estimated_tokens_stock: bridges.length * 100000,
+          estimated_tokens_stock: totalHealthy * 1000000,
+          tokens_total_disponiveis: totalHealthy * 1000000,
+          tokens_por_conta: 1000000,
+          tokens_formatado: `${Math.round((totalHealthy * 1000000) / 1000000)}M`,
           tokens_consumed_today: totalTokensToday,
           calls_today: callsToday,
           total_calls_all_time: totalUsageCalls,
@@ -728,7 +749,10 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
         total_created: totalCreated,
         exhausted_count: exhaustedCount,
         online_count: bridges.length,
-        estimated_tokens_stock: bridges.length * 100000,
+        estimated_tokens_stock: bridges.length * 1000000,
+        tokens_total_disponiveis: bridges.length * 1000000,
+        tokens_por_conta: 1000000,
+        tokens_formatado: `${Math.round((bridges.length * 1000000) / 1000000)}M`,
         tokens_consumed_today: totalTokensToday,
         calls_today: callsToday,
         total_calls_all_time: totalUsageCalls,

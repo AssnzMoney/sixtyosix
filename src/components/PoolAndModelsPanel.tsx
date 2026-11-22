@@ -169,8 +169,8 @@ export function PoolAndModelsPanel() {
           </div>
           <div>
             <span>Tokens em Estoque</span>
-            <strong>~{((data?.estimated_tokens_stock || (totalBridges * 100000)) / 1000000).toFixed(1)}M</strong>
-            <small>capacidade útil</small>
+            <strong>~{((data?.estimated_tokens_stock || (totalBridges * 1000000)) / 1000000).toFixed(0)}M</strong>
+            <small>1.0M / conta ativa</small>
           </div>
           <div>
             <span>Consumo Hoje</span>
