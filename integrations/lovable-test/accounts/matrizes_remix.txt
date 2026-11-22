@@ -1,4 +1,0 @@
-# Pool vivo de Matrizes Públicas da Lovable (com public_remixing_enabled=true)
-# Os workers sorteiam as matrizes em rodízio (round-robin) para espalhar os remixes
-448b5334-3b25-4ed6-9e4d-b6ce9035dd07
-b9408f43-30ad-4673-a65c-a5e2f1be699b
