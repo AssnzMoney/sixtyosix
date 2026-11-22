@@ -244,7 +244,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       const pool = getBridgesPool()
       let attempts = 0
       const maxAttempts = Math.min(pool.length, 6)
-      const bridgeKey = provider.key || 'six_bridge_20ceda73209ccf86cc67c9fa44ab116706115e194c118086'
+      const bridgeKey = 'six_bridge_20ceda73209ccf86cc67c9fa44ab116706115e194c118086'
 
       while (attempts < maxAttempts) {
         const curPool = getBridgesPool()
