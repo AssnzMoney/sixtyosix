@@ -5,6 +5,7 @@ import { credentialTitle, isUuid, validateDeliveryInput } from '../src/lib/deliv
 import { adminCodeEmail, emailConfig, sendEmail } from '../server/email.js'
 import { createNotifier, userFromAuth, type NotifyResult } from '../server/notifications.js'
 import { canonicalModels, createRouterAdmin, loadRouter, RouterError } from '../server/router.js'
+import { loadUsageSummary } from '../server/usage-summary.js'
 import { withPlanModels } from '../server/model-aliases.js'
 import { billingPlans } from './mercadopago.js'
 import { createAutoKeys } from '../server/auto-key.js'
@@ -107,10 +108,17 @@ export function createAdminService(env=process.env,request:typeof fetch=fetch){
  return async (authorization:string|undefined,query:URLSearchParams,adminSession?:string)=>{
   const {config,email,twoFactor}=await requireAdmin(env,request,authorization,adminSession)
   const resource=query.get('resource')||'clients',offset=Number(query.get('offset')||0)
-  if(!Number.isSafeInteger(offset)||offset<0||offset>1000000||(!resources[resource]&&resource!=='users'&&resource!=='router'))throw new AccountError(400,'Consulta inválida.')
+  if(!Number.isSafeInteger(offset)||offset<0||offset>1000000||(!resources[resource]&&resource!=='users'&&resource!=='router'&&resource!=='usage-summary'))throw new AccountError(400,'Consulta inválida.')
   // Aba Roteador: provedores (sem a key), modelos vendidos e chaves manuais.
   if(resource==='router'){try{return {...await createRouterAdmin(config,request,email).overview(),rows:[] as Row[],hasMore:false,admin:email}}catch(error){if(error instanceof RouterError)throw new AccountError(error.status,error.message);throw error}}
   const headers=serviceHeaders(config.secret)
+  // Consumo real do período: o servidor soma todas as chamadas (o painel só baixa até 10.000, uma por uma).
+  if(resource==='usage-summary'){
+   const from=query.get('from')||new Date(Date.now()-29*86400000).toISOString().slice(0,10),to=query.get('to')||new Date().toISOString().slice(0,10)
+   if(![from,to].every(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x)||from>to||Date.parse(to)-Date.parse(from)>365*86400000)throw new AccountError(400,'Escolha um período de até 366 dias.')
+   try{return {summary:await loadUsageSummary({url:config.url,headers},request,from,to),rows:[] as Row[],hasMore:false,admin:email}}
+   catch(error){console.error('Consumo do período indisponível',error);throw new AccountError(503,'Não foi possível somar o consumo do período. Tente atualizar o painel.')}
+  }
   let url:string
   if(resource==='users')url=`${config.url}/auth/v1/admin/users?page=${Math.floor(offset/500)+1}&per_page=500`
   else{

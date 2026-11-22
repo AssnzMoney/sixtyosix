@@ -38,6 +38,7 @@ import {
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
 import { PoolAndModelsPanel } from '../components/PoolAndModelsPanel'
+import type { UsageSummary } from '../../server/usage-summary'
 import { KeyPoolPanel } from '../components/KeyPoolPanel'
 import AffiliatesPanel from '../components/AffiliatesPanel'
 import RankAdminPanel from '../components/RankAdminPanel'
@@ -234,6 +235,8 @@ export default function AdminPage() {
   // Verificação em duas etapas: 'on' exige o código do e-mail; 'off' = envio de e-mail não configurado.
   const [twoFactor, setTwoFactor] = useState<'on' | 'off' | ''>('')
   const [codeStep, setCodeStep] = useState<{ challenge: string; sentTo: string; code: string; sending: boolean; error: string } | null>(null)
+  // Consumo real do período, somado no servidor (todas as chamadas, sem o limite de 10.000 da lista).
+  const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null)
 
   useEffect(() => {
     // Prévia com dados de exemplo, só no computador local (/adminxv1?demo=1).
@@ -252,6 +255,7 @@ export default function AdminPage() {
     setFailed([])
     async function load() {
       const result: Record<string, Row[]> = {}
+      setUsageSummary(null)
       let capped = false
       const fetchPage = async (resource: string, offset: number) => {
         const response = await fetch('/api/management?' + new URLSearchParams({ resource, offset: String(offset), from, to }), {
@@ -300,6 +304,10 @@ export default function AdminPage() {
           }
         }),
       )
+      // Soma do período no servidor. Se falhar, a aba usa a lista baixada (e avisa se ela foi cortada).
+      fetchPage('usage-summary', 0)
+        .then((body) => { if (alive && body.summary) setUsageSummary(body.summary as UsageSummary) })
+        .catch(() => undefined)
       const known = new Set([...result.keys, ...result.trials].map((x) => x.gateway_client_id))
       result.keys.push(
         ...result.clients
@@ -520,6 +528,22 @@ export default function AdminPage() {
   const countOf = (key: string) =>
     key === 'deliveries' ? deliveries.length : key === 'customers' ? people.customers.length : key === 'pending' ? people.pending.length : data[key]?.length ?? 0
 
+  /** Nome do cliente de cada chave (gateway_clients.id), igual à coluna Cliente da lista de chamadas. */
+  const clientOwner = useMemo(() => {
+    const clients = new Map<string, Row>((data.clients || []).map((x) => [x.id, { ...x, owner: x.user_id }]))
+    for (const x of [...(data.keys || []), ...(data.trials || [])])
+      clients.set(x.gateway_client_id, { ...clients.get(x.gateway_client_id), owner: x.user_id, key_prefix: x.token_prefix })
+    const label = (id: string) => {
+      const u = usersById.get(id)
+      return u ? `${u.name || 'Sem nome'} · ${u.email}` : id || 'Chave legada sem conta vinculada'
+    }
+    return (clientId: string) => {
+      const client = clients.get(clientId)
+      const owner = client?.owner
+      return { customer: owner || !client?.name ? label(owner) : String(client.name), key: String(client?.key_prefix || clientId) }
+    }
+  }, [data, usersById])
+
   /* ------------------------- Tabelas genéricas ------------------------ */
   const enriched = useMemo<Row[]>(() => {
     if (tab === 'service' || tab === 'router' || tab === 'affiliates' || tab === 'rank') return []
@@ -553,7 +577,9 @@ export default function AdminPage() {
   const usageErrors = useMemo(() => {
     if (tab !== 'usage') return []
     const counts = new Map<number, { count: number; last: string }>()
-    for (const row of enriched) {
+    // Sem busca, os erros vêm da soma de todas as chamadas do período.
+    if (usageSummary && !search) for (const e of usageSummary.errors) counts.set(e.code, { count: e.count, last: e.last })
+    else for (const row of enriched) {
       const code = Number(row.status_code)
       if (!(code >= 400)) continue
       const c = counts.get(code) || { count: 0, last: '' }
@@ -565,13 +591,35 @@ export default function AdminPage() {
     return [...counts.entries()]
       .map(([code, c]) => ({ code, ...c, ...statusMeaning(code) }))
       .sort((a, b) => urgent(a.code) - urgent(b.code) || b.count - a.count)
-  }, [tab, enriched])
+  }, [tab, enriched, usageSummary, search])
 
   // Aba Consumo: soma por cliente (todas as chaves dele), do maior consumo para o menor. Respeita período e busca.
   const usageByCustomer = useMemo(() => {
     if (tab !== 'usage') return null
     type Group = { customer: string; keys: Set<string>; requests: number; input: number; output: number; errors: number; last: string; models: Map<string, number>; times: number[]; peak: number }
     const groups = new Map<string, Group>()
+    // Consumo real: soma de todas as chamadas do período, feita no servidor. O pico de um cliente com várias chaves
+    // é o maior pico entre as chaves dele.
+    if (usageSummary) {
+      const term = search.toLowerCase()
+      for (const c of usageSummary.clients) {
+        const { customer, key } = clientOwner(c.client_id)
+        if (term && !`${customer} ${key} ${Object.keys(c.models).join(' ')}`.toLowerCase().includes(term)) continue
+        const g = groups.get(customer) || { customer, keys: new Set<string>(), requests: 0, input: 0, output: 0, errors: 0, last: '', models: new Map<string, number>(), times: [], peak: 0 }
+        g.requests += c.requests
+        g.input += c.input
+        g.output += c.output
+        g.errors += c.errors
+        if (c.last > g.last) g.last = c.last
+        g.peak = Math.max(g.peak, c.peak)
+        if (key.startsWith('sk-')) g.keys.add(key)
+        for (const [m, n] of Object.entries(c.models)) g.models.set(m, (g.models.get(m) || 0) + n)
+        groups.set(customer, g)
+      }
+      const list = [...groups.values()].sort((a, b) => b.input + b.output - (a.input + a.output) || b.requests - a.requests)
+      const total = list.reduce((t, g) => ({ requests: t.requests + g.requests, tokens: t.tokens + g.input + g.output, errors: t.errors + g.errors }), { requests: 0, tokens: 0, errors: 0 })
+      return { list, total, real: true, complete: usageSummary.complete }
+    }
     for (const row of enriched) {
       const name = String(row.customer || 'Sem cliente')
       const g = groups.get(name) || { customer: name, keys: new Set<string>(), requests: 0, input: 0, output: 0, errors: 0, last: '', models: new Map<string, number>(), times: [], peak: 0 }
@@ -598,8 +646,8 @@ export default function AdminPage() {
     }
     const list = [...groups.values()].sort((a, b) => b.input + b.output - (a.input + a.output) || b.requests - a.requests)
     const total = list.reduce((t, g) => ({ requests: t.requests + g.requests, tokens: t.tokens + g.input + g.output, errors: t.errors + g.errors }), { requests: 0, tokens: 0, errors: 0 })
-    return { list, total }
-  }, [tab, enriched])
+    return { list, total, real: false, complete: true }
+  }, [tab, enriched, usageSummary, search, clientOwner])
 
   const revenue = (data.payments || []).filter((x) => x.status === 'approved').reduce((a, x) => a + Number(x.amount_cents || 0), 0)
   const activePlans = (data.subscriptions || []).filter((x) => x.entitled && Date.parse(x.paid_until) > now).length
@@ -1286,6 +1334,15 @@ export default function AdminPage() {
               {tab === 'usage' && usageByCustomer && (
                 <div className="sx-usage-summary">
                   <h3>Consumo por cliente</h3>
+                  <p className="sx-admin-hint">
+                    {usageByCustomer.real
+                      ? usageByCustomer.complete
+                        ? 'Consumo real: soma de todas as chamadas do período, feita no servidor.'
+                        : 'Período grande demais para somar de uma vez: os números abaixo cobrem só o começo do período. Escolha um período menor.'
+                      : enriched.length >= 10000
+                        ? 'Somando só as 10.000 chamadas baixadas: a soma completa do período ainda está carregando ou falhou.'
+                        : 'Soma das chamadas do período.'}
+                  </p>
                   <div className="sx-admin-metrics">
                     <article><span>Chamadas</span><strong>{number(usageByCustomer.total.requests)}</strong></article>
                     <article><span>Tokens (entrada + saída)</span><strong>{compact(usageByCustomer.total.tokens)}</strong></article>
