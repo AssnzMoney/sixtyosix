@@ -280,7 +280,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
         const targetBridge = curPool[activeBridgeIndex % curPool.length].replace(/\/$/, '')
         let curRes: Response | null = null
 
-        // Garante formato 100% compativel com a ponte (max 1024 tokens, modelo valido, sem thinking)
+        // Garante formato 100% compatível com a ponte (max 1024 tokens, modelo válido, sem thinking e sem campos extras)
         let bridgePayload = payloadBody
         try {
           const parsed = JSON.parse(payloadBody)
@@ -292,6 +292,34 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
           }
           delete parsed.thinking
           delete parsed.output_config
+
+          const systems: any[] = []
+          if (typeof parsed.system === 'string') {
+            systems.push({ type: 'text', text: parsed.system })
+          } else if (Array.isArray(parsed.system)) {
+            systems.push(...parsed.system)
+          }
+
+          if (Array.isArray(parsed.messages)) {
+            parsed.messages = parsed.messages
+              .filter((m: any) => {
+                if (m?.role === 'system') {
+                  if (typeof m.content === 'string') systems.push({ type: 'text', text: m.content })
+                  else if (Array.isArray(m.content)) systems.push(...m.content)
+                  return false
+                }
+                return m?.role === 'user' || m?.role === 'assistant'
+              })
+              .map((m: any) => {
+                let content = m.content
+                if (Array.isArray(content)) {
+                  content = content.filter((b: any) => b?.type !== 'thinking' && b?.type !== 'redacted_thinking')
+                  if (content.length === 0) content = [{ type: 'text', text: '…' }]
+                }
+                return { role: m.role, content }
+              })
+          }
+          if (systems.length > 0) parsed.system = systems
           bridgePayload = JSON.stringify(parsed)
         } catch {}
 
