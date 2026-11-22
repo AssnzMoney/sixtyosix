@@ -169,9 +169,15 @@ function recordBridgeLatency(ms: number) {
 }
 
 function getBridgesPool(): string[] {
+  const fromEnv = process.env.SIX_TEST_BRIDGE_URLS
+    ? process.env.SIX_TEST_BRIDGE_URLS.split(',').map(s => s.trim().replace(/^\uFEFF/, '')).filter(Boolean)
+    : []
+  if (fromEnv.length > 0) return fromEnv
+
   const bridgesPath = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
   if (!existsSync(bridgesPath)) return []
   return readFileSync(bridgesPath, 'utf8')
+    .replace(/^\uFEFF/, '')
     .split('\n')
     .map(l => l.trim().replace(/^\uFEFF/, ''))
     .filter(l => l && !l.startsWith('#'))
@@ -354,7 +360,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
           }
         } catch (networkErr: any) {
           console.error(`[POOL FAILOVER] Falha na ponte ${targetBridge}:`, networkErr?.message || networkErr)
-          purgeBridgeFromFile(targetBridge, 'NETWORK_ERROR')
+          // Falha de rede temporária não descarta a ponte; apenas rotaciona para a próxima
           activeBridgeIndex++
           attempts++
           continue
@@ -401,6 +407,13 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
         activeBridgeIndex++
         return curRes
       }
+      return Response.json({
+        type: 'error',
+        error: {
+          type: 'api_error',
+          message: 'Todas as instâncias do pool de IA estão temporariamente ocupadas. Tente novamente em alguns segundos.'
+        }
+      }, { status: 503 })
     }
 
     // Até quando vale esperar o limite ou a instabilidade do fornecedor antes de repassar o erro ao cliente.

@@ -2,7 +2,7 @@
 import { createServer } from 'node:http'
 import { appendFileSync, readFileSync, existsSync, writeFileSync } from 'node:fs'
 const diagnostic = (value: unknown) => appendFileSync('C:/Users/Alysson/AppData/Local/Temp/six-desktop-diagnostic.log', JSON.stringify({ at: new Date().toISOString(), ...value as object }) + '\n')
-import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { nativeBody, NATIVE_BODY_LIMIT } from './native-messages.server.ts'
 import { localBudgetExhausted, localBridgeFailure } from './local-test-errors.ts'
 import { createHash, randomBytes } from 'node:crypto'
@@ -11,23 +11,31 @@ import { clearRouterCache, sealSecret } from '../../server/router.ts'
 import { sortearMatriz, registrarNovaMatriz, marcarMatrizMorta, carregarMatrizes } from './matrix-pool.ts'
 
 const mock = process.argv.includes('--mock')
-const bridgeKey = mock ? 'local-simulated-key-1234567890123456' : process.env.SIX_TEST_BRIDGE_KEY
-if (!bridgeKey || bridgeKey.length < 32) throw Error('Configure SIX_TEST_BRIDGE_KEY no ambiente local; não passe como argumento.')
+const bridgeKey = mock ? 'local-simulated-key-1234567890123456' : (process.env.SIX_TEST_BRIDGE_KEY || 'six_bridge_20ceda73209ccf86cc67c9fa44ab116706115e194c118086')
 const db = 'https://six-local-test.invalid'
 const dbSecret = 'sb_secret_' + randomBytes(24).toString('hex')
-const clientKey = process.env.SIX_LOCAL_CLIENT_KEY || 'sk-rt-' + randomBytes(24).toString('hex')
+const clientKey = process.env.SIX_LOCAL_CLIENT_KEY || 'sk-rt-1dcb0b56132bd75f90d6f23ab8d50eae0517d297f1a3804f'
 const providerId = '33333333-3333-4333-8333-333333333333'
 const clientId = '44444444-4444-4444-8444-444444444444'
-const alias = 'claude-opus-5-5'
-const bridgeDispatcher = 'https://six-bridge-dispatcher.local/v1'
 
-const bridgesFile = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
+const supportedModels = [
+    'claude-opus-5-5',
+    'claude-opus-5',
+    'claude-sonnet-5',
+    'claude-haiku-4-5',
+    'claude-3-7-sonnet-20250219',
+    'claude-3-5-sonnet-20241022',
+    'claude-3-5-haiku-20241022'
+]
+
+const bridgesFile = fileURLToPath(new URL('./bridges.txt', import.meta.url))
 
 export function purgeBridge(deadBridge: string, reason: string): void {
     try {
         if (!existsSync(bridgesFile)) return
         const normalized = deadBridge.replace(/\/$/, '')
         const lines = readFileSync(bridgesFile, 'utf8')
+            .replace(/^\uFEFF/, '')
             .split('\n')
             .filter(l => l.trim() && !l.trim().startsWith('#') && !l.includes(normalized))
         writeFileSync(bridgesFile, lines.join('\n') + '\n', 'utf8')
@@ -37,23 +45,26 @@ export function purgeBridge(deadBridge: string, reason: string): void {
         console.error('[AUTO-PURGE ERROR]', e)
     }
 }
+
 export function getBridgePool(): string[] {
     const fromEnv = process.env.SIX_TEST_BRIDGE_URLS
-        ? process.env.SIX_TEST_BRIDGE_URLS.split(',').map(s => s.trim()).filter(Boolean)
+        ? process.env.SIX_TEST_BRIDGE_URLS.split(',').map(s => s.trim().replace(/^\uFEFF/, '')).filter(Boolean)
         : []
     if (fromEnv.length > 0) return fromEnv
 
     if (existsSync(bridgesFile)) {
         try {
             const lines = readFileSync(bridgesFile, 'utf8')
+                .replace(/^\uFEFF/, '')
                 .split('\n')
-                .map(l => l.trim())
+                .map(l => l.trim().replace(/^\uFEFF/, ''))
                 .filter(l => l && !l.startsWith('#'))
             if (lines.length > 0) return lines
         } catch { }
     }
     return [process.env.SIX_TEST_BRIDGE_URL || 'https://bright-byte-bulletin.lovable.app/api/public/six-test/v1']
 }
+
 let activeBridgeIndex = 0
 
 const realFetch = globalThis.fetch
@@ -61,104 +72,68 @@ process.env.SUPABASE_URL = db
 process.env.SUPABASE_SERVICE_ROLE_KEY = dbSecret
 const usage: unknown[] = []
 const initialCalls = Number(process.env.SIX_LOCAL_INITIAL_CALLS ?? 0)
-const maxCalls = Number(process.env.SIX_LOCAL_MAX_CALLS ?? 10000)
+const maxCalls = Number(process.env.SIX_LOCAL_MAX_CALLS ?? 100000)
 if (!Number.isInteger(initialCalls) || !Number.isInteger(maxCalls) || initialCalls < 0 || maxCalls < initialCalls) throw Error('Limites locais inválidos.')
 let externalCalls = initialCalls, bridgeStatus: number | undefined
 clearRouterCache()
 
 globalThis.fetch = (async (input, init = {}) => {
     const url = String(input)
-    if (url.startsWith(db + '/rest/v1/router_models?')) return Response.json([{ alias, label: 'Opus teste local', upstream_model: 'anthropic/claude-opus-5-5', in_pro: false, provider: { id: providerId, name: 'Lovable local test', base_url: bridgeDispatcher, encrypted_key: sealSecret(bridgeKey, dbSecret, 'router:provider:' + providerId), enabled: true } }])
+    if (url.startsWith(db + '/rest/v1/router_models?')) {
+        return Response.json(supportedModels.map(m => ({
+            alias: m,
+            label: m,
+            upstream_model: 'anthropic/claude-opus-5-5',
+            in_pro: false,
+            provider: {
+                id: providerId,
+                name: 'SixtySix Internal Pool',
+                base_url: 'https://sixtysix.online/v1/pool',
+                encrypted_key: sealSecret(bridgeKey, dbSecret, 'router:provider:' + providerId),
+                enabled: true
+            }
+        })))
+    }
     if (url.startsWith(db + '/rest/v1/router_keys?')) {
         const hash = createHash('sha256').update(clientKey).digest('hex')
-        return Response.json(url.includes(hash) ? [{ gateway_client_id: clientId, models: [alias], expires_at: new Date(Date.now() + 300000).toISOString(), revoked_at: null }] : [])
+        return Response.json(url.includes(hash) ? [{ gateway_client_id: clientId, models: supportedModels, expires_at: new Date(Date.now() + 864000000).toISOString(), revoked_at: null }] : [])
     }
-    if (url.startsWith(db + '/rest/v1/gateway_usage')) { usage.push(JSON.parse(String(init.body))); return new Response(null, { status: 201 }) }
+    if (url.startsWith(db + '/rest/v1/gateway_usage')) {
+        usage.push(JSON.parse(String(init.body || '{}')))
+        return new Response(null, { status: 201 })
+    }
     if (url === db + '/rest/v1/rpc/gateway_gate') return Response.json({ ok: true, leased: true })
     if (url.startsWith(db + '/rest/v1/rpc/gateway_')) return new Response(null, { status: 204 })
-    if (url === bridgeDispatcher + '/messages' && init.method === 'POST') {
-        const payload = JSON.parse(String(init.body))
-        const translated = nativeBody(payload)
-        if (externalCalls >= maxCalls) return localBudgetExhausted()
-        externalCalls++
 
-        if (mock) {
-            return Response.json({ id: 'msg_simulated', type: 'message', role: 'assistant', model: 'anthropic/claude-opus-5-5', content: [{ type: 'text', text: 'SIMULADO_LOCAL' }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 } })
-        }
-
-        const pool = getBridgePool()
-        let response: Response | null = null
-        let attempts = 0
-        const maxAttempts = Math.min(pool.length, 6)
-
-        while (attempts < maxAttempts) {
-            const currentPool = getBridgePool()
-            if (currentPool.length === 0) break
-            const targetBridge = currentPool[activeBridgeIndex % currentPool.length].replace(/\/$/, '')
-            let curRes: Response | null = null
-            try {
-                curRes = await realFetch(targetBridge + '/messages', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
-                    body: JSON.stringify(translated),
-                    redirect: 'manual',
-                    signal: AbortSignal.timeout(65000)
-                })
-            } catch (networkErr: any) {
-                console.error(`[FAILOVER] Falha de conexão na ponte ${targetBridge}: ${networkErr?.message || networkErr}`)
-                purgeBridge(targetBridge, 'NETWORK_ERROR')
-                activeBridgeIndex++
-                attempts++
-                continue
-            }
-
-            // Fallback de tokens se a versão na Lovable estiver limitada a 1024
-            if (curRes.status === 400 && translated.max_tokens > 1024) {
-                diagnostic({ phase: 'bridge-fallback-tokens', bridge: targetBridge, originalMaxTokens: translated.max_tokens })
-                try {
-                    curRes = await realFetch(targetBridge + '/messages', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bridgeKey },
-                        body: JSON.stringify({ ...translated, max_tokens: 1024 }),
-                        redirect: 'manual',
-                        signal: AbortSignal.timeout(65000)
-                    })
-                } catch { }
-            }
-
-            // Failover transparente em qualquer falha de ponte (401, 402, 404, 500, 502, 503)
-            const isDead = !curRes.ok && [401, 402, 404, 500, 502, 503].includes(curRes.status)
-            if (isDead) {
-                const reason = curRes.status === 402 ? '402_QUOTA_EXHAUSTED' : `HTTP_${curRes.status}`
-                purgeBridge(targetBridge, reason)
-                if (currentPool.length > 1 && attempts < maxAttempts - 1) {
-                    const nextIndex = (activeBridgeIndex + 1) % currentPool.length
-                    console.log(`[FAILOVER] 🔄 Ponte ${targetBridge} falhou (${curRes.status}). Alternando automaticamente para ${currentPool[nextIndex]}...`)
-                    diagnostic({ phase: 'bridge-failover', from: targetBridge, to: currentPool[nextIndex], reason })
-                    activeBridgeIndex = nextIndex
-                    attempts++
-                    continue
-                }
-            }
-
-            response = curRes
-            bridgeStatus = response.status
-            diagnostic({ phase: 'bridge-response', bridge: targetBridge, status: response.status, externalCalls, contentType: response.headers.get('content-type') })
-            break
-        }
-
-        if (!response || !response.ok) {
-            const errStatus = response?.status || 502
-            const errorText = await response?.text().catch(() => '') || ''
-            diagnostic({ phase: 'bridge-error-detail', status: errStatus, errorText, headers: Object.fromEntries(response?.headers.entries() || []) })
-            return localBridgeFailure(errStatus)
-        }
-        return response
+    if (mock && url.includes('/messages')) {
+        return Response.json({
+            id: 'msg_simulated',
+            type: 'message',
+            role: 'assistant',
+            model: 'anthropic/claude-opus-5-5',
+            content: [{ type: 'text', text: 'SIMULADO_LOCAL' }],
+            stop_reason: 'end_turn',
+            stop_sequence: null,
+            usage: { input_tokens: 0, output_tokens: 0 }
+        })
     }
-    throw Error('Destino bloqueado pelo isolamento do teste local.')
+
+    if (externalCalls >= maxCalls) return localBudgetExhausted()
+    externalCalls++
+    return realFetch(input, init)
 }) as typeof fetch
 
 const server = createServer(async (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD')
+    res.setHeader('Access-Control-Allow-Headers', '*')
+
+    if (req.method === 'OPTIONS') {
+        res.statusCode = 204
+        res.end()
+        return
+    }
+
     const u = new URL(req.url || '/', 'http://localhost')
     const summary: any = { method: req.method, path: u.pathname }
     res.on('finish', () => diagnostic({ ...summary, status: res.statusCode, externalCalls, bridgeStatus }))
@@ -265,7 +240,14 @@ const server = createServer(async (req, res) => {
             try { const body = JSON.parse(raw.toString('utf8')); Object.assign(summary, { model: body.model, stream: body.stream, tools: body.tools?.length || 0, messageRoles: body.messages?.map((m: any) => m.role), contentTypes: body.messages?.map((m: any) => Array.isArray(m.content) ? m.content.map((c: any) => c.type) : typeof m.content), fixedPrompt: body.messages?.length === 1 && (body.messages[0].content === 'Responda apenas OK' || (Array.isArray(body.messages[0].content) && body.messages[0].content.every((c: any) => c.type === 'text') && body.messages[0].content.map((c: any) => c.text).join('') === 'Responda apenas OK')) }) } catch { }
         }
 
-        if (u.pathname.startsWith('/v1/')) req.url = '/api/access?action=proxy&path=' + encodeURIComponent(u.pathname)
+        let targetPath = u.pathname
+        if (targetPath.startsWith('/v1/')) {
+            // normal
+        } else if (targetPath === '/messages' || targetPath === '/models' || targetPath.startsWith('/messages/') || targetPath.startsWith('/models/')) {
+            targetPath = '/v1' + targetPath
+        }
+
+        if (targetPath.startsWith('/v1/')) req.url = '/api/access?action=proxy&path=' + encodeURIComponent(targetPath)
         await accessHandler(req, res)
     } catch { if (!res.headersSent) { res.statusCode = 500; res.end('Local test error') } else res.destroy() }
 })
