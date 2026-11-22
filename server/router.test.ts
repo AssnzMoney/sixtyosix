@@ -4,8 +4,7 @@ import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import accessHandler, { localRequest, seal } from '../api/access.ts'
 import { UsageTap } from './supplier.ts'
-import { activeKeys, canonicalModels, clearRouterCache, createRouterAdmin, fallbackRoutes, findRoute, loadRouter, normalizeAlias, providerUrlOk, routerStatus, sealSecret, unsealSecret } from './router.ts'
-import { KeyPool } from './key-pool.ts'
+import { canonicalModels, clearRouterCache, createRouterAdmin, findRoute, loadRouter, normalizeAlias, routerStatus, sealSecret, unsealSecret } from './router.ts'
 import { suggestAlias, suggestLabel } from '../src/lib/routerModels.ts'
 
 /** O fetch real, para o teste chamar o servidor local enquanto o do servidor é simulado. */
@@ -61,7 +60,7 @@ type Manual = { models: string[] | null; expires_at: string; revoked_at: string 
 /** Sobe o /api/access de verdade com Supabase e provedor simulados. */
 type Gate = { ok: boolean; reason?: string; retry_after?: number; leased?: boolean }
 const guardCalls: { name: string; body: any }[] = []
-async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response | Promise<Response>; manual?: Manual; gate?: Gate; providerKey?: string; rows?: Record<string, unknown>[] }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
+async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response | Promise<Response>; manual?: Manual; gate?: Gate; providerKey?: string }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
   const nativeFetch = globalThis.fetch
   const keys = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
   const saved = Object.fromEntries(keys.map(key => [key, process.env[key]]))
@@ -70,7 +69,7 @@ async function withAccess(options: { supplier?: (url: string, init: RequestInit)
   globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = String(input)
     if (url.startsWith(`${SUPABASE}/rest/v1/gateway_usage`)) { usage.push(JSON.parse(String(init.body))); return new Response(null, { status: 201 }) }
-    if (url.startsWith(`${SUPABASE}/rest/v1/router_models`)) return Response.json(options.rows || models(options.providerKey ? providerRow({ encrypted_key: sealSecret(options.providerKey, SECRET, `router:provider:${PROVIDER.id}`) }) : providerRow()))
+    if (url.startsWith(`${SUPABASE}/rest/v1/router_models`)) return Response.json(models(options.providerKey ? providerRow({ encrypted_key: sealSecret(options.providerKey, SECRET, `router:provider:${PROVIDER.id}`) }) : providerRow()))
     // Proteção contra sobrecarga (server/guard.ts): passa por padrão e ocupa uma vaga.
     if (url.startsWith(`${SUPABASE}/rest/v1/rpc/gateway_`)) {
       guardCalls.push({ name: url.split('/rpc/')[1], body: JSON.parse(String(init.body)) })
@@ -216,45 +215,6 @@ test('limite do fornecedor (429): tenta a outra key na hora e o cliente nem vê 
     assert.ok(used.includes('key_b'), 'usou a segunda key')
     assert.ok(used.every((key) => key === 'key_a' || key === 'key_b'), 'nunca manda as duas keys juntas')
   })
-})
-
-test('key do pool sem saldo (402): a chamada segue na outra key e as próximas nem passam por ela', async () => {
-  const errors = console.error
-  console.error = () => {}
-  try {
-    const used: string[] = []
-    const supplier = (_url: string, init: RequestInit) => {
-      const key = (init.headers as Record<string, string>)['x-api-key']
-      used.push(key)
-      return key === 'key_seca' ? Response.json({ error: { message: 'Saldo insuficiente' } }, { status: 402 }) : Response.json({ model: 'anthropic/claude-opus-5-5', content: [], usage: { input_tokens: 1, output_tokens: 1 } })
-    }
-    await withAccess({ supplier, providerKey: 'key_seca\nkey_boa' }, async (base, usage) => {
-      for (let i = 0; i < 4; i++) {
-        const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
-        assert.equal(response.status, 200, `chamada ${i + 1}`)
-      }
-      assert.ok(usage.every((u) => u.status_code === 200))
-      assert.ok(used.filter((key) => key === 'key_seca').length <= 1, 'a key seca descansa depois da primeira recusa')
-    })
-  } finally {
-    console.error = errors
-  }
-})
-
-test('todas as keys do pool recusadas: o cliente recebe o erro genérico, sem ficar tentando', async () => {
-  const errors = console.error
-  console.error = () => {}
-  try {
-    let calls = 0
-    await withAccess({ supplier: () => { calls++; return Response.json({ error: { message: 'Token inválido delver' } }, { status: 401 }) }, providerKey: 'k1\nk2\nk3' }, async (base) => {
-      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
-      assert.equal(response.status, 503)
-      assert.ok(!(await response.text()).toLowerCase().includes('delver'))
-      assert.equal(calls, 3, 'uma tentativa por key')
-    })
-  } finally {
-    console.error = errors
-  }
 })
 
 test('limite do fornecedor (429) com uma key só: espera o retry-after e tenta de novo', async () => {
@@ -582,66 +542,6 @@ test('admin: a key do provedor e a chave manual só são gravadas criptografadas
   await assert.rejects(admin.saveProvider({ name: 'X', base_url: 'http://inseguro.example', key: 'k' }), { status: 400 })
   await assert.rejects(admin.createKey({ name: 'João', days: 0 }), { status: 400 })
   await assert.rejects(admin.saveModels({ provider_id: PROVIDER.id, models: [{ alias: 'Nome Inválido', upstream_model: 'x' }] }), { status: 400 })
-})
-
-test('URL do provedor: https em qualquer lugar, http só para gateway local ou rede interna', () => {
-  for (const url of ['https://api.exemplo.com/v1', 'http://127.0.0.1:8317/v1', 'http://localhost:3000', 'http://192.168.0.10:8080/v1', 'http://10.0.0.5/v1', 'http://172.20.1.2:9000', 'http://100.101.102.103:8317/v1', 'http://meu-pc.local:8317/v1'])
-    assert.equal(providerUrlOk(url), true, url)
-  for (const url of ['http://inseguro.example', 'http://8.8.8.8/v1', 'http://172.32.0.1', 'ftp://127.0.0.1', 'https://', 'qualquer coisa'])
-    assert.equal(providerUrlOk(url), false, url)
-})
-
-test('pool de keys no admin: acrescenta, desliga, religa, remove e testa sem devolver a key inteira', async () => {
-  const id = PROVIDER.id, aad = `router:provider:${id}`
-  const row: Record<string, any> = { ...PROVIDER, encrypted_key: sealSecret('sk-uma-aaaa1111', SECRET, aad) }
-  const pool = new KeyPool()
-  const request = (async (url: string, init: RequestInit = {}) => {
-    const u = String(url)
-    if (u.startsWith(PROVIDER.base_url)) {
-      const key = (init.headers as Record<string, string>)['x-api-key']
-      return key.endsWith('2222') ? Response.json({ error: 'sem saldo' }, { status: 402 }) : Response.json({ data: [] })
-    }
-    if (init.method === 'PATCH') { Object.assign(row, JSON.parse(String(init.body))); return new Response(null, { status: 204 }) }
-    return Response.json([row])
-  }) as typeof fetch
-  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@example.com', pool)
-  const keys = () => unsealSecret(row.encrypted_key, SECRET, aad)
-
-  const added = await admin.addProviderKeys({ id, keys: 'sk-uma-aaaa1111\nsk-duas-bbbb2222\nsk-tres-cccc3333' })
-  assert.equal(added.added, 2, 'a repetida é ignorada')
-  assert.equal(keys(), 'sk-uma-aaaa1111\nsk-duas-bbbb2222\nsk-tres-cccc3333')
-  assert.equal(row.key_hint, '…1111 +2')
-  assert.ok(!JSON.stringify(added).includes('sk-'), 'o painel recebe só o final')
-
-  const tested = await admin.testProviderKeys({ id })
-  assert.deepEqual(tested.keys.map((k) => [k.hint, k.state]), [['…1111', 'ok'], ['…2222', 'refused'], ['…3333', 'ok']])
-
-  await admin.setProviderKeyEnabled({ id, index: 1, hint: '…2222', enabled: false })
-  assert.equal(keys(), 'sk-uma-aaaa1111\n!sk-duas-bbbb2222\nsk-tres-cccc3333')
-  assert.deepEqual(activeKeys(keys()), ['sk-uma-aaaa1111', 'sk-tres-cccc3333'], 'o gateway não usa a desligada')
-  await assert.rejects(admin.setProviderKeyEnabled({ id, index: 1, hint: '…9999', enabled: true }), { status: 409 }, 'final diferente: a lista mudou')
-  const back = await admin.setProviderKeyEnabled({ id, index: 1, hint: '…2222', enabled: true })
-  assert.equal(back.keys[1].enabled, true)
-
-  await admin.removeProviderKey({ id, index: 0, hint: '…1111' })
-  await admin.setProviderKeyEnabled({ id, index: 0, hint: '…2222', enabled: false })
-  await assert.rejects(admin.setProviderKeyEnabled({ id, index: 1, hint: '…3333', enabled: false }), { status: 400 }, 'não desliga a última ligada')
-  await assert.rejects(admin.removeProviderKey({ id, index: 1, hint: '…3333' }), { status: 400 }, 'não sobra só key desligada')
-  assert.equal(row.key_hint, '…3333')
-
-  const overview = await admin.keyPool()
-  assert.equal(overview.providers[0].local, false)
-  assert.deepEqual(overview.providers[0].keys.map((k) => [k.hint, k.enabled]), [['…2222', false], ['…3333', true]])
-})
-
-test('key desligada no pool fica fora do gateway', async () => {
-  const provider = providerRow({ encrypted_key: sealSecret('!gw_desligada\ngw_ligada', SECRET, `router:provider:${PROVIDER.id}`) })
-  const router = await loadRouter({ SUPABASE_URL: SUPABASE, SUPABASE_SERVICE_ROLE_KEY: SECRET }, (async () => Response.json(models(provider))) as typeof fetch)
-  assert.deepEqual(router.routes.get('claude-opus-5-5')?.provider.keys, ['gw_ligada'])
-  clearRouterCache()
-  const off = providerRow({ encrypted_key: sealSecret('!gw_desligada', SECRET, `router:provider:${PROVIDER.id}`) })
-  const empty = await loadRouter({ SUPABASE_URL: SUPABASE, SUPABASE_SERVICE_ROLE_KEY: SECRET }, (async () => Response.json(models(off))) as typeof fetch)
-  assert.equal(empty.routes.size, 0, 'todas desligadas: o modelo para de responder')
 })
 
 test('diagnóstico do Roteador conta modelos ativos e aponta o problema, sem devolver keys', async () => {
@@ -1058,80 +958,4 @@ test('Argon 4: bloco que o fornecedor não sabe converter vira texto e a convers
   } finally {
     console.error = errors
   }
-})
-
-/* ------------------------- Reserva automática entre provedores ------------------------- */
-const BACKUP = { id: '55555555-5555-4555-8555-555555555555', name: 'Reserva', base_url: 'https://reserva.example/v1', enabled: true }
-const backupRow = () => ({ ...BACKUP, encrypted_key: sealSecret('gw_reserva', SECRET, `router:provider:${BACKUP.id}`) })
-const withBackup = () => [
-  { alias: 'claude-opus-5-5', label: 'Claude Opus 5.5', upstream_model: 'anthropic/claude-opus-5-5', in_pro: true, fallback_alias: 'opus-reserva', provider: providerRow() },
-  { alias: 'opus-reserva', label: 'Claude Opus 5.5 (reserva)', upstream_model: 'claude-opus-5-5', in_pro: true, fallback_alias: null, provider: backupRow() },
-]
-const ok = () => Response.json({ model: 'x', content: [], usage: { input_tokens: 2, output_tokens: 3 } })
-const quiet = async (run: () => Promise<void>) => { const errors = console.error; console.error = () => {}; try { await run() } finally { console.error = errors } }
-
-test('reserva: segue a corrente, pula o mesmo provedor e não entra em ciclo', () => {
-  const p = (id: string) => ({ id, name: id, url: 'https://x', key: 'k' })
-  const route = (alias: string, provider: string, fallback?: string) => ({ alias, label: alias, upstream: alias, inPro: true, provider: p(provider), ...(fallback ? { fallback } : {}) })
-  const routes = new Map([['a', route('a', 'p1', 'b')], ['b', route('b', 'p1', 'c')], ['c', route('c', 'p2', 'd')], ['d', route('d', 'p3', 'a')]])
-  const router = { routes, proAliases: [] }
-  assert.deepEqual(fallbackRoutes(router, routes.get('a')!).map(r => r.alias), ['c', 'd'], 'b é do mesmo provedor; a volta para a não repete')
-  assert.deepEqual(fallbackRoutes(router, routes.get('a')!, 1).map(r => r.alias), ['c'])
-  assert.deepEqual(fallbackRoutes(router, route('x', 'p1', 'sumiu')).length, 0)
-})
-
-test('reserva: provedor recusou todas as keys e o modelo reserva de outro provedor responde, com um registro de consumo só', async () => {
-  await quiet(async () => {
-    const supplier = (url: string) => url.startsWith('https://reserva.example') ? ok() : Response.json({ error: { message: 'sem saldo' } }, { status: 402 })
-    await withAccess({ supplier, rows: withBackup() }, async (base, usage, calls) => {
-      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
-      assert.equal(response.status, 200)
-      const last = calls.at(-1)!
-      assert.equal(last.url, 'https://reserva.example/v1/messages')
-      assert.equal((last.init.headers as Record<string, string>)['x-api-key'], 'gw_reserva')
-      assert.equal(JSON.parse(String(last.init.body)).model, 'claude-opus-5-5')
-      assert.equal(usage.length, 1)
-      assert.equal(usage[0].requested_alias, 'opus-reserva')
-      assert.equal(usage[0].status_code, 200)
-    })
-  })
-})
-
-test('reserva: provedor fora do ar (sem resposta) também passa para o reserva', async () => {
-  await quiet(async () => {
-    const supplier = (url: string) => { if (!url.startsWith('https://reserva.example')) throw new TypeError('fetch failed'); return ok() }
-    await withAccess({ supplier, rows: withBackup() }, async (base) => {
-      const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'oi' }] })
-      assert.equal(response.status, 200)
-    })
-  })
-})
-
-test('reserva: erro do pedido (400) não troca de provedor', async () => {
-  await quiet(async () => {
-    const supplier = () => Response.json({ error: { message: 'pedido ruim' } }, { status: 400 })
-    await withAccess({ supplier, rows: withBackup() }, async (base, _usage, calls) => {
-      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
-      assert.equal(response.status, 400)
-      assert.ok(calls.every(c => c.url.startsWith('https://fornecedor.example')))
-    })
-  })
-})
-
-test('admin: reserva precisa ser de outro provedor e avisa quando falta a migração', async () => {
-  const patches: string[] = []
-  const request = (async (input: string | URL | Request, init: RequestInit = {}) => {
-    const url = String(input)
-    if (init.method === 'PATCH') { patches.push(String(init.body)); return url.includes('sem-coluna') ? new Response('{"message":"Could not find the fallback_alias column of router_models"}', { status: 400 }) : new Response(null, { status: 204 }) }
-    if (url.includes('alias=eq.mesmo')) return Response.json([{ provider_id: PROVIDER.id, enabled: true }])
-    if (url.includes('alias=eq.outro')) return Response.json([{ provider_id: BACKUP.id, enabled: true }])
-    return Response.json([{ provider_id: PROVIDER.id }])
-  }) as typeof fetch
-  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x')
-  await assert.rejects(admin.setFallback({ alias: 'claude-opus-5-5', fallback: 'mesmo' }), /outro provedor/)
-  await assert.rejects(admin.setFallback({ alias: 'claude-opus-5-5', fallback: 'claude-opus-5-5' }), /outro modelo/)
-  assert.deepEqual(await admin.setFallback({ alias: 'claude-opus-5-5', fallback: 'outro' }), { alias: 'claude-opus-5-5', fallback: 'outro' })
-  assert.deepEqual(await admin.setFallback({ alias: 'claude-opus-5-5', fallback: '' }), { alias: 'claude-opus-5-5', fallback: null })
-  assert.deepEqual(patches.map(b => JSON.parse(b)), [{ fallback_alias: 'outro' }, { fallback_alias: null }])
-  await assert.rejects(admin.setFallback({ alias: 'sem-coluna', fallback: '' }), /router-fallback\.sql/)
 })

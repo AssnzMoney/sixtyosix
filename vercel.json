@@ -8,20 +8,9 @@
     },
     "api/notifications.ts": {
       "maxDuration": 300
-    },
-    "api/workers.ts": {
-      "maxDuration": 60
     }
   },
   "rewrites": [
-    {
-      "source": "/api/public/v1/workers/register",
-      "destination": "/api/workers"
-    },
-    {
-      "source": "/api/public/v1/workers/:action",
-      "destination": "/api/workers?action=:action"
-    },
     {
       "source": "/api/mercadopago/webhook",
       "destination": "/api/mercadopago"

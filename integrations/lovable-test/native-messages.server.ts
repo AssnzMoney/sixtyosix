@@ -24,11 +24,6 @@ export function nativeBody(value: any) {
  // Teste de texto e ferramentas sem orçamento de raciocínio estendido.
  delete body.thinking
  delete body.output_config
- delete body.effort
- delete body.safeguards
- delete body.metadata
- delete body.inference_geo
- delete body.service_tier
  return body
 }
 const error = (status: number, message: string) => Response.json({type:'error',error:{type:status===401?'authentication_error':status===413?'request_too_large':'api_error',message}},{status,headers:{'Cache-Control':'no-store'}})

@@ -33,13 +33,10 @@ import {
   UserRound,
   Wallet,
   X,
-  Zap,
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
-import { PoolAndModelsPanel } from '../components/PoolAndModelsPanel'
 import type { UsageSummary } from '../../server/usage-summary'
-import { KeyPoolPanel } from '../components/KeyPoolPanel'
 import AffiliatesPanel from '../components/AffiliatesPanel'
 import RankAdminPanel from '../components/RankAdminPanel'
 import { AdminCodeRequired, adminHeaders, clearAdminSession, saveAdminSession } from '../lib/adminSession'
@@ -74,7 +71,6 @@ const tabs: Array<[string, string]> = [
   ['payments', 'Pagamentos'],
   ['usage', 'Consumo e falhas'],
   ['router', 'Roteador'],
-  ['pool', 'Pool de IA'],
   ['affiliates', 'Afiliados'],
   ['rank', 'Rank'],
 ]
@@ -82,9 +78,9 @@ const tabs: Array<[string, string]> = [
 const NAV: { label: string; items: [string, string, LucideIcon][] }[] = [
   { label: 'Operação', items: [['service', 'Visão geral', LayoutDashboard], ['customers', 'Clientes', Users], ['pending', 'Pendentes', Clock], ['users', 'Usuários', UserRound], ['deliveries', 'Credenciais', KeyRound]] },
   { label: 'Vendas', items: [['subscriptions', 'Planos', CreditCard], ['payments', 'Pagamentos', Wallet], ['affiliates', 'Afiliados', Gift], ['rank', 'Rank', Trophy]] },
-  { label: 'Sistema', items: [['usage', 'Consumo e falhas', Activity], ['router', 'Roteador', Route], ['pool', 'Pool de IA', Zap]] },
+  { label: 'Sistema', items: [['usage', 'Consumo e falhas', Activity], ['router', 'Roteador', Route]] },
 ]
-const UNCOUNTED = new Set(['service', 'router', 'pool', 'affiliates', 'rank'])
+const UNCOUNTED = new Set(['service', 'router', 'affiliates', 'rank'])
 const HEADINGS: Record<string, { eyebrow: string; title: string; accent: string; description: string }> = {
   service: { eyebrow: 'controle da operação', title: 'Atendimento', accent: 'automático.', description: 'A chave sai pelo site no pagamento e renova sozinha. Aqui fica só o que precisa da sua atenção.' },
   customers: { eyebrow: 'clientes', title: 'Quem', accent: 'já pagou.', description: 'Clientes com plano ativo ou vencido, a chave e a situação de cada um.' },
@@ -95,7 +91,6 @@ const HEADINGS: Record<string, { eyebrow: string; title: string; accent: string;
   payments: { eyebrow: 'financeiro', title: 'Pagamentos', accent: 'do período.', description: 'Pagamentos do Mercado Pago, bônus de indicação e prêmios do rank no período escolhido.' },
   usage: { eyebrow: 'gateway', title: 'Consumo', accent: 'e falhas.', description: 'Chamadas dos clientes, tokens e erros no período escolhido.' },
   router: { eyebrow: 'roteador', title: 'Provedores', accent: 'e modelos.', description: 'Fornecedores, modelos vendidos, limites e as chaves do Roteador.' },
-  pool: { eyebrow: 'infraestrutura e ia', title: 'Pool de', accent: 'Contas & Modelos.', description: 'Monitore a saúde do pool de contas automatizadas e tokens em tempo real, latência e gerencie os modelos habilitados.' },
   affiliates: { eyebrow: 'indique e ganhe', title: 'Afiliados', accent: 'e indicações.', description: 'Quem tem link de indicação, quem veio por ele e os dias ganhos.' },
   rank: { eyebrow: 'desafio do mês', title: 'Rank', accent: 'do mês.', description: 'O tema de cada mês, os projetos enviados, a moderação e o campeão.' },
 }
@@ -1103,12 +1098,7 @@ export default function AdminPage() {
           ) : tab === 'rank' ? (
             <RankAdminPanel token={session?.access_token || ''} users={data.users || []} />
           ) : tab === 'router' ? (
-            <RouterPanel token={session?.access_token || ''} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} onSelectPool={() => setTab('pool')} />
-          ) : tab === 'pool' ? (
-            <>
-              <KeyPoolPanel token={session?.access_token || ''} />
-              <PoolAndModelsPanel />
-            </>
+            <RouterPanel token={session?.access_token || ''} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} />
           ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(
