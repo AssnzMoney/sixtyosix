@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
@@ -158,6 +158,32 @@ function limitStats(kind:'recovered'|'failed'|'other'){
   console.log(`Limite ou instabilidade do fornecedor (último minuto): ${limits.recovered} salvas pela espera, ${limits.failed} repassadas ao cliente, ${limits.other} com outro erro`)
   limits.recovered=limits.failed=limits.other=0;limits.since=Date.now()
 }
+let activeBridgeIndex = 0
+
+function getBridgesPool(): string[] {
+  const bridgesPath = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
+  if (!existsSync(bridgesPath)) return []
+  return readFileSync(bridgesPath, 'utf8')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#'))
+}
+
+function purgeBridgeFromFile(deadBridge: string, reason: string): void {
+  try {
+    const bridgesPath = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
+    if (!existsSync(bridgesPath)) return
+    const normalized = deadBridge.replace(/\/$/, '')
+    const lines = readFileSync(bridgesPath, 'utf8')
+      .split('\n')
+      .filter(l => l.trim() && !l.trim().startsWith('#') && !l.includes(normalized))
+    writeFileSync(bridgesPath, lines.join('\n') + '\n', 'utf8')
+    console.log(`[POOL PURGE] 🗑️ Ponte esgotada/morta removida: ${deadBridge} (${reason})`)
+  } catch (err) {
+    console.error('[POOL PURGE ERROR]', err)
+  }
+}
+
 /** Chama o provedor do Roteador com a key mestra, repassa a resposta e grava o consumo do cliente. */
 async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:SupplierCall){
   const {route}=call,{provider}=route
@@ -210,9 +236,90 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
   const waitLimit=process.env.SIXTYSIX_429_WAIT_MS!==undefined?Number(process.env.SIXTYSIX_429_WAIT_MS):30000
   const busy=(status:number)=>status===429||status===502||status===503||status===529
   const send=async(payloadBody:string)=>{
-    // Betas que o modelo já recusou não vão no cabeçalho.
-    const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
-    const deadline=Date.now()+waitLimit
+    // Se o provedor for o Pool de Contas (Lovable / bridges.txt):
+    if (provider.url.includes('lovable') || provider.name.toLowerCase().includes('lovable') || provider.name.toLowerCase().includes('pool')) {
+      const pool = getBridgesPool()
+      let attempts = 0
+      const maxAttempts = Math.min(pool.length, 6)
+      const bridgeKey = provider.key || 'six_bridge_20ceda73209ccf86cc67c9fa44ab116706115e194c118086'
+
+      while (attempts < maxAttempts) {
+        const curPool = getBridgesPool()
+        if (curPool.length === 0) break
+        const targetBridge = curPool[activeBridgeIndex % curPool.length].replace(/\/$/, '')
+        let curRes: Response | null = null
+
+        // Garante formato esperado pela ponte Lovable
+        let bridgePayload = payloadBody
+        try {
+          const parsed = JSON.parse(payloadBody)
+          if (parsed.model && !parsed.model.startsWith('anthropic/')) {
+            parsed.model = 'anthropic/' + parsed.model
+            bridgePayload = JSON.stringify(parsed)
+          }
+        } catch {}
+
+        try {
+          curRes = await fetch(targetBridge + '/messages', {
+            method: 'POST',
+            headers: {
+              ...headers,
+              'content-type': 'application/json',
+              Authorization: `Bearer ${bridgeKey}`,
+              ...(beta ? { 'anthropic-beta': beta } : {})
+            },
+            body: bridgePayload,
+            redirect: 'manual',
+            signal: controller.signal
+          })
+        } catch (networkErr: any) {
+          console.error(`[POOL FAILOVER] Falha na ponte ${targetBridge}:`, networkErr?.message || networkErr)
+          purgeBridgeFromFile(targetBridge, 'NETWORK_ERROR')
+          activeBridgeIndex++
+          attempts++
+          continue
+        }
+
+        // Fallback de tokens se a versão na Lovable estiver limitada a 1024
+        if (curRes.status === 400) {
+          try {
+            const parsed = JSON.parse(bridgePayload)
+            if (parsed.max_tokens > 1024) {
+              const patchedBody = JSON.stringify({ ...parsed, max_tokens: 1024 })
+              curRes = await fetch(targetBridge + '/messages', {
+                method: 'POST',
+                headers: {
+                  ...headers,
+                  'content-type': 'application/json',
+                  Authorization: `Bearer ${bridgeKey}`,
+                  ...(beta ? { 'anthropic-beta': beta } : {})
+                },
+                body: patchedBody,
+                redirect: 'manual',
+                signal: controller.signal
+              })
+            }
+          } catch {}
+        }
+
+        // Failover transparente em qualquer falha de ponte (401, 402, 404, 500, 502, 503)
+        if (!curRes.ok && [401, 402, 404, 500, 502, 503].includes(curRes.status)) {
+          const reason = curRes.status === 402 ? '402_QUOTA_EXHAUSTED' : `HTTP_${curRes.status}`
+          purgeBridgeFromFile(targetBridge, reason)
+          if (curPool.length > 1 && attempts < maxAttempts - 1) {
+            const nextIdx = (activeBridgeIndex + 1) % curPool.length
+            console.log(`[POOL FAILOVER] 🔄 Ponte ${targetBridge} falhou (${curRes.status}). Pulando para ${curPool[nextIdx]}...`)
+            activeBridgeIndex = nextIdx
+            attempts++
+            continue
+          }
+        }
+
+        activeBridgeIndex++
+        return curRes
+      }
+    }
+
     // Keys desta chamada; a recusada sai da lista (não volta na próxima volta).
     const live=keyPool.order(keys)
     let pause=1500,waited=false,turn=0
