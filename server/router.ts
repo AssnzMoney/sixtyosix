@@ -26,7 +26,8 @@ export const splitKeys = (value: string) => value.split(/[\s,;]+/).map((key) => 
 export const DISABLED_KEY = '!'
 /** Só as keys ligadas, na ordem do cadastro. */
 export const activeKeys = (value: string) => splitKeys(value).filter((key) => !key.startsWith(DISABLED_KEY))
-export type RouterRoute = { alias: string; label: string; upstream: string; inPro: boolean; provider: RouterProvider }
+/** fallback: apelido do modelo reserva (supabase/router-fallback.sql), usado quando o provedor deste falha. */
+export type RouterRoute = { alias: string; label: string; upstream: string; inPro: boolean; provider: RouterProvider; fallback?: string }
 export type RouterConfig = { routes: Map<string, RouterRoute>; proAliases: string[]; lookup?: Map<string, RouterRoute> }
 export const EMPTY_ROUTER: RouterConfig = { routes: new Map(), proAliases: [] }
 
@@ -55,6 +56,22 @@ export function findRoute(router: RouterConfig, name: string): RouterRoute | und
   return undefined
 }
 /** Nomes como estão salvos no Roteador, sem repetir, para uma lista vinda do plano ou da chave. */
+/**
+ * Modelos reserva de uma rota, em ordem (o reserva do reserva vem depois), até `max`. Pula modelo desligado,
+ * repetido ou do mesmo provedor de um já tentado: reserva no mesmo provedor cairia junto.
+ */
+export function fallbackRoutes(router: RouterConfig, route: RouterRoute, max = 2): RouterRoute[] {
+  const chain: RouterRoute[] = [], providers = new Set([route.provider.id]), seen = new Set([route.alias])
+  for (let next = route.fallback; next && chain.length < max && !seen.has(next);) {
+    seen.add(next)
+    const found = router.routes.get(next)
+    if (!found) break
+    if (!providers.has(found.provider.id)) { chain.push(found); providers.add(found.provider.id) }
+    next = found.fallback
+  }
+  return chain
+}
+
 export function canonicalModels(router: RouterConfig, names: readonly string[]): string[] {
   const out: string[] = []
   for (const name of names) {
@@ -104,7 +121,8 @@ export async function loadRouter(env: Env, request: typeof fetch = fetch): Promi
   let value = EMPTY_ROUTER
   try {
     const params = new URLSearchParams({
-      select: 'alias,label,upstream_model,in_pro,provider:router_providers(id,name,base_url,encrypted_key,enabled)',
+      // '*' traz fallback_alias quando a migração router-fallback.sql já foi aplicada, sem quebrar antes dela.
+      select: '*,provider:router_providers(id,name,base_url,encrypted_key,enabled)',
       enabled: 'eq.true', order: 'created_at.asc,alias.asc',
     })
     const response = await request(`${db.url}/rest/v1/router_models?${params}`, { headers: serviceHeaders(db.secret), signal: AbortSignal.timeout(10000) })
@@ -119,7 +137,7 @@ export async function loadRouter(env: Env, request: typeof fetch = fetch): Promi
         }
         const list = activeKeys(keys.get(provider.id) || '')
         if (!list.length) continue
-        routes.set(row.alias, { alias: row.alias, label: row.label, upstream: row.upstream_model, inPro: Boolean(row.in_pro), provider: { id: provider.id, name: provider.name, url: String(provider.base_url).replace(/\/+$/, ''), key: list[0], keys: list } })
+        routes.set(row.alias, { alias: row.alias, label: row.label, upstream: row.upstream_model, inPro: Boolean(row.in_pro), provider: { id: provider.id, name: provider.name, url: String(provider.base_url).replace(/\/+$/, ''), key: list[0], keys: list }, ...(row.fallback_alias ? { fallback: String(row.fallback_alias) } : {}) })
       }
       const lookup = new Map<string, RouterRoute>()
       for (const route of routes.values()) if (!lookup.has(normalizeAlias(route.alias))) lookup.set(normalizeAlias(route.alias), route)
@@ -323,7 +341,8 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
     async overview() {
       const [providers, models, keys] = await Promise.all([
         rest<Row[]>(`router_providers?select=id,name,base_url,key_hint,enabled,created_at&order=created_at.asc`),
-        rest<Row[]>(`router_models?select=alias,provider_id,upstream_model,label,enabled,in_pro,created_at&order=created_at.asc,alias.asc`),
+        // '*' inclui fallback_alias quando router-fallback.sql já foi aplicada.
+        rest<Row[]>(`router_models?select=*&order=created_at.asc,alias.asc`),
         rest<Row[]>(`router_keys?select=id,gateway_client_id,name,contact,token_prefix,models,expires_at,revoked_at,created_by,created_at&order=created_at.desc&limit=1000`),
       ])
       // Proteção contra sobrecarga (supabase/gateway-guard.sql). Sem a migração, guard = null e o resto segue.
@@ -597,6 +616,28 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       await rest(`router_models?provider_id=eq.${encodeURIComponent(providerId)}${keep}`, { method: 'DELETE' })
       if (items.length) await rest('router_models?on_conflict=alias', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify(items) })
       return done({ saved: items.length })
+    },
+
+    /** Modelo reserva: responde quando o provedor do modelo falha. Vazio tira a reserva. */
+    async setFallback(body: Row) {
+      const alias = text(body.alias, 80).toLowerCase(), fallback = text(body.fallback, 80).toLowerCase()
+      if (!ALIAS_RE.test(alias)) throw new RouterError(400, 'Modelo inválido.')
+      if (fallback) {
+        if (!ALIAS_RE.test(fallback) || fallback === alias) throw new RouterError(400, 'Escolha outro modelo como reserva.')
+        const [own, other] = await Promise.all([
+          rest<Row[]>(`router_models?select=provider_id&alias=eq.${encodeURIComponent(alias)}`),
+          rest<Row[]>(`router_models?select=provider_id,enabled&alias=eq.${encodeURIComponent(fallback)}`),
+        ])
+        if (!own[0] || !other[0]) throw new RouterError(404, 'Modelo não encontrado. Atualize a página.')
+        if (own[0].provider_id === other[0].provider_id) throw new RouterError(400, 'A reserva precisa ser de outro provedor: no mesmo provedor ela cairia junto.')
+      }
+      try {
+        await rest(`router_models?alias=eq.${encodeURIComponent(alias)}`, { method: 'PATCH', body: JSON.stringify({ fallback_alias: fallback || null }) })
+      } catch (error) {
+        if (error instanceof RouterError && error.status >= 500) throw new RouterError(409, 'Aplique supabase/router-fallback.sql no SQL Editor do Supabase para usar a reserva.')
+        throw error
+      }
+      return done({ alias, fallback: fallback || null })
     },
 
     async createKey(body: Row) {

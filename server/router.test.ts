@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import accessHandler, { localRequest, seal } from '../api/access.ts'
 import { UsageTap } from './supplier.ts'
-import { activeKeys, canonicalModels, clearRouterCache, createRouterAdmin, findRoute, loadRouter, normalizeAlias, providerUrlOk, routerStatus, sealSecret, unsealSecret } from './router.ts'
+import { activeKeys, canonicalModels, clearRouterCache, createRouterAdmin, fallbackRoutes, findRoute, loadRouter, normalizeAlias, providerUrlOk, routerStatus, sealSecret, unsealSecret } from './router.ts'
 import { KeyPool } from './key-pool.ts'
 import { suggestAlias, suggestLabel } from '../src/lib/routerModels.ts'
 
@@ -61,7 +61,7 @@ type Manual = { models: string[] | null; expires_at: string; revoked_at: string 
 /** Sobe o /api/access de verdade com Supabase e provedor simulados. */
 type Gate = { ok: boolean; reason?: string; retry_after?: number; leased?: boolean }
 const guardCalls: { name: string; body: any }[] = []
-async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response | Promise<Response>; manual?: Manual; gate?: Gate; providerKey?: string }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
+async function withAccess(options: { supplier?: (url: string, init: RequestInit) => Response | Promise<Response>; manual?: Manual; gate?: Gate; providerKey?: string; rows?: Record<string, unknown>[] }, run: (base: string, usage: Record<string, unknown>[], calls: Call[]) => Promise<void>) {
   const nativeFetch = globalThis.fetch
   const keys = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
   const saved = Object.fromEntries(keys.map(key => [key, process.env[key]]))
@@ -70,7 +70,7 @@ async function withAccess(options: { supplier?: (url: string, init: RequestInit)
   globalThis.fetch = (async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = String(input)
     if (url.startsWith(`${SUPABASE}/rest/v1/gateway_usage`)) { usage.push(JSON.parse(String(init.body))); return new Response(null, { status: 201 }) }
-    if (url.startsWith(`${SUPABASE}/rest/v1/router_models`)) return Response.json(models(options.providerKey ? providerRow({ encrypted_key: sealSecret(options.providerKey, SECRET, `router:provider:${PROVIDER.id}`) }) : providerRow()))
+    if (url.startsWith(`${SUPABASE}/rest/v1/router_models`)) return Response.json(options.rows || models(options.providerKey ? providerRow({ encrypted_key: sealSecret(options.providerKey, SECRET, `router:provider:${PROVIDER.id}`) }) : providerRow()))
     // Proteção contra sobrecarga (server/guard.ts): passa por padrão e ocupa uma vaga.
     if (url.startsWith(`${SUPABASE}/rest/v1/rpc/gateway_`)) {
       guardCalls.push({ name: url.split('/rpc/')[1], body: JSON.parse(String(init.body)) })
@@ -1058,4 +1058,80 @@ test('Argon 4: bloco que o fornecedor não sabe converter vira texto e a convers
   } finally {
     console.error = errors
   }
+})
+
+/* ------------------------- Reserva automática entre provedores ------------------------- */
+const BACKUP = { id: '55555555-5555-4555-8555-555555555555', name: 'Reserva', base_url: 'https://reserva.example/v1', enabled: true }
+const backupRow = () => ({ ...BACKUP, encrypted_key: sealSecret('gw_reserva', SECRET, `router:provider:${BACKUP.id}`) })
+const withBackup = () => [
+  { alias: 'claude-opus-5-5', label: 'Claude Opus 5.5', upstream_model: 'anthropic/claude-opus-5-5', in_pro: true, fallback_alias: 'opus-reserva', provider: providerRow() },
+  { alias: 'opus-reserva', label: 'Claude Opus 5.5 (reserva)', upstream_model: 'claude-opus-5-5', in_pro: true, fallback_alias: null, provider: backupRow() },
+]
+const ok = () => Response.json({ model: 'x', content: [], usage: { input_tokens: 2, output_tokens: 3 } })
+const quiet = async (run: () => Promise<void>) => { const errors = console.error; console.error = () => {}; try { await run() } finally { console.error = errors } }
+
+test('reserva: segue a corrente, pula o mesmo provedor e não entra em ciclo', () => {
+  const p = (id: string) => ({ id, name: id, url: 'https://x', key: 'k' })
+  const route = (alias: string, provider: string, fallback?: string) => ({ alias, label: alias, upstream: alias, inPro: true, provider: p(provider), ...(fallback ? { fallback } : {}) })
+  const routes = new Map([['a', route('a', 'p1', 'b')], ['b', route('b', 'p1', 'c')], ['c', route('c', 'p2', 'd')], ['d', route('d', 'p3', 'a')]])
+  const router = { routes, proAliases: [] }
+  assert.deepEqual(fallbackRoutes(router, routes.get('a')!).map(r => r.alias), ['c', 'd'], 'b é do mesmo provedor; a volta para a não repete')
+  assert.deepEqual(fallbackRoutes(router, routes.get('a')!, 1).map(r => r.alias), ['c'])
+  assert.deepEqual(fallbackRoutes(router, route('x', 'p1', 'sumiu')).length, 0)
+})
+
+test('reserva: provedor recusou todas as keys e o modelo reserva de outro provedor responde, com um registro de consumo só', async () => {
+  await quiet(async () => {
+    const supplier = (url: string) => url.startsWith('https://reserva.example') ? ok() : Response.json({ error: { message: 'sem saldo' } }, { status: 402 })
+    await withAccess({ supplier, rows: withBackup() }, async (base, usage, calls) => {
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
+      assert.equal(response.status, 200)
+      const last = calls.at(-1)!
+      assert.equal(last.url, 'https://reserva.example/v1/messages')
+      assert.equal((last.init.headers as Record<string, string>)['x-api-key'], 'gw_reserva')
+      assert.equal(JSON.parse(String(last.init.body)).model, 'claude-opus-5-5')
+      assert.equal(usage.length, 1)
+      assert.equal(usage[0].requested_alias, 'opus-reserva')
+      assert.equal(usage[0].status_code, 200)
+    })
+  })
+})
+
+test('reserva: provedor fora do ar (sem resposta) também passa para o reserva', async () => {
+  await quiet(async () => {
+    const supplier = (url: string) => { if (!url.startsWith('https://reserva.example')) throw new TypeError('fetch failed'); return ok() }
+    await withAccess({ supplier, rows: withBackup() }, async (base) => {
+      const response = await post(base, '/v1/chat/completions', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'oi' }] })
+      assert.equal(response.status, 200)
+    })
+  })
+})
+
+test('reserva: erro do pedido (400) não troca de provedor', async () => {
+  await quiet(async () => {
+    const supplier = () => Response.json({ error: { message: 'pedido ruim' } }, { status: 400 })
+    await withAccess({ supplier, rows: withBackup() }, async (base, _usage, calls) => {
+      const response = await post(base, '/v1/messages', 'sk-sx-cliente', { model: 'claude-opus-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'oi' }] })
+      assert.equal(response.status, 400)
+      assert.ok(calls.every(c => c.url.startsWith('https://fornecedor.example')))
+    })
+  })
+})
+
+test('admin: reserva precisa ser de outro provedor e avisa quando falta a migração', async () => {
+  const patches: string[] = []
+  const request = (async (input: string | URL | Request, init: RequestInit = {}) => {
+    const url = String(input)
+    if (init.method === 'PATCH') { patches.push(String(init.body)); return url.includes('sem-coluna') ? new Response('{"message":"Could not find the fallback_alias column of router_models"}', { status: 400 }) : new Response(null, { status: 204 }) }
+    if (url.includes('alias=eq.mesmo')) return Response.json([{ provider_id: PROVIDER.id, enabled: true }])
+    if (url.includes('alias=eq.outro')) return Response.json([{ provider_id: BACKUP.id, enabled: true }])
+    return Response.json([{ provider_id: PROVIDER.id }])
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x')
+  await assert.rejects(admin.setFallback({ alias: 'claude-opus-5-5', fallback: 'mesmo' }), /outro provedor/)
+  await assert.rejects(admin.setFallback({ alias: 'claude-opus-5-5', fallback: 'claude-opus-5-5' }), /outro modelo/)
+  assert.deepEqual(await admin.setFallback({ alias: 'claude-opus-5-5', fallback: 'outro' }), { alias: 'claude-opus-5-5', fallback: 'outro' })
+  assert.deepEqual(await admin.setFallback({ alias: 'claude-opus-5-5', fallback: '' }), { alias: 'claude-opus-5-5', fallback: null })
+  assert.deepEqual(patches.map(b => JSON.parse(b)), [{ fallback_alias: 'outro' }, { fallback_alias: null }])
+  await assert.rejects(admin.setFallback({ alias: 'sem-coluna', fallback: '' }), /router-fallback\.sql/)
 })

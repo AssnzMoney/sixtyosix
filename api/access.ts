@@ -8,7 +8,7 @@ import { CREATE_PATH, ITEM_PATH, createVideo, isVideoRoute, monthStart, monthlyL
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { providerAlertFromEnv } from '../server/provider-alert.js'
 import { providerKeyPool, keyHint } from '../server/key-pool.js'
-import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
+import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, fallbackRoutes, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
 type Trial = { user_id:string; gateway_client_id:string; token_hash:string; token_prefix:string; encrypted_token:string; encrypted_upstream:string; created_at:string; expires_at:string; revoked_at:string|null }
@@ -145,7 +145,8 @@ export function localRequest(req:Pick<IncomingMessage,'headers'|'socket'>){
 }
 const modelEntry=(id:string,label?:string)=>({id,object:'model',type:'model',display_name:label||id,owned_by:'sixtysix',created:1767225600,created_at:'2026-01-01T00:00:00Z'})
 
-type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string}
+/** backups: modelos reserva de outros provedores (fallbackRoutes), tentados em ordem se o provedor desta rota falhar. */
+type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string;backups?:RouterRoute[]}
 /** Pool das keys do provedor: revezamento e descanso da key recusada ou no limite (server/key-pool.ts). */
 const keyPool=providerKeyPool
 /** E-mail para a administração quando o fornecedor recusa a key mestra ou fica instável (server/provider-alert.ts). */
@@ -225,6 +226,22 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     res.end()
   }
   const unavailable='Este modelo está temporariamente indisponível. Tente novamente em instantes.'
+  /*
+   * Reserva automática entre provedores (supabase/router-fallback.sql): se este provedor cair, recusar todas as keys
+   * ou continuar no limite depois da espera, a chamada segue no modelo reserva, desde que nada da resposta tenha
+   * chegado ao cliente (no máximo os comentários ": ping"). O consumo fica com o modelo que respondeu; a falha deste
+   * provedor continua contando no alerta.
+   */
+  let handedOff=false
+  const handOff=async()=>{
+    const [next,...rest]=call.backups||[]
+    if(!next||tap||res.writableEnded||res.destroyed||controller.signal.aborted)return false
+    handedOff=true
+    stopPing()
+    console.error('Provedor falhou; a chamada segue no modelo reserva',provider.name,route.alias,'->',next.provider.name,next.alias)
+    await proxySupplier(req,res,{...call,route:next,backups:rest})
+    return true
+  }
   /*
    * Limite de chamadas do fornecedor (429): antes ia direto para o cliente ("servidor sobrecarregado"), e o Claude Code
    * repetia na hora, piorando o pico. Agora o gateway tenta a próxima key na hora (se houver mais de uma) e, depois de
@@ -417,6 +434,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       const p=call.payload as Record<string,any>
       const shape={model:route.upstream,path:call.path,stream:p.stream===true,effort:p.output_config?.effort??p.reasoning_effort??p.reasoning?.effort??null,thinking:p.thinking?{type:p.thinking.type,budget:p.thinking.budget_tokens??null}:null,max_tokens:p.max_tokens??p.max_output_tokens??null,messages:Array.isArray(p.messages)?p.messages.length:Array.isArray(p.input)?p.input.length:null,bytes:sent.length,ms:Date.now()-started}
       console.error('Provedor recusou a chamada',provider.name,status,JSON.stringify(shape),(await response.text().catch(()=>'')).replace(/\s+/g,' ').slice(0,300))
+      if(await handOff())return
       if(res.headersSent)return streamError({error:{message:unavailable,type:'api_error',code:null}})
       throw new AccessError(503,unavailable)
     }
@@ -426,6 +444,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     if(status>=400){
       const text=await response.text().catch(()=>'')
       console.error('Provedor recusou a chamada',provider.name,status,JSON.stringify({model:route.upstream,path:call.path,blocks:blockTypes(call.payload as Record<string,unknown>)}),text.slice(0,400))
+      // Ainda no limite depois da espera: o reserva de outro provedor responde no lugar.
+      if(status===429&&await handOff())return
       // Conversa grande demais: vai como 400 com o texto que o Claude Code/Codex reconhecem, para eles resumirem a conversa.
       const overflow=contextOverflow(status,text)
       if(res.headersSent)return streamError((overflow?contextOverflowBody(kind,overflow):supplierErrorBody(kind,status)) as {error:Record<string,unknown>})
@@ -458,6 +478,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     stopPing()
     res.end()
   }catch(error){
+    // Fornecedor nem respondeu (rede, fora do ar): tenta o reserva antes de qualquer erro chegar ao cliente.
+    if(!tap&&await handOff().catch(()=>false))return
     // Falha de rede depois que o stream abriu: fecha com um erro legível em vez de cortar a conexão.
     if(res.headersSent&&keepAlive&&!res.destroyed&&!res.writableEnded){console.error('Falha no repasse com o stream aberto',provider.name,error);return streamError({error:{message:unavailable,type:'api_error',code:null}})}
     throw error
@@ -469,7 +491,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Cliente desistiu antes de qualquer resposta (Esc, conexão caiu): grava 499, não o 502 inicial, para não
     // parecer queda do fornecedor no admin.
     const recorded=controller.signal.aborted&&!tap&&status===502?499:status
-    if(!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:recorded,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
+    if(!handedOff&&!call.path.endsWith('/count_tokens'))await recordUsage(process.env,fetch,{client_id:call.clientId,requested_alias:route.alias,status_code:recorded,input_tokens:tap?.usage.input??0,output_tokens:tap?.usage.output??0,latency_ms:Date.now()-started})
   }
 }
 
@@ -688,7 +710,7 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
         if(wantsVideo){
           const created=await createVideo(process.env,fetch,{route,payload,clientId,secret:process.env.SUPABASE_SERVICE_ROLE_KEY||''})
           res.statusCode=created.status;res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(created.body))
-        }else await proxySupplier(req,res,{route,path,params,payload,clientId})
+        }else await proxySupplier(req,res,{route,path,params,payload,clientId,backups:fallbackRoutes(router,route)})
       }
       finally{if(gate.leased)await releaseRequest(process.env,fetch,requestId)}
       return

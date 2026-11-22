@@ -12,7 +12,7 @@ import { PoolAndModelsPanel } from './PoolAndModelsPanel'
 
 type Row = Record<string, any>
 type Provider = { id: string; name: string; base_url: string; key_hint: string; enabled: boolean; created_at: string }
-type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean }
+type Model = { alias: string; provider_id: string; upstream_model: string; label: string; enabled: boolean; in_pro: boolean; fallback_alias?: string | null }
 type RouterKey = { id: string; gateway_client_id: string; name: string; contact: string | null; token_prefix: string; models: string[] | null; expires_at: string; revoked_at: string | null; created_at: string; user_id?: string | null }
 type Limits = { rpm: number | null; concurrency: number | null; max_ips?: number | null; trial_rpm?: number | null; trial_concurrency?: number | null }
 type Guard = { settings: Limits; blocks: { network: string; reason: string | null; created_by: string | null; created_at: string }[]; controls: (Limits & { client_id: string })[]; ipLimit?: boolean; trialLimit?: boolean }
@@ -531,6 +531,56 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
                       <Trash2 size={15} />
                     </button>
                   </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+
+      <section className="sx-admin-panel">
+        <div className="sx-router-head">
+          <h3>
+            <RefreshCw size={17} /> Reserva automática
+          </h3>
+        </div>
+        <p className="sx-admin-hint sx-router-note">
+          Se o provedor de um modelo cair, recusar todas as keys ou continuar no limite, a chamada segue no modelo reserva de outro provedor, sem o cliente ver erro. O consumo fica com o modelo que respondeu.
+        </p>
+        {providers.filter((p) => p.enabled).length < 2 ? (
+          <p className="sx-admin-empty">Cadastre um segundo provedor oficial (outra API ou revendedor autorizado) para escolher reservas.</p>
+        ) : (
+          <ul className="sx-router-list">
+            {sellable.map((m) => {
+              const options = sellable.filter((o) => o.provider_id !== m.provider_id)
+              const current = m.fallback_alias || ''
+              return (
+                <li key={m.alias}>
+                  <div className="sx-router-main">
+                    <strong>{m.label}</strong>
+                    <span>
+                      {m.alias} · {providerById.get(m.provider_id)?.name}
+                    </span>
+                  </div>
+                  <select
+                    aria-label={`Reserva de ${m.label}`}
+                    value={current}
+                    disabled={working === 'fallback:' + m.alias || !options.length}
+                    onChange={(e) => {
+                      const fallback = e.target.value
+                      run('fallback:' + m.alias, async () => {
+                        await call({ action: 'router-model-fallback', alias: m.alias, fallback })
+                        return fallback ? `${m.label} agora tem ${labelOf(fallback)} como reserva.` : `${m.label} ficou sem reserva.`
+                      })
+                    }}
+                  >
+                    <option value="">{options.length ? 'Sem reserva' : 'Nenhum modelo de outro provedor'}</option>
+                    {options.map((o) => (
+                      <option key={o.alias} value={o.alias}>
+                        {o.label} · {providerById.get(o.provider_id)?.name}
+                      </option>
+                    ))}
+                  </select>
                 </li>
               )
             })}
