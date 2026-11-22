@@ -341,6 +341,14 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
             signal: controller.signal
           })
           recordBridgeLatency(Date.now() - bridgeStart)
+          if (!curRes.ok) {
+            const errClone = await curRes.clone().text().catch(() => '')
+            console.error(`[BRIDGE REJECT] ${targetBridge} HTTP ${curRes.status}:`, errClone, 'Headers:', JSON.stringify([...curRes.headers.entries()]))
+            try {
+              const p = JSON.parse(bridgePayload)
+              console.error(`[PAYLOAD KEYS]:`, Object.keys(p), 'System type:', typeof p.system, 'Tools count:', p.tools?.length, 'Messages count:', p.messages?.length, 'Byte length:', bridgePayload.length)
+            } catch {}
+          }
         } catch (networkErr: any) {
           console.error(`[POOL FAILOVER] Falha na ponte ${targetBridge}:`, networkErr?.message || networkErr)
           purgeBridgeFromFile(targetBridge, 'NETWORK_ERROR')
