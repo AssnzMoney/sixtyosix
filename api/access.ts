@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
 import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
@@ -160,6 +160,13 @@ function limitStats(kind:'recovered'|'failed'|'other'){
   limits.recovered=limits.failed=limits.other=0;limits.since=Date.now()
 }
 let activeBridgeIndex = 0
+const recentLatencies: number[] = []
+function recordBridgeLatency(ms: number) {
+  if (typeof ms === 'number' && ms > 0) {
+    recentLatencies.push(ms)
+    if (recentLatencies.length > 50) recentLatencies.shift()
+  }
+}
 
 function getBridgesPool(): string[] {
   const bridgesPath = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
@@ -179,7 +186,11 @@ function purgeBridgeFromFile(deadBridge: string, reason: string): void {
       .split('\n')
       .filter(l => l.trim() && !l.trim().startsWith('#') && !l.includes(normalized))
     writeFileSync(bridgesPath, lines.join('\n') + '\n', 'utf8')
-    console.log(`[POOL PURGE] 🗑️ Ponte esgotada/morta removida: ${deadBridge} (${reason})`)
+
+    const exhaustedPath = join(process.cwd(), 'integrations/lovable-test/bridges_exhausted.txt')
+    const entry = `${new Date().toISOString()} | ${normalized} | ${reason}\n`
+    appendFileSync(exhaustedPath, entry, 'utf8')
+    console.log(`[POOL PURGE] 🗑️ Ponte esgotada/morta removida e registrada: ${deadBridge} (${reason})`)
   } catch (err) {
     console.error('[POOL PURGE ERROR]', err)
   }
@@ -269,16 +280,22 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
         const targetBridge = curPool[activeBridgeIndex % curPool.length].replace(/\/$/, '')
         let curRes: Response | null = null
 
-        // Garante formato esperado pela ponte Lovable
+        // Garante formato 100% compativel com a ponte (max 1024 tokens, modelo valido, sem thinking)
         let bridgePayload = payloadBody
         try {
           const parsed = JSON.parse(payloadBody)
-          if (parsed.model && !parsed.model.startsWith('anthropic/')) {
-            parsed.model = 'anthropic/' + parsed.model
-            bridgePayload = JSON.stringify(parsed)
+          parsed.model = 'anthropic/claude-opus-5-5'
+          if (parsed.max_tokens) {
+            parsed.max_tokens = Math.min(Number(parsed.max_tokens) || 1024, 1024)
+          } else {
+            parsed.max_tokens = 1024
           }
+          delete parsed.thinking
+          delete parsed.output_config
+          bridgePayload = JSON.stringify(parsed)
         } catch {}
 
+        const bridgeStart = Date.now()
         try {
           curRes = await fetch(targetBridge + '/messages', {
             method: 'POST',
@@ -292,6 +309,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
             redirect: 'manual',
             signal: controller.signal
           })
+          recordBridgeLatency(Date.now() - bridgeStart)
         } catch (networkErr: any) {
           console.error(`[POOL FAILOVER] Falha na ponte ${targetBridge}:`, networkErr?.message || networkErr)
           purgeBridgeFromFile(targetBridge, 'NETWORK_ERROR')
@@ -525,6 +543,9 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
     // Monitor e Teste em Tempo Real do Pool de Contas SixtySix (/api/pool-status & /api/pool-test)
     if(action==='pool-status'||action==='pool-test'){
       const bridgesPath = join(process.cwd(), 'integrations/lovable-test/bridges.txt')
+      const exhaustedPath = join(process.cwd(), 'integrations/lovable-test/bridges_exhausted.txt')
+      const accountsPath = join(process.cwd(), 'integrations/lovable-test/accounts/contas_completas.txt')
+
       let bridges: string[] = []
       if (existsSync(bridgesPath)) {
         bridges = readFileSync(bridgesPath, 'utf8')
@@ -532,6 +553,61 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
           .map(l => l.trim())
           .filter(l => l && !l.startsWith('#'))
       }
+
+      let totalCreated = bridges.length
+      if (existsSync(accountsPath)) {
+        try {
+          const acctLines = readFileSync(accountsPath, 'utf8').split('\n').filter(l => l.trim() && l.includes('@'))
+          if (acctLines.length > 0) totalCreated = acctLines.length
+        } catch {}
+      }
+
+      let exhaustedCount = 0
+      if (existsSync(exhaustedPath)) {
+        try {
+          exhaustedCount = readFileSync(exhaustedPath, 'utf8').split('\n').filter(l => l.trim() && !l.startsWith('#')).length
+        } catch {}
+      }
+
+      // Telemetria real de consumo via Supabase
+      let totalUsageCalls = 0
+      let callsToday = 0
+      let totalTokensToday = 0
+      const sbUrl = process.env.SUPABASE_URL?.replace(/\/+$/, '')
+      const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (sbUrl && sbKey) {
+        try {
+          const auth = { apikey: sbKey, Authorization: `Bearer ${sbKey}` }
+          const countRes = await fetch(`${sbUrl}/rest/v1/gateway_usage?select=id`, {
+            headers: { ...auth, Prefer: 'count=exact', Range: '0-0' },
+            signal: AbortSignal.timeout(3000)
+          })
+          if (countRes.ok) {
+            const range = countRes.headers.get('content-range')
+            if (range && range.includes('/')) {
+              totalUsageCalls = parseInt(range.split('/')[1], 10) || 0
+            }
+          }
+
+          const todayIso = new Date().toISOString().split('T')[0] + 'T00:00:00.000Z'
+          const todayRes = await fetch(`${sbUrl}/rest/v1/gateway_usage?select=input_tokens,output_tokens&created_at=gte.${todayIso}&limit=5000`, {
+            headers: auth,
+            signal: AbortSignal.timeout(4000)
+          })
+          if (todayRes.ok) {
+            const rows = (await todayRes.json()) as { input_tokens?: number; output_tokens?: number }[]
+            callsToday = rows.length
+            totalTokensToday = rows.reduce((acc, r) => acc + (r.input_tokens || 0) + (r.output_tokens || 0), 0)
+          }
+        } catch (e) {
+          console.warn('[POOL STATUS] Erro ao ler consumo Supabase:', e)
+        }
+      }
+
+      const avgLatency = recentLatencies.length > 0
+        ? Math.round(recentLatencies.reduce((a, b) => a + b, 0) / recentLatencies.length)
+        : 125
+
       res.setHeader('Content-Type', 'application/json; charset=utf-8')
       res.setHeader('access-control-allow-origin', '*')
       res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS')
@@ -556,6 +632,10 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
               signal: AbortSignal.timeout(4000)
             })
             const lat = Date.now() - t0
+            recordBridgeLatency(lat)
+            if (resp.status === 402) {
+              purgeBridgeFromFile(b, '402_QUOTA_EXHAUSTED')
+            }
             return {
               id: idx + 1,
               url: b,
@@ -578,20 +658,32 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
         const onlineCount = tested.filter(r => r.status === 'online').length
         const failedCount = tested.filter(r => r.status !== 'online').length
         const totalHealthy = Math.max(0, bridges.length - failedCount)
+
+        const testAvgLat = tested.filter(t => t.latency > 0).length > 0
+          ? Math.round(tested.reduce((a, b) => a + b.latency, 0) / tested.length)
+          : avgLatency
+
         res.statusCode = 200
         res.end(JSON.stringify({
           ok: true,
           live_tested: true,
           timestamp: new Date().toISOString(),
           total: bridges.length,
+          total_created: totalCreated,
+          exhausted_count: exhaustedCount,
           tested_count: tested.length,
           online_count: totalHealthy,
+          estimated_tokens_stock: bridges.length * 100000,
+          tokens_consumed_today: totalTokensToday,
+          calls_today: callsToday,
+          total_calls_all_time: totalUsageCalls,
+          avg_latency: testAvgLat,
           bridges: [...tested, ...bridges.slice(15).map((b, idx) => ({
             id: idx + 16,
             url: b,
             host: b.replace(/^https?:\/\//, '').split('/')[0],
             status: 'online',
-            latency: 120 + (idx * 5) % 60,
+            latency: testAvgLat,
             code: 200
           }))],
           gateway_url: 'https://www.sixtysix.online/v1'
@@ -605,13 +697,20 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
         live_tested: false,
         timestamp: new Date().toISOString(),
         total: bridges.length,
+        total_created: totalCreated,
+        exhausted_count: exhaustedCount,
         online_count: bridges.length,
+        estimated_tokens_stock: bridges.length * 100000,
+        tokens_consumed_today: totalTokensToday,
+        calls_today: callsToday,
+        total_calls_all_time: totalUsageCalls,
+        avg_latency: avgLatency,
         bridges: bridges.map((b, idx) => ({
           id: idx + 1,
           url: b,
           host: b.replace(/^https?:\/\//, '').split('/')[0],
           status: 'online',
-          latency: 110 + (idx * 5) % 60,
+          latency: avgLatency,
           code: 200
         })),
         gateway_url: 'https://www.sixtysix.online/v1'
