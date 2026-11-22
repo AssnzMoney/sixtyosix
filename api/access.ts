@@ -323,6 +323,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       }
     }
 
+    // Até quando vale esperar o limite ou a instabilidade do fornecedor antes de repassar o erro ao cliente.
+    const deadline=Date.now()+waitLimit
     // Keys desta chamada; a recusada sai da lista (não volta na próxima volta).
     const live=keyPool.order(keys)
     let pause=1500,waited=false,turn=0
