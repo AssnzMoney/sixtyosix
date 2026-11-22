@@ -239,8 +239,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     // Betas que o modelo já recusou não vão no cabeçalho.
     const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
 
-    // Se o provedor for o Pool de Contas (Lovable / bridges.txt):
-    if (provider.url.includes('lovable') || provider.name.toLowerCase().includes('lovable') || provider.name.toLowerCase().includes('pool')) {
+    // Se o provedor for o Pool de Contas (Lovable / bridges.txt ou SixtySix Internal Pool):
+    if (provider.url.includes('lovable') || provider.name.toLowerCase().includes('lovable') || provider.name.toLowerCase().includes('pool') || provider.url.includes('internal-pool') || provider.url.includes('sixtysix.online/v1/pool')) {
       const pool = getBridgesPool()
       let attempts = 0
       const maxAttempts = Math.min(pool.length, 6)

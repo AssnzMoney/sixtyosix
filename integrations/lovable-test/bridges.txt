@@ -1,3 +1,5 @@
+https://six-bridge-cd2deba9.lovable.app/api/public/six-test/v1
+https://six-bridge-10252a11.lovable.app/api/public/six-test/v1
 https://six-bridge-ff4664e0.lovable.app/api/public/six-test/v1
 https://six-bridge-257024d9.lovable.app/api/public/six-test/v1
 https://six-bridge-64e4fde6.lovable.app/api/public/six-test/v1
