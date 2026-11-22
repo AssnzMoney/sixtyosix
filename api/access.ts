@@ -7,7 +7,7 @@ import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememb
 import { CREATE_PATH, ITEM_PATH, createVideo, isVideoRoute, monthStart, monthlyLimit, openVideoId, videoItem, videoRequestProblem, videoWeight, videosUsed } from '../server/videos.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { providerAlertFromEnv } from '../server/provider-alert.js'
-import { KeyPool, keyHint } from '../server/key-pool.js'
+import { providerKeyPool, keyHint } from '../server/key-pool.js'
 import { authorizeRouterKey, EMPTY_ROUTER, loadRouter, normalizeAlias, RouterError, ROUTER_KEY_PREFIX, routerStatus, canonicalModels, findRoute, type RouterConfig, type RouterRoute } from '../server/router.js'
 
 type Env = Record<string,string|undefined>
@@ -147,7 +147,7 @@ const modelEntry=(id:string,label?:string)=>({id,object:'model',type:'model',dis
 
 type SupplierCall={route:RouterRoute;path:string;params:URLSearchParams;payload:Record<string,unknown>;clientId:string}
 /** Pool das keys do provedor: revezamento e descanso da key recusada ou no limite (server/key-pool.ts). */
-const keyPool=new KeyPool()
+const keyPool=providerKeyPool
 /** E-mail para a administração quando o fornecedor recusa a key mestra ou fica instável (server/provider-alert.ts). */
 const providerAlert=providerAlertFromEnv()
 /** Resumo, uma vez por minuto no log, do limite do fornecedor: quantas chamadas a espera salvou e quantas não deu. */
@@ -328,7 +328,17 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     let pause=1500,waited=false,turn=0
     for(let attempt=0;;attempt++){
       const key=live[turn%live.length]
-      const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:payloadBody,redirect:'manual',signal:controller.signal})
+      const sentAt=Date.now()
+      let response:Response
+      try{
+        response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:payloadBody,redirect:'manual',signal:controller.signal})
+      }catch(error){
+        // Fornecedor nem respondeu (rede, gateway local desligado): conta como falha da key no painel do pool.
+        if(!controller.signal.aborted)keyPool.record(key,0,Date.now()-sentAt)
+        throw error
+      }
+      // Tempo até o cabeçalho da resposta (o stream continua depois): é o que o painel do pool mostra.
+      keyPool.record(key,response.status,Date.now()-sentAt)
       const hinted=Number(response.headers.get('retry-after'))
       // Key recusada (sem saldo, bloqueada): descansa e a chamada segue na próxima. Todas recusadas: a recusa segue
       // adiante (o cliente vê o erro genérico e o alerta avisa a administração).

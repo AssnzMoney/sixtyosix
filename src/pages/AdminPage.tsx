@@ -38,6 +38,7 @@ import {
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
 import { PoolAndModelsPanel } from '../components/PoolAndModelsPanel'
+import { KeyPoolPanel } from '../components/KeyPoolPanel'
 import AffiliatesPanel from '../components/AffiliatesPanel'
 import RankAdminPanel from '../components/RankAdminPanel'
 import { AdminCodeRequired, adminHeaders, clearAdminSession, saveAdminSession } from '../lib/adminSession'
@@ -1056,7 +1057,10 @@ export default function AdminPage() {
           ) : tab === 'router' ? (
             <RouterPanel token={session?.access_token || ''} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} onSelectPool={() => setTab('pool')} />
           ) : tab === 'pool' ? (
-            <PoolAndModelsPanel />
+            <>
+              <KeyPoolPanel token={session?.access_token || ''} />
+              <PoolAndModelsPanel />
+            </>
           ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(

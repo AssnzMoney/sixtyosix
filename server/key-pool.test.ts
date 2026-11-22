@@ -44,3 +44,28 @@ test('todas descansando: nenhuma sai da fila, a que volta primeiro vem na frente
 test('o log mostra só o final da key', () => {
   assert.equal(keyHint('sk-segredo-2959'), '…2959')
 })
+
+test('saúde por key: conta respostas, mostra só o final e o descanso com hora de volta', () => {
+  const { pool: p, tick } = pool()
+  assert.equal(p.health(['sk-nova-0001'])[0].state, 'unknown')
+  p.record('sk-boa-1111', 200, 812.4)
+  p.record('sk-boa-1111', 200, 300)
+  p.record('sk-ruim-2222', 503, 90)
+  const [boa, ruim] = p.health(['sk-boa-1111', 'sk-ruim-2222'])
+  assert.deepEqual([boa.hint, boa.state, boa.ok, boa.failed, boa.lastLatencyMs], ['…1111', 'ok', 2, 0, 300])
+  assert.deepEqual([ruim.state, ruim.lastStatus, ruim.failed], ['error', 503, 1])
+  assert.ok(!JSON.stringify(p.health(['sk-boa-1111'])).includes('sk-boa'), 'nunca a key inteira')
+  // record() só anota: quem descansa a key é o gateway (rest) ou o teste do admin (checked).
+  p.record('sk-seca-3333', 402)
+  assert.equal(p.isResting('sk-seca-3333'), false)
+  p.checked('sk-seca-3333', 402, 50)
+  const seca = p.health(['sk-seca-3333'])[0]
+  assert.equal(seca.state, 'refused')
+  assert.ok(seca.restingUntil && seca.lastCheckAt)
+  p.checked('sk-limite-4444', 429, 10, 3)
+  assert.equal(p.health(['sk-limite-4444'])[0].state, 'limit')
+  tick(3500)
+  assert.equal(p.health(['sk-limite-4444'])[0].state, 'error', 'passou o descanso: volta a ser usada, mas a última resposta foi erro')
+  p.checked('sk-seca-3333', 200, 40)
+  assert.equal(p.health(['sk-seca-3333'])[0].state, 'ok', 'respondeu bem no teste: sai do descanso na hora')
+})

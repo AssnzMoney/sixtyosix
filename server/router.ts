@@ -8,6 +8,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import { supplierUrl } from './supplier.js'
 import { validLimit, validNetwork } from './guard.js'
+import { providerKeyPool, type KeyPool } from './key-pool.js'
 
 type Env = Record<string, string | undefined>
 type Row = Record<string, any>
@@ -21,6 +22,10 @@ export class RouterError extends Error {
 export type RouterProvider = { id: string; name: string; url: string; key: string; keys?: string[] }
 /** Várias keys no mesmo campo: separadas por linha, espaço, vírgula ou ponto e vírgula. */
 export const splitKeys = (value: string) => value.split(/[\s,;]+/).map((key) => key.trim()).filter(Boolean)
+/** Key desligada no admin: fica guardada com "!" na frente e o gateway não usa. */
+export const DISABLED_KEY = '!'
+/** Só as keys ligadas, na ordem do cadastro. */
+export const activeKeys = (value: string) => splitKeys(value).filter((key) => !key.startsWith(DISABLED_KEY))
 export type RouterRoute = { alias: string; label: string; upstream: string; inPro: boolean; provider: RouterProvider }
 export type RouterConfig = { routes: Map<string, RouterRoute>; proAliases: string[]; lookup?: Map<string, RouterRoute> }
 export const EMPTY_ROUTER: RouterConfig = { routes: new Map(), proAliases: [] }
@@ -112,7 +117,7 @@ export async function loadRouter(env: Env, request: typeof fetch = fetch): Promi
           try { keys.set(provider.id, unsealSecret(provider.encrypted_key, db.secret, providerAad(provider.id))) }
           catch { console.error('Roteador: não foi possível abrir a key do provedor', provider.name); keys.set(provider.id, null) }
         }
-        const list = splitKeys(keys.get(provider.id) || '')
+        const list = activeKeys(keys.get(provider.id) || '')
         if (!list.length) continue
         routes.set(row.alias, { alias: row.alias, label: row.label, upstream: row.upstream_model, inPro: Boolean(row.in_pro), provider: { id: provider.id, name: provider.name, url: String(provider.base_url).replace(/\/+$/, ''), key: list[0], keys: list } })
       }
@@ -222,18 +227,39 @@ export async function authorizeRouterKey(env: Env, request: typeof fetch, token:
 /* ------------------------------------------------------------------ admin */
 
 const URL_RE = /^https:\/\/[^\s]+$/
+/**
+ * Gateway na própria máquina ou na rede interna (ex.: http://127.0.0.1:8317/v1, http://192.168.0.10:3000/v1) pode
+ * ser http. Endereço público continua exigindo https, para a key mestra não trafegar aberta na internet.
+ */
+export function providerUrlOk(url: string) {
+  if (URL_RE.test(url)) return true
+  let parsed: URL
+  try { parsed = new URL(url) } catch { return false }
+  if (parsed.protocol !== 'http:') return false
+  const host = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase()
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || host === '::1') return true
+  const ip = host.split('.').map(Number)
+  if (ip.length !== 4 || ip.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false
+  return ip[0] === 127 || ip[0] === 10 || (ip[0] === 192 && ip[1] === 168) || (ip[0] === 172 && ip[1] >= 16 && ip[1] <= 31) || (ip[0] === 100 && ip[1] >= 64 && ip[1] <= 127)
+}
+/** Gateway local (http na própria máquina ou rede interna): o painel mostra a etiqueta "local". */
+export const localProvider = (url: string) => /^http:\/\//i.test(url)
 const ALIAS_RE = /^[a-z0-9][a-z0-9._-]{0,79}$/
 const text = (value: unknown, max: number) => (typeof value === 'string' ? value.trim().slice(0, max) : '')
 const keyHint = (key: string) => '…' + key.slice(-4)
-/** Final da primeira key e quantas mais existem (ex.: …a91f +2). */
-const keysHint = (value: string) => { const list = splitKeys(value); return keyHint(list[0] || '') + (list.length > 1 ? ` +${list.length - 1}` : '') }
+/** Final da primeira key ligada e quantas mais existem (ex.: …a91f +2). Todas desligadas: "desligadas". */
+const keysHint = (value: string) => {
+  const all = splitKeys(value), list = activeKeys(value)
+  if (!list.length) return all.length ? 'desligadas' : ''
+  return keyHint(list[0]) + (list.length > 1 ? ` +${list.length - 1}` : '')
+}
 const CLIENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const GUARD_MISSING = 'Aplique a migração supabase/gateway-guard.sql no Supabase para usar a proteção e o controle de IP.'
 const IPS_MISSING = 'Aplique a migração supabase/gateway-guard-ips.sql no Supabase para usar o máximo de IPs por chave.'
 const TRIAL_MISSING = 'Aplique a migração supabase/trial-3h.sql no Supabase para ajustar o ritmo do teste grátis.'
 
 /** Operações da aba Roteador. Só é chamado depois de requireAdmin (api/management.ts). */
-export function createRouterAdmin(db: { url: string; secret: string }, request: typeof fetch, adminEmail: string) {
+export function createRouterAdmin(db: { url: string; secret: string }, request: typeof fetch, adminEmail: string, pool: KeyPool = providerKeyPool) {
   const headers = { ...serviceHeaders(db.secret), 'Content-Type': 'application/json' }
   async function rest<T>(path: string, init: RequestInit = {}, fail = 'Operação incompleta. Atualize e tente novamente.'): Promise<T> {
     const response = await request(`${db.url}/rest/v1/${path}`, { ...init, headers: { ...headers, ...(init.headers as Record<string, string> || {}) }, signal: AbortSignal.timeout(15000) })
@@ -248,10 +274,50 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
   async function providerKey(id: string) {
     const rows = await rest<Row[]>(`router_providers?${new URLSearchParams({ id: `eq.${id}`, select: 'id,base_url,encrypted_key', limit: '1' })}`)
     if (!rows[0]) throw new RouterError(404, 'Provedor não encontrado.')
-    // Com várias keys, a primeira serve para listar os modelos.
-    return { url: String(rows[0].base_url), key: splitKeys(unsealSecret(rows[0].encrypted_key, db.secret, providerAad(id)))[0] || '' }
+    // Com várias keys, a primeira ligada serve para listar os modelos.
+    return { url: String(rows[0].base_url), key: activeKeys(unsealSecret(rows[0].encrypted_key, db.secret, providerAad(id)))[0] || '' }
   }
   const done = <T>(value: T) => { clearRouterCache(); return value }
+
+  /* Pool de keys de cada provedor: todas as keys guardadas (as desligadas com "!" na frente). */
+  async function providerSecret(id: string) {
+    const rows = await rest<Row[]>(`router_providers?${new URLSearchParams({ id: `eq.${id}`, select: 'id,name,base_url,encrypted_key,enabled', limit: '1' })}`)
+    if (!rows[0]) throw new RouterError(404, 'Provedor não encontrado.')
+    let keys: string[]
+    try { keys = splitKeys(unsealSecret(rows[0].encrypted_key, db.secret, providerAad(id))) }
+    catch { throw new RouterError(409, 'A key deste provedor não abre (a SUPABASE_SERVICE_ROLE_KEY mudou?). Cadastre as keys de novo em Roteador → Editar.') }
+    return { row: rows[0], keys }
+  }
+  async function saveSecret(id: string, keys: string[]) {
+    const value = keys.join('\n')
+    await rest(`router_providers?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ encrypted_key: sealSecret(value, db.secret, providerAad(id)), key_hint: keysHint(value), updated_at: new Date().toISOString() }) })
+    clearRouterCache()
+  }
+  const plain = (key: string) => (key.startsWith(DISABLED_KEY) ? key.slice(DISABLED_KEY.length) : key)
+  /** A key escolhida no painel (posição + final), conferida para não mexer na errada se a lista mudou. */
+  function pick(keys: string[], body: Row) {
+    const index = Number(body.index), hint = text(body.hint, 12)
+    if (!Number.isInteger(index) || index < 0 || index >= keys.length || keyHint(plain(keys[index])) !== hint) throw new RouterError(409, 'A lista de keys mudou. Atualize a página e tente de novo.')
+    return index
+  }
+  /** Testa uma key com GET /models (não gasta crédito) e anota no pool. */
+  async function checkKey(url: string, key: string) {
+    const started = Date.now()
+    try {
+      const response = await request(supplierUrl(url, '/v1/models'), { headers: { Authorization: `Bearer ${key}`, 'x-api-key': key, 'anthropic-version': '2023-06-01' }, signal: AbortSignal.timeout(15000) })
+      await response.body?.cancel().catch(() => undefined)
+      const retry = Number(response.headers.get('retry-after'))
+      pool.checked(key, response.status, Date.now() - started, Number.isFinite(retry) && retry > 0 ? retry : undefined)
+      return response.status
+    } catch {
+      pool.checked(key, 0, Date.now() - started)
+      return 0
+    }
+  }
+  const keyList = (keys: string[]) => {
+    const health = pool.health(keys.map(plain))
+    return keys.map((key, index) => ({ index, enabled: !key.startsWith(DISABLED_KEY), ...health[index] }))
+  }
 
   return {
     async overview() {
@@ -407,7 +473,7 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
     async saveProvider(body: Row) {
       const id = text(body.id, 40), name = text(body.name, 60), url = text(body.base_url, 300).replace(/\/+$/, ''), key = splitKeys(text(body.key, 1400)).join('\n')
       if (!name) throw new RouterError(400, 'Dê um nome ao provedor.')
-      if (!URL_RE.test(url)) throw new RouterError(400, 'A URL precisa começar com https://')
+      if (!providerUrlOk(url)) throw new RouterError(400, 'A URL precisa começar com https:// (http:// só para gateway local, como http://127.0.0.1:8317/v1).')
       if (!id && !key) throw new RouterError(400, 'Cole a API key do provedor.')
       if (id) {
         const patch: Row = { name, base_url: url, updated_at: new Date().toISOString(), ...(key ? { encrypted_key: sealSecret(key, db.secret, providerAad(id)), key_hint: keysHint(key) } : {}) }
@@ -422,6 +488,73 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
     async setProviderEnabled(body: Row) {
       await rest(`router_providers?id=eq.${encodeURIComponent(text(body.id, 40))}`, { method: 'PATCH', body: JSON.stringify({ enabled: body.enabled === true, updated_at: new Date().toISOString() }) })
       return done({ ok: true })
+    },
+
+    /** Pool de keys de todos os provedores, com a saúde de cada key (memória do gateway). Nunca devolve a key. */
+    async keyPool() {
+      const rows = await rest<Row[]>('router_providers?select=id,name,base_url,encrypted_key,enabled&order=created_at.asc')
+      return {
+        providers: rows.map((row) => {
+          let keys: string[] = [], problem: string | null = null
+          try { keys = splitKeys(unsealSecret(row.encrypted_key, db.secret, providerAad(row.id))) }
+          catch { problem = 'A key deste provedor não abre. Cadastre as keys de novo em Roteador → Editar.' }
+          return { id: row.id, name: row.name, base_url: row.base_url, enabled: Boolean(row.enabled), local: localProvider(String(row.base_url)), problem, keys: keyList(keys) }
+        }),
+        checkedAt: new Date().toISOString(),
+      }
+    },
+
+    /** Testa as keys do provedor (todas, ou só a escolhida) e devolve a saúde atualizada. */
+    async testProviderKeys(body: Row) {
+      const id = text(body.id, 40)
+      const { row, keys } = await providerSecret(id)
+      const only = body.index === undefined || body.index === null ? null : pick(keys, body)
+      const targets = only === null ? keys.map((_, i) => i) : [only]
+      for (let i = 0; i < targets.length; i += 8) await Promise.all(targets.slice(i, i + 8).map((index) => checkKey(String(row.base_url), plain(keys[index]))))
+      return { keys: keyList(keys) }
+    },
+
+    /** Desliga ou religa uma key sem apagar: o gateway para de usar (ou volta a usar) em segundos, sem reiniciar. */
+    async setProviderKeyEnabled(body: Row) {
+      const id = text(body.id, 40)
+      const { keys } = await providerSecret(id)
+      const index = pick(keys, body), on = body.enabled === true
+      const liveCount = keys.filter((key) => !key.startsWith(DISABLED_KEY)).length
+      if (!on && liveCount === 1 && !keys[index].startsWith(DISABLED_KEY)) throw new RouterError(400, 'Esta é a única key ligada. Ligue outra antes, ou desligue o provedor inteiro.')
+      keys[index] = on ? plain(keys[index]) : DISABLED_KEY + plain(keys[index])
+      await saveSecret(id, keys)
+      return { keys: keyList(keys) }
+    },
+
+    /** Tira a key do pool de vez. */
+    async removeProviderKey(body: Row) {
+      const id = text(body.id, 40)
+      const { keys } = await providerSecret(id)
+      const index = pick(keys, body)
+      if (keys.length === 1) throw new RouterError(400, 'É a única key do provedor. Para trocar, use Roteador → Editar e cole a nova.')
+      keys.splice(index, 1)
+      if (!keys.some((key) => !key.startsWith(DISABLED_KEY))) throw new RouterError(400, 'Sobrariam só keys desligadas. Ligue outra antes de remover esta.')
+      await saveSecret(id, keys)
+      return { keys: keyList(keys) }
+    },
+
+    /** Acrescenta keys ao pool (uma por linha), sem mexer nas que já estão lá. Repetidas são ignoradas. */
+    async addProviderKeys(body: Row) {
+      const id = text(body.id, 40)
+      const { keys } = await providerSecret(id)
+      const known = new Set(keys.map(plain))
+      const fresh: string[] = []
+      for (const raw of splitKeys(text(body.keys, 20000))) {
+        const key = plain(raw)
+        if (key.length < 8 || known.has(key)) continue
+        known.add(key)
+        fresh.push(key)
+      }
+      if (!fresh.length) throw new RouterError(400, 'Nenhuma key nova. Cole uma por linha (as repetidas são ignoradas).')
+      if (keys.length + fresh.length > 100) throw new RouterError(400, 'O pool aceita até 100 keys por provedor.')
+      const next = [...keys, ...fresh]
+      await saveSecret(id, next)
+      return { added: fresh.length, keys: keyList(next) }
     },
 
     async deleteProvider(body: Row) {

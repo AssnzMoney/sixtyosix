@@ -4,7 +4,8 @@ import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import accessHandler, { localRequest, seal } from '../api/access.ts'
 import { UsageTap } from './supplier.ts'
-import { canonicalModels, clearRouterCache, createRouterAdmin, findRoute, loadRouter, normalizeAlias, routerStatus, sealSecret, unsealSecret } from './router.ts'
+import { activeKeys, canonicalModels, clearRouterCache, createRouterAdmin, findRoute, loadRouter, normalizeAlias, providerUrlOk, routerStatus, sealSecret, unsealSecret } from './router.ts'
+import { KeyPool } from './key-pool.ts'
 import { suggestAlias, suggestLabel } from '../src/lib/routerModels.ts'
 
 /** O fetch real, para o teste chamar o servidor local enquanto o do servidor é simulado. */
@@ -581,6 +582,66 @@ test('admin: a key do provedor e a chave manual só são gravadas criptografadas
   await assert.rejects(admin.saveProvider({ name: 'X', base_url: 'http://inseguro.example', key: 'k' }), { status: 400 })
   await assert.rejects(admin.createKey({ name: 'João', days: 0 }), { status: 400 })
   await assert.rejects(admin.saveModels({ provider_id: PROVIDER.id, models: [{ alias: 'Nome Inválido', upstream_model: 'x' }] }), { status: 400 })
+})
+
+test('URL do provedor: https em qualquer lugar, http só para gateway local ou rede interna', () => {
+  for (const url of ['https://api.exemplo.com/v1', 'http://127.0.0.1:8317/v1', 'http://localhost:3000', 'http://192.168.0.10:8080/v1', 'http://10.0.0.5/v1', 'http://172.20.1.2:9000', 'http://100.101.102.103:8317/v1', 'http://meu-pc.local:8317/v1'])
+    assert.equal(providerUrlOk(url), true, url)
+  for (const url of ['http://inseguro.example', 'http://8.8.8.8/v1', 'http://172.32.0.1', 'ftp://127.0.0.1', 'https://', 'qualquer coisa'])
+    assert.equal(providerUrlOk(url), false, url)
+})
+
+test('pool de keys no admin: acrescenta, desliga, religa, remove e testa sem devolver a key inteira', async () => {
+  const id = PROVIDER.id, aad = `router:provider:${id}`
+  const row: Record<string, any> = { ...PROVIDER, encrypted_key: sealSecret('sk-uma-aaaa1111', SECRET, aad) }
+  const pool = new KeyPool()
+  const request = (async (url: string, init: RequestInit = {}) => {
+    const u = String(url)
+    if (u.startsWith(PROVIDER.base_url)) {
+      const key = (init.headers as Record<string, string>)['x-api-key']
+      return key.endsWith('2222') ? Response.json({ error: 'sem saldo' }, { status: 402 }) : Response.json({ data: [] })
+    }
+    if (init.method === 'PATCH') { Object.assign(row, JSON.parse(String(init.body))); return new Response(null, { status: 204 }) }
+    return Response.json([row])
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@example.com', pool)
+  const keys = () => unsealSecret(row.encrypted_key, SECRET, aad)
+
+  const added = await admin.addProviderKeys({ id, keys: 'sk-uma-aaaa1111\nsk-duas-bbbb2222\nsk-tres-cccc3333' })
+  assert.equal(added.added, 2, 'a repetida é ignorada')
+  assert.equal(keys(), 'sk-uma-aaaa1111\nsk-duas-bbbb2222\nsk-tres-cccc3333')
+  assert.equal(row.key_hint, '…1111 +2')
+  assert.ok(!JSON.stringify(added).includes('sk-'), 'o painel recebe só o final')
+
+  const tested = await admin.testProviderKeys({ id })
+  assert.deepEqual(tested.keys.map((k) => [k.hint, k.state]), [['…1111', 'ok'], ['…2222', 'refused'], ['…3333', 'ok']])
+
+  await admin.setProviderKeyEnabled({ id, index: 1, hint: '…2222', enabled: false })
+  assert.equal(keys(), 'sk-uma-aaaa1111\n!sk-duas-bbbb2222\nsk-tres-cccc3333')
+  assert.deepEqual(activeKeys(keys()), ['sk-uma-aaaa1111', 'sk-tres-cccc3333'], 'o gateway não usa a desligada')
+  await assert.rejects(admin.setProviderKeyEnabled({ id, index: 1, hint: '…9999', enabled: true }), { status: 409 }, 'final diferente: a lista mudou')
+  const back = await admin.setProviderKeyEnabled({ id, index: 1, hint: '…2222', enabled: true })
+  assert.equal(back.keys[1].enabled, true)
+
+  await admin.removeProviderKey({ id, index: 0, hint: '…1111' })
+  await admin.setProviderKeyEnabled({ id, index: 0, hint: '…2222', enabled: false })
+  await assert.rejects(admin.setProviderKeyEnabled({ id, index: 1, hint: '…3333', enabled: false }), { status: 400 }, 'não desliga a última ligada')
+  await assert.rejects(admin.removeProviderKey({ id, index: 1, hint: '…3333' }), { status: 400 }, 'não sobra só key desligada')
+  assert.equal(row.key_hint, '…3333')
+
+  const overview = await admin.keyPool()
+  assert.equal(overview.providers[0].local, false)
+  assert.deepEqual(overview.providers[0].keys.map((k) => [k.hint, k.enabled]), [['…2222', false], ['…3333', true]])
+})
+
+test('key desligada no pool fica fora do gateway', async () => {
+  const provider = providerRow({ encrypted_key: sealSecret('!gw_desligada\ngw_ligada', SECRET, `router:provider:${PROVIDER.id}`) })
+  const router = await loadRouter({ SUPABASE_URL: SUPABASE, SUPABASE_SERVICE_ROLE_KEY: SECRET }, (async () => Response.json(models(provider))) as typeof fetch)
+  assert.deepEqual(router.routes.get('claude-opus-5-5')?.provider.keys, ['gw_ligada'])
+  clearRouterCache()
+  const off = providerRow({ encrypted_key: sealSecret('!gw_desligada', SECRET, `router:provider:${PROVIDER.id}`) })
+  const empty = await loadRouter({ SUPABASE_URL: SUPABASE, SUPABASE_SERVICE_ROLE_KEY: SECRET }, (async () => Response.json(models(off))) as typeof fetch)
+  assert.equal(empty.routes.size, 0, 'todas desligadas: o modelo para de responder')
 })
 
 test('diagnóstico do Roteador conta modelos ativos e aponta o problema, sem devolver keys', async () => {

@@ -860,6 +860,7 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
             <label>
               URL base
               <input value={providerForm.base_url} placeholder="https://api.exemplo.com/v1" spellCheck={false} onChange={(e) => setProviderForm({ ...providerForm, base_url: e.target.value })} />
+              <small>Gateway na sua máquina ou rede interna pode ser http, ex.: http://127.0.0.1:8317/v1</small>
             </label>
             <label className="is-wide">
               API keys

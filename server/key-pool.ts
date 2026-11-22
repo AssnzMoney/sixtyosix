@@ -12,6 +12,21 @@
  */
 export type KeyRest = 'refused' | 'limit'
 
+/** Saúde de uma key para o painel do admin: só o final dela, nunca a key inteira. */
+export type KeyHealth = {
+  hint: string
+  state: 'ok' | 'error' | 'refused' | 'limit' | 'unknown'
+  restingUntil: string | null
+  ok: number
+  failed: number
+  lastStatus: number | null
+  lastLatencyMs: number | null
+  lastOkAt: string | null
+  lastErrorAt: string | null
+  lastCheckAt: string | null
+}
+type Stats = { ok: number; failed: number; lastStatus: number | null; lastLatencyMs: number | null; lastOkAt: number | null; lastErrorAt: number | null; lastCheckAt: number | null }
+
 const REFUSED_MS = 5 * 60_000
 const LIMIT_MS = 10_000
 const MAX_LIMIT_MS = 60_000
@@ -21,6 +36,7 @@ export const keyHint = (key: string) => `…${key.slice(-4)}`
 
 export class KeyPool {
   private resting = new Map<string, { until: number; why: KeyRest }>()
+  private stats = new Map<string, Stats>()
   private turn = 0
   private now: () => number
   constructor(now: () => number = Date.now) { this.now = now }
@@ -47,4 +63,54 @@ export class KeyPool {
   ok(key: string) { this.resting.delete(key) }
 
   isResting(key: string) { const s = this.resting.get(key); return Boolean(s && s.until > this.now()) }
+
+  /**
+   * Anota a resposta do fornecedor para esta key, só para o painel: 2xx conta como sucesso, o resto como falha.
+   * status 0 = o fornecedor nem respondeu. check = veio do teste do admin. Não mexe no descanso: quem chama decide
+   * (o gateway usa rest()/ok(); o teste do admin usa checked()).
+   */
+  record(key: string, status: number, latencyMs?: number, check = false) {
+    const now = this.now()
+    const s = this.stats.get(key) || { ok: 0, failed: 0, lastStatus: null, lastLatencyMs: null, lastOkAt: null, lastErrorAt: null, lastCheckAt: null }
+    const good = status >= 200 && status < 300
+    if (good) { s.ok++; s.lastOkAt = now } else { s.failed++; s.lastErrorAt = now }
+    s.lastStatus = status
+    if (latencyMs !== undefined) s.lastLatencyMs = Math.round(latencyMs)
+    if (check) s.lastCheckAt = now
+    this.stats.set(key, s)
+  }
+
+  /** Resultado do teste do admin: anota e aplica o descanso como numa chamada de verdade. */
+  checked(key: string, status: number, latencyMs?: number, retryAfter?: number) {
+    this.record(key, status, latencyMs, true)
+    if (status >= 200 && status < 300) this.ok(key)
+    else if (status === 401 || status === 402 || status === 403) this.rest(key, 'refused')
+    else if (status === 429) this.rest(key, 'limit', retryAfter)
+  }
+
+  /** Saúde de cada key, na ordem recebida. Sem nenhuma chamada ainda: 'unknown'; última resposta com erro (5xx, rede): 'error'. */
+  health(keys: readonly string[]): KeyHealth[] {
+    const now = this.now()
+    const iso = (value: number | null) => (value ? new Date(value).toISOString() : null)
+    return keys.map((key) => {
+      const s = this.stats.get(key)
+      const rest = this.resting.get(key)
+      const resting = rest && rest.until > now ? rest : null
+      return {
+        hint: keyHint(key),
+        state: resting ? resting.why : !s ? 'unknown' : s.lastStatus !== null && s.lastStatus >= 200 && s.lastStatus < 300 ? 'ok' : 'error',
+        restingUntil: resting ? iso(resting.until) : null,
+        ok: s?.ok || 0,
+        failed: s?.failed || 0,
+        lastStatus: s?.lastStatus ?? null,
+        lastLatencyMs: s?.lastLatencyMs ?? null,
+        lastOkAt: iso(s?.lastOkAt ?? null),
+        lastErrorAt: iso(s?.lastErrorAt ?? null),
+        lastCheckAt: iso(s?.lastCheckAt ?? null),
+      }
+    })
+  }
 }
+
+/** Pool único do processo: o gateway (api/access.ts) anota as chamadas e o admin (api/management.ts) lê a saúde. */
+export const providerKeyPool = new KeyPool()
