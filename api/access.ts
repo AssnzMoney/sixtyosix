@@ -295,6 +295,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
           delete parsed.effort
           delete parsed.inference_geo
           delete parsed.service_tier
+          delete parsed.safeguards
+          delete parsed.metadata
 
           const systems: any[] = []
           if (typeof parsed.system === 'string') {
@@ -319,7 +321,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
                   content = content.filter((b: any) => b?.type !== 'thinking' && b?.type !== 'redacted_thinking')
                   if (content.length === 0) content = [{ type: 'text', text: '…' }]
                 }
-                return { role: m.role, content }
+                const cleanMsg: any = { role: m.role, content }
+                return cleanMsg
               })
           }
           if (systems.length > 0) parsed.system = systems
