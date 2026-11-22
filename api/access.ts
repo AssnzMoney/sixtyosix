@@ -173,7 +173,7 @@ function getBridgesPool(): string[] {
   if (!existsSync(bridgesPath)) return []
   return readFileSync(bridgesPath, 'utf8')
     .split('\n')
-    .map(l => l.trim())
+    .map(l => l.trim().replace(/^\uFEFF/, ''))
     .filter(l => l && !l.startsWith('#'))
 }
 
