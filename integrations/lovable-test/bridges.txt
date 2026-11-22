@@ -9,7 +9,6 @@ https://six-bridge-64763e41.lovable.app/api/public/six-test/v1
 https://six-bridge-082b6719.lovable.app/api/public/six-test/v1
 https://six-bridge-2c3411e3.lovable.app/api/public/six-test/v1
 https://six-bridge-d70b389d.lovable.app/api/public/six-test/v1
-https://six-bridge-f274ae76.lovable.app/api/public/six-test/v1
 https://six-bridge-0ed01fed.lovable.app/api/public/six-test/v1
 https://six-bridge-902d6d29.lovable.app/api/public/six-test/v1
 https://six-bridge-cbdc0bc9.lovable.app/api/public/six-test/v1
@@ -38,7 +37,6 @@ https://six-bridge-8e233e26.lovable.app/api/public/six-test/v1
 https://six-bridge-6dfc8c57.lovable.app/api/public/six-test/v1
 https://six-bridge-aefce5ef.lovable.app/api/public/six-test/v1
 https://six-bridge-b8240554.lovable.app/api/public/six-test/v1
-https://six-bridge-f3de6339.lovable.app/api/public/six-test/v1
 https://six-bridge-d8a84a91.lovable.app/api/public/six-test/v1
 https://six-bridge-c7718ee2.lovable.app/api/public/six-test/v1
 https://six-bridge-016c8272.lovable.app/api/public/six-test/v1
@@ -49,5 +47,3 @@ https://six-bridge-94d5259d.lovable.app/api/public/six-test/v1
 https://six-bridge-f3509d98.lovable.app/api/public/six-test/v1
 https://six-bridge-d4b30bdb.lovable.app/api/public/six-test/v1
 https://six-bridge-861a186d.lovable.app/api/public/six-test/v1
-https://bright-byte-bulletin.lovable.app/api/public/six-test/v1
-https://radar-tech-ticker.lovable.app/api/public/six-test/v1
