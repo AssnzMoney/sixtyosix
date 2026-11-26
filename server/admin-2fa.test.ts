@@ -56,7 +56,9 @@ test('admin: sessão adulterada ou desafio de outra conta não passam', async ()
   const [body, signature] = ok.session.split('.')
   const forged = Buffer.from(JSON.stringify({ kind: 'session', u: 'admin-1', e: 'alissonmedeiroz007@gmail.com', exp: Date.now() + 9e12 })).toString('base64url')
   await assert.rejects(read('Bearer t', new URLSearchParams({ resource: 'users' }), `${forged}.${signature}`), (e: any) => e.code === 'admin_2fa_required')
-  await assert.rejects(read('Bearer t', new URLSearchParams({ resource: 'users' }), `${body}.x${signature.slice(1)}`), (e: any) => e.code === 'admin_2fa_required')
+  const changedSignature = `${signature[0] === 'x' ? 'y' : 'x'}${signature.slice(1)}`
+  assert.notEqual(changedSignature, signature)
+  await assert.rejects(read('Bearer t', new URLSearchParams({ resource: 'users' }), `${body}.${changedSignature}`), (e: any) => e.code === 'admin_2fa_required')
   // O desafio de um admin não serve para o outro, nem com o código certo.
   state.who = { id: 'admin-2', email: 'alysontrx@gmail.com' }
   await assert.rejects(act('Bearer t', { action: 'admin-2fa-verify', challenge: sent.challenge, code }), /venceu/)

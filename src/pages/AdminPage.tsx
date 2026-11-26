@@ -37,6 +37,7 @@ import {
 import { useAuth } from '../lib/AuthContext'
 import RouterPanel from '../components/RouterPanel'
 import type { UsageSummary } from '../../server/usage-summary'
+import { errorVisibleSince } from '../lib/usage-error-filter'
 import AffiliatesPanel from '../components/AffiliatesPanel'
 import RankAdminPanel from '../components/RankAdminPanel'
 import { AdminCodeRequired, adminHeaders, clearAdminSession, saveAdminSession } from '../lib/adminSession'
@@ -234,6 +235,10 @@ export default function AdminPage() {
   const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null)
   const [usageSummaryError, setUsageSummaryError] = useState('')
   const [usageCapped, setUsageCapped] = useState(false)
+  const [errorDateDraft, setErrorDateDraft] = useState('')
+  const [errorsSince, setErrorsSince] = useState('')
+  const needsUsage = tab === 'usage' || tab === 'router'
+  const needsUsageSummary = tab === 'usage'
 
   useEffect(() => {
     // Prévia com dados de exemplo, só no computador local (/adminxv1?demo=1).
@@ -291,28 +296,32 @@ export default function AdminPage() {
         setTwoFactor(first.twoFactor === 'on' ? 'on' : 'off')
         setCodeStep(null)
       }
-      await rest('users', first)
       const missing: string[] = []
-      await Promise.all(
-        Object.keys(resourceLabels).map(async (resource) => {
+      // Histórico apenas onde é exibido; leituras independentes em paralelo.
+      await Promise.all([
+        rest('users', first),
+        ...Object.keys(resourceLabels).filter((resource) => resource !== 'usage' || needsUsage).map(async (resource) => {
           try {
             await rest(resource)
           } catch (e) {
-            if (controller.signal.aborted) throw e
+            if (controller.signal.aborted || e instanceof AdminCodeRequired) throw e
             result[resource] = []
             missing.push(resource)
           }
         }),
-      )
-      // Não apresenta uma falha de consulta como consumo zero.
-      try {
-        const body = await fetchPage('usage-summary', 0)
-        if (!body.summary) throw new Error('Resumo de consumo indisponível.')
-        if (alive) setUsageSummary(body.summary as UsageSummary)
-      } catch (e) {
-        if (controller.signal.aborted || e instanceof AdminCodeRequired) throw e
-        if (alive) setUsageSummaryError('Não foi possível somar todo o período. Os dados disponíveis abaixo são apenas da lista carregada.')
-      }
+        (async () => {
+          if (!needsUsageSummary) return
+          // Não apresenta uma falha de consulta como consumo zero.
+          try {
+            const body = await fetchPage('usage-summary', 0)
+            if (!body.summary) throw new Error('Resumo de consumo indisponível.')
+            if (alive) setUsageSummary(body.summary as UsageSummary)
+          } catch (e) {
+            if (controller.signal.aborted || e instanceof AdminCodeRequired) throw e
+            if (alive) setUsageSummaryError('Não foi possível somar todo o período. Os dados disponíveis abaixo são apenas da lista carregada.')
+          }
+        })(),
+      ])
       const known = new Set([...result.keys, ...result.trials].map((x) => x.gateway_client_id))
       result.keys.push(
         ...result.clients
@@ -344,7 +353,7 @@ export default function AdminPage() {
       alive = false
       controller.abort()
     }
-  }, [session?.access_token, from, to, revision])
+  }, [session?.access_token, from, to, revision, needsUsage, needsUsageSummary])
 
   // Sem login: depois de entrar (Google, Discord ou e-mail), volta direto para o admin, não para o painel do cliente.
   useEffect(() => {
@@ -583,10 +592,11 @@ export default function AdminPage() {
     if (tab !== 'usage') return []
     const counts = new Map<number, { count: number; last: string }>()
     // Sem busca, os erros vêm da soma de todas as chamadas do período.
-    if (usageSummary && !search) for (const e of usageSummary.errors) counts.set(e.code, { count: e.count, last: e.last })
+    if (usageSummary && !search && !errorsSince) for (const e of usageSummary.errors) counts.set(e.code, { count: e.count, last: e.last })
     else for (const row of enriched) {
       const code = Number(row.status_code)
       if (!(code >= 400)) continue
+      if (!errorVisibleSince(row.created_at, errorsSince)) continue
       const c = counts.get(code) || { count: 0, last: '' }
       c.count++
       if (String(row.created_at || '') > c.last) c.last = String(row.created_at)
@@ -596,7 +606,7 @@ export default function AdminPage() {
     return [...counts.entries()]
       .map(([code, c]) => ({ code, ...c, ...statusMeaning(code) }))
       .sort((a, b) => urgent(a.code) - urgent(b.code) || b.count - a.count)
-  }, [tab, enriched, usageSummary, search])
+  }, [tab, enriched, usageSummary, search, errorsSince])
 
   // Aba Consumo: soma por cliente (todas as chaves dele), do maior consumo para o menor. Respeita período e busca.
   const usageByCustomer = useMemo(() => {
@@ -1366,7 +1376,18 @@ export default function AdminPage() {
                       <strong>{number(usageByCustomer.total.errors)}{usageByCustomer.total.requests ? ` (${Math.round((usageByCustomer.total.errors / usageByCustomer.total.requests) * 100)}%)` : ''}</strong>
                     </article>
                   </div>
-                  {usageErrors.length > 0 && (
+                  <div className="sx-admin-filters">
+                    <label>Ocultar erros anteriores a (UTC)
+                      <input type="date" value={errorDateDraft} onChange={(e) => setErrorDateDraft(e.target.value)} />
+                    </label>
+                    <button type="button" className="sx-btn" disabled={!errorDateDraft || failed.includes('usage')} onClick={() => setErrorsSince(errorDateDraft)}>Ocultar erros antigos</button>
+                    {errorsSince && <button type="button" className="sx-btn" onClick={() => { setErrorsSince(''); setErrorDateDraft('') }}>Mostrar todos os erros</button>}
+                  </div>
+                  <p className="sx-admin-hint">Este filtro afeta apenas os cartões de erros abaixo, nesta sessão. Histórico, tabela de chamadas e totais permanecem intactos.</p>
+                  {errorsSince && <p role="status" className="sx-admin-hint">Exibindo erros desde {errorsSince}, às 00:00 UTC, dentro do período e da busca atuais. {usageCapped ? 'Resultado parcial: filtro aplicado somente às 10.000 chamadas mais recentes carregadas.' : 'Filtro aplicado às chamadas carregadas.'}</p>}
+                  {errorsSince && failed.includes('usage') && <p role="alert">Não foi possível carregar as chamadas para filtrar os erros. Atualize o painel ou mostre todos os erros.</p>}
+                  {errorsSince && !failed.includes('usage') && usageErrors.length === 0 && <p role="status">Nenhum erro encontrado nas chamadas carregadas com este filtro.</p>}
+                  {usageErrors.length > 0 && !(errorsSince && failed.includes('usage')) && (
                     <section className="sx-error-guide" aria-label="O que foram os erros">
                       <h3>O que foram os erros</h3>
                       <div className="sx-error-list">
@@ -1378,7 +1399,7 @@ export default function AdminPage() {
                               <span className="sx-error-source">{SOURCE_LABELS[e.source]}</span>
                               <span className="sx-error-count">
                                 {number(e.count)} {e.count === 1 ? 'chamada' : 'chamadas'}
-                                {usageByCustomer.total.requests ? ` · ${Math.max(0.1, Math.round((e.count / usageByCustomer.total.requests) * 1000) / 10).toLocaleString('pt-BR')}%` : ''}
+                                {!errorsSince && usageByCustomer.total.requests ? ` · ${Math.max(0.1, Math.round((e.count / usageByCustomer.total.requests) * 1000) / 10).toLocaleString('pt-BR')}%` : ''}
                                 {e.last ? ` · última ${shortDate(e.last)}` : ''}
                               </span>
                             </header>
