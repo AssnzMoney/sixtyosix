@@ -86,7 +86,7 @@ export function createAccountService(config: Config, request: typeof fetch = fet
         if (linked.length) {
           const routerKeys = await db<{ gateway_client_id: string; expires_at: string; revoked_at: string | null }[]>('router_keys', {
             gateway_client_id: `in.(${linked.map(c => c.id).join(',')})`, select: 'gateway_client_id,expires_at,revoked_at',
-          }).catch(() => [])
+          })
           for (const k of routerKeys) {
             const client = linked.find(c => c.id === k.gateway_client_id)
             if (!client) continue

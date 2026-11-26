@@ -7,7 +7,7 @@ const uid = '1a9ff780-4164-4952-a9af-cbf41cc02042'
 const own = '11111111-1111-4111-8111-111111111111'
 const other = '22222222-2222-4222-8222-222222222222'
 const config = { url: 'https://example.supabase.co', secret:'server-only-secret', publicKey:'public-key' }
-function fixture(routerKeys: unknown[] = [{gateway_client_id:own,expires_at:'2099-01-01T00:00:00Z',revoked_at:null}]) {
+function fixture(routerKeys: unknown[] = [{gateway_client_id:own,expires_at:'2099-01-01T00:00:00Z',revoked_at:null}], routerStatus = 200) {
   const calls: {url:URL;init:RequestInit}[] = []
   const fake = async (input: string | URL | Request, init: RequestInit = {}) => {
     const url = new URL(String(input)); calls.push({url,init})
@@ -18,7 +18,7 @@ function fixture(routerKeys: unknown[] = [{gateway_client_id:own,expires_at:'209
     }
     if (url.pathname.endsWith('/gateway_usage')) return Response.json([{id:1,client_id:own,requested_alias:'gpt-6-astra',input_tokens:500,output_tokens:20,status_code:200,created_at:'2026-01-01'}])
     if (url.pathname.endsWith('/gateway_trials')) return Response.json([])
-    if (url.pathname.endsWith('/router_keys')) return Response.json(routerKeys)
+    if (url.pathname.endsWith('/router_keys')) return Response.json(routerKeys, {status:routerStatus})
     if (url.pathname.endsWith('/account_revoke_trial')) return Response.json(false)
     if (url.pathname.endsWith('/billing_revoke_key')) return Response.json(false)
     if (url.pathname.endsWith('/billing_key_access')||url.pathname.endsWith('/billing_subscription_state')) return Response.json([])
@@ -56,6 +56,11 @@ test('chave antiga (fora do Roteador) não aparece no painel nem tem consumo lid
   assert.deepEqual(result.keys,[])
   assert.equal(result.trial,null)
   assert.ok(!calls.some(c=>c.url.pathname.endsWith('/gateway_usage')||c.url.pathname.endsWith('/gateway_trials')))
+})
+test('falha ao consultar chaves não vira histórico vazio',async()=>{
+  const {calls,service}=fixture([],503)
+  await assert.rejects(service.execute('GET','summary','Bearer verified',{},new URLSearchParams({from:'2026-01-01',to:'2026-01-02'})))
+  assert.ok(!calls.some(c=>c.url.pathname.endsWith('/gateway_usage')))
 })
 test('gerar ou vincular chave antiga sk-flg- foi desativado',async()=>{
   const {calls,service}=fixture()

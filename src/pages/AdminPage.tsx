@@ -232,6 +232,8 @@ export default function AdminPage() {
   const [codeStep, setCodeStep] = useState<{ challenge: string; sentTo: string; code: string; sending: boolean; error: string } | null>(null)
   // Consumo real do período, somado no servidor (todas as chamadas, sem o limite de 10.000 da lista).
   const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null)
+  const [usageSummaryError, setUsageSummaryError] = useState('')
+  const [usageCapped, setUsageCapped] = useState(false)
 
   useEffect(() => {
     // Prévia com dados de exemplo, só no computador local (/adminxv1?demo=1).
@@ -251,6 +253,8 @@ export default function AdminPage() {
     async function load() {
       const result: Record<string, Row[]> = {}
       setUsageSummary(null)
+      setUsageSummaryError('')
+      setUsageCapped(false)
       let capped = false
       const fetchPage = async (resource: string, offset: number) => {
         const response = await fetch('/api/management?' + new URLSearchParams({ resource, offset: String(offset), from, to }), {
@@ -274,6 +278,7 @@ export default function AdminPage() {
           if (!page.hasMore) break
           if (offset >= 10000) {
             capped = true
+            if (resource === 'usage' && alive) setUsageCapped(true)
             break
           }
         }
@@ -299,10 +304,15 @@ export default function AdminPage() {
           }
         }),
       )
-      // Soma do período no servidor. Se falhar, a aba usa a lista baixada (e avisa se ela foi cortada).
-      fetchPage('usage-summary', 0)
-        .then((body) => { if (alive && body.summary) setUsageSummary(body.summary as UsageSummary) })
-        .catch(() => undefined)
+      // Não apresenta uma falha de consulta como consumo zero.
+      try {
+        const body = await fetchPage('usage-summary', 0)
+        if (!body.summary) throw new Error('Resumo de consumo indisponível.')
+        if (alive) setUsageSummary(body.summary as UsageSummary)
+      } catch (e) {
+        if (controller.signal.aborted || e instanceof AdminCodeRequired) throw e
+        if (alive) setUsageSummaryError('Não foi possível somar todo o período. Os dados disponíveis abaixo são apenas da lista carregada.')
+      }
       const known = new Set([...result.keys, ...result.trials].map((x) => x.gateway_client_id))
       result.keys.push(
         ...result.clients
@@ -591,11 +601,12 @@ export default function AdminPage() {
   // Aba Consumo: soma por cliente (todas as chaves dele), do maior consumo para o menor. Respeita período e busca.
   const usageByCustomer = useMemo(() => {
     if (tab !== 'usage') return null
+    if (busy || error || ((!usageSummary || search) && failed.includes('usage'))) return null
     type Group = { customer: string; keys: Set<string>; requests: number; input: number; output: number; errors: number; last: string; models: Map<string, number>; times: number[]; peak: number }
     const groups = new Map<string, Group>()
     // Consumo real: soma de todas as chamadas do período, feita no servidor. O pico de um cliente com várias chaves
     // é o maior pico entre as chaves dele.
-    if (usageSummary) {
+    if (usageSummary && !search) {
       const term = search.toLowerCase()
       for (const c of usageSummary.clients) {
         const { customer, key } = clientOwner(c.client_id)
@@ -631,8 +642,18 @@ export default function AdminPage() {
     }
     // Pico por minuto: o maior número de chamadas dentro de 60 segundos seguidos. Uso de uma pessoa
     // fica baixo; chave repassada para várias pessoas (ou um servidor revendendo) sobe muito.
-    for (const g of groups.values()) {
-      const times = g.times.sort((a, b) => a - b)
+    const keyTimes = new Map<string, { customer: string; times: number[] }>()
+    for (const row of enriched) {
+      const customer = String(row.customer || 'Sem cliente')
+      const id = String(row.client_id || row.key || '')
+      const entry = keyTimes.get(id) || { customer, times: [] }
+      const at = Date.parse(String(row.created_at || ''))
+      if (Number.isFinite(at)) entry.times.push(at)
+      keyTimes.set(id, entry)
+    }
+    for (const entry of keyTimes.values()) {
+      const g = groups.get(entry.customer)!
+      const times = entry.times.sort((a, b) => a - b)
       let start = 0
       for (let end = 0; end < times.length; end++) {
         while (times[end] - times[start] >= 60000) start++
@@ -641,8 +662,8 @@ export default function AdminPage() {
     }
     const list = [...groups.values()].sort((a, b) => b.input + b.output - (a.input + a.output) || b.requests - a.requests)
     const total = list.reduce((t, g) => ({ requests: t.requests + g.requests, tokens: t.tokens + g.input + g.output, errors: t.errors + g.errors }), { requests: 0, tokens: 0, errors: 0 })
-    return { list, total, real: false, complete: true }
-  }, [tab, enriched, usageSummary, search, clientOwner])
+    return { list, total, real: false, complete: !usageCapped }
+  }, [tab, enriched, usageSummary, search, clientOwner, busy, error, failed, usageCapped])
 
   const revenue = (data.payments || []).filter((x) => x.status === 'approved').reduce((a, x) => a + Number(x.amount_cents || 0), 0)
   const activePlans = (data.subscriptions || []).filter((x) => x.entitled && Date.parse(x.paid_until) > now).length
@@ -1321,6 +1342,9 @@ export default function AdminPage() {
                 </button>
               </div>
               {['usage', 'payments'].includes(tab) && <p className="sx-admin-hint">Período aplicado ao consumo e aos pagamentos, em UTC.</p>}
+              {tab === 'usage' && busy && <p role="status">Carregando consumo do período…</p>}
+              {tab === 'usage' && !busy && usageSummaryError && <p role="alert">{usageSummaryError}</p>}
+              {tab === 'usage' && !busy && !usageByCustomer && <p role="alert">Consumo indisponível. Atualize o painel; isso não significa consumo zero.</p>}
               {tab === 'usage' && usageByCustomer && (
                 <div className="sx-usage-summary">
                   <h3>Consumo por cliente</h3>
@@ -1329,9 +1353,9 @@ export default function AdminPage() {
                       ? usageByCustomer.complete
                         ? 'Consumo real: soma de todas as chamadas do período, feita no servidor.'
                         : 'Período grande demais para somar de uma vez: os números abaixo cobrem só o começo do período. Escolha um período menor.'
-                      : enriched.length >= 10000
-                        ? 'Somando só as 10.000 chamadas baixadas: a soma completa do período ainda está carregando ou falhou.'
-                        : 'Soma das chamadas do período.'}
+                      : !usageByCustomer.complete
+                        ? 'Resultado parcial: totais, erros e busca consideram apenas as 10.000 chamadas mais recentes baixadas. Reduza o período.'
+                        : search ? 'Totais e erros das chamadas que correspondem à busca na lista carregada.' : 'Soma das chamadas carregadas do período.'}
                   </p>
                   <div className="sx-admin-metrics">
                     <article><span>Chamadas</span><strong>{number(usageByCustomer.total.requests)}</strong></article>
@@ -1372,7 +1396,7 @@ export default function AdminPage() {
                           <tr>
                             <th>Cliente</th>
                             <th>Chamadas</th>
-                            <th title="O maior número de chamadas dentro de 60 segundos seguidos">Pico por minuto</th>
+                            <th title="Maior pico de uma única chave do cliente em 60 segundos; não soma chaves diferentes">Pico/min por chave</th>
                             <th>Tokens de entrada</th>
                             <th>Tokens de saída</th>
                             <th>Com erro</th>
