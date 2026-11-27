@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { contextOverflow, contextOverflowBody, endpointKind, estimateInputTokens, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
+import { anthropicStreamToMessage, contextOverflow, contextOverflowBody, endpointKind, estimateInputTokens, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
 import { CREATE_PATH, ITEM_PATH, createVideo, isVideoRoute, monthStart, monthlyLimit, openVideoId, videoItem, videoRequestProblem, videoWeight, videosUsed } from '../server/videos.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { providerAlertFromEnv } from '../server/provider-alert.js'
@@ -210,6 +210,21 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
    */
   const waitLimit=process.env.SIXTYSIX_429_WAIT_MS!==undefined?Number(process.env.SIXTYSIX_429_WAIT_MS):30000
   const busy=(status:number)=>status===429||status===502||status===503||status===529
+  /*
+   * /v1/messages sem stream (Claude app/Desktop, subagentes, resumos): a Cloudflare do fornecedor derruba com 502/504
+   * a resposta que passa de 30-90 s sem mandar nenhum byte. Pedimos em stream ao fornecedor (os bytes chegam desde o
+   * início) e montamos aqui o JSON que o cliente pediu. SIXTYSIX_FORCE_STREAM=off volta ao repasse direto.
+   */
+  const upstreamStream=kind==='anthropic'&&call.payload.stream!==true&&process.env.SIXTYSIX_FORCE_STREAM!=='off'
+  const outgoing=(payloadBody:string)=>{if(!upstreamStream)return payloadBody;try{return JSON.stringify({...JSON.parse(payloadBody),stream:true})}catch{return payloadBody}}
+  /** Resposta em stream do fornecedor vira o JSON "message" que o cliente sem stream espera. */
+  const collect=async(response:Response)=>{
+    if(!response.ok||!(response.headers.get('content-type')||'').includes('text/event-stream'))return response
+    const text=await response.text()
+    const message=anthropicStreamToMessage(text)
+    if(!message)return new Response(text,{status:502,headers:{'content-type':'text/plain'}})
+    return new Response(JSON.stringify(message),{status:200,headers:{'content-type':'application/json'}})
+  }
   const send=async(payloadBody:string)=>{
     // Betas que o modelo já recusou não vão no cabeçalho.
     const beta=supplierBetas(single(req.headers['anthropic-beta']),route.upstream)
@@ -217,8 +232,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     let pause=1500,waited=false
     for(let attempt=0;;attempt++){
       const key=keys[(firstKey+attempt)%keys.length]
-      const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:payloadBody,redirect:'manual',signal:controller.signal})
-      if(!busy(response.status)){if(waited||attempt)limitStats(response.ok?'recovered':'other');return response}
+      const response=await fetch(supplierUrl(provider.url,call.path,call.params.size?`?${call.params}`:''),{method:'POST',headers:{...headers,'x-api-key':key,Authorization:`Bearer ${key}`,...(beta?{'anthropic-beta':beta}:{})},body:outgoing(payloadBody),redirect:'manual',signal:controller.signal})
+      if(!busy(response.status)){if(waited||attempt)limitStats(response.ok?'recovered':'other');return upstreamStream?await collect(response):response}
       // Ainda há outra key nesta volta: tenta nela na hora.
       const lap=(attempt+1)%keys.length===0
       const hinted=Number(response.headers.get('retry-after'))

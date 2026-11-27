@@ -379,3 +379,27 @@ test('gemini-4-argon em /v1/messages: tira thinking fantasma e preenche input_to
   assert.match(out, /"input_tokens":12345/)
   assert.deepEqual(tap.usage, { input: 12345, output: 42 })
 })
+
+test('stream do /v1/messages vira o JSON message (cliente pediu sem stream; Cloudflare do fornecedor não derruba)', async () => {
+  const { anthropicStreamToMessage } = await import('./supplier.ts')
+  const sse = [
+    'event: message_start\ndata: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","model":"x","content":[],"stop_reason":null,"usage":{"input_tokens":null,"output_tokens":0}}}',
+    'event: content_block_start\ndata: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}',
+    'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Olá, "}}',
+    'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"mundo"}}',
+    'event: content_block_stop\ndata: {"type":"content_block_stop","index":0}',
+    'event: content_block_start\ndata: {"type":"content_block_start","index":1,"content_block":{"type":"tool_use","id":"tu_1","name":"Read","input":{}}}',
+    'event: content_block_delta\ndata: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"{\\"path\\":"}}',
+    'event: content_block_delta\ndata: {"type":"content_block_delta","index":1,"delta":{"type":"input_json_delta","partial_json":"\\"a.ts\\"}"}}',
+    'event: content_block_stop\ndata: {"type":"content_block_stop","index":1}',
+    'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"input_tokens":null,"output_tokens":42}}',
+    'event: message_stop\ndata: {"type":"message_stop"}',
+  ].join('\n\n').replace(/\n/g, '\r\n') + '\r\n\r\n'
+  const message = anthropicStreamToMessage(sse) as any
+  assert.equal(message.id, 'msg_1')
+  assert.equal(message.stop_reason, 'tool_use')
+  assert.deepEqual(message.content, [{ type: 'text', text: 'Olá, mundo' }, { type: 'tool_use', id: 'tu_1', name: 'Read', input: { path: 'a.ts' } }])
+  assert.deepEqual(message.usage, { input_tokens: null, output_tokens: 42 })
+  assert.deepEqual(anthropicStreamToMessage('event: error\ndata: {"type":"error","error":{"type":"overloaded_error","message":"x"}}\n\n'), { type: 'error', error: { type: 'overloaded_error', message: 'x' } })
+  assert.equal(anthropicStreamToMessage('nada aqui'), null)
+})

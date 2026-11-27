@@ -681,6 +681,49 @@ export class UsageTap {
 }
 
 /**
+ * Junta um stream SSE do /v1/messages num único objeto "message", igual ao da resposta sem stream.
+ * Usado quando o cliente pediu stream: false e o gateway pediu em stream ao fornecedor (a Cloudflare dele
+ * derruba com 502/504 a resposta sem stream que demora 30-90 s sem mandar nenhum byte).
+ * Evento de erro no stream vira { type: 'error', error }; sem message_start devolve null.
+ */
+export function anthropicStreamToMessage(text: string): Obj | null {
+  let message: Obj | null = null
+  const blocks: Obj[] = []
+  const partial: string[] = []
+  for (const raw of text.replace(/\r\n/g, '\n').split('\n\n')) {
+    const data = raw.split('\n').filter((l) => l.startsWith('data:')).map((l) => l.slice(5).replace(/^ /, '')).join('\n')
+    if (!data || data === '[DONE]') continue
+    let ev: unknown
+    try { ev = JSON.parse(data) } catch { continue }
+    if (!isObj(ev)) continue
+    if (ev.type === 'error') return { type: 'error', error: isObj(ev.error) ? ev.error : { message: String(ev.error ?? 'erro') } }
+    const index = typeof ev.index === 'number' ? ev.index : -1
+    if (ev.type === 'message_start' && isObj(ev.message)) message = { ...ev.message, content: [] }
+    else if (ev.type === 'content_block_start' && index >= 0 && isObj(ev.content_block)) { blocks[index] = { ...ev.content_block }; partial[index] = '' }
+    else if (ev.type === 'content_block_delta' && index >= 0 && isObj(ev.delta) && blocks[index]) {
+      const block = blocks[index], delta = ev.delta
+      if (delta.type === 'text_delta') block.text = String(block.text ?? '') + String(delta.text ?? '')
+      else if (delta.type === 'thinking_delta') block.thinking = String(block.thinking ?? '') + String(delta.thinking ?? '')
+      else if (delta.type === 'signature_delta') block.signature = String(block.signature ?? '') + String(delta.signature ?? '')
+      else if (delta.type === 'input_json_delta') partial[index] += String(delta.partial_json ?? '')
+      else if (delta.type === 'citations_delta' && delta.citation) block.citations = [...(Array.isArray(block.citations) ? block.citations : []), delta.citation]
+    } else if (ev.type === 'content_block_stop' && index >= 0 && blocks[index] && partial[index]) {
+      try { blocks[index].input = JSON.parse(partial[index]) } catch { blocks[index].input = {} }
+    } else if (ev.type === 'message_delta' && message) {
+      if (isObj(ev.delta)) {
+        if ('stop_reason' in ev.delta) message.stop_reason = ev.delta.stop_reason
+        if ('stop_sequence' in ev.delta) message.stop_sequence = ev.delta.stop_sequence
+      }
+      // Número null do fornecedor não apaga o que já veio no message_start.
+      if (isObj(ev.usage)) message.usage = { ...(isObj(message.usage) ? message.usage : {}), ...Object.fromEntries(Object.entries(ev.usage).filter(([, v]) => v !== null && v !== undefined)) }
+    }
+  }
+  if (!message) return null
+  message.content = blocks.filter(Boolean)
+  return message
+}
+
+/**
  * Estimativa dos tokens de entrada (~4 caracteres por token), usada quando o fornecedor não informa
  * (stream do gemini-4-argon manda input_tokens: null) e para responder /v1/messages/count_tokens.
  * Conta só texto: imagens/documentos em base64 valem um valor fixo, e a estrutura do JSON não entra,
