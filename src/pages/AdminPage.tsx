@@ -455,6 +455,7 @@ export default function AdminPage() {
           const active = k.entitled && !k.revoked_at && Date.parse(k.paid_until) > Date.now()
           return {
             id: `${k.subscription_id}:${k.gateway_client_id}`,
+            subscription_id: String(k.subscription_id),
             client_id: String(k.gateway_client_id),
             user_id: String(k.user_id || ''),
             customer: String(u?.name || u?.email || 'Sem conta'),
@@ -1132,7 +1133,7 @@ export default function AdminPage() {
           ) : tab === 'rank' ? (
             <RankAdminPanel token={session?.access_token || ''} users={data.users || []} />
           ) : tab === 'router' ? (
-            <RouterPanel token={session?.access_token || ''} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} period={`${brShort(from)} a ${brShort(to)}`} />
+            <RouterPanel token={session?.access_token || ''} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} onSiteRefresh={loadOverview} period={`${brShort(from)} a ${brShort(to)}`} />
           ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(

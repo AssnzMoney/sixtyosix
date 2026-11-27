@@ -21,8 +21,9 @@ type EditForm = { name: string; contact: string; email: string; expires: string;
 type Draft = { key: string; upstream: string; upstreamName: string; sell: boolean; alias: string; label: string; in_pro: boolean; missing: boolean }
 type ProviderForm = { id?: string; name: string; base_url: string; key: string }
 /** Chave de plano do site (nasce no pagamento), mostrada no filtro "Planos do site". */
-type SiteKey = { id: string; client_id: string; user_id: string; customer: string; email: string; plan: string; prefix: string; paid_until: string | null; api: boolean; state: string }
+type SiteKey = { id: string; subscription_id?: string; client_id: string; user_id: string; customer: string; email: string; plan: string; prefix: string; paid_until: string | null; api: boolean; state: string }
 type KeyForm = { name: string; contact: string; email: string; days: string; custom: string; unit: 'dias' | 'horas'; slow: boolean; all: boolean; models: string[] }
+type ReporForm = { days: string; search: string; filter: 'active' | 'paid' | 'all'; selectedKeys: string[]; selectedSubs: string[] }
 
 const DAY = 86400000
 const SITE = 'https://www.sixtysix.online'
@@ -72,7 +73,7 @@ function Modal({ eyebrow, title, onClose, children }: { eyebrow: string; title: 
   )
 }
 
-export default function RouterPanel({ token, usage, period, users = [], siteKeys = [] }: { token: string; usage: Row[]; period: string; users?: Row[]; siteKeys?: SiteKey[] }) {
+export default function RouterPanel({ token, usage, period, users = [], siteKeys = [], onSiteRefresh }: { token: string; usage: Row[]; period: string; users?: Row[]; siteKeys?: SiteKey[]; onSiteRefresh?: () => void }) {
   // Contas cadastradas: para ligar uma chave ao e-mail do cliente e mostrar a quem ela pertence.
   const accounts = useMemo(() => new Map(users.map((u) => [String(u.id), u])), [users])
   const accountEmail = (id?: string | null) => (id ? String(accounts.get(id)?.email || '') : '')
@@ -98,6 +99,7 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
   const [keyLimits, setKeyLimits] = useState({ rpm: '', concurrency: '', max_ips: '' })
   const [editFor, setEditFor] = useState<RouterKey | null>(null)
   const [editForm, setEditForm] = useState<EditForm | null>(null)
+  const [reporForm, setReporForm] = useState<ReporForm | null>(null)
   const now = Date.now()
 
   async function call<T>(body: Row): Promise<T> {
@@ -420,6 +422,45 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
     }
   }
 
+  /* ----------------------------- Repor dias ---------------------------- */
+  function openRepor() {
+    setModalError('')
+    const activePaidKeys = (overview?.keys || []).filter((k) => !isTestKey(k) && !isEnded(k)).map((k) => k.id)
+    const activeSiteSubs = [...new Set(siteKeys.filter((s) => s.state === 'Ativa' && s.subscription_id).map((s) => String(s.subscription_id)))]
+    setReporForm({
+      days: '1',
+      search: '',
+      filter: 'active',
+      selectedKeys: activePaidKeys,
+      selectedSubs: activeSiteSubs,
+    })
+  }
+
+  async function saveRepor() {
+    if (!reporForm) return
+    setModalError('')
+    const days = Number(reporForm.days)
+    if (!Number.isInteger(days) || days < 1 || days > 366) return setModalError('Escolha entre 1 e 366 dias para repor.')
+    if (!reporForm.selectedKeys.length && !reporForm.selectedSubs.length) return setModalError('Selecione pelo menos um assinante para receber os dias.')
+    setWorking('repor')
+    try {
+      const result = await call<{ total: number; renewedKeys: number; renewedSubs: number }>({
+        action: 'router-keys-repor',
+        days,
+        key_ids: reporForm.selectedKeys,
+        subscription_ids: reporForm.selectedSubs,
+      })
+      setReporForm(null)
+      setNotice(`+${days} ${days === 1 ? 'dia reposto' : 'dias repostos'} para ${result.total} ${result.total === 1 ? 'assinante' : 'assinantes'}.`)
+      reload()
+      onSiteRefresh?.()
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : 'Não foi possível repor os dias.')
+    } finally {
+      setWorking('')
+    }
+  }
+
   /* ------------------------------- Tela -------------------------------- */
   return (
     <div className="sx-router">
@@ -613,6 +654,14 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
               <Search size={16} />
               <input aria-label="Buscar chave" placeholder="Busque cliente ou chave…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </label>
+            <button
+              type="button"
+              className="sx-btn"
+              disabled={!(overview?.keys?.length || siteKeys.length)}
+              onClick={openRepor}
+            >
+              <RefreshCw size={15} /> Repor dias
+            </button>
             <button
               type="button"
               className="sx-btn is-primary"
@@ -1257,6 +1306,210 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
           </div>
         </Modal>
       )}
+
+      {reporForm && (() => {
+        const q = reporForm.search.trim().toLowerCase()
+        const matchText = (value: string) => !q || value.toLowerCase().includes(q)
+        const eligibleKeys = (overview?.keys || []).filter((k) => {
+          if (!matchText(`${k.name} ${k.contact || ''} ${k.token_prefix} ${accountEmail(k.user_id)}`)) return false
+          if (reporForm.filter === 'active') return !isTestKey(k) && !isEnded(k)
+          if (reporForm.filter === 'paid') return !isTestKey(k)
+          return true
+        })
+        const uniqueSiteSubs = siteKeys.filter((s, idx, arr) => s.subscription_id && arr.findIndex((x) => x.subscription_id === s.subscription_id) === idx)
+        const eligibleSubs = uniqueSiteSubs.filter((s) => {
+          if (!matchText(`${s.customer} ${s.email} ${s.prefix} ${s.plan}`)) return false
+          if (reporForm.filter === 'active') return s.state === 'Ativa'
+          return true
+        })
+        const allVisibleKeysSelected = eligibleKeys.length > 0 && eligibleKeys.every((k) => reporForm.selectedKeys.includes(k.id))
+        const allVisibleSubsSelected = eligibleSubs.length > 0 && eligibleSubs.every((s) => reporForm.selectedSubs.includes(String(s.subscription_id)))
+        const allVisibleSelected = (eligibleKeys.length + eligibleSubs.length > 0) && (!eligibleKeys.length || allVisibleKeysSelected) && (!eligibleSubs.length || allVisibleSubsSelected)
+        const totalSelected = reporForm.selectedKeys.length + reporForm.selectedSubs.length
+        const toggleVisible = () => {
+          if (allVisibleSelected) {
+            const kSet = new Set(eligibleKeys.map((k) => k.id))
+            const sSet = new Set(eligibleSubs.map((s) => String(s.subscription_id)))
+            setReporForm({
+              ...reporForm,
+              selectedKeys: reporForm.selectedKeys.filter((id) => !kSet.has(id)),
+              selectedSubs: reporForm.selectedSubs.filter((id) => !sSet.has(id)),
+            })
+          } else {
+            const nextKeys = [...new Set([...reporForm.selectedKeys, ...eligibleKeys.map((k) => k.id)])]
+            const nextSubs = [...new Set([...reporForm.selectedSubs, ...eligibleSubs.map((s) => String(s.subscription_id))])]
+            setReporForm({ ...reporForm, selectedKeys: nextKeys, selectedSubs: nextSubs })
+          }
+        }
+        return (
+          <Modal eyebrow="Reposição em lote" title="Repor dias para assinantes" onClose={() => setReporForm(null)}>
+            <form className="sx-form-grid" onSubmit={(e) => { e.preventDefault(); saveRepor() }}>
+              <label className="is-wide">
+                Quantos dias repor
+                <input
+                  type="number"
+                  min={1}
+                  max={366}
+                  inputMode="numeric"
+                  value={reporForm.days}
+                  onChange={(e) => setReporForm({ ...reporForm, days: e.target.value })}
+                />
+                <span className="sx-quick">
+                  {[1, 2, 3, 5, 7, 15, 30].map((d) => (
+                    <button key={d} type="button" className={Number(reporForm.days) === d ? 'is-on' : ''} onClick={() => setReporForm({ ...reporForm, days: String(d) })}>
+                      +{d} {d === 1 ? 'dia' : 'dias'}
+                    </button>
+                  ))}
+                </span>
+                <small>Os dias são somados a partir do vencimento atual de cada assinante selecionado (ou a partir de hoje, se já tiver vencido).</small>
+              </label>
+
+              <div className="is-wide" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div className="sx-quick" role="group" aria-label="Filtrar assinantes para reposição">
+                  {([
+                    ['active', 'Assinantes ativos'],
+                    ['paid', 'Pagos (inclui vencidos)'],
+                    ['all', 'Todos (inclui testes)'],
+                  ] as const).map(([val, label]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      className={reporForm.filter === val ? 'is-on' : ''}
+                      onClick={() => setReporForm({ ...reporForm, filter: val })}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button type="button" className="sx-btn" onClick={toggleVisible}>
+                    {allVisibleSelected ? 'Desmarcar visíveis' : 'Selecionar visíveis'}
+                  </button>
+                  {totalSelected > 0 && (
+                    <button type="button" className="sx-btn" onClick={() => setReporForm({ ...reporForm, selectedKeys: [], selectedSubs: [] })}>
+                      Limpar ({totalSelected})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <label className="sx-search is-wide">
+                <Search size={16} />
+                <input
+                  aria-label="Buscar assinante para repor"
+                  placeholder="Filtrar por nome, e-mail, WhatsApp ou chave…"
+                  value={reporForm.search}
+                  onChange={(e) => setReporForm({ ...reporForm, search: e.target.value })}
+                />
+              </label>
+
+              <div className="sx-admin-table is-wide" style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                {!eligibleKeys.length && !eligibleSubs.length ? (
+                  <p className="sx-admin-empty">Nenhum assinante neste filtro.</p>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '36px' }}>
+                          <input type="checkbox" aria-label="Selecionar todos os visíveis" checked={allVisibleSelected} onChange={toggleVisible} />
+                        </th>
+                        <th>Assinante</th>
+                        <th>Origem / Chave</th>
+                        <th>Situação atual</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eligibleKeys.map((k) => {
+                        const state = keyState(k, now)
+                        const checked = reporForm.selectedKeys.includes(k.id)
+                        const email = accountEmail(k.user_id)
+                        return (
+                          <tr key={'k:' + k.id} onClick={() => setReporForm({
+                            ...reporForm,
+                            selectedKeys: checked ? reporForm.selectedKeys.filter((id) => id !== k.id) : [...reporForm.selectedKeys, k.id],
+                          })} style={{ cursor: 'pointer' }}>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => setReporForm({
+                                  ...reporForm,
+                                  selectedKeys: e.target.checked ? [...reporForm.selectedKeys, k.id] : reporForm.selectedKeys.filter((id) => id !== k.id),
+                                })}
+                              />
+                            </td>
+                            <td>
+                              <strong>{k.name}</strong>
+                              {(k.contact || email) && <small className="sx-router-sub">{[k.contact, email].filter(Boolean).join(' · ')}</small>}
+                            </td>
+                            <td>
+                              <code>{k.token_prefix}…</code>
+                              <small className="sx-router-sub">{isTestKey(k) ? 'Teste manual' : 'Chave Roteador'}</small>
+                            </td>
+                            <td>
+                              <span className={`sx-state ${state.tone}`}>{state.label}</span>
+                              <small className="sx-router-sub">{state.detail}</small>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                      {eligibleSubs.map((s) => {
+                        const subId = String(s.subscription_id)
+                        const checked = reporForm.selectedSubs.includes(subId)
+                        return (
+                          <tr key={'s:' + subId} onClick={() => setReporForm({
+                            ...reporForm,
+                            selectedSubs: checked ? reporForm.selectedSubs.filter((id) => id !== subId) : [...reporForm.selectedSubs, subId],
+                          })} style={{ cursor: 'pointer' }}>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => setReporForm({
+                                  ...reporForm,
+                                  selectedSubs: e.target.checked ? [...reporForm.selectedSubs, subId] : reporForm.selectedSubs.filter((id) => id !== subId),
+                                })}
+                              />
+                            </td>
+                            <td>
+                              <strong>{s.customer}</strong>
+                              {s.email && <small className="sx-router-sub">{s.email}</small>}
+                            </td>
+                            <td>
+                              <code>{s.prefix}…</code>
+                              <small className="sx-router-sub">Plano do site · {s.plan}</small>
+                            </td>
+                            <td>
+                              <span className={`sx-state ${s.state === 'Ativa' ? 'is-confirmed' : 'is-expired'}`}>{s.state}</span>
+                              {s.paid_until && <small className="sx-router-sub">vence em {date(s.paid_until)}</small>}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {modalError && (
+                <p role="alert" className="sx-admin-message is-error is-wide">
+                  <CircleAlert size={16} /> {modalError}
+                </p>
+              )}
+              <div className="sx-router-modal-actions is-wide">
+                <button type="button" className="sx-btn" onClick={() => setReporForm(null)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="sx-btn is-primary" disabled={working === 'repor' || totalSelected === 0}>
+                  {working === 'repor'
+                    ? 'Repondo…'
+                    : `Repor +${Number(reporForm.days) || 0} ${Number(reporForm.days) === 1 ? 'dia' : 'dias'} para ${totalSelected} ${totalSelected === 1 ? 'assinante' : 'assinantes'}`}
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )
+      })()}
     </div>
   )
 }

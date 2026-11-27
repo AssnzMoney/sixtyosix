@@ -971,3 +971,29 @@ test('Argon 4: bloco que o fornecedor não sabe converter vira texto e a convers
     console.error = errors
   }
 })
+
+test('admin: repor dias em lote soma dias nas chaves manuais e nas assinaturas do site selecionadas', async () => {
+  const calls: { method: string; url: string; body: any }[] = []
+  const k1 = '11111111-1111-4111-8111-111111111111'
+  const k2 = '22222222-2222-4222-8222-222222222222'
+  const s1 = '33333333-3333-4333-8333-333333333333'
+  const baseUntil = new Date(Date.now() + 10 * day).toISOString()
+  const request = (async (input: string, init: RequestInit = {}) => {
+    const url = decodeURIComponent(String(input))
+    calls.push({ method: init.method || 'GET', url, body: init.body ? JSON.parse(String(init.body)) : undefined })
+    if (url.includes('/rpc/router_renew_key')) return Response.json({ id: JSON.parse(String(init.body)).p_id })
+    if (url.includes('/billing_subscriptions?') && (!init.method || init.method === 'GET')) return Response.json([{ id: s1, user_id: uid, paid_until: baseUntil }])
+    if (url.includes('/billing_router_keys?')) return Response.json([{ router_key_id: k2 }])
+    return new Response(null, { status: 201 })
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
+  const res = await admin.bulkRenew({ days: 3, key_ids: [k1], subscription_ids: [s1] })
+  assert.deepEqual(res, { ok: true, days: 3, renewedKeys: 1, renewedSubs: 1, total: 2 })
+  const renews = calls.filter((c) => c.url.includes('/rpc/router_renew_key'))
+  assert.deepEqual(renews.map((c) => [c.body.p_id, c.body.p_days]), [[k1, 3], [k2, 3]])
+  const subPatch = calls.find((c) => c.url.includes('/billing_subscriptions?') && c.method === 'PATCH')!
+  assert.ok(Date.parse(subPatch.body.paid_until) > Date.parse(baseUntil) + 2.9 * day)
+  await assert.rejects(admin.bulkRenew({ days: 0, key_ids: [k1] }), /1 e 366/)
+  await assert.rejects(admin.bulkRenew({ days: 2, key_ids: [], subscription_ids: [] }), /Selecione pelo menos um/)
+})
+

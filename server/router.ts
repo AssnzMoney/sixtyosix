@@ -533,6 +533,55 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       return { row: Array.isArray(renewed) ? renewed[0] : renewed }
     },
 
+    /** Repõe dias em lote para as chaves manuais selecionadas (e para as assinaturas do site selecionadas). */
+    async bulkRenew(body: Row) {
+      const days = Number(body.days)
+      if (!Number.isInteger(days) || days < 1 || days > 366) throw new RouterError(400, 'Escolha entre 1 e 366 dias para repor.')
+      const keyIds = Array.isArray(body.key_ids) ? [...new Set((body.key_ids as unknown[]).map((x) => text(x, 40)).filter((x) => CLIENT_ID.test(x)))] : []
+      const subIds = Array.isArray(body.subscription_ids) ? [...new Set((body.subscription_ids as unknown[]).map((x) => text(x, 40)).filter((x) => CLIENT_ID.test(x)))] : []
+      if (!keyIds.length && !subIds.length) throw new RouterError(400, 'Selecione pelo menos um assinante para receber os dias.')
+      if (keyIds.length + subIds.length > 500) throw new RouterError(400, 'Selecione no máximo 500 assinantes por vez.')
+      let renewedKeys = 0
+      let renewedSubs = 0
+      const touchedKeys = new Set<string>()
+      for (const id of keyIds) {
+        await rest<Row | Row[]>('rpc/router_renew_key', { method: 'POST', body: JSON.stringify({ p_id: id, p_days: days }) })
+        touchedKeys.add(id)
+        renewedKeys++
+      }
+      for (const subId of subIds) {
+        const subs = await rest<Row[]>(`billing_subscriptions?${new URLSearchParams({ id: `eq.${subId}`, select: 'id,user_id,paid_until', limit: '1' })}`)
+        const sub = subs?.[0]
+        if (!sub) continue
+        const base = Math.max(Date.now(), Date.parse(String(sub.paid_until || '')) || 0)
+        const startIso = new Date(base).toISOString()
+        const nextIso = new Date(base + days * 86400000).toISOString()
+        const bonusId = `repor-${sub.id}-${Date.now()}-${randomBytes(3).toString('hex')}`
+        await rest('billing_payments', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: bonusId, subscription_id: sub.id, invoice_id: bonusId, status: 'approved', amount_cents: 0, currency: 'BRL',
+            live_mode: true, period_start: startIso, period_end: nextIso, approved_at: new Date().toISOString(), provider_updated_at: new Date().toISOString(),
+          }),
+        }).catch(() => undefined)
+        await rest(`billing_subscriptions?${new URLSearchParams({ id: `eq.${sub.id}` })}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ paid_until: nextIso }),
+        })
+        renewedSubs++
+        // Se a assinatura tiver chave ligada em billing_router_keys que ainda não foi renovada acima, estende também.
+        const links = await rest<Row[]>(`billing_router_keys?${new URLSearchParams({ subscription_id: `eq.${sub.id}`, select: 'router_key_id', limit: '5' })}`).catch(() => [] as Row[])
+        for (const l of links) {
+          const rkId = String(l.router_key_id || '')
+          if (CLIENT_ID.test(rkId) && !touchedKeys.has(rkId)) {
+            await rest('rpc/router_renew_key', { method: 'POST', body: JSON.stringify({ p_id: rkId, p_days: days }) }).catch(() => undefined)
+            touchedKeys.add(rkId)
+          }
+        }
+      }
+      return { ok: true, days, renewedKeys, renewedSubs, total: renewedKeys + renewedSubs }
+    },
+
     async setKeyBlocked(body: Row) {
       const changed = await rest<boolean>('rpc/router_set_blocked', { method: 'POST', body: JSON.stringify({ p_id: text(body.id, 40), p_blocked: body.blocked === true }) })
       if (!changed) throw new RouterError(404, 'Chave não encontrada.')
