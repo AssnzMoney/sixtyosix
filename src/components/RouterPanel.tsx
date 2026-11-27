@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Ban, Check, CircleAlert, Copy, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X } from 'lucide-react'
-import { suggestAlias, suggestLabel } from '../lib/routerModels'
+import { ROUTER_MODEL_NAMES, suggestAlias, suggestLabel } from '../lib/routerModels'
 import { adminHeaders } from '../lib/adminSession'
 
 /**
@@ -248,6 +248,19 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
     }
   }
   const editDraft = (key: string, change: Partial<Draft>) => setDrafts((list) => list && list.map((d) => (d.key === key ? { ...d, ...change } : d)))
+  /** Cria uma segunda linha para vender o mesmo modelo do provedor com outro nome (ex.: Argon vendido também como Claude Opus). */
+  function duplicateDraft(item: Draft) {
+    setDrafts((list) => {
+      if (!list) return list
+      const used = new Set(list.filter((d) => d.sell).map((d) => d.alias))
+      const alias = !used.has('claude-opus-5-5') ? 'claude-opus-5-5' : !used.has('claude-opus') ? 'claude-opus' : ''
+      const copy: Draft = { key: 'dup:' + Date.now() + ':' + Math.random().toString(36).slice(2, 6), upstream: item.upstream, upstreamName: item.upstreamName, sell: true, alias, label: alias ? suggestLabel(alias, '') : 'Claude Opus', in_pro: item.in_pro, missing: item.missing }
+      const index = list.findIndex((d) => d.key === item.key)
+      const next = [...list]
+      next.splice(index + 1, 0, copy)
+      return next
+    })
+  }
   /** Modelo digitado à mão (o provedor não listou, ou um segundo nome para o mesmo modelo). */
   function addManualModel() {
     const upstream = manualModel.trim()
@@ -918,9 +931,25 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
                           <td>
                             <code>{d.upstream}</code>
                             {d.missing && <small className="sx-router-sub is-warning">Sumiu da lista do provedor</small>}
+                            <div>
+                              <button type="button" className="sx-link-btn" onClick={() => duplicateDraft(d)}>
+                                + Outro nome
+                              </button>
+                            </div>
                           </td>
                           <td>
-                            <input value={d.alias} disabled={!d.sell} spellCheck={false} aria-label={`Nome para o cliente de ${d.upstream}`} onChange={(e) => editDraft(d.key, { alias: e.target.value.toLowerCase() })} />
+                            <input
+                              value={d.alias}
+                              disabled={!d.sell}
+                              spellCheck={false}
+                              placeholder="ex.: claude-opus-5-5"
+                              aria-label={`Nome para o cliente de ${d.upstream}`}
+                              onChange={(e) => {
+                                const alias = e.target.value.toLowerCase()
+                                const known = ROUTER_MODEL_NAMES[alias]
+                                editDraft(d.key, known ? { alias, label: known } : { alias })
+                              }}
+                            />
                           </td>
                           <td>
                             <input value={d.label} disabled={!d.sell} aria-label={`Nome na tela de ${d.upstream}`} onChange={(e) => editDraft(d.key, { label: e.target.value })} />

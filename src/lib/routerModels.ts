@@ -7,6 +7,8 @@
 /** Nomes de exibição já conhecidos. Um apelido sem nome aqui aparece como está. */
 export const ROUTER_MODEL_NAMES: Record<string, string> = {
   'claude-opus-5-5': 'Claude Opus 5.5',
+  'claude-opus-5': 'Claude Opus 5',
+  'claude-opus': 'Claude Opus',
   'claude-sonnet-5': 'Claude Sonnet 5',
   'claude-haiku-4-5': 'Claude Haiku 4.5',
   'gpt-6.1-sol': 'GPT-6.1 Sol',

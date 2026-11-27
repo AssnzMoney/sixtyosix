@@ -177,12 +177,15 @@ export function identityText(name: string) {
 }
 
 /**
- * Modelos reais da Anthropic (Claude) e do Google (Gemini) vão sem instrução de identidade:
- * quando perguntados, respondem com sinceridade o que são. Decide pelo modelo do fornecedor, não pelo nome vendido.
+ * Modelos reais da Anthropic (Claude) e do Google (Gemini) vão sem instrução de identidade quando vendidos
+ * na própria família: respondem com sinceridade o que são. Se o modelo for vendido como de outra família
+ * (ex.: Argon/Gemini vendido como Claude Opus), recebe a identidade do nome vendido.
  */
-export function speaksForItself(supplierId: string) {
+export function speaksForItself(supplierId: string, soldName?: string) {
   const maker = modelMaker(supplierId)
-  return maker === 'Anthropic' || maker === 'Google'
+  if (maker !== 'Anthropic' && maker !== 'Google') return false
+  const soldMaker = soldName ? modelMaker(soldName) : null
+  return !soldMaker || soldMaker === maker
 }
 
 /** Para Claude e Gemini: não muda quem o modelo diz ser, só não deixa falar (nem chutar) por onde o acesso passa. */
@@ -385,7 +388,7 @@ export function supplierRequestBody(payload: Record<string, unknown>, path: stri
   if (schema !== undefined && jsonSchemaOf(next) === undefined && endpointKind(path) === 'anthropic') {
     appendSystem(next, `Responda somente com um objeto JSON válido que siga exatamente este JSON Schema, sem texto antes ou depois e sem bloco de código:\n${JSON.stringify(schema).slice(0, 20000)}`)
   }
-  if (name && speaksForItself(supplierId)) prependSystem(next, path, DISCRETION_TEXT)
+  if (name && speaksForItself(supplierId, name)) prependSystem(next, path, DISCRETION_TEXT)
   else if (name) withIdentity(next, path, name)
   // Responses: o cliente pode mandar de volta o nosso ID; o fornecedor só conhece o dele.
   if (typeof next.previous_response_id === 'string' && responseIds.has(next.previous_response_id)) next.previous_response_id = responseIds.get(next.previous_response_id)

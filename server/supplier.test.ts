@@ -144,17 +144,24 @@ test('formato e mensagem dos erros nossos por endpoint e status', () => {
   assert.equal(supplierErrorBody('anthropic', 422).error.message, 'Não foi possível processar o pedido.')
 })
 
-test('identidade: Claude e Gemini reais não recebem nome vendido, só a instrução de não falar do fornecedor', () => {
+test('identidade: Claude e Gemini reais vendidos na própria família só recebem a instrução de não falar do fornecedor', () => {
   const clientSystem = [{ type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }]
-  for (const upstream of ['anthropic/claude-opus-5-5', 'claude-haiku-4-5', 'google/gemini-4-argon', 'gemini-3.8-flash']) {
-    const sent = JSON.parse(supplierRequestBody({ model: 'x', system: clientSystem }, '/v1/messages', upstream, 'Claude Fable 5.2').body)
+  for (const [upstream, label] of [['anthropic/claude-opus-5-5', 'Claude Fable 5.2'], ['claude-haiku-4-5', 'Claude Haiku 4.5'], ['google/gemini-4-argon', 'Argon 4'], ['gemini-3.8-flash', 'Gemini 3.8 Flash']] as const) {
+    const sent = JSON.parse(supplierRequestBody({ model: 'x', system: clientSystem }, '/v1/messages', upstream, label).body)
     assert.deepEqual(sent.system, [{ type: 'text', text: DISCRETION_TEXT }, ...clientSystem], upstream)
-    const bare = JSON.parse(supplierRequestBody({ model: 'x' }, '/v1/messages', upstream, 'Argon 4').body).system
+    const bare = JSON.parse(supplierRequestBody({ model: 'x' }, '/v1/messages', upstream, label).body).system
     assert.equal(bare, DISCRETION_TEXT, upstream)
     assert.ok(!/Argon 4|Fable|você é/i.test(bare), 'não diz ao modelo quem ele é')
   }
   const chat = JSON.parse(supplierRequestBody({ model: 'x', messages: [{ role: 'user', content: 'oi' }] }, '/v1/chat/completions', 'gemini-4-argon', 'Argon 4').body)
   assert.deepEqual(chat.messages[0], { role: 'system', content: DISCRETION_TEXT })
+})
+
+test('identidade: Argon (Gemini) vendido como Claude Opus recebe a identidade de Claude da Anthropic', () => {
+  const clientSystem = [{ type: 'text', text: 'Claude Code', cache_control: { type: 'ephemeral' } }]
+  const sent = JSON.parse(supplierRequestBody({ model: 'claude-opus-5-5', system: clientSystem }, '/v1/messages', 'google/gemini-4-argon', 'Claude Opus 5.5').body)
+  assert.equal(sent.system.length, 2)
+  assert.match(sent.system[0].text, /você é o Claude Opus 5\.5, um modelo da Anthropic\./)
 })
 
 test('identidade: o modelo recebe o nome vendido antes das instruções do cliente, nos três formatos', () => {
