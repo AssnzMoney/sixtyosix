@@ -107,7 +107,10 @@ export function claudeInternalRoute(router:RouterConfig,allowed:readonly string[
   const family=/^claude-(?:\d+(?:-\d+)?-)?(opus|sonnet|haiku)\b/i.exec(model)?.[1]?.toLowerCase()
   if(!family)return undefined
   const claude=allowed.filter(alias=>/^claude-/i.test(alias)).map(alias=>router.routes.get(alias)).filter((r):r is RouterRoute=>Boolean(r))
-  return claude.find(r=>r.alias.toLowerCase().includes(family))||claude[0]
+  if(claude.length)return claude.find(r=>r.alias.toLowerCase().includes(family))||claude[0]
+  // Chave com Argon (sem claude-*): as chamadas internas do Claude Code (haiku/opus de fundo) também vão para o Argon.
+  const argon=allowed.filter(alias=>/^argon/i.test(alias)).map(alias=>router.routes.get(alias)).filter((r):r is RouterRoute=>Boolean(r))
+  return argon[0]
 }
 
 /** /glm/v1/... e /api/codex/... (endereços antigos) → /v1/... no provedor. /v1/v1/... (URL configurada já com /v1, como no app Claude desktop) → /v1/... */

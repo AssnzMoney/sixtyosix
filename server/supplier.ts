@@ -87,8 +87,8 @@ export function unsupportedFix(status: number, text: string, sent?: Record<strin
   const conversion = /n[ãa]o suportado nesta convers[ãa]o:\s*['"`]?([a-z_]+)/i.exec(message)
   if (conversion && CHAT_CONVERSION_FIELDS.includes(conversion[1].toLowerCase())) return `chat:${conversion[1].toLowerCase()}`
   // "output_config: Extra inputs are not permitted" (às vezes como "messages.1.output_config" ou "output_config.format").
-  // "safeguards: Extra inputs are not permitted": campo que o Claude Code 2.1.323 passou a mandar.
-  const extra = /(?:^|[\s.'"`])(output_config|output_format|context_management|speed|inference_geo|service_tier|safeguards)(?:\.(effort|format))?['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|not supported|unknown field)/i.exec(message)
+  // "safeguards: Extra inputs are not permitted" ou "request.context_management não é suportado neste transporte.".
+  const extra = /(?:^|[\s.'"`])(output_config|output_format|context_management|speed|inference_geo|service_tier|safeguards)(?:\.(effort|format))?['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|not supported|unknown field|n[ãa]o [ée] suportado)/i.exec(message)
   if (extra) return extra[2] ? `${extra[1]}.${extra[2]}` : extra[1]
   return null
 }

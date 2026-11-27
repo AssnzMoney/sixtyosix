@@ -135,7 +135,14 @@ test('modelos internos do Claude Code (avaliador do modo Automático, haiku de f
     // Nome que não é Claude continua sem modelo.
     assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'llama-9', messages: [] })).status, 404)
   })
-  // Chave sem nenhum modelo Claude: continua 404, não ganha um Claude de brinde.
+  // Chave só com Argon (sem claude-*): as chamadas internas do Claude Code (haiku/opus de fundo) também vão para o Argon.
+  const onlyArgon = { models: ['argon-4'], expires_at: new Date(Date.now() + 30 * day).toISOString(), revoked_at: null }
+  await withAccess({ manual: onlyArgon, supplier: () => Response.json({ model: 'google/gemini-4-argon', content: [], usage: { input_tokens: 3, output_tokens: 1 } }) }, async (base, _usage, calls) => {
+    const response = await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-haiku-4-5', max_tokens: 1, messages: [{ role: 'user', content: '.' }] })
+    assert.equal(response.status, 200)
+    assert.equal(JSON.parse(String(calls.at(-1)!.init.body)).model, 'google/gemini-4-argon')
+  })
+  // Chave sem nenhum modelo Claude nem Argon: continua 404, não ganha um Claude de brinde.
   const onlyGpt = { models: ['gpt-6.1-sol'], expires_at: new Date(Date.now() + 30 * day).toISOString(), revoked_at: null }
   await withAccess({ manual: onlyGpt }, async (base) => {
     assert.equal((await post(base, '/v1/messages', 'sk-rt-manual', { model: 'claude-opus-5', messages: [] })).status, 404)
@@ -168,6 +175,8 @@ test('ultracode: betas novos, saída em JSON, thinking desligado e ferramenta do
     const body = JSON.parse(String(init.body))
     const beta = String((init.headers as Record<string, string>)['anthropic-beta'] || '')
     if (beta.includes('advisor-tool-2026-03-01')) return refuse('feature is not supported on /v1/messages: anthropic-beta "advisor-tool-2026-03-01"')
+    if (body.context_management) return refuse('request.context_management não é suportado neste transporte.')
+    if (body.safeguards) return refuse('request.safeguards não é suportado neste transporte.')
     if (body.output_config) return refuse('messages.1.output_config: Extra inputs are not permitted')
     if (body.thinking?.type === 'disabled') return refuse('"thinking.type.disabled" is not supported for this model. Use "thinking.type.adaptive" and "output_config.effort" to control thinking behavior.')
     if (body.tools?.some((t: { type?: string }) => t.type === 'advisor_20260301')) return refuse("tools.1: Input tag 'advisor_20260301' found using 'type' does not match any of the expected tags")
@@ -177,6 +186,7 @@ test('ultracode: betas novos, saída em JSON, thinking desligado e ferramenta do
     await withAccess({ supplier }, async (base, _usage, calls) => {
       const ask = {
         model: 'argon-4', max_tokens: 10, thinking: { type: 'disabled' },
+        context_management: { edits: [] }, safeguards: { enabled: true },
         output_config: { effort: 'medium', format: { type: 'json_schema', schema: { type: 'object', properties: { ok: { type: 'boolean' } } } } },
         tools: [{ name: 'Read', input_schema: { type: 'object' } }, { type: 'advisor_20260301', name: 'advisor' }],
         messages: [{ role: 'user', content: 'oi' }],
@@ -184,18 +194,20 @@ test('ultracode: betas novos, saída em JSON, thinking desligado e ferramenta do
       const headers = { 'anthropic-beta': 'claude-code-20250219,advisor-tool-2026-03-01' }
       const first = await post(base, '/v1/messages', 'sk-sx-cliente', ask, headers)
       assert.equal(first.status, 200)
-      assert.equal(calls.length, 5, 'quatro recusas, uma por recurso, e deu certo')
+      assert.equal(calls.length, 7, 'seis recusas, uma por recurso, e deu certo')
       const last = calls.at(-1)!
       const body = JSON.parse(String(last.init.body))
       assert.equal((last.init.headers as Record<string, string>)['anthropic-beta'], 'claude-code-20250219', 'os outros betas continuam')
+      assert.equal(body.context_management, undefined)
+      assert.equal(body.safeguards, undefined)
       assert.equal(body.output_config, undefined)
       assert.equal(body.thinking, undefined)
       assert.deepEqual(body.tools.map((t: { name: string }) => t.name), ['Read'])
       assert.match(JSON.stringify(body.system), /JSON Schema/, 'o JSON pedido vira instrução')
       // Da próxima vez já vai sem esses recursos, numa chamada só; thinking ligado continua indo.
       assert.equal((await post(base, '/v1/messages', 'sk-sx-cliente', { ...ask, thinking: { type: 'adaptive' } }, headers)).status, 200)
-      assert.equal(calls.length, 6)
-      assert.deepEqual(JSON.parse(String(calls[5].init.body)).thinking, { type: 'adaptive' })
+      assert.equal(calls.length, 8)
+      assert.deepEqual(JSON.parse(String(calls[7].init.body)).thinking, { type: 'adaptive' })
     })
   } finally {
     console.error = errors
