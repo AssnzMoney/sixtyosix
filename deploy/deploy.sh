@@ -9,8 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 before=$(sha1sum package-lock.json)
-git fetch origin main
-git reset --hard origin/main
+git pull --ff-only
 after=$(sha1sum package-lock.json)
 if [ "$before" != "$after" ] || [ ! -d node_modules ]; then
   npm ci
