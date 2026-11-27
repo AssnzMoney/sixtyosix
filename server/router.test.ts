@@ -997,3 +997,36 @@ test('admin: repor dias em lote soma dias nas chaves manuais e nas assinaturas d
   await assert.rejects(admin.bulkRenew({ days: 2, key_ids: [], subscription_ids: [] }), /Selecione pelo menos um/)
 })
 
+test('admin: remover dias em lote encurta chaves e assinaturas, revoga o bônus repor- e nunca volta antes de agora', async () => {
+  const calls: { method: string; url: string; body: any }[] = []
+  const k1 = '11111111-1111-4111-8111-111111111111'
+  const k2 = '22222222-2222-4222-8222-222222222222'
+  const s1 = '33333333-3333-4333-8333-333333333333'
+  const keyUntil = new Date(Date.now() + 1 * day).toISOString()
+  const subUntil = new Date(Date.now() + 10 * day).toISOString()
+  const request = (async (input: string, init: RequestInit = {}) => {
+    const url = decodeURIComponent(String(input))
+    const method = init.method || 'GET'
+    calls.push({ method, url, body: init.body ? JSON.parse(String(init.body)) : undefined })
+    if (url.includes('/router_keys?') && method === 'GET') return Response.json([{ id: url.includes(k1) ? k1 : k2, expires_at: keyUntil }])
+    if (url.includes('/billing_subscriptions?') && method === 'GET') return Response.json([{ id: s1, paid_until: subUntil }])
+    if (url.includes('/billing_payments?') && method === 'GET') return Response.json([{ id: 'repor-x', period_start: new Date(Date.now() + 9 * day).toISOString(), period_end: subUntil }])
+    if (url.includes('/billing_router_keys?')) return Response.json([{ router_key_id: k2 }])
+    return new Response(null, { status: 204 })
+  }) as typeof fetch
+  const admin = createRouterAdmin({ url: SUPABASE, secret: SECRET }, request, 'admin@x.com')
+  const before = Date.now()
+  const res = await admin.bulkRemove({ days: 3, key_ids: [k1], subscription_ids: [s1] })
+  assert.deepEqual(res, { ok: true, days: 3, removedKeys: 1, removedSubs: 1, total: 2 })
+  const keyPatches = calls.filter((c) => c.url.includes('/router_keys?') && c.method === 'PATCH')
+  assert.equal(keyPatches.length, 2, 'a chave marcada e a ligada à assinatura')
+  for (const p of keyPatches) assert.ok(Math.abs(Date.parse(p.body.expires_at) - before) < 5000, 'chave com 1 dia perde tudo, mas não fica no passado')
+  const bonus = calls.find((c) => c.url.includes('/billing_payments?') && c.method === 'PATCH')!
+  assert.equal(bonus.body.status, 'revoked')
+  const sub = calls.find((c) => c.url.includes('/billing_subscriptions?') && c.method === 'PATCH')!
+  const left = Date.parse(sub.body.paid_until) - before
+  assert.ok(left > 6.9 * day && left < 7.1 * day, 'assinatura com 10 dias fica com 7')
+  await assert.rejects(admin.bulkRemove({ days: 0, key_ids: [k1] }), /1 e 366/)
+  await assert.rejects(admin.bulkRemove({ days: 1 }), /Selecione pelo menos um/)
+})
+

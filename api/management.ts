@@ -175,7 +175,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
     'router-key-link':async(input:Row)=>{const user=await findUser(input.email);return {...await router.linkKey({id:input.id,user_id:user?.id||null}),user}},
     'router-provider-save':router.saveProvider,'router-provider-enabled':router.setProviderEnabled,'router-provider-delete':router.deleteProvider,
     'router-provider-models':router.providerModels,'router-models-save':router.saveModels,
-    'router-key-create':router.createKey,'router-key-renew':router.renewKey,'router-keys-repor':router.bulkRenew,'router-key-block':router.setKeyBlocked,'router-key-reveal':router.revealKey,
+    'router-key-create':router.createKey,'router-key-renew':router.renewKey,'router-keys-repor':router.bulkRenew,'router-keys-remover':router.bulkRemove,'router-key-block':router.setKeyBlocked,'router-key-reveal':router.revealKey,
     'router-guard-save':router.saveGuardSettings,'router-network-block':router.setNetworkBlocked,
     'router-key-ips':router.keyIps,'router-key-ip-block':router.setKeyIpBlocked,'router-key-limits':router.saveKeyLimits,
     'router-key-ip-accept':router.acceptKeyIp,'router-key-ip-remove':router.removeKeyIp,'router-key-update':router.updateKey,'router-key-delete':router.deleteKey,

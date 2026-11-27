@@ -23,7 +23,7 @@ type ProviderForm = { id?: string; name: string; base_url: string; key: string }
 /** Chave de plano do site (nasce no pagamento), mostrada no filtro "Planos do site". */
 type SiteKey = { id: string; subscription_id?: string; client_id: string; user_id: string; customer: string; email: string; plan: string; prefix: string; paid_until: string | null; api: boolean; state: string }
 type KeyForm = { name: string; contact: string; email: string; days: string; custom: string; unit: 'dias' | 'horas'; slow: boolean; all: boolean; models: string[] }
-type ReporForm = { days: string; search: string; filter: 'active' | 'paid' | 'all'; selectedKeys: string[]; selectedSubs: string[] }
+type ReporForm = { mode: 'add' | 'remove'; days: string; search: string; filter: 'active' | 'paid' | 'all'; selectedKeys: string[]; selectedSubs: string[] }
 
 const DAY = 86400000
 const SITE = 'https://www.sixtysix.online'
@@ -423,35 +423,33 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
   }
 
   /* ----------------------------- Repor dias ---------------------------- */
-  function openRepor() {
+  // Começa sem ninguém marcado: antes vinham todos os ativos marcados e os dias iam para quem não devia.
+  function openRepor(mode: 'add' | 'remove' = 'add') {
     setModalError('')
-    const activePaidKeys = (overview?.keys || []).filter((k) => !isTestKey(k) && !isEnded(k)).map((k) => k.id)
-    const activeSiteSubs = [...new Set(siteKeys.filter((s) => s.state === 'Ativa' && s.subscription_id).map((s) => String(s.subscription_id)))]
-    setReporForm({
-      days: '1',
-      search: '',
-      filter: 'active',
-      selectedKeys: activePaidKeys,
-      selectedSubs: activeSiteSubs,
-    })
+    setReporForm({ mode, days: '1', search: '', filter: 'active', selectedKeys: [], selectedSubs: [] })
   }
 
   async function saveRepor() {
     if (!reporForm) return
     setModalError('')
     const days = Number(reporForm.days)
-    if (!Number.isInteger(days) || days < 1 || days > 366) return setModalError('Escolha entre 1 e 366 dias para repor.')
-    if (!reporForm.selectedKeys.length && !reporForm.selectedSubs.length) return setModalError('Selecione pelo menos um assinante para receber os dias.')
+    const removing = reporForm.mode === 'remove'
+    if (!Number.isInteger(days) || days < 1 || days > 366) return setModalError(`Escolha entre 1 e 366 dias para ${removing ? 'remover' : 'repor'}.`)
+    const count = reporForm.selectedKeys.length + reporForm.selectedSubs.length
+    if (!count) return setModalError('Selecione pelo menos um assinante.')
+    if (removing && !window.confirm(`Tirar ${days} ${days === 1 ? 'dia' : 'dias'} de ${count} ${count === 1 ? 'assinante' : 'assinantes'}? O vencimento nunca fica antes de agora.`)) return
     setWorking('repor')
     try {
-      const result = await call<{ total: number; renewedKeys: number; renewedSubs: number }>({
-        action: 'router-keys-repor',
+      const result = await call<{ total: number }>({
+        action: removing ? 'router-keys-remover' : 'router-keys-repor',
         days,
         key_ids: reporForm.selectedKeys,
         subscription_ids: reporForm.selectedSubs,
       })
       setReporForm(null)
-      setNotice(`+${days} ${days === 1 ? 'dia reposto' : 'dias repostos'} para ${result.total} ${result.total === 1 ? 'assinante' : 'assinantes'}.`)
+      setNotice(removing
+        ? `-${days} ${days === 1 ? 'dia removido' : 'dias removidos'} de ${result.total} ${result.total === 1 ? 'assinante' : 'assinantes'}.`
+        : `+${days} ${days === 1 ? 'dia reposto' : 'dias repostos'} para ${result.total} ${result.total === 1 ? 'assinante' : 'assinantes'}.`)
       reload()
       onSiteRefresh?.()
     } catch (e) {
@@ -658,9 +656,17 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
               type="button"
               className="sx-btn"
               disabled={!(overview?.keys?.length || siteKeys.length)}
-              onClick={openRepor}
+              onClick={() => openRepor('add')}
             >
               <RefreshCw size={15} /> Repor dias
+            </button>
+            <button
+              type="button"
+              className="sx-btn is-danger"
+              disabled={!(overview?.keys?.length || siteKeys.length)}
+              onClick={() => openRepor('remove')}
+            >
+              <Ban size={15} /> Remover dias
             </button>
             <button
               type="button"
@@ -1342,10 +1348,10 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
           }
         }
         return (
-          <Modal eyebrow="Reposição em lote" title="Repor dias para assinantes" onClose={() => setReporForm(null)}>
+          <Modal eyebrow={reporForm.mode === 'remove' ? 'Remoção em lote' : 'Reposição em lote'} title={reporForm.mode === 'remove' ? 'Remover dias de assinantes' : 'Repor dias para assinantes'} onClose={() => setReporForm(null)}>
             <form className="sx-form-grid" onSubmit={(e) => { e.preventDefault(); saveRepor() }}>
               <label className="is-wide">
-                Quantos dias repor
+                {reporForm.mode === 'remove' ? 'Quantos dias remover' : 'Quantos dias repor'}
                 <input
                   type="number"
                   min={1}
@@ -1357,11 +1363,13 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
                 <span className="sx-quick">
                   {[1, 2, 3, 5, 7, 15, 30].map((d) => (
                     <button key={d} type="button" className={Number(reporForm.days) === d ? 'is-on' : ''} onClick={() => setReporForm({ ...reporForm, days: String(d) })}>
-                      +{d} {d === 1 ? 'dia' : 'dias'}
+                      {reporForm.mode === 'remove' ? '-' : '+'}{d} {d === 1 ? 'dia' : 'dias'}
                     </button>
                   ))}
                 </span>
-                <small>Os dias são somados a partir do vencimento atual de cada assinante selecionado (ou a partir de hoje, se já tiver vencido).</small>
+                <small>{reporForm.mode === 'remove'
+                  ? 'Os dias são tirados do vencimento atual de cada assinante marcado. O vencimento nunca fica antes de agora: quem tiver menos dias que isso fica vencido na hora.'
+                  : 'Os dias são somados a partir do vencimento atual de cada assinante selecionado (ou a partir de hoje, se já tiver vencido).'}</small>
               </label>
 
               <div className="is-wide" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1500,10 +1508,12 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
                 <button type="button" className="sx-btn" onClick={() => setReporForm(null)}>
                   Cancelar
                 </button>
-                <button type="submit" className="sx-btn is-primary" disabled={working === 'repor' || totalSelected === 0}>
+                <button type="submit" className={`sx-btn ${reporForm.mode === 'remove' ? 'is-danger' : 'is-primary'}`} disabled={working === 'repor' || totalSelected === 0}>
                   {working === 'repor'
-                    ? 'Repondo…'
-                    : `Repor +${Number(reporForm.days) || 0} ${Number(reporForm.days) === 1 ? 'dia' : 'dias'} para ${totalSelected} ${totalSelected === 1 ? 'assinante' : 'assinantes'}`}
+                    ? reporForm.mode === 'remove' ? 'Removendo…' : 'Repondo…'
+                    : reporForm.mode === 'remove'
+                      ? `Remover ${Number(reporForm.days) || 0} ${Number(reporForm.days) === 1 ? 'dia' : 'dias'} de ${totalSelected} ${totalSelected === 1 ? 'assinante' : 'assinantes'}`
+                      : `Repor +${Number(reporForm.days) || 0} ${Number(reporForm.days) === 1 ? 'dia' : 'dias'} para ${totalSelected} ${totalSelected === 1 ? 'assinante' : 'assinantes'}`}
                 </button>
               </div>
             </form>

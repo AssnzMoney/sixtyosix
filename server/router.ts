@@ -582,6 +582,55 @@ export function createRouterAdmin(db: { url: string; secret: string }, request: 
       return { ok: true, days, renewedKeys, renewedSubs, total: renewedKeys + renewedSubs }
     },
 
+    /**
+     * Tira dias em lote (desfaz um "Repor dias" errado ou um reembolso). Nunca deixa o vencimento antes de agora.
+     * Nas assinaturas do site, os pagamentos-bônus "repor-" que passariam do novo vencimento são encurtados ou
+     * revogados, para o vencimento não voltar sozinho quando outro processo recalcular pelo maior period_end.
+     */
+    async bulkRemove(body: Row) {
+      const days = Number(body.days)
+      if (!Number.isInteger(days) || days < 1 || days > 366) throw new RouterError(400, 'Escolha entre 1 e 366 dias para remover.')
+      const keyIds = Array.isArray(body.key_ids) ? [...new Set((body.key_ids as unknown[]).map((x) => text(x, 40)).filter((x) => CLIENT_ID.test(x)))] : []
+      const subIds = Array.isArray(body.subscription_ids) ? [...new Set((body.subscription_ids as unknown[]).map((x) => text(x, 40)).filter((x) => CLIENT_ID.test(x)))] : []
+      if (!keyIds.length && !subIds.length) throw new RouterError(400, 'Selecione pelo menos um assinante para remover os dias.')
+      if (keyIds.length + subIds.length > 500) throw new RouterError(400, 'Selecione no máximo 500 assinantes por vez.')
+      const now = Date.now(), cut = days * 86400000
+      const touchedKeys = new Set<string>()
+      let removedKeys = 0, removedSubs = 0
+      const shrinkKey = async (id: string) => {
+        if (touchedKeys.has(id)) return false
+        touchedKeys.add(id)
+        const found = await rest<Row[]>(`router_keys?${new URLSearchParams({ id: `eq.${id}`, select: 'id,expires_at', limit: '1' })}`)
+        if (!found[0]) return false
+        const next = Math.max(now, (Date.parse(String(found[0].expires_at)) || now) - cut)
+        await rest(`router_keys?${new URLSearchParams({ id: `eq.${id}` })}`, { method: 'PATCH', body: JSON.stringify({ expires_at: new Date(next).toISOString() }) })
+        return true
+      }
+      for (const id of keyIds) if (await shrinkKey(id)) removedKeys++
+      for (const subId of subIds) {
+        const subs = await rest<Row[]>(`billing_subscriptions?${new URLSearchParams({ id: `eq.${subId}`, select: 'id,paid_until', limit: '1' })}`)
+        const sub = subs?.[0]
+        if (!sub) continue
+        const next = Math.max(now, (Date.parse(String(sub.paid_until || '')) || now) - cut)
+        const nextIso = new Date(next).toISOString()
+        const bonuses = await rest<Row[]>(`billing_payments?${new URLSearchParams({ subscription_id: `eq.${sub.id}`, id: 'like.repor-*', status: 'eq.approved', select: 'id,period_start,period_end' })}`).catch(() => [] as Row[])
+        for (const p of bonuses) {
+          const start = Date.parse(String(p.period_start)), end = Date.parse(String(p.period_end))
+          if (!(end > next)) continue
+          const patch = start >= next ? { status: 'revoked', provider_updated_at: new Date().toISOString() } : { period_end: nextIso, provider_updated_at: new Date().toISOString() }
+          await rest(`billing_payments?${new URLSearchParams({ id: `eq.${p.id}` })}`, { method: 'PATCH', body: JSON.stringify(patch) })
+        }
+        await rest(`billing_subscriptions?${new URLSearchParams({ id: `eq.${sub.id}` })}`, { method: 'PATCH', body: JSON.stringify({ paid_until: nextIso }) })
+        removedSubs++
+        const links = await rest<Row[]>(`billing_router_keys?${new URLSearchParams({ subscription_id: `eq.${sub.id}`, select: 'router_key_id', limit: '5' })}`).catch(() => [] as Row[])
+        for (const l of links) {
+          const rkId = String(l.router_key_id || '')
+          if (CLIENT_ID.test(rkId)) await shrinkKey(rkId).catch(() => false)
+        }
+      }
+      return { ok: true, days, removedKeys, removedSubs, total: removedKeys + removedSubs }
+    },
+
     async setKeyBlocked(body: Row) {
       const changed = await rest<boolean>('rpc/router_set_blocked', { method: 'POST', body: JSON.stringify({ p_id: text(body.id, 40), p_blocked: body.blocked === true }) })
       if (!changed) throw new RouterError(404, 'Chave não encontrada.')
