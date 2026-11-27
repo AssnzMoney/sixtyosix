@@ -64,12 +64,23 @@ for (let t = 0; t < duracao; t += 1) await avaliar(`window.__film.ir(${t})`)
 async function quadro(t) {
   // Uma captura pode falhar de vez em quando (o Chrome ocupado); tenta de novo antes de desistir.
   for (let tentativa = 1; ; tentativa++) {
-    await avaliar(`window.__film.ir(${t}); new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`)
-    const r = await cdp('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, width: W, height: H, scale: 1 } })
-    if (r.result?.data) return Buffer.from(r.result.data, 'base64')
-    if (tentativa >= 5) throw new Error(`Falhou o quadro ${t}s: ${JSON.stringify(r.error || r)}`)
-    console.log(`quadro ${t}s falhou (${r.error?.message || '?'}), tentando de novo`)
-    await dormir(500 * tentativa)
+    let erro
+    try {
+      await avaliar(`window.__film.ir(${t}); new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`)
+      const r = await cdp('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, width: W, height: H, scale: 1 } })
+      if (r.result?.data) return Buffer.from(r.result.data, 'base64')
+      erro = r.error?.message || '?'
+    } catch (e) {
+      erro = String(e.message || e).slice(0, 120)
+    }
+    if (tentativa >= 8) throw new Error(`Falhou o quadro ${t}s: ${erro}`)
+    console.log(`quadro ${t}s falhou (${erro}), tentando de novo`)
+    // A página pode ter recarregado (o Vite reinicia quando outro arquivo muda): espera o filme ficar pronto de novo.
+    for (let i = 0; i < 160; i++) {
+      await dormir(250)
+      try { if (await avaliar('!!(window.__film && window.__film.pronto)')) break } catch {}
+    }
+    await dormir(300 * tentativa)
   }
 }
 

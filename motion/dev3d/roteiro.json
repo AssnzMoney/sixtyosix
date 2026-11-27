@@ -1,0 +1,18 @@
+{
+  "voz": "pt-BR-AntonioNeural",
+  "velocidade": "+4%",
+  "falas": [
+    { "id": "f1", "cena": "quarto", "folga": 0.5, "texto": "Esse é o Rafa. Dev, três da manhã, e um bug que se recusa a morrer.", "tela": "3h da manhã. Um bug." },
+    { "id": "f2", "cena": "quarto", "folga": 0.4, "texto": "Ele já tentou de tudo: reiniciar, apagar o cache, rezar pro fórum.", "tela": "Já tentou de tudo" },
+    { "id": "f3", "cena": "quarto", "folga": 0.8, "texto": "Café número quatro. E nada.", "tela": "Café nº 4" },
+    { "id": "f4", "cena": "chamado", "folga": 0.5, "texto": "Até que o Rafa resolve mudar o jeito de trabalhar. Ele abre o terminal e chama o Claude.", "tela": "Ele chama o Claude" },
+    { "id": "f5", "cena": "chamado", "folga": 0.5, "texto": "Em vez de colar código no escuro, ele explica o problema como explicaria pra um colega.", "tela": "Explica como pra um colega" },
+    { "id": "f6", "cena": "investiga", "folga": 0.6, "texto": "O Claude lê o projeto, segue o rastro do erro e encontra a causa: uma condição de corrida escondida há semanas.", "tela": "Achou a causa" },
+    { "id": "f7", "cena": "correcao", "folga": 0.5, "texto": "Mas o melhor vem agora. O Claude não só aponta: propõe a correção, escreve o teste e mostra cada passo antes de mexer.", "tela": "Correção + teste" },
+    { "id": "f8", "cena": "correcao", "folga": 0.6, "texto": "O Rafa revisa, pergunta, ajusta. Quem decide continua sendo ele.", "tela": "Quem decide é você" },
+    { "id": "f9", "cena": "deploy", "folga": 0.7, "texto": "Os testes ficam verdes. O deploy sobe. E sobra tempo até pra dormir.", "tela": "Testes verdes. Deploy." },
+    { "id": "f10", "cena": "ideia", "folga": 0.6, "texto": "No dia seguinte, a ideia que estava parada há meses sai do papel em uma tarde.", "tela": "A ideia sai do papel" },
+    { "id": "f11", "cena": "final", "folga": 0.5, "texto": "Porque o dev que usa o Claude não trabalha menos. Trabalha no que importa.", "tela": "Trabalha no que importa" },
+    { "id": "f12", "cena": "final", "folga": 2.4, "texto": "O Claude não programa por você. Programa com você.", "tela": "Programa *com* você." }
+  ]
+}
