@@ -469,7 +469,9 @@ test('endereços antigos /glm/v1 e /api/codex chegam ao provedor como /v1', asyn
     assert.equal(calls[0].url, 'https://fornecedor.example/v1/messages')
     // Contagem de tokens é respondida aqui: não chega ao fornecedor nem vira consumo.
     const before = usage.length, supplierCalls = calls.length
-    assert.equal((await post(base, '/v1/messages/count_tokens', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [] })).status, 404)
+    const counted = await post(base, '/v1/messages/count_tokens', 'sk-sx-cliente', { model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'a'.repeat(400) }] })
+    assert.equal(counted.status, 200, 'Claude app/Desktop precisa de 200 aqui')
+    assert.deepEqual(await counted.json(), { input_tokens: 100 })
     assert.equal(usage.length, before)
     assert.equal(calls.length, supplierCalls, 'o fornecedor não recebe a contagem de tokens')
     const catalog = await (await client(base + '/api/codex/models', { headers: { 'x-api-key': 'sk-sx-cliente' } })).json() as { data: { id: string }[] }

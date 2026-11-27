@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { PRO_BASE_MODELS, withPlanModels } from '../server/model-aliases.js'
-import { contextOverflow, contextOverflowBody, endpointKind, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
+import { contextOverflow, contextOverflowBody, endpointKind, estimateInputTokens, recordUsage, rememberUnsupported, supplierBetas, supplierErrorBody, supplierRequestBody, supplierUrl, thinkingSignatureError, encryptedSearchError, unsupportedFix, UsageTap, withoutThinkingHistory, withoutEncryptedSearch, unsupportedContentError, basicContentOnly, blockTypes } from '../server/supplier.js'
 import { CREATE_PATH, ITEM_PATH, createVideo, isVideoRoute, monthStart, monthlyLimit, openVideoId, videoItem, videoRequestProblem, videoWeight, videosUsed } from '../server/videos.js'
 import { clientIp, deviceOf, gateRequest, releaseRequest } from '../server/guard.js'
 import { providerAlertFromEnv } from '../server/provider-alert.js'
@@ -305,7 +305,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     const type=response.headers.get('content-type')||''
     const stream=type.includes('text/event-stream')
     if(!res.headersSent)res.setHeader('content-type',stream?'text/event-stream; charset=utf-8':type.includes('json')?'application/json; charset=utf-8':type||'application/octet-stream')
-    const estimatedInput=Math.max(1,Math.round(sent.length/4))
+    const estimatedInput=estimateInputTokens(sent)
     tap=new UsageTap({stream,alias:route.alias,supplierId:route.upstream,dropInjectedUsage:injectedUsage,kind,estimatedInput})
     const write=async(text:string)=>{if(!text)return;stopPing();if(!res.write(text))await new Promise(resolve=>{res.once('drain',resolve);res.once('close',resolve)})}
     if(response.body){const reader=response.body.getReader();for(;;){const {done,value}=await reader.read();if(done)break;await write(tap.push(value))}}
@@ -427,9 +427,13 @@ export default async function handler(req:IncomingMessage & {body?:unknown},res:
       res.setHeader('Content-Type','application/json; charset=utf-8');res.end(req.method==='HEAD'?undefined:JSON.stringify(item.json));return
     }
     if(req.method==='POST'&&payload&&path.startsWith('/v1/')){
-      // Contagem de tokens do Claude Code: o fornecedor não tem e respondia 404, e isso aparecia para ele como
-      // erro vindo da nossa chave. Respondemos aqui mesmo; o Claude Code já seguia normal com o 404.
-      if(/\/messages\/count_tokens\/?$/.test(path)){if(!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.');throw new AccessError(404,'Contagem de tokens não disponível neste gateway.')}
+      // Contagem de tokens: o fornecedor não tem. O Claude app/Desktop chama antes de enviar e, com 404, mostrava
+      // "Requisição inválida". Respondemos aqui com uma estimativa: não chega ao fornecedor nem vira consumo.
+      if(/\/messages\/count_tokens\/?$/.test(path)){
+        if(!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')
+        res.statusCode=200;res.setHeader('Content-Type','application/json; charset=utf-8')
+        res.end(JSON.stringify({input_tokens:estimateInputTokens(payload)}));return
+      }
       const route=findRoute(router,model)||claudeInternalRoute(router,allowed,model)
       if(!route)throw new AccessError(404,'Este modelo não está disponível. Veja os modelos liberados para a sua chave em /v1/models.')
       if(!allowed.includes(route.alias)||!clientId)throw new AccessError(403,'Este modelo não está incluído no seu plano.')

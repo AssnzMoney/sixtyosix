@@ -681,6 +681,36 @@ export class UsageTap {
 }
 
 /**
+ * Estimativa dos tokens de entrada (~4 caracteres por token), usada quando o fornecedor não informa
+ * (stream do gemini-4-argon manda input_tokens: null) e para responder /v1/messages/count_tokens.
+ * Conta só texto: imagens/documentos em base64 valem um valor fixo, e a estrutura do JSON não entra,
+ * para não passar da janela de contexto (o tamanho do JSON inteiro chegava a 2 milhões de "tokens").
+ */
+export function estimateInputTokens(body: unknown): number {
+  let value = body
+  if (typeof value === 'string') {
+    const raw = value
+    try { value = JSON.parse(raw) } catch { return Math.max(1, Math.round(raw.length / 4)) }
+  }
+  const MEDIA_TOKENS = 1600
+  let chars = 0, media = 0
+  const walk = (node: unknown, key: string) => {
+    if (typeof node === 'string') {
+      if (key === 'model' || key === 'type' || key === 'role' || key === 'media_type' || key === 'id' || key === 'tool_use_id' || key === 'signature') return
+      if (key === 'data' || node.startsWith('data:')) { media++; return }
+      chars += node.length
+      return
+    }
+    if (Array.isArray(node)) { for (const item of node) walk(item, key); return }
+    if (isObj(node)) for (const [k, v] of Object.entries(node)) walk(v, k)
+  }
+  if (isObj(value)) {
+    for (const k of ['system', 'messages', 'tools', 'input', 'instructions', 'prompt']) if (k in value) walk(value[k], k)
+  }
+  return Math.max(1, Math.round(chars / 4) + media * MEDIA_TOKENS)
+}
+
+/**
  * Colunas obrigatórias que a tabela gateway_usage herdou da API antiga (ex.: upstream_tier).
  * Quando o banco recusa por uma delas, o valor é copiado de um registro antigo e fica guardado.
  */
