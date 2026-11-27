@@ -37,8 +37,8 @@ export function supplierUrl(base: string, path: string, search = ''): string {
  * Chaves lembradas: um caminho do corpo ("output_config.effort"), "beta:<nome>", "tool:<tipo>",
  * "tools.*.<campo>" (campo de cada ferramenta) e "thinking.disabled" (só o thinking desligado).
  */
-const STRIPPABLE = ['output_config.effort', 'output_config.format', 'output_config', 'output_format', 'reasoning_effort', 'reasoning.effort', 'context_management', 'speed', 'inference_geo', 'service_tier', 'safeguards', 'thinking.disabled', 'thinking.between_tools']
-const TOOL_FIELDS = ['defer_loading', 'eager_input_streaming', 'strict', 'input_examples', 'allowed_callers']
+const STRIPPABLE = ['output_config.effort', 'output_config.format', 'output_config', 'output_format', 'reasoning_effort', 'reasoning.effort', 'context_management', 'client_metadata', 'speed', 'inference_geo', 'service_tier', 'safeguards', 'thinking.disabled', 'thinking.between_tools']
+const TOOL_FIELDS = ['defer_loading', 'eager_input_streaming', 'strict', 'input_examples', 'allowed_callers', 'type', 'cache_control']
 /*
  * Campos opcionais do formato chat que o fornecedor não aceita quando converte o chat para o formato nativo dele
  * ("Parâmetro não suportado nesta conversão: store. Use /v1/responses nativo."). O omp, o Cline e o OpenCode mandam
@@ -77,18 +77,25 @@ export function unsupportedFix(status: number, text: string, sent?: Record<strin
   // "thinking.adaptive.block_binding: Extra inputs are not permitted": tira só o campo novo do thinking.
   const thinkingField = /\bthinking\.(?:[a-z_]+\.)?([a-z][a-z_]*)['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|unknown field)/i.exec(message)
   if (thinkingField && THINKING_FIELD.test(`thinking.${thinkingField[1].toLowerCase()}`)) return `thinking.${thinkingField[1].toLowerCase()}`
-  const tool = /\btools\.(\d+)(?:\.(\w+))?/.exec(message)
+  const tool = /\btools?\.(?:(\d+)(?:\.(\w+))?|(\w+))/.exec(message)
   if (tool) {
-    if (tool[2] && TOOL_FIELDS.includes(tool[2]) && /extra inputs|not permitted|not supported|unknown field|unexpected/i.test(message)) return `tools.*.${tool[2]}`
-    const entry = Array.isArray(sent?.tools) ? (sent.tools as Record<string, unknown>[])[Number(tool[1])] : undefined
-    if (entry && typeof entry.type === 'string' && entry.type !== 'custom' && /not supported|unsupported|unknown|invalid|tag|does not match|extra inputs|not permitted/i.test(message)) return `tool:${entry.type}`
+    const idx = tool[1] !== undefined ? Number(tool[1]) : undefined
+    const field = tool[2] ?? tool[3]
+    if (field === 'type' && /extra inputs|not permitted|not supported|unknown field|unexpected|n[ãa]o [ée] suportado/i.test(message)) {
+      const serverTool = Array.isArray(sent?.tools) ? (sent.tools as Record<string, unknown>[]).find((t) => typeof t?.type === 'string' && t.type !== 'custom') : undefined
+      if (serverTool && typeof serverTool.type === 'string') return `tool:${serverTool.type}`
+      return 'tools.*.type'
+    }
+    if (field && TOOL_FIELDS.includes(field) && /extra inputs|not permitted|not supported|unknown field|unexpected|n[ãa]o [ée] suportado/i.test(message)) return `tools.*.${field}`
+    const entry = idx !== undefined && Array.isArray(sent?.tools) ? (sent.tools as Record<string, unknown>[])[idx] : undefined
+    if (entry && typeof entry.type === 'string' && entry.type !== 'custom' && /not supported|unsupported|unknown|invalid|tag|does not match|extra inputs|not permitted|n[ãa]o [ée] suportado/i.test(message)) return `tool:${entry.type}`
   }
   // "Parâmetro não suportado nesta conversão: store." (pedido de chat que o fornecedor converte para o formato dele).
   const conversion = /n[ãa]o suportado nesta convers[ãa]o:\s*['"`]?([a-z_]+)/i.exec(message)
   if (conversion && CHAT_CONVERSION_FIELDS.includes(conversion[1].toLowerCase())) return `chat:${conversion[1].toLowerCase()}`
   // "output_config: Extra inputs are not permitted" (às vezes como "messages.1.output_config" ou "output_config.format").
   // "safeguards: Extra inputs are not permitted" ou "request.context_management não é suportado neste transporte.".
-  const extra = /(?:^|[\s.'"`])(output_config|output_format|context_management|speed|inference_geo|service_tier|safeguards)(?:\.(effort|format))?['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|not supported|unknown field|n[ãa]o [ée] suportado)/i.exec(message)
+  const extra = /(?:^|[\s.'"`])(output_config|output_format|context_management|client_metadata|speed|inference_geo|service_tier|safeguards)(?:\.(effort|format))?['"`]?:?\s*(?:Extra inputs are not permitted|is not (?:supported|permitted)|not supported|unknown field|n[ãa]o [ée] suportado)/i.exec(message)
   if (extra) return extra[2] ? `${extra[1]}.${extra[2]}` : extra[1]
   return null
 }

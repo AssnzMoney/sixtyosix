@@ -239,6 +239,11 @@ test('Claude Code 2.1.323: campo safeguards recusado sai do pedido (no topo e na
   assert.equal('safeguards' in sent, false)
   assert.equal('safeguards' in sent.messages[0], false)
   assert.equal(sent.messages[0].content, 'oi', 'a conversa não muda')
+  // Erros em português do provedor: tool.defer_loading, tool.type e request.client_metadata
+  assert.equal(unsupportedFix(400, '{"error":{"message":"tool.defer_loading não é suportado neste transporte."}}'), 'tools.*.defer_loading')
+  assert.equal(unsupportedFix(400, '{"error":{"message":"tool.type não é suportado neste transporte."}}', { tools: [{ name: 'Read', type: 'custom' }, { type: 'advisor_20260301', name: 'advisor' }] }), 'tool:advisor_20260301')
+  assert.equal(unsupportedFix(400, '{"error":{"message":"tool.type não é suportado neste transporte."}}', { tools: [{ name: 'Read', type: 'custom' }] }), 'tools.*.type')
+  assert.equal(unsupportedFix(400, '{"error":{"message":"request.client_metadata não é suportado neste transporte."}}'), 'client_metadata')
 })
 
 test('Claude Code 2.1.325: thinking.block_binding recusado sai do pedido e o thinking continua', async () => {

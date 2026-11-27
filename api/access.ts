@@ -263,7 +263,7 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
       }
       let sentJson:Record<string,unknown>|undefined
       try{sentJson=JSON.parse(sent)}catch{/* corpo sempre é JSON nosso */}
-      const fix=attempt<6?unsupportedFix(status,text,sentJson):null
+      const fix=attempt<10?unsupportedFix(status,text,sentJson):null
       if(fix&&!tried.has(fix)&&rememberUnsupported(route.upstream,fix)){
         tried.add(fix)
         console.error('Provedor recusou um recurso; tentando sem ele',provider.name,route.upstream,fix)
