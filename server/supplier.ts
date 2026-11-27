@@ -390,6 +390,11 @@ export function supplierRequestBody(payload: Record<string, unknown>, path: stri
   capReasoning(next)
   const schema = jsonSchemaOf(payload)
   if (endpointKind(path) === 'anthropic' && Array.isArray(next.messages)) next.messages = (next.messages as unknown[]).filter((m) => !emptySystem(m))
+  // No transporte /v1/messages para gemini-4-argon, o provedor nunca devolve blocos thinking, mas enviar
+  // thinking (adaptive ou disabled) faz cada chamada levar 30-95s e cair em 504 na Cloudflare.
+  if (endpointKind(path) === 'anthropic' && supplierId === 'gemini-4-argon' && process.env.SIXTYSIX_GEMINI_THINKING !== 'on') {
+    delete next.thinking
+  }
   for (const fix of unsupported.get(supplierId) || []) applyFix(next, fix, path)
   // Saída em JSON recusada (o ultracode usa): vira instrução, para a resposta ainda vir no formato pedido.
   if (schema !== undefined && jsonSchemaOf(next) === undefined && endpointKind(path) === 'anthropic') {
@@ -537,7 +542,7 @@ export class UsageTap {
   readonly usage: Usage = { input: 0, output: 0 }
   private buffer = ''
   private readonly decoder = new TextDecoder()
-  private readonly opts: { stream: boolean; alias: string; supplierId: string; dropInjectedUsage: boolean; kind: Endpoint }
+  private readonly opts: { stream: boolean; alias: string; supplierId: string; dropInjectedUsage: boolean; kind: Endpoint; estimatedInput: number }
   /** Um ID nosso por resposta: o mesmo em todos os eventos do stream. */
   readonly id: string
   /**
@@ -545,8 +550,8 @@ export class UsageTap {
    * "upstream_idle_timeout"). O gateway troca por um 504 nosso; o erro original fica em `failure` para o log.
    */
   failure: string | null = null
-  constructor(opts: { stream: boolean; alias: string; supplierId: string; dropInjectedUsage: boolean; kind?: Endpoint }) {
-    this.opts = { ...opts, kind: opts.kind || 'other' }
+  constructor(opts: { stream: boolean; alias: string; supplierId: string; dropInjectedUsage: boolean; kind?: Endpoint; estimatedInput?: number }) {
+    this.opts = { ...opts, kind: opts.kind || 'other', estimatedInput: Math.max(0, Math.round(opts.estimatedInput || 0)) }
     this.id = neutralId(this.opts.kind)
   }
 
@@ -616,7 +621,13 @@ export class UsageTap {
         keep(message, ANTHROPIC_MESSAGE)
         message.id = this.id
         if ('model' in message) message.model = alias
-        if (isObj(message.usage)) keep(message.usage, ANTHROPIC_USAGE)
+        if (isObj(message.usage)) {
+          keep(message.usage, ANTHROPIC_USAGE)
+          if (message.usage.input_tokens === null && this.opts.estimatedInput > 0) {
+            message.usage.input_tokens = this.opts.estimatedInput
+            this.usage.input = Math.max(this.usage.input, this.opts.estimatedInput)
+          }
+        }
       }
       if (message !== obj) keep(obj, ANTHROPIC_EVENT)
       if (isObj(obj.usage)) keep(obj.usage, ANTHROPIC_USAGE)

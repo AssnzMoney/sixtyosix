@@ -369,3 +369,13 @@ test('bloco sem conversão no fornecedor: reconhece o erro e deixa só os blocos
   assert.deepEqual(next.messages[3].content, [{ type: 'text', text: '…' }], 'mensagem nunca fica vazia')
   assert.deepEqual(basicContentOnly('não é json'), { body: 'não é json', converted: [] })
 })
+
+test('gemini-4-argon em /v1/messages: tira thinking fantasma e preenche input_tokens quando o stream manda null', () => {
+  const sent = JSON.parse(supplierRequestBody({ model: 'argon-4', thinking: { type: 'adaptive' }, messages: [{ role: 'user', content: 'oi' }] }, '/v1/messages', 'gemini-4-argon').body)
+  assert.equal(sent.thinking, undefined)
+  const tap = new UsageTap({ stream: true, alias: 'argon-4', supplierId: 'gemini-4-argon', dropInjectedUsage: false, kind: 'anthropic', estimatedInput: 12345 })
+  const chunk = new TextEncoder().encode('event: message_start\ndata: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","model":"gemini-4-argon","content":[],"usage":{"input_tokens":null,"output_tokens":0}}}\n\nevent: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":42}}\n\n')
+  const out = tap.push(chunk) + tap.end()
+  assert.match(out, /"input_tokens":12345/)
+  assert.deepEqual(tap.usage, { input: 12345, output: 42 })
+})

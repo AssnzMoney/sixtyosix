@@ -305,7 +305,8 @@ async function proxySupplier(req:IncomingMessage,res:ServerResponse,call:Supplie
     const type=response.headers.get('content-type')||''
     const stream=type.includes('text/event-stream')
     if(!res.headersSent)res.setHeader('content-type',stream?'text/event-stream; charset=utf-8':type.includes('json')?'application/json; charset=utf-8':type||'application/octet-stream')
-    tap=new UsageTap({stream,alias:route.alias,supplierId:route.upstream,dropInjectedUsage:injectedUsage,kind})
+    const estimatedInput=Math.max(1,Math.round(sent.length/4))
+    tap=new UsageTap({stream,alias:route.alias,supplierId:route.upstream,dropInjectedUsage:injectedUsage,kind,estimatedInput})
     const write=async(text:string)=>{if(!text)return;stopPing();if(!res.write(text))await new Promise(resolve=>{res.once('drain',resolve);res.once('close',resolve)})}
     if(response.body){const reader=response.body.getReader();for(;;){const {done,value}=await reader.read();if(done)break;await write(tap.push(value))}}
     const rest=tap.end()
