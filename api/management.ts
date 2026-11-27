@@ -115,8 +115,10 @@ export function createAdminService(env=process.env,request:typeof fetch=fetch){
   // Consumo real do período: o servidor soma todas as chamadas (o painel só baixa até 10.000, uma por uma).
   if(resource==='usage-summary'){
    const from=query.get('from')||new Date(Date.now()-29*86400000).toISOString().slice(0,10),to=query.get('to')||new Date().toISOString().slice(0,10)
+   const errorsSince=query.get('errorsSince')||''
    if(![from,to].every(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x)||from>to||Date.parse(to)-Date.parse(from)>365*86400000)throw new AccountError(400,'Escolha um período de até 366 dias.')
-   try{return {summary:await loadUsageSummary({url:config.url,headers},request,from,to),rows:[] as Row[],hasMore:false,admin:email}}
+   if(errorsSince&&!(/^\d{4}-\d{2}-\d{2}$/.test(errorsSince)&&Number.isFinite(Date.parse(errorsSince))&&new Date(errorsSince).toISOString().slice(0,10)===errorsSince))throw new AccountError(400,'Data do filtro de erros inválida.')
+   try{return {summary:await loadUsageSummary({url:config.url,headers},request,from,to,Date.now,errorsSince),rows:[] as Row[],hasMore:false,admin:email}}
    catch(error){console.error('Consumo do período indisponível',error);throw new AccountError(503,'Não foi possível somar o consumo do período. Tente atualizar o painel.')}
   }
   let url:string

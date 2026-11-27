@@ -20,10 +20,11 @@ const PAGE = 1000
 const MAX_ROWS = 3_000_000
 const MAX_MS = 40_000
 
-export function summarizeUsage() {
+export function summarizeUsage(errorsSince = '') {
   const clients = new Map<string, UsageClient & { window: number[] }>()
   const errors = new Map<number, { count: number; last: string }>()
   const total = { requests: 0, input: 0, output: 0, errors: 0 }
+  const errorCutoff = errorsSince ? Date.parse(`${errorsSince}T00:00:00Z`) : NaN
   return {
     /** As linhas precisam chegar em ordem de created_at crescente (o pico por minuto depende disso). */
     add(row: Row) {
@@ -36,7 +37,8 @@ export function summarizeUsage() {
       total.requests++; total.input += input; total.output += output
       if (at > c.last) c.last = at
       if (row.requested_alias) c.models[String(row.requested_alias)] = (c.models[String(row.requested_alias)] || 0) + 1
-      if (code >= 400) {
+      const time = Date.parse(at)
+      if (code >= 400 && (!Number.isFinite(errorCutoff) || !Number.isFinite(time) || time >= errorCutoff)) {
         c.errors++; total.errors++
         const e = errors.get(code) || { count: 0, last: '' }
         e.count++
@@ -44,7 +46,6 @@ export function summarizeUsage() {
         errors.set(code, e)
       }
       // Pico por minuto: o maior número de chamadas dentro de 60 segundos seguidos.
-      const time = Date.parse(at)
       if (Number.isFinite(time)) {
         c.window.push(time)
         while (time - c.window[0] >= 60000) c.window.shift()
@@ -63,8 +64,8 @@ export function summarizeUsage() {
 }
 
 /** Lê todas as chamadas do período em gateway_usage e soma. from/to = AAAA-MM-DD (UTC), já validados. */
-export async function loadUsageSummary(db: { url: string; headers: Record<string, string> }, request: typeof fetch, from: string, to: string, now: () => number = Date.now): Promise<UsageSummary> {
-  const sum = summarizeUsage()
+export async function loadUsageSummary(db: { url: string; headers: Record<string, string> }, request: typeof fetch, from: string, to: string, now: () => number = Date.now, errorsSince = ''): Promise<UsageSummary> {
+  const sum = summarizeUsage(errorsSince)
   const started = now()
   const end = new Date(Date.parse(to) + 86400000).toISOString()
   // Paginação por cursor (created_at, id): não pula nem repete linha quando chegam chamadas novas durante a leitura.

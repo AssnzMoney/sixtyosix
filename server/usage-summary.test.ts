@@ -45,3 +45,13 @@ test('banco fora do ar: erro, sem números pela metade', async () => {
   const request = (async () => new Response('x', { status: 500 })) as typeof fetch
   await assert.rejects(loadUsageSummary({ url: 'https://db.example', headers: {} }, request, '2026-11-20', '2026-11-20'))
 })
+
+test('errorsSince oculta erros antigos no resumo do servidor sem mexer nas chamadas e nos tokens', () => {
+  const sum = summarizeUsage('2026-11-21')
+  sum.add({ client_id: 'a', requested_alias: 'argon-4', status_code: 401, input_tokens: 100, output_tokens: 0, created_at: '2026-11-20T23:59:59Z' })
+  sum.add({ client_id: 'a', requested_alias: 'argon-4', status_code: 504, input_tokens: 200, output_tokens: 50, created_at: '2026-11-21T00:00:00Z' })
+  const r = sum.result(true)
+  assert.deepEqual(r.total, { requests: 2, input: 300, output: 50, errors: 1 })
+  assert.deepEqual(r.errors, [{ code: 504, count: 1, last: '2026-11-21T00:00:00Z' }])
+  assert.equal(r.clients[0].errors, 1)
+})

@@ -215,7 +215,8 @@ export default function AdminPage() {
   const [failed, setFailed] = useState<string[]>([])
   const [updated, setUpdated] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
-  const [from, setFrom] = useState(new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10))
+  // Padrão de 7 dias para destacar o movimento atual (sem carregar um mês inteiro de histórico antigo de cara).
+  const [from, setFrom] = useState(new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10))
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10))
   const [revision, setRevision] = useState(0)
   const [draft, setDraft] = useState<KeyDraft | null>(null)
@@ -262,7 +263,9 @@ export default function AdminPage() {
       setUsageCapped(false)
       let capped = false
       const fetchPage = async (resource: string, offset: number) => {
-        const response = await fetch('/api/management?' + new URLSearchParams({ resource, offset: String(offset), from, to }), {
+        const params = new URLSearchParams({ resource, offset: String(offset), from, to })
+        if (resource === 'usage-summary' && errorsSince) params.set('errorsSince', errorsSince)
+        const response = await fetch('/api/management?' + params, {
           headers: adminHeaders(session!.access_token),
           signal: controller.signal,
         })
@@ -353,7 +356,7 @@ export default function AdminPage() {
       alive = false
       controller.abort()
     }
-  }, [session?.access_token, from, to, revision, needsUsage, needsUsageSummary])
+  }, [session?.access_token, from, to, errorsSince, revision, needsUsage, needsUsageSummary])
 
   // Sem login: depois de entrar (Google, Discord ou e-mail), volta direto para o admin, não para o painel do cliente.
   useEffect(() => {
@@ -591,8 +594,8 @@ export default function AdminPage() {
   const usageErrors = useMemo(() => {
     if (tab !== 'usage') return []
     const counts = new Map<number, { count: number; last: string }>()
-    // Sem busca, os erros vêm da soma de todas as chamadas do período.
-    if (usageSummary && !search && !errorsSince) for (const e of usageSummary.errors) counts.set(e.code, { count: e.count, last: e.last })
+    // Sem busca, os erros vêm da soma de todas as chamadas do período (inclusive com errorsSince).
+    if (usageSummary && !search) for (const e of usageSummary.errors) counts.set(e.code, { count: e.count, last: e.last })
     else for (const row of enriched) {
       const code = Number(row.status_code)
       if (!(code >= 400)) continue
@@ -1340,6 +1343,10 @@ export default function AdminPage() {
                     <label>
                       Até <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
                     </label>
+                    <button type="button" className="sx-btn" onClick={() => { const t = new Date().toISOString().slice(0, 10); setFrom(t); setTo(t) }}>Hoje</button>
+                    <button type="button" className="sx-btn" onClick={() => { setFrom(new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10)); setTo(new Date().toISOString().slice(0, 10)) }}>3 dias</button>
+                    <button type="button" className="sx-btn" onClick={() => { setFrom(new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)); setTo(new Date().toISOString().slice(0, 10)) }}>7 dias</button>
+                    <button type="button" className="sx-btn" onClick={() => { setFrom(new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10)); setTo(new Date().toISOString().slice(0, 10)) }}>30 dias</button>
                   </div>
                 )}
                 {tab === 'trials' && (
@@ -1380,14 +1387,14 @@ export default function AdminPage() {
                     <label>Ocultar erros anteriores a (UTC)
                       <input type="date" value={errorDateDraft} onChange={(e) => setErrorDateDraft(e.target.value)} />
                     </label>
-                    <button type="button" className="sx-btn" disabled={!errorDateDraft || failed.includes('usage')} onClick={() => setErrorsSince(errorDateDraft)}>Ocultar erros antigos</button>
+                    <button type="button" className="sx-btn" disabled={!errorDateDraft || (Boolean(search) && failed.includes('usage'))} onClick={() => setErrorsSince(errorDateDraft)}>Ocultar erros antigos</button>
                     {errorsSince && <button type="button" className="sx-btn" onClick={() => { setErrorsSince(''); setErrorDateDraft('') }}>Mostrar todos os erros</button>}
                   </div>
-                  <p className="sx-admin-hint">Este filtro afeta apenas os cartões de erros abaixo, nesta sessão. Histórico, tabela de chamadas e totais permanecem intactos.</p>
-                  {errorsSince && <p role="status" className="sx-admin-hint">Exibindo erros desde {errorsSince}, às 00:00 UTC, dentro do período e da busca atuais. {usageCapped ? 'Resultado parcial: filtro aplicado somente às 10.000 chamadas mais recentes carregadas.' : 'Filtro aplicado às chamadas carregadas.'}</p>}
-                  {errorsSince && failed.includes('usage') && <p role="alert">Não foi possível carregar as chamadas para filtrar os erros. Atualize o painel ou mostre todos os erros.</p>}
-                  {errorsSince && !failed.includes('usage') && usageErrors.length === 0 && <p role="status">Nenhum erro encontrado nas chamadas carregadas com este filtro.</p>}
-                  {usageErrors.length > 0 && !(errorsSince && failed.includes('usage')) && (
+                  <p className="sx-admin-hint">Este filtro oculta erros anteriores à data escolhida nos cartões e na contagem de falhas, sem apagar histórico nem alterar totais de tokens e chamadas.</p>
+                  {errorsSince && <p role="status" className="sx-admin-hint">Exibindo erros desde {errorsSince}, às 00:00 UTC, dentro do período{search ? ' e da busca atuais' : ''}. {usageSummary && !search ? 'Filtro aplicado a todas as chamadas do período no servidor.' : usageCapped ? 'Resultado parcial: filtro aplicado somente às 10.000 chamadas mais recentes carregadas.' : 'Filtro aplicado às chamadas carregadas.'}</p>}
+                  {errorsSince && !usageSummary && failed.includes('usage') && <p role="alert">Não foi possível carregar as chamadas para filtrar os erros. Atualize o painel ou mostre todos os erros.</p>}
+                  {errorsSince && (Boolean(usageSummary && !search) || !failed.includes('usage')) && usageErrors.length === 0 && <p role="status">Nenhum erro encontrado com este filtro.</p>}
+                  {usageErrors.length > 0 && !(errorsSince && !usageSummary && failed.includes('usage')) && (
                     <section className="sx-error-guide" aria-label="O que foram os erros">
                       <h3>O que foram os erros</h3>
                       <div className="sx-error-list">
