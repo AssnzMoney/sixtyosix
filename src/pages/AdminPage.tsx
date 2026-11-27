@@ -1133,7 +1133,7 @@ export default function AdminPage() {
           ) : tab === 'rank' ? (
             <RankAdminPanel token={session?.access_token || ''} users={data.users || []} />
           ) : tab === 'router' ? (
-            <RouterPanel token={session?.access_token || ''} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} onSiteRefresh={loadOverview} period={`${brShort(from)} a ${brShort(to)}`} />
+            <RouterPanel token={session?.access_token || ''} usage={data.usage || []} users={data.users || []} siteKeys={siteKeys} onSiteRefresh={() => setRevision((x) => x + 1)} period={`${brShort(from)} a ${brShort(to)}`} />
           ) : tab === 'service' ? (
             <div className="sx-queues">
               {queue(
