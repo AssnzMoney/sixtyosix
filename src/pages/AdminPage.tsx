@@ -229,6 +229,7 @@ export default function AdminPage() {
   // Troca de plano (cliente comprou o plano errado): assinatura aberta, plano escolhido e o resultado.
   const [planChange, setPlanChange] = useState<{ id: string; plan: string; saving: boolean } | null>(null)
   const [planResult, setPlanResult] = useState<{ id: string; text: string; error?: boolean } | null>(null)
+  const [manualSubModal, setManualSubModal] = useState<{ userId?: string; email: string; plan: string; expires: string; saving: boolean; error: string } | null>(null)
   // Verificação em duas etapas: 'on' exige o código do e-mail; 'off' = envio de e-mail não configurado.
   const [twoFactor, setTwoFactor] = useState<'on' | 'off' | ''>('')
   const [codeStep, setCodeStep] = useState<{ challenge: string; sentTo: string; code: string; sending: boolean; error: string } | null>(null)
@@ -753,6 +754,43 @@ export default function AdminPage() {
     } catch (e) {
       setPlanResult({ id: s.id, text: e instanceof Error ? e.message : 'Não foi possível trocar o plano.', error: true })
       setPlanChange({ ...planChange, saving: false })
+    }
+  }
+
+  /* ------------------ Assinatura fora do site (manual) ------------------ */
+  function openManualSubscription(userId?: string) {
+    const u = userId ? customer(userId) : null
+    const active = userId ? activeSubscription(userId) : null
+    setManualSubModal({
+      userId,
+      email: u?.email && u.email !== 'Sem conta' ? u.email : '',
+      plan: active?.plan_code || 'pro',
+      expires: active?.paid_until && subscriptionActive(active, now) ? brDate(active.paid_until) : inDays(30),
+      saving: false,
+      error: '',
+    })
+  }
+
+  async function saveManualSubscription() {
+    if (!manualSubModal) return
+    if (!manualSubModal.userId && !manualSubModal.email.trim()) {
+      setManualSubModal({ ...manualSubModal, error: 'Informe o e-mail da conta do cliente.' })
+      return
+    }
+    setManualSubModal({ ...manualSubModal, saving: true, error: '' })
+    try {
+      const result = await adminAction<{ plan: string; paid_until: string; keysUpdated: number }>({
+        action: 'manual-subscription',
+        user_id: manualSubModal.userId || undefined,
+        email: manualSubModal.email.trim() || undefined,
+        plan: manualSubModal.plan,
+        expires: manualSubModal.expires,
+      })
+      setManualSubModal(null)
+      setNotice(`Assinatura ${result.plan} ativada/alterada até ${fullDate(result.paid_until)} (${result.keysUpdated} ${result.keysUpdated === 1 ? 'chave atualizada' : 'chaves atualizadas'}).`)
+      setRevision((x) => x + 1)
+    } catch (e) {
+      setManualSubModal({ ...manualSubModal, saving: false, error: e instanceof Error ? e.message : 'Não foi possível salvar.' })
     }
   }
 
@@ -1355,6 +1393,11 @@ export default function AdminPage() {
                     <Ban size={15} /> Revogar testes antes de 09/11 18h10
                   </button>
                 )}
+                {['subscriptions', 'customers', 'users'].includes(tab) && (
+                  <button type="button" className="sx-btn is-primary" onClick={() => openManualSubscription()}>
+                    <CreditCard size={15} /> Adicionar / alterar assinatura externa
+                  </button>
+                )}
                 <button type="button" className="sx-btn" disabled={busy || !enriched.length} onClick={exportCsv}>
                   <Download size={15} /> Exportar CSV
                 </button>
@@ -1607,8 +1650,11 @@ export default function AdminPage() {
 
             <div className="sx-actions sx-drawer-actions">
               {whatsappButton(profile.customer, customerGreeting({ name: profile.customer.name, plan: planOf(profileId) }), 'Chamar no WhatsApp')}
+              <button type="button" className="sx-btn is-primary" onClick={() => openManualSubscription(profileId)}>
+                <CreditCard size={15} /> Colocar / alterar plano
+              </button>
               {deliveriesReady && (
-                <button type="button" className="sx-btn is-primary" onClick={() => openDelivery(profileId)}>
+                <button type="button" className="sx-btn" onClick={() => openDelivery(profileId)}>
                   <KeyRound size={15} /> Chave manual
                 </button>
               )}
@@ -1896,6 +1942,85 @@ export default function AdminPage() {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {manualSubModal && (
+        <div className="sx-modal-backdrop" onClick={() => !manualSubModal.saving && setManualSubModal(null)}>
+          <div className="sx-modal" role="dialog" aria-modal="true" aria-labelledby="sx-manual-sub-title" onClick={(e) => e.stopPropagation()}>
+            <header className="sx-modal-head">
+              <div>
+                <span className="sx-eyebrow">Assinatura externa / Manual</span>
+                <h2 id="sx-manual-sub-title">Colocar ou alterar plano</h2>
+              </div>
+              <button type="button" className="sx-btn" aria-label="Fechar" onClick={() => setManualSubModal(null)} disabled={manualSubModal.saving}>
+                <X size={16} />
+              </button>
+            </header>
+            <form
+              className="sx-form"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void saveManualSubscription()
+              }}
+            >
+              <div className="sx-form-grid">
+                <label className="is-wide">
+                  E-mail da conta do cliente
+                  <input
+                    type="email"
+                    value={manualSubModal.email}
+                    disabled={manualSubModal.saving || Boolean(manualSubModal.userId)}
+                    placeholder="cliente@email.com"
+                    onChange={(e) => setManualSubModal({ ...manualSubModal, email: e.target.value })}
+                  />
+                  <small>Cria ou atualiza a assinatura no painel do cliente e aplica os modelos/limites nas chaves vinculadas à conta dele.</small>
+                </label>
+                <label className="is-wide">
+                  Plano
+                  <select
+                    value={manualSubModal.plan}
+                    disabled={manualSubModal.saving}
+                    onChange={(e) => setManualSubModal({ ...manualSubModal, plan: e.target.value })}
+                  >
+                    <option value="dev">Starter · R$ 249,90/mês (GPT Astra 6 · Sem API)</option>
+                    <option value="devApi">Starter + API · R$ 264,90/mês (GPT Astra 6 + API)</option>
+                    <option value="pro">Pro · R$ 319,90/mês (Todos os modelos + Imagens · 3 IPs)</option>
+                    <option value="enterprise">Enterprise · R$ 609,90/mês (Todos os modelos + Imagens · 10 IPs · 100 req/min)</option>
+                  </select>
+                </label>
+                <label className="is-wide">
+                  Válido até
+                  <input
+                    type="date"
+                    value={manualSubModal.expires}
+                    disabled={manualSubModal.saving}
+                    onChange={(e) => setManualSubModal({ ...manualSubModal, expires: e.target.value })}
+                  />
+                  <span className="sx-quick">
+                    {[7, 15, 30, 60, 90].map((d) => (
+                      <button key={d} type="button" onClick={() => setManualSubModal({ ...manualSubModal, expires: inDays(d) })}>
+                        +{d} dias
+                      </button>
+                    ))}
+                  </span>
+                </label>
+              </div>
+              {manualSubModal.error && (
+                <p className="sx-admin-message is-error" role="alert">
+                  <CircleAlert size={15} /> {manualSubModal.error}
+                </p>
+              )}
+              <div className="sx-actions">
+                <button type="button" className="sx-btn" onClick={() => setManualSubModal(null)} disabled={manualSubModal.saving}>
+                  Cancelar
+                </button>
+                <button type="submit" className="sx-btn is-primary" disabled={manualSubModal.saving}>
+                  <CreditCard size={15} /> {manualSubModal.saving ? 'Salvando…' : 'Salvar assinatura e atualizar chaves'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

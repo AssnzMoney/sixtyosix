@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Ban, Check, CircleAlert, Copy, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X } from 'lucide-react'
+import { Ban, Check, CircleAlert, Copy, CreditCard, Gauge, Globe, KeyRound, Layers, Pencil, Plus, RefreshCw, Search, Server, Trash2, X } from 'lucide-react'
 import { ROUTER_MODEL_NAMES, suggestAlias, suggestLabel } from '../lib/routerModels'
 import { adminHeaders } from '../lib/adminSession'
 
@@ -24,6 +24,13 @@ type ProviderForm = { id?: string; name: string; base_url: string; key: string }
 type SiteKey = { id: string; subscription_id?: string; client_id: string; user_id: string; customer: string; email: string; plan: string; prefix: string; paid_until: string | null; api: boolean; state: string }
 type KeyForm = { name: string; contact: string; email: string; days: string; custom: string; unit: 'dias' | 'horas'; slow: boolean; all: boolean; models: string[] }
 type ReporForm = { mode: 'add' | 'remove'; days: string; search: string; filter: 'active' | 'paid' | 'all'; selectedKeys: string[]; selectedSubs: string[] }
+type ManualSubForm = { keyId: string; keyName: string; email: string; plan: 'dev' | 'devApi' | 'pro' | 'enterprise'; expires: string }
+const MANUAL_PLANS: Array<['dev' | 'devApi' | 'pro' | 'enterprise', string, string]> = [
+  ['dev', 'Starter · R$ 249,90/mês', 'GPT Astra 6 · Sem limite de IPs'],
+  ['devApi', 'Starter + API · R$ 264,90/mês', 'GPT Astra 6 + API · Sem limite de IPs'],
+  ['pro', 'Pro · R$ 319,90/mês', 'Todos os modelos + Imagens · Limite de 3 IPs'],
+  ['enterprise', 'Enterprise · R$ 609,90/mês', 'Todos os modelos + Imagens · Limite de 10 IPs · 100 req/min'],
+]
 
 const DAY = 86400000
 const SITE = 'https://www.sixtysix.online'
@@ -100,6 +107,7 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
   const [editFor, setEditFor] = useState<RouterKey | null>(null)
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [reporForm, setReporForm] = useState<ReporForm | null>(null)
+  const [manualSubForm, setManualSubForm] = useState<ManualSubForm | null>(null)
   const now = Date.now()
 
   async function call<T>(body: Row): Promise<T> {
@@ -422,6 +430,47 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
     }
   }
 
+  /* ----------------- Assinatura fora do site / Trocar plano ----------------- */
+  function openManualSub(key?: RouterKey) {
+    setModalError('')
+    const defaultExpires = key && Date.parse(key.expires_at) > Date.now() ? brDay(key.expires_at) : plusDays(brDay(Date.now()), 30)
+    const currentLimits = key ? customLimits.get(key.gateway_client_id) : undefined
+    const guessedPlan: 'dev' | 'devApi' | 'pro' | 'enterprise' = currentLimits?.max_ips === 10 ? 'enterprise' : key?.models && key.models.length === 1 ? 'devApi' : 'pro'
+    setManualSubForm({
+      keyId: key?.id || '',
+      keyName: key?.name || '',
+      email: key ? accountEmail(key.user_id) : '',
+      plan: guessedPlan,
+      expires: defaultExpires,
+    })
+  }
+
+  async function saveManualSub() {
+    if (!manualSubForm) return
+    setModalError('')
+    if (!manualSubForm.keyId && !manualSubForm.email.trim()) {
+      return setModalError('Escolha uma chave ativa ou informe o e-mail da conta do cliente.')
+    }
+    setWorking('manual-sub')
+    try {
+      const result = await call<{ plan: string; paid_until: string; keysUpdated: number }>({
+        action: 'manual-subscription',
+        key_id: manualSubForm.keyId || undefined,
+        email: manualSubForm.email.trim() || undefined,
+        plan: manualSubForm.plan,
+        expires: manualSubForm.expires,
+      })
+      setManualSubForm(null)
+      setNotice(`Plano ${result.plan} aplicado até ${date(result.paid_until)} (${result.keysUpdated} ${result.keysUpdated === 1 ? 'chave configurada' : 'chaves configuradas'}).`)
+      reload()
+      onSiteRefresh?.()
+    } catch (e) {
+      setModalError(e instanceof Error ? e.message : 'Não foi possível salvar a assinatura.')
+    } finally {
+      setWorking('')
+    }
+  }
+
   /* ----------------------------- Repor dias ---------------------------- */
   // Começa sem ninguém marcado: antes vinham todos os ativos marcados e os dias iam para quem não devia.
   function openRepor(mode: 'add' | 'remove' = 'add') {
@@ -670,6 +719,13 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
             </button>
             <button
               type="button"
+              className="sx-btn"
+              onClick={() => openManualSub()}
+            >
+              <CreditCard size={15} /> Assinatura fora do site
+            </button>
+            <button
+              type="button"
               className="sx-btn is-primary"
               disabled={!sellable.length}
               title={sellable.length ? undefined : 'Cadastre um provedor e escolha os modelos primeiro.'}
@@ -821,6 +877,9 @@ export default function RouterPanel({ token, usage, period, users = [], siteKeys
                             })}
                           >
                             <RefreshCw size={15} /> +30 dias
+                          </button>
+                          <button type="button" className="sx-btn" title="Definir ou alterar o plano desta chave (Starter, Pro ou Enterprise)" onClick={() => openManualSub(k)}>
+                            <CreditCard size={15} /> Plano
                           </button>
                           <button type="button" className="sx-btn" onClick={() => openEdit(k)}>
                             <Pencil size={15} /> Editar
@@ -1520,6 +1579,98 @@ Ela para de funcionar na hora e some da lista. Não dá para desfazer.`)) return
           </Modal>
         )
       })()}
+
+      {manualSubForm && (
+        <Modal
+          eyebrow="Assinatura externa / Chave ativa"
+          title={manualSubForm.keyName ? `Plano de ${manualSubForm.keyName}` : 'Adicionar ou alterar assinatura fora do site'}
+          onClose={() => setManualSubForm(null)}
+        >
+          <form className="sx-form-grid" onSubmit={(e) => { e.preventDefault(); void saveManualSub() }}>
+            <label className="is-wide">
+              Chave ativa no Roteador (opcional se informar o e-mail)
+              <select
+                value={manualSubForm.keyId}
+                onChange={(e) => {
+                  const picked = (overview?.keys || []).find((x) => x.id === e.target.value)
+                  setManualSubForm({
+                    ...manualSubForm,
+                    keyId: e.target.value,
+                    keyName: picked?.name || '',
+                    email: picked ? accountEmail(picked.user_id) || manualSubForm.email : manualSubForm.email,
+                    expires: picked && Date.parse(picked.expires_at) > Date.now() ? brDay(picked.expires_at) : manualSubForm.expires,
+                  })
+                }}
+              >
+                <option value="">— Nenhuma chave específica (usar todas da conta do e-mail) —</option>
+                {(overview?.keys || []).map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.name} ({k.token_prefix}…){k.user_id ? ` · ${accountEmail(k.user_id)}` : ''}
+                  </option>
+                ))}
+              </select>
+              <small>Ao escolher uma chave que já está on, ela ganha automaticamente os modelos, validade e limites de IPs/req/min do plano escolhido.</small>
+            </label>
+
+            <label className="is-wide">
+              E-mail da conta do cliente no site (opcional se só quiser mudar a chave)
+              <input
+                type="email"
+                list="sx-router-accounts"
+                value={manualSubForm.email}
+                maxLength={200}
+                placeholder="cliente@email.com"
+                onChange={(e) => setManualSubForm({ ...manualSubForm, email: e.target.value })}
+              />
+              <small>Se preenchido, cria ou atualiza a assinatura no painel do cliente no site e vincula a chave à conta dele.</small>
+            </label>
+
+            <label className="is-wide">
+              Plano para ativar ou alterar
+              <select
+                value={manualSubForm.plan}
+                onChange={(e) => setManualSubForm({ ...manualSubForm, plan: e.target.value as ManualSubForm['plan'] })}
+              >
+                {MANUAL_PLANS.map(([code, title, desc]) => (
+                  <option key={code} value={code}>
+                    {title} — {desc}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="is-wide">
+              Válida até
+              <input
+                type="date"
+                value={manualSubForm.expires}
+                onChange={(e) => setManualSubForm({ ...manualSubForm, expires: e.target.value })}
+              />
+              <span className="sx-quick">
+                {[7, 15, 30, 60, 90].map((d) => (
+                  <button key={d} type="button" onClick={() => setManualSubForm({ ...manualSubForm, expires: plusDays(brDay(Date.now()), d) })}>
+                    +{d} dias (de hoje)
+                  </button>
+                ))}
+              </span>
+            </label>
+
+            {modalError && (
+              <p role="alert" className="sx-admin-message is-error is-wide">
+                <CircleAlert size={16} /> {modalError}
+              </p>
+            )}
+            <div className="sx-router-modal-actions is-wide">
+              <button type="button" className="sx-btn" onClick={() => setManualSubForm(null)}>
+                Cancelar
+              </button>
+              <button type="submit" className="sx-btn is-primary" disabled={working === 'manual-sub'}>
+                {working === 'manual-sub' ? 'Salvando…' : 'Aplicar plano'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }

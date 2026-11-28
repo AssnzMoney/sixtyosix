@@ -402,6 +402,89 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    const siteKey=await createAutoKeys(env,request).sync(item.id).catch((error)=>{console.error('subscription-plan: chave do site não atualizada',item.id,error);return 'erro'})
    return {ok:true,plan:target.name,api:target.api,keys,keysChecked:true,siteKey}
   }
+  // Cria ou altera uma assinatura feita fora do site (ex.: cliente que já tem chave on no WhatsApp)
+  if(action==='manual-subscription'){
+   const code=typeof body.plan==='string'&&Object.prototype.hasOwnProperty.call(billingPlans,body.plan)?body.plan as keyof typeof billingPlans:null
+   if(!code)throw new AccountError(400,'Escolha um plano válido.')
+   const target=billingPlans[code]
+   const rawExpires=typeof body.expires==='string'?body.expires.trim():''
+   const untilMs=rawExpires?Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(rawExpires)?`${rawExpires}T23:59:59-03:00`:rawExpires):Date.now()+30*86400000
+   if(!Number.isFinite(untilMs)||untilMs<=Date.now())throw new AccountError(400,'Escolha uma data de validade a partir de hoje.')
+   const paidUntil=new Date(untilMs).toISOString(),nowIso=new Date().toISOString()
+   let userId=isUuid(body.user_id)?String(body.user_id):''
+   const emailInput=typeof body.email==='string'?body.email.trim().toLowerCase():''
+   if(!userId&&emailInput){
+    let foundUser:{id:string}|null=null
+    for(let page=1;page<=40;page++){
+     const response=await request(`${config.url}/auth/v1/admin/users?page=${page}&per_page=500`,{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(15000)})
+     if(!response.ok)throw new AccountError(503,'Não foi possível consultar as contas. Tente de novo.')
+     const list=(((await response.json()) as Row).users||[]) as Row[]
+     const hit=list.find(u=>String(u.email||'').toLowerCase()===emailInput)
+     if(hit){foundUser=userFromAuth(hit);break}
+     if(list.length<500)break
+    }
+    if(!foundUser)throw new AccountError(404,`Não existe conta cadastrada com o e-mail ${emailInput}. Peça para o cliente criar conta primeiro ou deixe sem e-mail para atualizar só a chave.`)
+    userId=foundUser.id
+   }
+   const keyId=isUuid(body.key_id)?String(body.key_id):''
+   const rest=async<T>(path:string,params:Record<string,string>,init?:RequestInit):Promise<T>=>{
+    const qs=Object.keys(params).length?`?${new URLSearchParams(params)}`:''
+    const response=await request(`${config.url}/rest/v1/${path}${qs}`,{...init,headers:{...headers,Prefer:'return=representation',...((init?.headers as Record<string,string>)||{})},signal:AbortSignal.timeout(15000)})
+    if(!response.ok)throw new AccountError(503,'Não foi possível salvar a assinatura manual. Atualize e tente de novo.')
+    const txt=await response.text()
+    return (txt?JSON.parse(txt):[]) as T
+   }
+   if(keyId&&!userId){
+    const rk=(await rest<Row[]>('router_keys',{id:`eq.${keyId}`,select:'id,gateway_client_id',limit:'1'}))[0]
+    if(rk?.gateway_client_id){
+     const gc=(await rest<Row[]>('gateway_clients',{id:`eq.${rk.gateway_client_id}`,select:'user_id',limit:'1'}))[0]
+     if(gc?.user_id&&isUuid(gc.user_id))userId=String(gc.user_id)
+    }
+   }
+   let subId=''
+   if(userId){
+    if(keyId){
+     const rk=(await rest<Row[]>('router_keys',{id:`eq.${keyId}`,select:'id,gateway_client_id',limit:'1'}))[0]
+     if(rk?.gateway_client_id)await rest('gateway_clients',{id:`eq.${rk.gateway_client_id}`},{method:'PATCH',body:JSON.stringify({user_id:userId})})
+    }
+    const existing=await rest<Row[]>('billing_subscriptions',{user_id:`eq.${userId}`,billing_mode:'eq.pix',select:'id,paid_until,provider_status',order:'created_at.desc',limit:'5'})
+    const activeSub=existing.find(s=>s.paid_until&&Date.parse(String(s.paid_until))>Date.now())||existing[0]
+    if(activeSub){
+     subId=String(activeSub.id)
+     await rest('billing_subscriptions',{id:`eq.${subId}`},{method:'PATCH',body:JSON.stringify({plan_code:code,amount_cents:target.amount,api_enabled:target.api,models:[...target.models],provider_status:'approved',paid_until:paidUntil,provider_updated_at:nowIso})})
+    }else{
+     const created=(await rest<Row[]>('billing_subscriptions',{},{method:'POST',body:JSON.stringify({user_id:userId,plan_code:code,amount_cents:target.amount,api_enabled:target.api,models:[...target.models],billing_mode:'pix',provider_status:'approved',paid_until:paidUntil,provider_updated_at:nowIso})}))[0]
+     if(!created?.id)throw new AccountError(503,'Não foi possível criar a assinatura.')
+     subId=String(created.id)
+    }
+    const payId=`manual-${subId}-${Date.now()}`
+    await rest('billing_payments',{},{method:'POST',body:JSON.stringify({id:payId,subscription_id:subId,invoice_id:payId,status:'approved',amount_cents:target.amount,currency:'BRL',live_mode:true,period_start:nowIso,period_end:paidUntil,approved_at:nowIso,provider_updated_at:nowIso})}).catch(()=>undefined)
+   }
+   const router=await loadRouter(env,request).catch(()=>null)
+   const models=router?canonicalModels(router,withPlanModels(target.models,router.proAliases)):[...target.models]
+   const targetKeys:Row[]=[]
+   if(keyId){
+    const found=await rest<Row[]>('router_keys',{id:`eq.${keyId}`,select:'id,name,gateway_client_id,models',limit:'1'})
+    if(found[0])targetKeys.push(found[0])
+   }
+   if(userId){
+    const clients=await rest<Row[]>('gateway_clients',{user_id:`eq.${userId}`,select:'id'})
+    if(clients.length){
+     const linked=await rest<Row[]>('router_keys',{gateway_client_id:`in.(${clients.map(c=>c.id).join(',')})`,revoked_at:'is.null',select:'id,name,gateway_client_id,models'})
+     for(const k of linked)if(!targetKeys.some(x=>x.id===k.id))targetKeys.push(k)
+    }
+   }
+   for(const k of targetKeys){
+    const nextModels=code==='pro'||code==='enterprise'?null:(models.length?models:[...target.models])
+    await rest('router_keys',{id:`eq.${k.id}`},{method:'PATCH',body:JSON.stringify({models:nextModels,expires_at:paidUntil,revoked_at:null})})
+    if(k.gateway_client_id){
+     await rest('gateway_controls',{on_conflict:'client_id'},{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify({client_id:k.gateway_client_id,max_ips:target.maxIps??null,rpm:target.rpm??null,updated_at:nowIso})}).catch(()=>undefined)
+    }
+   }
+   if(subId)await createAutoKeys(env,request).sync(subId).catch(()=>undefined)
+   console.log('manual-subscription:',email,'aplicou plano',code,'user:',userId||'sem-conta','key:',keyId||'auto','até',paidUntil)
+   return {ok:true,plan:target.name,plan_code:code,paid_until:paidUntil,subscription_id:subId||null,keysUpdated:targetKeys.length}
+  }
   if(action==='revoke-delivery'){
    if(!isUuid(body.id))throw new AccountError(400,'Credencial inválida.')
    const revoked=await rpc<boolean>('admin_revoke_delivery',{p_id:body.id,p_by:email})
