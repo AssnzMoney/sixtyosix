@@ -13,7 +13,7 @@ export function accountDestination(hasChosenName:boolean):string {
   const back=sessionStorage.getItem(RETURN_KEY)
   if(back){sessionStorage.removeItem(RETURN_KEY);if(RETURNABLE.includes(back))return back}
   const plan=sessionStorage.getItem('sixtysix_pending_purchase')
-  if(plan&&['dev','devApi','pro'].includes(plan))return `/comprar/${plan}`
+  if(plan&&['dev','devApi','pro','enterprise'].includes(plan))return `/comprar/${plan}`
   if(sessionStorage.getItem('sixtysix_pending_subscription')==='1')return '/assinatura'
   return '/dashboard'
 }

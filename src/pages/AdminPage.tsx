@@ -130,7 +130,7 @@ const titles: Record<string, string> = {
   confirm_user_agent: 'Navegador da confirmação', confirm_text: 'Texto confirmado', notes: 'Observação',
   client_state: 'Situação', situation: 'Situação', checkout_status: 'Pagamento', opened_at: 'Abriu o checkout em',
 }
-const planNames: Record<string, string> = { dev: 'Dev', devApi: 'Dev + API', pro: 'Pro' }
+const planNames: Record<string, string> = { dev: 'Starter', devApi: 'Starter + API', pro: 'Pro', enterprise: 'Enterprise' }
 const paymentLabels: Record<string, string> = {
   approved: 'Aprovado',
   pending: 'Pendente',

@@ -337,7 +337,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    }
    const referredIds=[...new Set(referrals.map(r=>String(r.referred_user_id)))]
    const plans=referredIds.length?await read<Row[]>('billing_subscription_state',{user_id:`in.(${referredIds.join(',')})`,select:'user_id,plan_code,paid_until,entitled,created_at',order:'created_at.desc'}).catch(()=>[] as Row[]):[]
-   const planNames:Record<string,string>={pro:'Pro',devApi:'Dev + API',dev:'Dev'}
+   const planNames:Record<string,string>={enterprise:'Enterprise',pro:'Pro',devApi:'Starter + API',dev:'Starter'}
    const out=[]
    for(const a of affiliates){
     const user=people.get(String(a.user_id))||null
@@ -369,6 +369,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    const code=typeof body.plan==='string'&&Object.prototype.hasOwnProperty.call(billingPlans,body.plan)?body.plan as keyof typeof billingPlans:null
    if(!code)throw new AccountError(400,'Escolha um plano válido.')
    const target=billingPlans[code]
+   const nextAmount=target.existingAmount??target.amount
    const rest=async<T>(path:string,params:Record<string,string>,patch?:Row):Promise<T>=>{
     const response=await request(`${config.url}/rest/v1/${path}?${new URLSearchParams(params)}`,patch?{method:'PATCH',headers:{...headers,Prefer:'return=representation'},body:JSON.stringify(patch),signal:AbortSignal.timeout(15000)}:{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(15000)})
     if(!response.ok)throw new AccountError(503,patch?'Não foi possível salvar. Atualize e tente de novo.':'Não foi possível ler a assinatura. Atualize e tente de novo.')
@@ -379,7 +380,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    if(item.billing_mode!=='pix')throw new AccountError(409,'Esta assinatura é no cartão: o Mercado Pago continuaria cobrando o valor do plano antigo. Cancele e peça para o cliente assinar o plano certo.')
    if(!item.entitled||!item.paid_until||Date.parse(item.paid_until)<=Date.now())throw new AccountError(409,'Só dá para trocar o plano de uma assinatura paga e ativa.')
    if(item.plan_code===code)throw new AccountError(409,`Esta assinatura já é do plano ${target.name}.`)
-   const changed=await rest<Row[]>('billing_subscriptions',{id:`eq.${item.id}`},{plan_code:code,api_enabled:target.api,models:[...target.models],amount_cents:target.amount})
+   const changed=await rest<Row[]>('billing_subscriptions',{id:`eq.${item.id}`},{plan_code:code,api_enabled:target.api,models:[...target.models],amount_cents:nextAmount})
    if(!changed[0])throw new AccountError(404,'Assinatura não encontrada.')
    console.log('subscription-plan:',email,'trocou a assinatura',item.id,'de',item.plan_code,'para',code)
    const keys:{name:string;models:string[]|null;updated:boolean}[]=[]

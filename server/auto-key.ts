@@ -18,8 +18,14 @@ export class AutoKeyError extends Error {
 
 const DAY = 86400000
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-/** Pro: todos os modelos ativos do Roteador (como o admin entregava). Dev + API: só os do plano. */
-export const keyModels = (item: { plan_code: string; models?: string[] | null }) => (item.plan_code === 'pro' ? null : [...(item.models || [])])
+/** Pro e Enterprise: todos os modelos ativos do Roteador (como o admin entregava). Starter + API: só os do plano. */
+export const keyModels = (item: { plan_code: string; models?: string[] | null }) => (item.plan_code === 'pro' || item.plan_code === 'enterprise' ? null : [...(item.models || [])])
+/** Limites automáticos por plano no gateway_controls (Pro = 3 IPs; Enterprise = 10 IPs e 100 req/min). */
+export const planKeyControls = (planCode: string): { max_ips: number | null; rpm?: number | null } | null => {
+  if (planCode === 'enterprise') return { max_ips: 10, rpm: 100 }
+  if (planCode === 'pro') return { max_ips: 3 }
+  return null
+}
 /** Chave de poucas horas é teste grátis do WhatsApp: nunca vira a chave da assinatura. */
 const isTrialKey = (key: Row) => Date.parse(key.expires_at) - Date.parse(key.created_at) < 23 * 3600000
 
@@ -106,6 +112,14 @@ export function createAutoKeys(env: Env, request: typeof fetch = fetch) {
     const expires = options.shrink ? until : new Date(Math.max(Date.parse(key.expires_at), Date.parse(until))).toISOString()
     await rest(`router_keys?${q({ id: `eq.${key.id}` })}`, { method: 'PATCH', body: JSON.stringify({ expires_at: expires, models }) })
     await linkUser(key.gateway_client_id, item.user_id)
+    const controls = planKeyControls(String(item.plan_code || ''))
+    if (controls && key.gateway_client_id) {
+      await rest('gateway_controls?on_conflict=client_id', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify({ client_id: key.gateway_client_id, max_ips: controls.max_ips, ...(controls.rpm !== undefined ? { rpm: controls.rpm } : {}), updated_at: new Date().toISOString() }),
+      }).catch(() => undefined)
+    }
     return result
   }
 

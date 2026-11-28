@@ -2,7 +2,7 @@ begin;
 create table if not exists public.billing_subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id),
-  plan_code text not null check(plan_code in ('dev','devApi','pro')),
+  plan_code text not null check(plan_code in ('dev','devApi','pro','enterprise')),
   amount_cents integer not null check(amount_cents>0),
   api_enabled boolean not null,
   models text[] not null,

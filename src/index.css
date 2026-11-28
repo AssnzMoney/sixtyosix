@@ -1987,8 +1987,8 @@ h2 em {
 
 .plans-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
   align-items: stretch;
   margin-bottom: 50px;
 }

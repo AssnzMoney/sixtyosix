@@ -67,7 +67,16 @@ function fakeDb(seed: { subs?: Row[]; keys?: Row[]; clients?: Row[]; links?: Row
     }
     if (init.method === 'POST') {
       const key = url.searchParams.get('on_conflict')
-      if (key && table.some((r) => r[key] === body[key])) return Response.json([])
+      if (key) {
+        const existing = table.find((r) => r[key] === body[key])
+        if (existing) {
+          if ((init.headers as Record<string, string> | undefined)?.Prefer?.includes('merge-duplicates')) {
+            Object.assign(existing, body)
+            return Response.json([existing])
+          }
+          return Response.json([])
+        }
+      }
       table.push({ ...body })
       return Response.json([body])
     }
@@ -178,8 +187,13 @@ test('painel mostra os endereços da chave e o IP de agora; remover libera a vag
   const list = await keys.ips(USER, { ip: '200.1.1.1' })
   assert.equal(list.current, '200.1.1.1')
   assert.equal(list.inUse, '200.1.1.1')
-  assert.equal(list.maxIps, 1)
+  assert.equal(list.maxIps, 3)
   assert.deepEqual(list.items.map((i) => i.state), ['em_uso', 'recusado', 'bloqueado'])
+  // Enterprise aplica 10 IPs e 100 req/min automaticamente:
+  db.tables.billing_subscription_state[0].plan_code = 'enterprise'
+  await keys.sync(SUB)
+  assert.equal((await keys.ips(USER, { ip: '200.1.1.1' })).maxIps, 10)
+  assert.equal(db.tables.gateway_controls[0].rpm, 100)
   assert.equal(list.items[0].here, true)
   await assert.rejects(keys.removeIp(USER, '10.9.9.9'), { status: 403 }) // bloqueado pelo admin não sai
   await assert.rejects(keys.removeIp(USER, '1.1.1.1; drop'), { status: 400 })

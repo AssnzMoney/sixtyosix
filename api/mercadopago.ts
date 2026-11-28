@@ -8,12 +8,14 @@ import { createAutoKeys } from '../server/auto-key.js'
 
 type ObjectValue = Record<string, unknown>
 type Env = Record<string, string | undefined>
-type Subscription = {id:string;user_id:string;plan_code:'dev'|'devApi'|'pro';amount_cents:number;api_enabled:boolean;models:string[];provider_id:string|null;merchant_id:string|null;provider_status:string;checkout_url:string|null;paid_until:string|null;created_at:string;billing_anchor:number|null;billing_mode?:'recurring'|'pix'}
+export type PlanCode = 'dev'|'devApi'|'pro'|'enterprise'
+type Subscription = {id:string;user_id:string;plan_code:PlanCode;amount_cents:number;api_enabled:boolean;models:string[];provider_id:string|null;merchant_id:string|null;provider_status:string;checkout_url:string|null;paid_until:string|null;created_at:string;billing_anchor:number|null;billing_mode?:'recurring'|'pix'}
 type PaidAccess = {subscription_id:string;user_id:string;gateway_client_id:string;token_prefix:string;encrypted_token:string;encrypted_upstream:string;revoked_at:string|null;paid_until:string|null;models:string[];api_enabled:boolean;plan_code:string}
 export const billingPlans = {
-  dev:{name:'Dev',amount:7999,api:false,models:['gpt-6-astra','glm-5']},
-  devApi:{name:'Dev + API',amount:9499,api:true,models:['gpt-6-astra','glm-5']},
-  pro:{name:'Pro',amount:11999,api:true,models:['claude-fable-5-2','argon-4','gpt-6-astra','glm-5']},
+  dev:{name:'Starter',amount:24990,existingAmount:17990,api:false,models:['gpt-6-astra'],maxIps:null,rpm:null},
+  devApi:{name:'Starter + API',amount:26490,existingAmount:19499,api:true,models:['gpt-6-astra'],maxIps:null,rpm:null},
+  pro:{name:'Pro',amount:31990,existingAmount:24990,api:true,models:['claude-fable-5-2','argon-4','gpt-6-astra','glm-5'],maxIps:3,rpm:null},
+  enterprise:{name:'Enterprise',amount:60990,existingAmount:54990,api:true,models:['claude-fable-5-2','argon-4','gpt-6-astra','glm-5'],maxIps:10,rpm:100},
 } as const
 const validUuid=(value:unknown):value is string=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 function cryptoKey(secret:string){return createHash('sha256').update(`sixtysix-trial-v1\0${secret}`).digest()}
@@ -161,7 +163,10 @@ export function createBillingService(env:Env=process.env,request:typeof fetch=fe
     const ids=rows.map(item=>item.id)
     const router=await loadRouter(env,request)
     const payments=ids.length?await db<ObjectValue[]>('billing_payments',{subscription_id:`in.(${ids.join(',')})`,select:'id,subscription_id,status,amount_cents,currency,approved_at,period_start,period_end',order:'period_end.desc',limit:'100'}):[]
-    return {subscriptions:rows.map(item=>({id:item.id,plan:item.plan_code,name:billingPlans[item.plan_code].name,amount:item.amount_cents/100,api:item.api_enabled,models:canonicalModels(router,withPlanModels(item.models,router.proAliases)),mode:item.billing_mode||'recurring',active:subscriptionActive(item),expires:item.paid_until,status:item.provider_status,created:item.created_at,keyRevoked:Boolean(accesses.find(a=>a.subscription_id===item.id)?.revoked_at),checkoutUrl:item.provider_status==='pending'||item.billing_mode==='pix'?item.checkout_url:null})),payments}
+    const linkedClients=await db<{id:string}[]>('gateway_clients',{user_id:`eq.${userId}`,select:'id',limit:'20'}).catch(()=>[] as {id:string}[])
+    const hasManualKey=linkedClients.length?await db<{created_at:string;expires_at:string}[]>('router_keys',{gateway_client_id:`in.(${linkedClients.map(c=>c.id).join(',')})`,select:'created_at,expires_at',limit:'20'}).then(ks=>ks.some(k=>Date.parse(k.expires_at)-Date.parse(k.created_at)>=23*3600000)).catch(()=>false):false
+    const existingClient=hasManualKey||rows.some(item=>Boolean(item.paid_until)||item.provider_status==='authorized'||item.provider_status==='approved')||payments.some(p=>p.status==='approved')
+    return {existingClient,subscriptions:rows.map(item=>({id:item.id,plan:item.plan_code,name:billingPlans[item.plan_code]?.name||item.plan_code,amount:item.amount_cents/100,api:item.api_enabled,models:canonicalModels(router,withPlanModels(item.models,router.proAliases)),mode:item.billing_mode||'recurring',active:subscriptionActive(item),expires:item.paid_until,status:item.provider_status,created:item.created_at,keyRevoked:Boolean(accesses.find(a=>a.subscription_id===item.id)?.revoked_at),checkoutUrl:item.provider_status==='pending'||item.billing_mode==='pix'?item.checkout_url:null})),payments}
   }
   return {
     process:processEvent,

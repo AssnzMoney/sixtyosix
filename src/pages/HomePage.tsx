@@ -14,6 +14,7 @@ const purchasePaths = {
   dev: '/comprar/dev',
   devApi: '/comprar/devApi',
   pro: '/comprar/pro',
+  enterprise: '/comprar/enterprise',
 }
 
 const Arrow = () => (
@@ -1060,7 +1061,7 @@ export default function App() {
             </a>
           </motion.div>
 
-          {/* Dev */}
+          {/* Starter */}
           <motion.div
             className="plan-card"
             initial={{ opacity: 0, y: 45, scale: 0.95 }}
@@ -1071,23 +1072,25 @@ export default function App() {
             <PlanCardWaves cardIndex={1} />
             <div className="plan-card-top">
               <div className="plan-card-badge-wrap">
-                <img src="/assets/plan-cash.webp" alt="Dev" className="plan-card-cash-icon" />
+                <img src="/assets/plan-cash.webp" alt="Starter" className="plan-card-cash-icon" />
               </div>
-              <h3 className="plan-name">Dev</h3>
+              <h3 className="plan-name">Starter</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
                 <span className="plan-val">
                   <NumberRoller
-                    value={devWithApi ? 94.99 : 79.99}
+                    value={devWithApi ? 264.9 : 249.9}
                     decimals={2}
                     duration={0.45}
                   />
                 </span>
                 <span className="plan-period">/mês</span>
               </div>
-              <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
+              <p className="plan-desc">
+                Clientes atuais: <strong>R$ {devWithApi ? '194,99' : '179,90'}/mês</strong> · Novos: R$ {devWithApi ? '264,90' : '249,90'}/mês
+              </p>
 
-              {/* Opção de Ganhar a Chave de API (+ R$ 15) */}
+              {/* Opção de Ganhar a Chave de API */}
               <div className="plan-api-segmented">
                 <button
                   type="button"
@@ -1107,34 +1110,34 @@ export default function App() {
             </div>
 
             <ul className="plan-features">
-              <li><Check /> <span><strong>GPT Astra 6</strong></span></li>
+              <li><Check /> <span><strong>Apenas GPT Astra 6</strong></span></li>
               {devWithApi ? (
                 <>
-                  <li><Check /> <span><strong>Chave de API oficial inclusa</strong> (+ R$ 15/mês)</span></li>
+                  <li><Check /> <span><strong>Chave de API oficial inclusa</strong> (R$ 194,99 clientes atuais)</span></li>
                   <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
                   <li><Check /> <span><strong>Chave individual própria</strong> sem rateio</span></li>
                 </>
               ) : (
                 <>
-                  <li><Check /> <span><strong>Acesso 100% via plataforma web</strong></span></li>
+                  <li><Check /> <span><strong>Acesso 100% via site da SixtySix</strong></span></li>
                   <li>
                     <Cross />
                     <span className="plan-feature-muted">
-                      <strong>Sem chave de API</strong> (apenas via plataforma no site)
+                      <strong>Sem acesso à API</strong> (apenas via nosso site)
                     </span>
                   </li>
                   <li><Check /> <span><strong>Ambiente próprio</strong> sem rateio</span></li>
                 </>
               )}
-              <li><Check /> <span><strong>Conexão direta</strong> aos modelos oficiais</span></li>
+              <li><Check /> <span><strong>Conexão direta</strong> ao modelo oficial</span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> via Pix</span></li>
             </ul>
             <Link to={devWithApi ? purchasePaths.devApi : purchasePaths.dev} className="plan-btn">
-              {devWithApi ? 'Começar no Dev com API' : 'Começar no Dev (Via Site)'}
+              {devWithApi ? 'Começar no Starter + API' : 'Começar no Starter (Via Site)'}
             </Link>
           </motion.div>
 
-          {/* Pro Ilimitado */}
+          {/* Pro */}
           <motion.div
             className="plan-card plan-card-featured"
             initial={{ opacity: 0, y: 45, scale: 0.94 }}
@@ -1147,27 +1150,65 @@ export default function App() {
               <div className="plan-card-badge-wrap">
                 <img src="/assets/plan-cash.webp" alt="Pro" className="plan-card-cash-icon" />
               </div>
-              <h3 className="plan-name">Pro Ilimitado</h3>
+              <h3 className="plan-name">Pro</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
-                <span className="plan-val">119,99</span>
+                <span className="plan-val">319,90</span>
                 <span className="plan-period">/mês</span>
               </div>
-              <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
+              <p className="plan-desc">
+                Clientes atuais: <strong>R$ 249,90/mês</strong> · Novos: R$ 319,90/mês
+              </p>
             </div>
             <ul className="plan-features">
-              <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
+              <li><Check /> <span><strong>Todos os modelos</strong> liberados + <strong>Acesso à API</strong></span></li>
+              <li><Check /> <span><strong>Limite de 3 IPs</strong> simultâneos</span></li>
               <li><Check /> <span><strong>Claude Opus 5.5 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>Argon 4</strong></span></li>
               <li><Check /> <span><strong>Geração de imagens</strong> com <strong>Gemini 3 Pro</strong> e outros modelos</span></li>
               <li><Check /> <span><strong>Vídeos com Veo 3.1</strong> (10 por mês, até 8 segundos cada)</span></li>
               <li><Check /> <span><strong>Uso 100% Ilimitado</strong> (sem travas diárias)</span></li>
-              <li><Check /> <span><strong>Zero Rateio</strong> (chave oficial e segura)</span></li>
-              <li><Check /> <span><strong>Modelos Oficiais</strong> (99.9% uptime)</span></li>
               <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong>, <strong>VS Code</strong>, <strong>Codex</strong>, <strong>Cline</strong>, <strong>OpenCode</strong></span></li>
               <li><Check /> <span><strong>Cobrança fixa em Reais</strong> sem IOF via Pix</span></li>
             </ul>
             <Link to={purchasePaths.pro} className="plan-btn plan-btn-featured">
-              Garantir Acesso Ilimitado <Arrow />
+              Garantir Plano Pro <Arrow />
+            </Link>
+          </motion.div>
+
+          {/* Enterprise */}
+          <motion.div
+            className="plan-card"
+            initial={{ opacity: 0, y: 45, scale: 0.94 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, margin: '-50px' }}
+            transition={{ duration: 1.2, delay: 0.36, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <PlanCardWaves cardIndex={1} />
+            <div className="plan-card-top">
+              <div className="plan-card-badge-wrap">
+                <img src="/assets/plan-cash.webp" alt="Enterprise" className="plan-card-cash-icon" />
+              </div>
+              <h3 className="plan-name">Enterprise</h3>
+              <div className="plan-price">
+                <span className="plan-curr">R$</span>
+                <span className="plan-val">609,90</span>
+                <span className="plan-period">/mês</span>
+              </div>
+              <p className="plan-desc">
+                Clientes atuais: <strong>R$ 549,90/mês</strong> · Novos: R$ 609,90/mês
+              </p>
+            </div>
+            <ul className="plan-features">
+              <li><Check /> <span><strong>Todos os modelos</strong> liberados + <strong>Acesso à API</strong></span></li>
+              <li><Check /> <span><strong>Limite de 10 IPs</strong> simultâneos</span></li>
+              <li><Check /> <span><strong>100 requisições por minuto</strong> (alta vazão)</span></li>
+              <li><Check /> <span><strong>Suporte 24 horas</strong> prioritário</span></li>
+              <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>GPT Astra 6</strong>, <strong>Argon 4</strong>, Imagens e Vídeos</span></li>
+              <li><Check /> <span><strong>Uso 100% Ilimitado</strong> para equipes e operação pesada</span></li>
+              <li><Check /> <span><strong>Cobrança fixa em Reais</strong> sem IOF via Pix</span></li>
+            </ul>
+            <Link to={purchasePaths.enterprise} className="plan-btn">
+              Contratar Enterprise <Arrow />
             </Link>
           </motion.div>
         </div>

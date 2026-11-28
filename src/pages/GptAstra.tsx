@@ -39,8 +39,8 @@ export default function GptAstraPage() {
   const effectiveDollarRate = commercialDollar * (1 + iofRate + cardSpread) // ~R$ 6.37
 
   const totalAnthropicBRL = calcUsd * effectiveDollarRate
-  const sixtySixCost = calcUsd <= 60 ? (devWithApi ? 94.99 : 79.99) : 119
-  const sixtySixPlanName = calcUsd <= 60 ? 'Dev' : 'Pro Ilimitado'
+  const sixtySixCost = calcUsd <= 60 ? (devWithApi ? 264.9 : 249.9) : 319.9
+  const sixtySixPlanName = calcUsd <= 60 ? 'Starter' : 'Pro'
 
   const savingsBRL = Math.max(0, totalAnthropicBRL - sixtySixCost)
   const savingsPercent = Math.round((savingsBRL / totalAnthropicBRL) * 100)
@@ -900,19 +900,21 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
               <div className="plan-card-badge-wrap">
                 <img src="/assets/plan-cash.webp" alt="Dev" className="plan-card-cash-icon" />
               </div>
-              <h3 className="plan-name">Dev</h3>
+              <h3 className="plan-name">Starter</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
                 <span className="plan-val">
                   <NumberRoller
-                    value={devWithApi ? 94.99 : 79.99}
+                    value={devWithApi ? 264.9 : 249.9}
                     decimals={2}
                     duration={0.45}
                   />
                 </span>
                 <span className="plan-period">/mês</span>
               </div>
-              <p className="plan-desc">Para desenvolvedores que criam e entregam software no dia a dia.</p>
+              <p className="plan-desc">
+                Clientes atuais: <strong>R$ {devWithApi ? '194,99' : '179,90'}/mês</strong> · Novos: R$ {devWithApi ? '264,90' : '249,90'}/mês
+              </p>
 
               {/* Seletor Segmentado com rolagem e verde ativo */}
               <div className="plan-api-segmented">
@@ -983,13 +985,13 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
               <div className="plan-card-badge-wrap">
                 <img src="/assets/plan-cash.webp" alt="Pro" className="plan-card-cash-icon" />
               </div>
-              <h3 className="plan-name">Pro Ilimitado</h3>
+              <h3 className="plan-name">Pro</h3>
               <div className="plan-price">
                 <span className="plan-curr">R$</span>
-                <span className="plan-val">119</span>
+                <span className="plan-val">319,90</span>
                 <span className="plan-period">/mês</span>
               </div>
-              <p className="plan-desc">Acesso irrestrito aos modelos de ponta para quem constrói sem parar.</p>
+              <p className="plan-desc">Clientes atuais: <strong>R$ 249,90/mês</strong> · Limite de 3 IPs · Enterprise: R$ 609,90 (R$ 549,90 atuais · 10 IPs · 100 req/min)</p>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>

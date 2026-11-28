@@ -116,34 +116,49 @@ const supportLink = (message: string) => supportWhatsappLink(message)
 const PLANS: Array<{
   name: string
   price: string
+  existingPrice: string
   period: string
   desc: string
   note: string
   cta: string
   message: string
   icon: string
-  code?: "dev" | "pro"
+  code?: "dev" | "pro" | "enterprise"
 }> = [
   {
-    name: "Dev",
-    price: "79,99",
+    name: "Starter",
+    price: "249,90",
+    existingPrice: "179,90",
     period: "/mês",
-    desc: "Para desenvolvedores que criam e entregam software no dia a dia.",
-    note: "Chave de API: + R$ 15/mês",
-    cta: "Contratar o Dev",
-    message: "Olá! Quero contratar o plano Dev da SixtySix.",
+    desc: "Acesso ao GPT Astra 6 pelo site da SixtySix (ou + API por R$ 194,99 clientes atuais / R$ 264,90 novos).",
+    note: "Chave de API opcional (+ R$ 15)",
+    cta: "Contratar o Starter",
+    message: "Olá! Quero contratar o plano Starter da SixtySix.",
     code: "dev",
     icon: "/assets/plan-cash.webp",
   },
   {
-    name: "Pro Ilimitado",
-    price: "119,99",
+    name: "Pro",
+    price: "319,90",
+    existingPrice: "249,90",
     period: "/mês",
-    desc: "Acesso irrestrito aos modelos de ponta para quem constrói sem parar.",
-    note: "API inclusa, com imagens e 10 vídeos por mês",
+    desc: "Todos os modelos liberados, API inclusa e limite de 3 IPs.",
+    note: "Clientes atuais: R$ 249,90 · Limite de 3 IPs",
     cta: "Contratar o Pro",
-    message: "Olá! Quero contratar o plano Pro Ilimitado da SixtySix.",
+    message: "Olá! Quero contratar o plano Pro da SixtySix.",
     code: "pro",
+    icon: "/assets/plan-cash.webp",
+  },
+  {
+    name: "Enterprise",
+    price: "609,90",
+    existingPrice: "549,90",
+    period: "/mês",
+    desc: "Todos os modelos, limite de 10 IPs, 100 requisições/min e suporte 24h.",
+    note: "Clientes atuais: R$ 549,90 · 10 IPs · 100 req/min",
+    cta: "Contratar o Enterprise",
+    message: "Olá! Quero contratar o plano Enterprise da SixtySix.",
+    code: "enterprise",
     icon: "/assets/plan-cash.webp",
   },
 ]
@@ -2652,12 +2667,12 @@ sudo apt update && sudo apt install claude-desktop`}
                         <h3>{plan.name}</h3>
                         <div className="six-plan-card-price">
                           <span>R$</span>
-                          <strong>{plan.code === "dev" && devWithApi ? "94,99" : plan.price}</strong>
+                          <strong>{plan.code === "dev" && devWithApi ? (subscription || (ownData?.keys?.length ?? 0) > 0 ? "194,99" : "264,90") : (subscription || (ownData?.keys?.length ?? 0) > 0 ? plan.existingPrice : plan.price)}</strong>
                           <small>{plan.period}</small>
                         </div>
                         <p>{plan.desc}</p>
                         {plan.code === "dev" ? (
-                          <div className="six-plan-api-toggle" role="group" aria-label="Chave de API no plano Dev">
+                          <div className="six-plan-api-toggle" role="group" aria-label="Chave de API no plano Starter">
                             <button type="button" aria-pressed={!devWithApi} onClick={() => setDevWithApi(false)}>
                               Só no site
                             </button>
@@ -2676,7 +2691,7 @@ sudo apt update && sudo apt install claude-desktop`}
                           </span>
                         ) : code ? (
                           <Link className="six-primary" to={`/comprar/${code}`}>
-                            {plan.code === "dev" && devWithApi ? "Contratar o Dev + API" : plan.cta} <ArrowRight size={15} />
+                            {plan.code === "dev" && devWithApi ? "Contratar o Starter + API" : plan.cta} <ArrowRight size={15} />
                           </Link>
                         ) : (
                           <a className="six-primary" href={supportLink(plan.message)} target="_blank" rel="noopener noreferrer">

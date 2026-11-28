@@ -39,12 +39,12 @@ function fixture(subscription: Record<string, unknown>, keys: Record<string, unk
 }
 const paid = { plan_code: 'devApi', billing_mode: 'pix', entitled: true, paid_until: future }
 
-test('troca de plano: Dev + API vira Pro sem mexer no período pago, e a renovação passa a cobrar o Pro', async () => {
+test('troca de plano: Starter + API vira Pro sem mexer no período pago, e a renovação passa a cobrar o Pro', async () => {
   const { patches, act } = fixture(paid)
   const result = await act('Bearer t', { action: 'subscription-plan', id: SUB, plan: 'pro' }) as any
   assert.equal(result.plan, 'Pro')
   const sub = patches.find((p) => p.path.startsWith('/rest/v1/billing_subscriptions'))!
-  assert.deepEqual(sub.body, { plan_code: 'pro', api_enabled: true, models: ['claude-fable-5-2', 'argon-4', 'gpt-6-astra', 'glm-5'], amount_cents: 11999 })
+  assert.deepEqual(sub.body, { plan_code: 'pro', api_enabled: true, models: ['claude-fable-5-2', 'argon-4', 'gpt-6-astra', 'glm-5'], amount_cents: 24990 })
   assert.ok(!('paid_until' in sub.body), 'o período pago não muda')
 })
 
@@ -67,7 +67,7 @@ test('troca de plano recusa cartão, pedido não pago, plano igual e plano invá
     [{ ...paid, billing_mode: 'recurring' }, 'pro', /cartão/],
     [{ ...paid, entitled: false }, 'pro', /paga e ativa/],
     [{ ...paid, paid_until: new Date(Date.now() - 1000).toISOString() }, 'pro', /paga e ativa/],
-    [paid, 'devApi', /já é do plano Dev \+ API/],
+    [paid, 'devApi', /já é do plano Starter \+ API/],
     [paid, 'toString', /plano válido/],
   ] as const) {
     const { patches, act } = fixture(subscription)

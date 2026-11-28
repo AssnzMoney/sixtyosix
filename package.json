@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "format": "oxfmt",
-    "test": "node --experimental-strip-types --import ./scripts/test-register.mjs --test server/*.test.ts",
+    "test": "node --experimental-strip-types --import ./scripts/test-register.mjs --test --test-concurrency=2 server/*.test.ts",
     "publicar": "ssh -i ~/.ssh/sixtysix_vps -o BatchMode=yes root@216.22.31.223 \"sudo -u sixtysix bash -lc 'cd ~/app && ./deploy/deploy.sh'\"",
     "filme:reels": "node motion/exportar.mjs 9x16 .claude/prints/sixtysix-reels-9x16.mp4",
     "filme:16x9": "node motion/exportar.mjs 16x9 .claude/prints/sixtysix-16x9.mp4"
