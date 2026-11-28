@@ -1022,45 +1022,6 @@ export default function App() {
 
         <span id="teste" style={{ display: 'block', position: 'relative', top: '-110px', visibility: 'hidden' }} />
         <div className="plans-grid">
-          {/* Teste Grátis */}
-          <motion.div
-            className="plan-card plan-card-trial"
-            id="teste-gratis"
-            initial={{ opacity: 0, y: 45, scale: 0.95 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <PlanCardWaves cardIndex={0} />
-            <div className="plan-card-top">
-              <div className="plan-card-badge-wrap">
-                <img src="/assets/plan-trial.webp" alt="Teste Grátis" className="plan-card-cash-icon" />
-              </div>
-              <h3 className="plan-name">Teste Grátis</h3>
-              <div className="plan-price">
-                <span className="plan-curr">R$</span>
-                <span className="plan-val">0</span>
-                <span className="plan-period">/3 horas</span>
-              </div>
-              <p className="plan-desc">Teste na prática antes de decidir, com velocidade reduzida.</p>
-            </div>
-            <ul className="plan-features">
-              <li><Check /> <span><strong>Chave na hora</strong>, vale por 3 horas</span></li>
-              <li><Check /> <span><strong>Claude Opus 5.5 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>Argon 4</strong></span></li>
-              <li><Check /> <span><strong>Claude Code</strong>, <strong>Cursor</strong> & <strong>VS Code</strong></span></li>
-              <li><Check /> <span><strong>Chave oficial própria</strong> (Zero Rateio)</span></li>
-              <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
-            </ul>
-            <a
-              href={supportWhatsappLink('Olá! Quero fazer o teste grátis de 3 horas da SixtySix.')}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="plan-btn"
-            >
-              Começar Teste Grátis <Arrow />
-            </a>
-          </motion.div>
-
           {/* Starter */}
           <motion.div
             className="plan-card"
@@ -1142,6 +1103,7 @@ export default function App() {
           {/* Pro */}
           <motion.div
             className="plan-card plan-card-featured"
+            id="teste-gratis"
             initial={{ opacity: 0, y: 45, scale: 0.94 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: true, margin: '-50px' }}
@@ -1163,6 +1125,7 @@ export default function App() {
               </p>
             </div>
             <ul className="plan-features">
+              <li><Check /> <span><strong>Direito a Teste Grátis</strong> antes de assinar</span></li>
               <li><Check /> <span><strong>Todos os modelos</strong> liberados + <strong>Acesso à API</strong></span></li>
               <li><Check /> <span><strong>Limite de 3 IPs</strong> simultâneos</span></li>
               <li><Check /> <span><strong>Claude Opus 5.5 para Claude Code</strong>, <strong>GPT Astra 6</strong> e <strong>Argon 4</strong></span></li>

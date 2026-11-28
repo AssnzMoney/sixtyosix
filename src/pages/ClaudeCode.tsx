@@ -1083,40 +1083,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
         </motion.div>
 
         <div className="plans-grid">
-          {/* Teste Grátis */}
-          <motion.div
-            className="plan-card plan-card-trial"
-            initial={{ opacity: 0, y: 45, scale: 0.95 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <PlanCardWaves cardIndex={0} />
-            <div className="plan-card-top">
-              <div className="plan-card-badge-wrap">
-                <img src="/assets/plan-trial.webp" alt="Teste Grátis" className="plan-card-cash-icon" />
-              </div>
-              <h3 className="plan-name">Teste Grátis</h3>
-              <div className="plan-price">
-                <span className="plan-curr">R$</span>
-                <span className="plan-val">0</span>
-                <span className="plan-period">/7 dias</span>
-              </div>
-              <p className="plan-desc">Acesso total e irrestrito para testar o Claude Code na prática antes de decidir.</p>
-            </div>
-            <ul className="plan-features">
-              <li><Check /> <span><strong>Direito a tudo liberado</strong></span></li>
-              <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>Argon 4</strong> e <strong>Astra 6</strong></span></li>
-              <li><Check /> <span><strong>Claude Code</strong>, <strong>Codex</strong> & <strong>Claude Code</strong></span></li>
-              <li><Check /> <span><strong>Chave individual</strong></span></li>
-              <li><Check /> <span><strong>Sem cartão de crédito</strong> necessário</span></li>
-            </ul>
-            <a href="https://wa.me/5581992376036" target="_blank" rel="noopener noreferrer" className="plan-btn">
-              Começar Teste Grátis <Arrow />
-            </a>
-          </motion.div>
-
-          {/* Dev */}
+          {/* Starter */}
           <motion.div
             className="plan-card"
             initial={{ opacity: 0, y: 45, scale: 0.95 }}
@@ -1225,6 +1192,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
               <p className="plan-desc">Todos os modelos · Limite de 3 IPs · Enterprise: R$ 609,90 (10 IPs · 100 req/min)</p>
             </div>
             <ul className="plan-features">
+              <li><Check /> <span><strong>Direito a Teste Grátis</strong> antes de assinar</span></li>
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>
               <li><Check /> <span><strong>Claude Opus 5.5</strong>, <strong>Argon 4</strong> e <strong>Astra 6</strong></span></li>
               <li><Check /> <span><strong>Geração de imagens</strong> com <strong>Gemini 3 Pro</strong> e outros modelos</span></li>
