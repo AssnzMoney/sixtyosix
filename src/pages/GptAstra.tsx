@@ -39,19 +39,19 @@ export default function GptAstraPage() {
   const effectiveDollarRate = commercialDollar * (1 + iofRate + cardSpread) // ~R$ 6.37
 
   const totalAnthropicBRL = calcUsd * effectiveDollarRate
-  const sixtySixCost = calcUsd <= 60 ? (devWithApi ? 264.9 : 249.9) : 319.9
-  const sixtySixPlanName = calcUsd <= 60 ? 'Starter' : 'Pro'
+  const sixtySixCost = calcUsd <= 60 ? (devWithApi ? 264.9 : 249.9) : calcUsd <= 200 ? 319.9 : 609.9
+  const sixtySixPlanName = calcUsd <= 60 ? (devWithApi ? 'Starter + API' : 'Starter') : calcUsd <= 200 ? 'Pro' : 'Enterprise'
 
   const savingsBRL = Math.max(0, totalAnthropicBRL - sixtySixCost)
   const savingsPercent = Math.round((savingsBRL / totalAnthropicBRL) * 100)
   const savingsMultiplier = (totalAnthropicBRL / sixtySixCost).toFixed(1)
 
   const presetLevels = [
-    { label: 'US$ 30', value: 30 },
     { label: 'US$ 60', value: 60 },
     { label: 'US$ 100', value: 100 },
     { label: 'US$ 150', value: 150 },
     { label: 'US$ 250', value: 250 },
+    { label: 'US$ 400', value: 400 },
   ]
 
   useEffect(() => {
@@ -654,7 +654,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
               <span className="highlight-green-text">GPT Astra 6?</span>
             </h2>
             <p className="claude-price-intro-sub">
-              A partir de <strong>R$ 79,99 fixos no Pix</strong> (ou <strong>teste 7 dias grátis</strong>), <strong>sem mensalidade surpresa</strong> e <strong>conforme cotas e disponibilidade</strong> a cada poucas horas.
+              A partir de <strong>R$ 249,90 fixos no Pix</strong> (com <strong>direito a teste grátis no plano Pro</strong>), <strong>sem mensalidade surpresa</strong> e <strong>conforme cotas e disponibilidade</strong> a cada poucas horas.
               Diferente de assinar plataformas no cartão com IOF de 4,38% e taxa de câmbio abusiva, aqui o <strong>valor é previsível em Reais</strong>.
               Veja os <a href="#planos-astra">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>
@@ -763,8 +763,8 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
                 <Slider
                   value={[calcUsd]}
                   onValueChange={(val) => setCalcUsd(val[0])}
-                  min={20}
-                  max={400}
+                  min={50}
+                  max={500}
                   step={10}
                   aria-label="Consumo estimado em Dólar"
                 />
@@ -930,14 +930,14 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}</pre></div>
             <a
               href={`https://wa.me/5581992376036?text=${encodeURIComponent(
                 devWithApi
-                  ? 'Olá! Quero assinar o plano Dev COM CHAVE DE API (R$ 94,99/mês) para o GPT Astra 6.'
-                  : 'Olá! Quero assinar o plano Dev APENAS VIA SITE (R$ 79,99/mês) para o GPT Astra 6.'
+                  ? 'Olá! Quero assinar o plano Starter COM CHAVE DE API (R$ 264,90/mês) para o GPT Astra 6.'
+                  : 'Olá! Quero assinar o plano Starter APENAS VIA SITE (R$ 249,90/mês) para o GPT Astra 6.'
               )}`}
               target="_blank"
               rel="noopener noreferrer"
               className="plan-btn"
             >
-              {devWithApi ? 'Começar no Dev com API' : 'Começar no Dev (Via Site)'}
+              {devWithApi ? 'Começar no Starter + API' : 'Começar no Starter (Site)'}
             </a>
           </motion.div>
 

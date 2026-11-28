@@ -126,11 +126,11 @@ const partners = [
 ]
 
 const presetLevels = [
-  { label: 'US$ 30', value: 30 },
   { label: 'US$ 60', value: 60 },
   { label: 'US$ 100', value: 100 },
   { label: 'US$ 150', value: 150 },
   { label: 'US$ 250', value: 250 },
+  { label: 'US$ 400', value: 400 },
 ]
 
 export default function App() {
@@ -151,8 +151,8 @@ export default function App() {
   const effectiveDollarRate = commercialDollar * (1 + iofRate + cardSpread) // ~R$ 6.37
 
   const totalAnthropicBRL = calcUsd * effectiveDollarRate
-  const sixtySixCost = calcUsd <= 60 ? 79 : 119
-  const sixtySixPlanName = calcUsd <= 60 ? 'Dev' : 'Pro Ilimitado'
+  const sixtySixCost = calcUsd <= 60 ? (devWithApi ? 264.9 : 249.9) : calcUsd <= 200 ? 319.9 : 609.9
+  const sixtySixPlanName = calcUsd <= 60 ? (devWithApi ? 'Starter + API' : 'Starter') : calcUsd <= 200 ? 'Pro' : 'Enterprise'
 
   const savingsBRL = Math.max(0, totalAnthropicBRL - sixtySixCost)
   const savingsPercent = Math.round((savingsBRL / totalAnthropicBRL) * 100)
@@ -821,7 +821,7 @@ export default function App() {
               <span className="highlight-green-text">Claude Code?</span>
             </h2>
             <p className="claude-price-intro-sub">
-              A partir de <strong>R$ 79,00 fixos no Pix</strong> (ou <strong>teste grátis de 3 horas</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong> a cada 5 horas.
+              A partir de <strong>R$ 249,90 fixos no Pix</strong> (com <strong>direito a teste grátis no plano Pro</strong>), <strong>sem mensalidade surpresa</strong> e <strong>sem limites de cota</strong> a cada 5 horas.
               Diferente da Anthropic que cobra em Dólar com IOF de 4,38% e taxa de câmbio abusiva no cartão, aqui o <strong>valor é previsível em Reais</strong>.
               Veja os <a href="#planos">planos disponíveis</a> ou simule abaixo o quanto você economiza no seu fluxo de desenvolvimento.
             </p>
@@ -930,8 +930,8 @@ export default function App() {
                 <Slider
                   value={[calcUsd]}
                   onValueChange={(val) => setCalcUsd(val[0])}
-                  min={20}
-                  max={400}
+                  min={50}
+                  max={500}
                   step={10}
                   aria-label="Consumo estimado em Dólar"
                 />
