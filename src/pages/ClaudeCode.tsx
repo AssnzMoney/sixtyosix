@@ -1142,7 +1142,9 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
                 <span className="plan-period">/mês</span>
               </div>
               <p className="plan-desc">
-                Clientes atuais: <strong>R$ {devWithApi ? '194,99' : '179,90'}/mês</strong> · Novos: R$ {devWithApi ? '264,90' : '249,90'}/mês
+                {devWithApi
+                  ? 'GPT Astra 6 no site + chave de API oficial liberada.'
+                  : 'Acesso ao GPT Astra 6 direto pelo site da SixtySix.'}
               </p>
 
               {/* Opção de Ganhar a Chave de API (+ R$ 15) */}
@@ -1220,7 +1222,7 @@ model_catalog_url = "https://www.sixtysix.online/api/codex/models"`}
                 <span className="plan-val">319,90</span>
                 <span className="plan-period">/mês</span>
               </div>
-              <p className="plan-desc">Clientes atuais: <strong>R$ 249,90/mês</strong> · Limite de 3 IPs · Enterprise: R$ 609,90 (R$ 549,90 atuais · 10 IPs · 100 req/min)</p>
+              <p className="plan-desc">Todos os modelos · Limite de 3 IPs · Enterprise: R$ 609,90 (10 IPs · 100 req/min)</p>
             </div>
             <ul className="plan-features">
               <li><Check /> <span><strong>Acesso à API</strong> incluso</span></li>

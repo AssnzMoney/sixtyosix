@@ -369,7 +369,7 @@ export function createAdminActions(env=process.env,request:typeof fetch=fetch){
    const code=typeof body.plan==='string'&&Object.prototype.hasOwnProperty.call(billingPlans,body.plan)?body.plan as keyof typeof billingPlans:null
    if(!code)throw new AccountError(400,'Escolha um plano válido.')
    const target=billingPlans[code]
-   const nextAmount=target.existingAmount??target.amount
+   const nextAmount=target.amount
    const rest=async<T>(path:string,params:Record<string,string>,patch?:Row):Promise<T>=>{
     const response=await request(`${config.url}/rest/v1/${path}?${new URLSearchParams(params)}`,patch?{method:'PATCH',headers:{...headers,Prefer:'return=representation'},body:JSON.stringify(patch),signal:AbortSignal.timeout(15000)}:{headers:serviceHeaders(config.secret),signal:AbortSignal.timeout(15000)})
     if(!response.ok)throw new AccountError(503,patch?'Não foi possível salvar. Atualize e tente de novo.':'Não foi possível ler a assinatura. Atualize e tente de novo.')

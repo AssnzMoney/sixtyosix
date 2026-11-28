@@ -116,7 +116,6 @@ const supportLink = (message: string) => supportWhatsappLink(message)
 const PLANS: Array<{
   name: string
   price: string
-  existingPrice: string
   period: string
   desc: string
   note: string
@@ -128,9 +127,8 @@ const PLANS: Array<{
   {
     name: "Starter",
     price: "249,90",
-    existingPrice: "179,90",
     period: "/mês",
-    desc: "Acesso ao GPT Astra 6 pelo site da SixtySix (ou + API por R$ 194,99 clientes atuais / R$ 264,90 novos).",
+    desc: "Acesso ao GPT Astra 6 pelo site da SixtySix (ou + API por R$ 264,90/mês).",
     note: "Chave de API opcional (+ R$ 15)",
     cta: "Contratar o Starter",
     message: "Olá! Quero contratar o plano Starter da SixtySix.",
@@ -140,10 +138,9 @@ const PLANS: Array<{
   {
     name: "Pro",
     price: "319,90",
-    existingPrice: "249,90",
     period: "/mês",
     desc: "Todos os modelos liberados, API inclusa e limite de 3 IPs.",
-    note: "Clientes atuais: R$ 249,90 · Limite de 3 IPs",
+    note: "Todos os modelos · Limite de 3 IPs",
     cta: "Contratar o Pro",
     message: "Olá! Quero contratar o plano Pro da SixtySix.",
     code: "pro",
@@ -152,10 +149,9 @@ const PLANS: Array<{
   {
     name: "Enterprise",
     price: "609,90",
-    existingPrice: "549,90",
     period: "/mês",
     desc: "Todos os modelos, limite de 10 IPs, 100 requisições/min e suporte 24h.",
-    note: "Clientes atuais: R$ 549,90 · 10 IPs · 100 req/min",
+    note: "10 IPs · 100 req/min · Suporte 24h",
     cta: "Contratar o Enterprise",
     message: "Olá! Quero contratar o plano Enterprise da SixtySix.",
     code: "enterprise",
@@ -2667,7 +2663,7 @@ sudo apt update && sudo apt install claude-desktop`}
                         <h3>{plan.name}</h3>
                         <div className="six-plan-card-price">
                           <span>R$</span>
-                          <strong>{plan.code === "dev" && devWithApi ? (subscription || (ownData?.keys?.length ?? 0) > 0 ? "194,99" : "264,90") : (subscription || (ownData?.keys?.length ?? 0) > 0 ? plan.existingPrice : plan.price)}</strong>
+                          <strong>{plan.code === "dev" && devWithApi ? "264,90" : plan.price}</strong>
                           <small>{plan.period}</small>
                         </div>
                         <p>{plan.desc}</p>

@@ -2,13 +2,13 @@ import { useEffect,useState } from 'react'
 import { Link,useNavigate,useParams } from 'react-router-dom'
 import { ArrowRight,ShieldCheck } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
-import { billingRequest,planLabels,planAmounts,planExistingAmounts,planPrice,type BillingState,type PlanCode } from '../lib/billing'
+import { billingRequest,planLabels,planPrice,type PlanCode } from '../lib/billing'
 import { applyReferralCode,storedReferral } from '../lib/referral'
 import './trial.css'
 export default function CheckoutPage(){
   const {plan}=useParams(),navigate=useNavigate(),{session,user,loading}=useAuth()
   const valid=Boolean(plan&&Object.prototype.hasOwnProperty.call(planLabels,plan)),code=plan as PlanCode
-  const [payer,setPayer]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[method,setMethod]=useState<'pix'|'card'>('pix'),[existingClient,setExistingClient]=useState(false)
+  const [payer,setPayer]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[method,setMethod]=useState<'pix'|'card'>('pix')
   // Código de indicação: vem preenchido do link de convite (/convite/CODIGO) ou a pessoa digita.
   const [referral,setReferral]=useState(()=>storedReferral())
   useEffect(()=>{
@@ -18,7 +18,6 @@ export default function CheckoutPage(){
     if(!session){navigate('/login?mode=cadastro',{replace:true});return}
     if(!user?.hasCompletedOnboarding){navigate('/onboarding',{replace:true});return}
     setPayer(user.email)
-    billingRequest<BillingState>('status').then(s=>setExistingClient(Boolean(s.existingClient))).catch(()=>undefined)
   },[loading,session?.user.id,user?.hasCompletedOnboarding,valid,code,navigate])
   async function submit(e:React.FormEvent){
     e.preventDefault();setBusy(true);setError('')
@@ -36,7 +35,7 @@ export default function CheckoutPage(){
     <span className="six-trial-pill"><ShieldCheck size={15}/> Assinatura mensal</span>
     {!valid?<><h1>Plano não encontrado.</h1><Link to="/planos" className="six-trial-primary">Ver planos</Link></>:<>
       <h1>Seu próximo passo com o {planLabels[code]}.</h1>
-      <p><strong>{planPrice(code,existingClient).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}{method==='pix'?' por 30 dias.':' por mês.'}</strong> {existingClient?`(Valor de cliente atual · novos clientes: ${planAmounts[code].toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}). `:`(Clientes atuais: ${planExistingAmounts[code].toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}). `}{code==='dev'?'Uso pelo site (GPT Astra 6).':code==='devApi'?'Uso pelo site e chave individual de API (GPT Astra 6).':code==='enterprise'?'Todos os modelos, limite de 10 IPs, 100 requisições por minuto e suporte 24h.':'Todos os modelos, chave de API inclusa e limite de 3 IPs.'}</p>
+      <p><strong>{planPrice(code).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}{method==='pix'?' por 30 dias.':' por mês.'}</strong> {code==='dev'?'Uso pelo site (GPT Astra 6).':code==='devApi'?'Uso pelo site e chave individual de API (GPT Astra 6).':code==='enterprise'?'Todos os modelos, limite de 10 IPs, 100 requisições por minuto e suporte 24h.':'Todos os modelos, chave de API inclusa e limite de 3 IPs.'}</p>
       <p>O acesso começa após a confirmação. No pagamento único, o Checkout Pro abre com Pix selecionado; você ainda pode trocar a forma de pagamento. No cartão recorrente, a cobrança renova mensalmente.</p>
       {loading||!session||!user?.hasCompletedOnboarding?<p role="status">Conferindo sua conta…</p>:<form onSubmit={submit}>
         <label className="six-trial-key"><span>Escolha o tipo de cobrança</span><select aria-label="Forma de pagamento" value={method} onChange={e=>setMethod(e.target.value as 'pix'|'card')} style={{width:'100%',padding:14,borderRadius:12,background:'#14271e',color:'#e7f1de',border:'1px solid #4c6351'}}><option value="pix">Pix · pagamento por 30 dias</option><option value="card">Cartão · assinatura mensal automática</option></select></label>

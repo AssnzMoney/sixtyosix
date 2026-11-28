@@ -3,22 +3,13 @@ begin;
 alter table public.billing_subscriptions drop constraint if exists billing_subscriptions_plan_code_check;
 alter table public.billing_subscriptions add constraint billing_subscriptions_plan_code_check check (plan_code in ('dev','devApi','pro','enterprise'));
 
-create or replace function public.billing_is_existing_client(p_user_id uuid)
-returns boolean language sql stable security definer set search_path = '' as $$
-  select exists(select 1 from public.billing_subscriptions s where s.user_id = p_user_id and (s.paid_until is not null or s.provider_status in ('authorized','approved')))
-  or exists(select 1 from public.billing_payments p join public.billing_subscriptions s on s.id = p.subscription_id where s.user_id = p_user_id and p.status = 'approved')
-  or exists(select 1 from public.gateway_clients c join public.router_keys k on k.gateway_client_id = c.id where c.user_id = p_user_id and k.expires_at - k.created_at >= interval '23 hours');
-$$;
-revoke all on function public.billing_is_existing_client(uuid) from public, anon, authenticated;
-grant execute on function public.billing_is_existing_client(uuid) to service_role;
-
-create or replace function public.billing_plan_amount_cents(p_plan text, p_existing boolean)
+create or replace function public.billing_plan_amount_cents(p_plan text, p_existing boolean default false)
 returns integer language sql immutable set search_path = '' as $$
   select case p_plan
-    when 'dev' then case when p_existing then 17990 else 24990 end
-    when 'devApi' then case when p_existing then 19499 else 26490 end
-    when 'pro' then case when p_existing then 24990 else 31990 end
-    when 'enterprise' then case when p_existing then 54990 else 60990 end
+    when 'dev' then 24990
+    when 'devApi' then 26490
+    when 'pro' then 31990
+    when 'enterprise' then 60990
     else 31990
   end;
 $$;
@@ -30,13 +21,12 @@ $$;
 
 create or replace function public.billing_begin_checkout(p_user_id uuid, p_plan text)
 returns public.billing_subscriptions language plpgsql security invoker set search_path = '' as $$
-declare item public.billing_subscriptions; v_existing boolean; v_amount integer;
+declare item public.billing_subscriptions; v_amount integer;
 begin
   if p_user_id is null or p_plan not in ('dev','devApi','pro','enterprise') then raise exception 'Invalid plan'; end if;
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_user_id::text, 72));
   if exists(select 1 from public.billing_subscriptions where user_id = p_user_id and paid_until > now()) then raise exception 'An active plan already exists'; end if;
-  v_existing := public.billing_is_existing_client(p_user_id);
-  v_amount := public.billing_plan_amount_cents(p_plan, v_existing);
+  v_amount := public.billing_plan_amount_cents(p_plan, false);
   select * into item from public.billing_subscriptions where user_id = p_user_id and plan_code = p_plan and billing_mode = 'recurring' and provider_status = 'pending' and created_at > now() - interval '1 day' order by created_at desc limit 1 for update;
   if found then
     if item.checkout_url is not null and item.amount_cents = v_amount then return item; end if;
@@ -53,12 +43,11 @@ $$;
 
 create or replace function public.billing_begin_pix(p_user_id uuid, p_plan text)
 returns public.billing_subscriptions language plpgsql security invoker set search_path = '' as $$
-declare item public.billing_subscriptions; v_existing boolean; v_amount integer;
+declare item public.billing_subscriptions; v_amount integer;
 begin
   if p_user_id is null or p_plan not in ('dev','devApi','pro','enterprise') then raise exception 'Invalid plan'; end if;
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_user_id::text, 72));
-  v_existing := public.billing_is_existing_client(p_user_id);
-  v_amount := public.billing_plan_amount_cents(p_plan, v_existing);
+  v_amount := public.billing_plan_amount_cents(p_plan, false);
   select * into item from public.billing_subscriptions where user_id = p_user_id and plan_code = p_plan and billing_mode = 'pix' and provider_status = 'pending' and created_at > now() - interval '1 day' order by created_at desc limit 1 for update;
   if found then
     if item.checkout_lock_until > now() then raise exception 'Checkout in progress'; end if;
